@@ -14,6 +14,8 @@ import { RecommendationsModule } from "./modules/recommendations/recommendations
 import { RedisModule } from "./modules/redis/redis.module";
 import { TrialsModule } from "./modules/trials/trials.module";
 import { UsersModule } from "./modules/users/users.module";
+import { PlayersModule } from './players/players.module';
+import { ServiceModule } from './controller/service/service.module';
 
 @Module({
   imports: [
@@ -49,6 +51,7 @@ import { UsersModule } from "./modules/users/users.module";
     TrialsModule,
     NotificationsModule,
     AdminModule,
+    ServiceModule,
   ],
 })
 export class AppModule {}

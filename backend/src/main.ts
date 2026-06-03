@@ -14,7 +14,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const logger = new Logger("Bootstrap");
 
-  const port = configService.get<number>("app.port");
+  const port = configService.get<number>("app.port") ?? 3001;
   const frontendUrl = configService.get<string>("app.frontendUrl");
   const nodeEnv = configService.get<string>("app.nodeEnv");
 

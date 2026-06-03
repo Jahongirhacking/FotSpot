@@ -125,7 +125,7 @@ export class AuthService {
   // ─── Phone OTP Flow ──────────────────────────────────────────────
 
   async sendOtp(dto: SendOtpDto) {
-    const ttl = this.configService.get<number>("otp.ttlSeconds");
+    const ttl = this.configService.get<number>("otp.ttlSeconds") ?? 300;
 
     // Generate 6-digit OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
