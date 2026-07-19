@@ -1,3 +1,7 @@
+// FotSpot - MVP schema
+// Scope: section 1.23 MVP only. Post-acceptance lifecycle / pro transition / badges
+// (README sections 3-8) are Phase 1.5+/2 and intentionally NOT modeled here.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,21 +11,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// ENUMS
-// ============================================
+// ---------- RBAC (1.4) ----------
 
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  BANNED
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // scout, player, coach, academy_manager, admin, super_admin
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime @default(now())
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. "coach:verify", "admin:manage_roles"
+  description String?
+  roles     RolePermission[]
+  createdAt DateTime @default(now())
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ---------- USERS / AUTH (1.3) ----------
+
+enum VerificationStatus {
   PENDING
+  VERIFIED
+  REJECTED
 }
 
-enum Gender {
-  MALE
-  FEMALE
+model User {
+  id            String   @id @default(uuid())
+  phone         String?  @unique
+  email         String?  @unique
+  passwordHash  String?
+  firstName     String?
+  lastName      String?
+  isActive      Boolean  @default(true)
+  refreshTokenHash String?
+
+  roles         UserRole[]
+  playerProfile PlayerProfile?
+  coachProfile  CoachProfile?
+  academyMemberships AcademyMember[]
+  recommendationsMade Recommendation[] @relation("ScoutRecommendations")
+  coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
+  notifications Notification[]
+  otpCodes      OtpCode[]
+  auditLogs     AuditLog[]
+  reportsFiled  Report[] @relation("ReportsFiled")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String?
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// ---------- PLAYER PROFILE (1.6) ----------
 
 enum DominantFoot {
   LEFT
@@ -29,21 +100,104 @@ enum DominantFoot {
   BOTH
 }
 
-// Football positions
-enum Position {
-  GK  // Goalkeeper
-  CB  // Center Back
-  LB  // Left Back
-  RB  // Right Back
-  CDM // Central Defensive Midfielder
-  CM  // Central Midfielder
-  CAM // Central Attacking Midfielder
-  LM  // Left Midfielder
-  RM  // Right Midfielder
-  LW  // Left Winger
-  RW  // Right Winger
-  ST  // Striker
-  CF  // Center Forward
+model PlayerProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  gender      String
+
+  height      Float?
+  weight      Float?
+
+  dominantFoot     DominantFoot?
+  primaryPosition  String?
+  secondaryPosition String?
+
+  region      String?
+  district    String?
+
+  matches      Int @default(0)
+  goals        Int @default(0)
+  assists      Int @default(0)
+  cleanSheets  Int @default(0)
+  sprintTime   Float?
+  jugglingRecord Int?
+
+  media           Media[]
+  recommendations Recommendation[]
+  coachAssessments CoachAssessment[]
+  trialApplications TrialApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- COACH PROFILE (1.2 / 1.9) ----------
+
+model CoachProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bio    String?
+  status VerificationStatus @default(PENDING)
+
+  academyMemberships AcademyMember[]
+  assessments        CoachAssessment[] @relation("CoachProfileAssessments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- ACADEMY (1.10) ----------
+
+model AcademyProfile {
+  id       String @id @default(uuid())
+  name     String
+  region   String?
+  district String?
+  description String?
+  status   VerificationStatus @default(PENDING)
+
+  members  AcademyMember[]
+  trials   Trial[]
+  recommendations Recommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AcademyMemberRole {
+  MANAGER
+  COACH
+  SCOUT
+}
+
+model AcademyMember {
+  id         String @id @default(uuid())
+  academyId  String
+  userId     String
+  coachId    String?
+  role       AcademyMemberRole
+
+  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coach      CoachProfile? @relation(fields: [coachId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([academyId, userId])
+}
+
+// ---------- MEDIA (1.7) ----------
+
+enum MediaType {
+  IMAGE
+  VIDEO
 }
 
 enum MediaCategory {
@@ -54,16 +208,124 @@ enum MediaCategory {
   MATCH_HIGHLIGHTS
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
+enum MediaStatus {
+  ACTIVE
+  FLAGGED
+  REMOVED
 }
+
+model Media {
+  id         String @id @default(uuid())
+  playerId   String
+  player     PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  type       MediaType
+  category   MediaCategory
+  storageKey String   // Cloudflare R2 object key
+  url        String
+  status     MediaStatus @default(ACTIVE)
+
+  likes      MediaLike[]
+  reports    Report[] @relation("ReportedMedia")
+
+  createdAt DateTime @default(now())
+}
+
+model MediaLike {
+  id      String @id @default(uuid())
+  mediaId String
+  userId  String
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([mediaId, userId])
+}
+
+// ---------- SCOUT REPUTATION (1.5) ----------
+
+model ScoutStats {
+  id                     String @id @default(uuid())
+  userId                 String @unique
+  totalRecommendations   Int    @default(0)
+  acceptedRecommendations Int   @default(0)
+  successRate            Float  @default(0)
+  level                  Int    @default(1) // 1..6, see RecommendationsService.computeScoutLevel
+  weight                 Int    @default(1)
+  updatedAt              DateTime @updatedAt
+}
+
+// ---------- RECOMMENDATIONS (1.8) ----------
 
 enum RecommendationStatus {
   PENDING
   REVIEWING
   ACCEPTED
   REJECTED
+}
+
+model Recommendation {
+  id         String @id @default(uuid())
+  scoutId    String
+  playerId   String
+  academyId  String
+  status     RecommendationStatus @default(PENDING)
+  note       String?
+
+  scout      User @relation("ScoutRecommendations", fields: [scoutId], references: [id])
+  player     PlayerProfile @relation(fields: [playerId], references: [id])
+  academy    AcademyProfile @relation(fields: [academyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- COACH ASSESSMENT (1.9) ----------
+
+model CoachAssessment {
+  id       String @id @default(uuid())
+  coachUserId String
+  coachProfileId String
+  playerId String
+
+  coachUser  User @relation("CoachAssessments", fields: [coachUserId], references: [id])
+  coachProfile CoachProfile @relation("CoachProfileAssessments", fields: [coachProfileId], references: [id])
+  player     PlayerProfile @relation(fields: [playerId], references: [id])
+
+  speed      Int
+  passing    Int
+  vision     Int
+  dribbling  Int
+  finishing  Int
+  physical   Int
+  leadership Int
+  discipline Int
+
+  notes      String?
+  mediaUrls  String[]
+  documentUrls String[]
+
+  createdAt DateTime @default(now())
+}
+
+// ---------- TRIALS (1.11) ----------
+
+model Trial {
+  id         String @id @default(uuid())
+  academyId  String
+  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  title       String
+  ageRangeMin Int
+  ageRangeMax Int
+  positions   String[]
+  location    String
+  date        DateTime
+  requirements String?
+
+  applications TrialApplication[]
+
+  createdAt DateTime @default(now())
 }
 
 enum TrialApplicationStatus {
@@ -74,51 +336,22 @@ enum TrialApplicationStatus {
   ACCEPTED
 }
 
-// Phase 2: Post-acceptance statuses
-enum PlayerAcademyStatus {
-  ACTIVE
-  TRANSFERRED
-  RELEASED
-  EXPELLED
-  GRADUATED
+model TrialApplication {
+  id       String @id @default(uuid())
+  trialId  String
+  playerId String
+  status   TrialApplicationStatus @default(APPLIED)
+
+  trial    Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  player   PlayerProfile @relation(fields: [playerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([trialId, playerId])
 }
 
-// Full player discovery pipeline
-enum PlayerStatus {
-  DISCOVERED
-  UNDER_REVIEW
-  INVITED
-  TRIALING
-  ACCEPTED
-  REJECTED
-  WATCHLIST
-}
-
-enum AcademyStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  SUSPENDED
-}
-
-enum CoachStatus {
-  PENDING_VERIFICATION
-  VERIFIED
-  REJECTED
-}
-
-// 9-level scout reputation system
-enum ScoutLevel {
-  OBSERVER        // Level 1: 0-5 recs, weight=1
-  SPOTTER         // Level 2: 5+ recs, 10%+ rate, weight=2
-  TALENT_HUNTER   // Level 3: 20+ recs, 20%+ rate, weight=3
-  ELITE_SCOUT     // Level 4: 50+ recs, 30%+ rate, weight=4
-  MASTER_SCOUT    // Level 5: 100+ recs, 40%+ rate, weight=5
-  LEGENDARY_SCOUT // Level 6: 250+ recs, 50%+ rate, weight=6
-  PRO_SCOUT       // Level 7: Phase 2
-  ELITE_PRODUCER  // Level 8: Phase 2
-  LEGEND_MAKER    // Level 9: Phase 2
-}
+// ---------- NOTIFICATIONS (1.12) ----------
 
 enum NotificationEvent {
   RECOMMENDATION_ACCEPTED
@@ -126,663 +359,63 @@ enum NotificationEvent {
   TRIAL_INVITATION
   TRIAL_RESULT
   VERIFICATION_RESULT
-  PLAYER_ACCEPTED
-  BADGE_EARNED
-  PLAYER_WENT_PRO
 }
-
-enum OAuthProvider {
-  GOOGLE
-  FACEBOOK
-  ONE_ID
-  APPLE
-}
-
-enum AcademyMemberRole {
-  MANAGER
-  COACH
-  SCOUT
-}
-
-// ============================================
-// CORE: USERS & AUTH
-// ============================================
-
-model User {
-  id           String     @id @default(uuid())
-  email        String?    @unique
-  phone        String?    @unique
-  passwordHash String?
-  status       UserStatus @default(ACTIVE)
-
-  // Profile
-  firstName String
-  lastName  String
-  avatar    String?
-
-  // Timestamps
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
-
-  // Relations
-  oauthAccounts  OAuthAccount[]
-  userRoles      UserRole[]
-  playerProfile  PlayerProfile?
-  coachProfile   CoachProfile?
-  scoutProfile   ScoutProfile?
-  notifications  Notification[]
-  auditLogs      AuditLog[]
-  mediaLikes     MediaLike[]
-  mediaViews     MediaView[]
-  mediaComments  MediaComment[]
-  userBadges     UserBadge[]
-  academyMembers AcademyMember[]
-
-  @@map("users")
-}
-
-// Supports Google, Facebook, OneID OAuth logins
-model OAuthAccount {
-  id         String        @id @default(uuid())
-  userId     String
-  provider   OAuthProvider
-  providerId String        // The unique ID from the OAuth provider
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerId])
-  @@map("oauth_accounts")
-}
-
-// Phone → OTP authentication flow
-// TTL and max attempts controlled via config
-model OtpCode {
-  id        String   @id @default(uuid())
-  phone     String
-  code      String
-  attempts  Int      @default(0)
-  expiresAt DateTime
-  isUsed    Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-  @@map("otp_codes")
-}
-
-// Refresh token storage — allows token rotation & revocation
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  isRevoked Boolean  @default(false)
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@map("refresh_tokens")
-}
-
-// ============================================
-// RBAC: ROLES & PERMISSIONS
-// ============================================
-
-// Roles: GUEST, SCOUT, PLAYER, COACH, ACADEMY_MANAGER, ADMIN, SUPER_ADMIN
-model Role {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  userRoles       UserRole[]
-  rolePermissions RolePermission[]
-
-  @@map("roles")
-}
-
-// Fine-grained permissions per resource+action
-// e.g., resource="player", action="create"
-model Permission {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-  resource    String
-  action      String
-
-  rolePermissions RolePermission[]
-
-  @@map("permissions")
-}
-
-model UserRole {
-  userId String
-  roleId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@id([userId, roleId])
-  @@map("user_roles")
-}
-
-model RolePermission {
-  roleId       String
-  permissionId String
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-  @@map("role_permissions")
-}
-
-// ============================================
-// PLAYER PROFILE
-// ============================================
-
-model PlayerProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-
-  // Personal
-  birthDate DateTime
-  gender    Gender
-
-  // Physical
-  height Float? // cm
-  weight Float? // kg
-
-  // Football
-  dominantFoot      DominantFoot?
-  primaryPosition   Position?
-  secondaryPosition Position?
-
-  // Location (Uzbekistan regions/districts)
-  region   String?
-  district String?
-
-  // Statistics
-  matches        Int   @default(0)
-  goals          Int   @default(0)
-  assists        Int   @default(0)
-  cleanSheets    Int   @default(0)
-  sprintTime     Float? // seconds (e.g., 40m sprint time)
-  jugglingRecord Int?
-
-  // Status in the discovery pipeline
-  status PlayerStatus @default(DISCOVERED)
-  bio    String?      @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media            Media[]
-  trialApplications TrialApplication[]
-  recommendations  Recommendation[]
-  academyHistories PlayerAcademyHistory[]
-  assessments      CoachAssessment[]
-  careerMilestones PlayerCareerMilestone[]
-
-  @@map("player_profiles")
-}
-
-// ============================================
-// SCOUT PROFILE & REPUTATION SYSTEM
-// ============================================
-
-model ScoutProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-
-  // Reputation metrics (Section 1.5 of README)
-  level                    ScoutLevel @default(OBSERVER)
-  totalRecommendations     Int        @default(0)
-  acceptedRecommendations  Int        @default(0)
-  professionalDevelopments Int        @default(0) // +5 pts each
-  longTermSuccesses        Int        @default(0)  // +3 pts (12m+ in academy)
-  successRate              Float      @default(0)  // accepted / total * 100
-  // Formula: (accepted*1) + (professional*8) + (still_active_after_12m*2)
-  totalScore               Float      @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recommendations Recommendation[]
-  impactRecords   ScoutImpactRecord[]
-
-  @@map("scout_profiles")
-}
-
-// Every time a scout earns points, we log it here for auditability
-model ScoutImpactRecord {
-  id       String @id @default(uuid())
-  scoutId  String
-  playerId String
-  // ACCEPTED (+1), LONG_TERM_6M (+2), LONG_TERM_12M (+3), PROFESSIONAL (+8)
-  type     String
-  points   Float
-
-  createdAt DateTime @default(now())
-
-  scout ScoutProfile @relation(fields: [scoutId], references: [id], onDelete: Cascade)
-
-  @@map("scout_impact_records")
-}
-
-// ============================================
-// COACH PROFILE
-// ============================================
-
-model CoachProfile {
-  id     String @id @default(uuid())
-  userId String @unique
-
-  status         CoachStatus @default(PENDING_VERIFICATION)
-  licenseNumber  String?
-  specialization String?
-  experienceYears Int?
-  bio            String?     @db.Text
-
-  // Set by Admin when verifying
-  verifiedAt DateTime?
-  verifiedBy String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessments CoachAssessment[]
-
-  @@map("coach_profiles")
-}
-
-// ============================================
-// ACADEMY
-// ============================================
-
-model AcademyProfile {
-  id          String        @id @default(uuid())
-  name        String
-  description String?       @db.Text
-  logo        String?
-  coverImage  String?
-  region      String?
-  address     String?
-  website     String?
-  phone       String?
-  email       String?
-  status      AcademyStatus @default(PENDING)
-
-  // Denormalized counters (updated by background jobs for performance)
-  totalPlayers Int @default(0)
-  proPlayers   Int @default(0)
-
-  // Approved by
-  approvedAt DateTime?
-  approvedBy String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  members         AcademyMember[]
-  trials          Trial[]
-  recommendations Recommendation[]
-  playerHistories PlayerAcademyHistory[]
-  academyBadges   AcademyBadge[]
-
-  @@map("academy_profiles")
-}
-
-model AcademyMember {
-  id        String            @id @default(uuid())
-  academyId String
-  userId    String
-  role      AcademyMemberRole
-  joinedAt  DateTime          @default(now())
-
-  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([academyId, userId])
-  @@map("academy_members")
-}
-
-// ============================================
-// MEDIA SYSTEM
-// ============================================
-
-model Media {
-  id           String        @id @default(uuid())
-  playerId     String
-  type         MediaType
-  category     MediaCategory
-  url          String        // Cloudflare R2 URL
-  thumbnailUrl String?
-  title        String?
-  description  String?       @db.Text
-  duration     Int?          // seconds (for videos)
-  fileSize     Int?          // bytes
-  isPublic     Boolean       @default(true)
-  isModerated  Boolean       @default(false)
-  isFlagged    Boolean       @default(false)
-  viewCount    Int           @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  player   PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  likes    MediaLike[]
-  views    MediaView[]
-  comments MediaComment[]
-
-  @@map("media")
-}
-
-model MediaLike {
-  userId    String
-  mediaId   String
-  createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-
-  @@id([userId, mediaId])
-  @@map("media_likes")
-}
-
-model MediaView {
-  id        String   @id @default(uuid())
-  mediaId   String
-  userId    String?
-  ipAddress String?
-  viewedAt  DateTime @default(now())
-
-  media Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@map("media_views")
-}
-
-model MediaComment {
-  id        String  @id @default(uuid())
-  mediaId   String
-  userId    String
-  content   String  @db.Text
-  isDeleted Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("media_comments")
-}
-
-// ============================================
-// RECOMMENDATION SYSTEM
-// ============================================
-
-model Recommendation {
-  id        String               @id @default(uuid())
-  scoutId   String
-  playerId  String
-  academyId String
-  status    RecommendationStatus @default(PENDING)
-  notes     String?              @db.Text
-
-  // Set when Academy Manager reviews
-  reviewedAt  DateTime?
-  reviewedBy  String?
-  reviewNotes String?  @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  scout   ScoutProfile   @relation(fields: [scoutId], references: [id])
-  player  PlayerProfile  @relation(fields: [playerId], references: [id])
-  academy AcademyProfile @relation(fields: [academyId], references: [id])
-
-  @@map("recommendations")
-}
-
-// ============================================
-// COACH ASSESSMENT
-// ============================================
-
-model CoachAssessment {
-  id       String @id @default(uuid())
-  coachId  String
-  playerId String
-
-  // All ratings on 1-10 scale
-  speed      Int
-  passing    Int
-  vision     Int
-  dribbling  Int
-  finishing  Int
-  physical   Int
-  leadership Int
-  discipline Int
-
-  // Computed: average of all ratings
-  overall Float?
-
-  notes    String? @db.Text
-  isPublic Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  coach  CoachProfile  @relation(fields: [coachId], references: [id])
-  player PlayerProfile @relation(fields: [playerId], references: [id])
-
-  @@map("coach_assessments")
-}
-
-// ============================================
-// TRIAL MANAGEMENT
-// ============================================
-
-model Trial {
-  id           String     @id @default(uuid())
-  academyId    String
-  title        String
-  description  String?    @db.Text
-  minAge       Int?
-  maxAge       Int?
-  positions    Position[] // PostgreSQL array
-  location     String
-  date         DateTime
-  requirements String?    @db.Text
-  maxApplicants Int?
-  isActive     Boolean    @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  academy      AcademyProfile     @relation(fields: [academyId], references: [id])
-  applications TrialApplication[]
-
-  @@map("trials")
-}
-
-model TrialApplication {
-  id       String                 @id @default(uuid())
-  trialId  String
-  playerId String
-  status   TrialApplicationStatus @default(APPLIED)
-  notes    String?                @db.Text
-
-  appliedAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  trial  Trial         @relation(fields: [trialId], references: [id], onDelete: Cascade)
-  player PlayerProfile @relation(fields: [playerId], references: [id])
-
-  @@unique([trialId, playerId])
-  @@map("trial_applications")
-}
-
-// ============================================
-// POST-ACCEPTANCE: PLAYER ACADEMY HISTORY
-// Phase 2 feature - tracks full career in platform
-// ============================================
-
-model PlayerAcademyHistory {
-  id        String @id @default(uuid())
-  playerId  String
-  academyId String
-
-  joinedDate DateTime
-  leftDate   DateTime? // null = still active
-
-  status         PlayerAcademyStatus @default(ACTIVE)
-  transferReason String?             @db.Text
-
-  // Professional contract info
-  professionalContract Boolean   @default(false)
-  contractStart        DateTime?
-  contractEnd          DateTime?
-  clubName             String?
-  league               String? // e.g., "Uzbekistan Super League"
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  player  PlayerProfile  @relation(fields: [playerId], references: [id])
-  academy AcademyProfile @relation(fields: [academyId], references: [id])
-
-  @@map("player_academy_histories")
-}
-
-model PlayerCareerMilestone {
-  id          String   @id @default(uuid())
-  playerId    String
-  title       String
-  description String?  @db.Text
-  date        DateTime
-  // ACADEMY_JOIN | PRO_DEBUT | FIRST_GOAL | TRANSFER | GRADUATION | RETIREMENT
-  type        String
-
-  createdAt DateTime @default(now())
-
-  player PlayerProfile @relation(fields: [playerId], references: [id])
-
-  @@map("player_career_milestones")
-}
-
-// ============================================
-// NOTIFICATIONS
-// ============================================
 
 model Notification {
-  id       String            @id @default(uuid())
-  userId   String
-  event    NotificationEvent
-  title    String
-  body     String            @db.Text
-  isRead   Boolean           @default(false)
-  metadata Json?             // flexible data for deep-links, etc.
+  id      String @id @default(uuid())
+  userId  String
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  event   NotificationEvent
+  payload Json
+  read    Boolean @default(false)
 
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isRead])
-  @@map("notifications")
 }
 
-// ============================================
-// AUDIT LOGS
-// ============================================
+// ---------- MODERATION (1.13) ----------
 
-model AuditLog {
-  id        String  @id @default(uuid())
-  userId    String?
-  action    String  // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, VERIFY, BAN...
-  entity    String  // Table name: "users", "recommendations", etc.
-  entityId  String?
-  changes   Json?   // { before: {...}, after: {...} }
-  ipAddress String?
-  userAgent String?
-
-  createdAt DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([entity, entityId])
-  @@map("audit_logs")
+enum ReportType {
+  USER
+  MEDIA
+  ACADEMY
+  COACH
 }
 
-// ============================================
-// BADGE SYSTEM (Phase 2)
-// ============================================
-
-model Badge {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  slug        String  @unique
-  description String?
-  icon        String? // emoji or icon URL
-  // PLAYER | SCOUT | ACADEMY | COACH
-  type        String
-  condition   String? // Human-readable condition
-
-  userBadges    UserBadge[]
-  academyBadges AcademyBadge[]
-
-  @@map("badges")
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
 }
-
-model UserBadge {
-  userId   String
-  badgeId  String
-  earnedAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge Badge @relation(fields: [badgeId], references: [id])
-
-  @@id([userId, badgeId])
-  @@map("user_badges")
-}
-
-model AcademyBadge {
-  academyId String
-  badgeId   String
-  earnedAt  DateTime @default(now())
-
-  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  badge   Badge          @relation(fields: [badgeId], references: [id])
-
-  @@id([academyId, badgeId])
-  @@map("academy_badges")
-}
-
-// ============================================
-// MODERATION & REPORTS
-// ============================================
 
 model Report {
-  id          String   @id @default(uuid())
-  reporterId  String
-  // USER | MEDIA | ACADEMY | COACH
-  type        String
-  targetId    String
-  reason      String
-  description String?  @db.Text
-  // PENDING | REVIEWED | RESOLVED | DISMISSED
-  status      String   @default("PENDING")
-  reviewedBy  String?
-  reviewNotes String?  @db.Text
+  id       String @id @default(uuid())
+  type     ReportType
+  reason   String
+
+  reporterId String
+  reporter   User @relation("ReportsFiled", fields: [reporterId], references: [id])
+
+  targetUserId    String?
+  targetMediaId   String?
+  targetAcademyId String?
+  targetCoachId   String?
+  targetMedia     Media? @relation("ReportedMedia", fields: [targetMediaId], references: [id])
+
+  status   ReportStatus @default(PENDING)
+  resolutionNote String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
 
-  @@index([status])
-  @@map("reports")
+// ---------- AUDIT (1.21) ----------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
 }

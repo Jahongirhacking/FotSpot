@@ -1,46 +1,31 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { ThrottlerModule } from "@nestjs/throttler";
-import configuration from "./config/configuration";
-import { AcademiesModule } from "./modules/academies/academies.module";
-import { AdminModule } from "./modules/admin/admin.module";
-import { AuthModule } from "./modules/auth/auth.module";
-import { CoachesModule } from "./modules/coaches/coaches.module";
-import { MediaModule } from "./modules/media/media.module";
-import { NotificationsModule } from "./modules/notifications/notifications.module";
-import { PlayersModule } from "./modules/players/players.module";
-import { PrismaModule } from "./modules/prisma/prisma.module";
-import { RecommendationsModule } from "./modules/recommendations/recommendations.module";
-import { RedisModule } from "./modules/redis/redis.module";
-import { TrialsModule } from "./modules/trials/trials.module";
-import { UsersModule } from "./modules/users/users.module";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+
+import { PrismaModule } from './prisma/prisma.module';
+import { RbacModule } from './rbac/rbac.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { PlayersModule } from './players/players.module';
-import { ServiceModule } from './controller/service/service.module';
+import { CoachesModule } from './coaches/coaches.module';
+import { AcademiesModule } from './academies/academies.module';
+import { MediaModule } from './media/media.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
+import { TrialsModule } from './trials/trials.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ModerationModule } from './moderation/moderation.module';
+import { AdminModule } from './admin/admin.module';
+
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 @Module({
   imports: [
-    // ─── Configuration ─────────────────────────────────────────────
-    // isGlobal: true — ConfigService available in every module without re-importing
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [configuration],
-      envFilePath: ".env",
-    }),
-
-    // ─── Rate Limiting ─────────────────────────────────────────────
-    // Prevents brute-force attacks on auth endpoints
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 60 seconds
-        limit: 100, // max 100 requests per IP per TTL window
-      },
-    ]),
-
-    // ─── Infrastructure ────────────────────────────────────────────
-    PrismaModule, // PostgreSQL ORM
-    RedisModule, // Caching, queues, sessions
-
-    // ─── Feature Modules ───────────────────────────────────────────
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    RbacModule,
     AuthModule,
     UsersModule,
     PlayersModule,
@@ -50,8 +35,16 @@ import { ServiceModule } from './controller/service/service.module';
     RecommendationsModule,
     TrialsModule,
     NotificationsModule,
+    ModerationModule,
     AdminModule,
-    ServiceModule,
+  ],
+  providers: [
+    // Order matters: authenticate first, then authorize by role, then by
+    // fine-grained permission. @Public() short-circuits JwtAuthGuard only.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],
 })
 export class AppModule {}
