@@ -1,4 +1,4 @@
-# GoalSpot
+# FotSpot
 Grassroots → Academy → Professional Pipeline
 
 FOOTBALL TALENT DISCOVERY PLATFORM
