@@ -1,0 +1,421 @@
+// FotSpot - MVP schema
+// Scope: section 1.23 MVP only. Post-acceptance lifecycle / pro transition / badges
+// (README sections 3-8) are Phase 1.5+/2 and intentionally NOT modeled here.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- RBAC (1.4) ----------
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // scout, player, coach, academy_manager, admin, super_admin
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime @default(now())
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. "coach:verify", "admin:manage_roles"
+  description String?
+  roles     RolePermission[]
+  createdAt DateTime @default(now())
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ---------- USERS / AUTH (1.3) ----------
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  phone         String?  @unique
+  email         String?  @unique
+  passwordHash  String?
+  firstName     String?
+  lastName      String?
+  isActive      Boolean  @default(true)
+  refreshTokenHash String?
+
+  roles         UserRole[]
+  playerProfile PlayerProfile?
+  coachProfile  CoachProfile?
+  academyMemberships AcademyMember[]
+  recommendationsMade Recommendation[] @relation("ScoutRecommendations")
+  coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
+  notifications Notification[]
+  otpCodes      OtpCode[]
+  auditLogs     AuditLog[]
+  reportsFiled  Report[] @relation("ReportsFiled")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String?
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// ---------- PLAYER PROFILE (1.6) ----------
+
+enum DominantFoot {
+  LEFT
+  RIGHT
+  BOTH
+}
+
+model PlayerProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  gender      String
+
+  height      Float?
+  weight      Float?
+
+  dominantFoot     DominantFoot?
+  primaryPosition  String?
+  secondaryPosition String?
+
+  region      String?
+  district    String?
+
+  matches      Int @default(0)
+  goals        Int @default(0)
+  assists      Int @default(0)
+  cleanSheets  Int @default(0)
+  sprintTime   Float?
+  jugglingRecord Int?
+
+  media           Media[]
+  recommendations Recommendation[]
+  coachAssessments CoachAssessment[]
+  trialApplications TrialApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- COACH PROFILE (1.2 / 1.9) ----------
+
+model CoachProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bio    String?
+  status VerificationStatus @default(PENDING)
+
+  academyMemberships AcademyMember[]
+  assessments        CoachAssessment[] @relation("CoachProfileAssessments")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- ACADEMY (1.10) ----------
+
+model AcademyProfile {
+  id       String @id @default(uuid())
+  name     String
+  region   String?
+  district String?
+  description String?
+  status   VerificationStatus @default(PENDING)
+
+  members  AcademyMember[]
+  trials   Trial[]
+  recommendations Recommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AcademyMemberRole {
+  MANAGER
+  COACH
+  SCOUT
+}
+
+model AcademyMember {
+  id         String @id @default(uuid())
+  academyId  String
+  userId     String
+  coachId    String?
+  role       AcademyMemberRole
+
+  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coach      CoachProfile? @relation(fields: [coachId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([academyId, userId])
+}
+
+// ---------- MEDIA (1.7) ----------
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaCategory {
+  DRIBBLING
+  PASSING
+  SHOOTING
+  SPRINT
+  MATCH_HIGHLIGHTS
+}
+
+enum MediaStatus {
+  ACTIVE
+  FLAGGED
+  REMOVED
+}
+
+model Media {
+  id         String @id @default(uuid())
+  playerId   String
+  player     PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  type       MediaType
+  category   MediaCategory
+  storageKey String   // Cloudflare R2 object key
+  url        String
+  status     MediaStatus @default(ACTIVE)
+
+  likes      MediaLike[]
+  reports    Report[] @relation("ReportedMedia")
+
+  createdAt DateTime @default(now())
+}
+
+model MediaLike {
+  id      String @id @default(uuid())
+  mediaId String
+  userId  String
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([mediaId, userId])
+}
+
+// ---------- SCOUT REPUTATION (1.5) ----------
+
+model ScoutStats {
+  id                     String @id @default(uuid())
+  userId                 String @unique
+  totalRecommendations   Int    @default(0)
+  acceptedRecommendations Int   @default(0)
+  successRate            Float  @default(0)
+  level                  Int    @default(1) // 1..6, see RecommendationsService.computeScoutLevel
+  weight                 Int    @default(1)
+  updatedAt              DateTime @updatedAt
+}
+
+// ---------- RECOMMENDATIONS (1.8) ----------
+
+enum RecommendationStatus {
+  PENDING
+  REVIEWING
+  ACCEPTED
+  REJECTED
+}
+
+model Recommendation {
+  id         String @id @default(uuid())
+  scoutId    String
+  playerId   String
+  academyId  String
+  status     RecommendationStatus @default(PENDING)
+  note       String?
+
+  scout      User @relation("ScoutRecommendations", fields: [scoutId], references: [id])
+  player     PlayerProfile @relation(fields: [playerId], references: [id])
+  academy    AcademyProfile @relation(fields: [academyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- COACH ASSESSMENT (1.9) ----------
+
+model CoachAssessment {
+  id       String @id @default(uuid())
+  coachUserId String
+  coachProfileId String
+  playerId String
+
+  coachUser  User @relation("CoachAssessments", fields: [coachUserId], references: [id])
+  coachProfile CoachProfile @relation("CoachProfileAssessments", fields: [coachProfileId], references: [id])
+  player     PlayerProfile @relation(fields: [playerId], references: [id])
+
+  speed      Int
+  passing    Int
+  vision     Int
+  dribbling  Int
+  finishing  Int
+  physical   Int
+  leadership Int
+  discipline Int
+
+  notes      String?
+  mediaUrls  String[]
+  documentUrls String[]
+
+  createdAt DateTime @default(now())
+}
+
+// ---------- TRIALS (1.11) ----------
+
+model Trial {
+  id         String @id @default(uuid())
+  academyId  String
+  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  title       String
+  ageRangeMin Int
+  ageRangeMax Int
+  positions   String[]
+  location    String
+  date        DateTime
+  requirements String?
+
+  applications TrialApplication[]
+
+  createdAt DateTime @default(now())
+}
+
+enum TrialApplicationStatus {
+  APPLIED
+  SHORTLISTED
+  INVITED
+  REJECTED
+  ACCEPTED
+}
+
+model TrialApplication {
+  id       String @id @default(uuid())
+  trialId  String
+  playerId String
+  status   TrialApplicationStatus @default(APPLIED)
+
+  trial    Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  player   PlayerProfile @relation(fields: [playerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([trialId, playerId])
+}
+
+// ---------- NOTIFICATIONS (1.12) ----------
+
+enum NotificationEvent {
+  RECOMMENDATION_ACCEPTED
+  RECOMMENDATION_REJECTED
+  TRIAL_INVITATION
+  TRIAL_RESULT
+  VERIFICATION_RESULT
+}
+
+model Notification {
+  id      String @id @default(uuid())
+  userId  String
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  event   NotificationEvent
+  payload Json
+  read    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+// ---------- MODERATION (1.13) ----------
+
+enum ReportType {
+  USER
+  MEDIA
+  ACADEMY
+  COACH
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id       String @id @default(uuid())
+  type     ReportType
+  reason   String
+
+  reporterId String
+  reporter   User @relation("ReportsFiled", fields: [reporterId], references: [id])
+
+  targetUserId    String?
+  targetMediaId   String?
+  targetAcademyId String?
+  targetCoachId   String?
+  targetMedia     Media? @relation("ReportedMedia", fields: [targetMediaId], references: [id])
+
+  status   ReportStatus @default(PENDING)
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- AUDIT (1.21) ----------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
