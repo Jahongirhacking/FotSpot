@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CoachesService } from '../coaches/coaches.service';
@@ -45,7 +46,13 @@ export class AdminService {
   }
 
   async log(userId: string | null, action: string, meta?: Record<string, unknown>) {
-    return this.prisma.auditLog.create({ data: { userId: userId ?? undefined, action, meta } });
+    return this.prisma.auditLog.create({
+      data: {
+        userId: userId ?? undefined,
+        action,
+        meta: meta as Prisma.InputJsonValue | undefined,
+      },
+    });
   }
 
   // ---- Super Admin only (1.2: CRUD Admins/Roles/Permissions, Feature Flags) ----

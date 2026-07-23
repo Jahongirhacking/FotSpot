@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from './notifications.gateway';
-import { NotificationEvent } from '@prisma/client';
+import { NotificationEvent, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -9,7 +9,7 @@ export class NotificationsService {
 
   async notify(userId: string, event: NotificationEvent, payload: Record<string, unknown>) {
     const notification = await this.prisma.notification.create({
-      data: { userId, event, payload },
+      data: { userId, event, payload: payload as Prisma.InputJsonValue },
     });
     this.gateway.emitToUser(userId, 'notification', notification);
     return notification;
