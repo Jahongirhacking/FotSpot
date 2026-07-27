@@ -12,6 +12,27 @@ section 9** and are intentionally not modeled — adding them later is additive
 (new tables + a module), not a rewrite, because `player_academy_histories`
 and friends don't conflict with anything here.
 
+## Project Setup
+
+```bash
+npx prisma generate
+```
+
+```bash
+sudo docker run --name fotspot-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=fotspot \
+  -p 5432:5432 \
+  -d postgres:16
+```
+
+```bash
+sudo docker run --name fotspot-redis \
+  -p 6379:6379 \
+  -d redis:7
+```
+
 ## Stack & why
 
 - **NestJS** (modular monolith, per 1.15), modules matching 1.15 closely
@@ -23,7 +44,7 @@ and friends don't conflict with anything here.
   `ValidationPipe` in `main.ts`).
 - **argon2** for password/OTP hashing (spec 1.3/1.21).
 - **@nestjs/websockets** (Socket.IO) for the notifications-only gateway
-  (spec 1.17). Redis adapter is *not* wired in this MVP (single instance is
+  (spec 1.17). Redis adapter is _not_ wired in this MVP (single instance is
   enough until horizontal scaling is actually needed) — it's a one-line
   addition (`@socket.io/redis-adapter`) when it is.
 - **BullMQ** is declared as a dependency for the queue jobs in 1.18, but no

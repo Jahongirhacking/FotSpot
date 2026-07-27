@@ -11,7 +11,10 @@ import { CreateAssessmentDto, CreateCoachProfileDto } from './dto/coach.dto';
 
 @Injectable()
 export class CoachesService {
-  constructor(private prisma: PrismaService, private rbac: RbacService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rbac: RbacService,
+  ) {}
 
   async createProfile(userId: string, dto: CreateCoachProfileDto) {
     const existing = await this.prisma.coachProfile.findUnique({ where: { userId } });

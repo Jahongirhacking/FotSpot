@@ -21,7 +21,10 @@ import { ConfigService } from '@nestjs/config';
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
-  constructor(private jwt: JwtService, private config: ConfigService) {}
+  constructor(
+    private jwt: JwtService,
+    private config: ConfigService,
+  ) {}
 
   async handleConnection(client: Socket) {
     try {

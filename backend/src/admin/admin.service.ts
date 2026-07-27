@@ -82,6 +82,8 @@ export class AdminService {
   }
 
   async listRoles() {
-    return this.prisma.role.findMany({ include: { permissions: { include: { permission: true } } } });
+    return this.prisma.role.findMany({
+      include: { permissions: { include: { permission: true } } },
+    });
   }
 }

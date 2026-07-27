@@ -55,11 +55,7 @@ export class RecommendationsService {
   }
 
   /** Academy Manager transitions status: PENDING -> REVIEWING -> ACCEPTED/REJECTED (1.8). */
-  async updateStatus(
-    userId: string,
-    recommendationId: string,
-    dto: UpdateRecommendationStatusDto,
-  ) {
+  async updateStatus(userId: string, recommendationId: string, dto: UpdateRecommendationStatusDto) {
     const recommendation = await this.prisma.recommendation.findUnique({
       where: { id: recommendationId },
     });
@@ -132,8 +128,7 @@ export class RecommendationsService {
     });
 
     const totalRecommendations = existing.totalRecommendations + (delta.totalDelta ?? 0);
-    const acceptedRecommendations =
-      existing.acceptedRecommendations + (delta.acceptedDelta ?? 0);
+    const acceptedRecommendations = existing.acceptedRecommendations + (delta.acceptedDelta ?? 0);
     const successRate = computeSuccessRate(totalRecommendations, acceptedRecommendations);
     const tier = computeScoutLevel(totalRecommendations, successRate);
 

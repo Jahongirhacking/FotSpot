@@ -10,7 +10,10 @@ import { AddStaffMemberDto, CreateAcademyDto, UpdateAcademyDto } from './dto/aca
 
 @Injectable()
 export class AcademiesService {
-  constructor(private prisma: PrismaService, private rbac: RbacService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rbac: RbacService,
+  ) {}
 
   /** 1.10: Request -> Admin Review -> Approved. Creator becomes the pending manager. */
   async register(userId: string, dto: CreateAcademyDto) {

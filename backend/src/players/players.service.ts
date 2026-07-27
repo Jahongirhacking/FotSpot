@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import {
@@ -10,7 +15,10 @@ import {
 
 @Injectable()
 export class PlayersService {
-  constructor(private prisma: PrismaService, private rbac: RbacService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rbac: RbacService,
+  ) {}
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
@@ -56,10 +64,7 @@ export class PlayersService {
     const where: any = {};
     if (dto.region) where.region = dto.region;
     if (dto.position) {
-      where.OR = [
-        { primaryPosition: dto.position },
-        { secondaryPosition: dto.position },
-      ];
+      where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];
     }
     if (dto.query) {
       where.AND = [

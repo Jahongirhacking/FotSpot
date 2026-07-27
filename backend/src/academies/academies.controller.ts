@@ -26,20 +26,12 @@ export class AcademiesController {
   }
 
   @Patch(':id')
-  update(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateAcademyDto,
-  ) {
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateAcademyDto) {
     return this.academiesService.update(user.userId, id, dto);
   }
 
   @Post(':id/staff')
-  addStaff(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: AddStaffMemberDto,
-  ) {
+  addStaff(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddStaffMemberDto) {
     return this.academiesService.addStaff(user.userId, id, dto);
   }
 

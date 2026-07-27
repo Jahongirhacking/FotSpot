@@ -5,7 +5,10 @@ import { ConfirmUploadDto, RequestUploadDto } from './dto/media.dto';
 
 @Injectable()
 export class MediaService {
-  constructor(private prisma: PrismaService, private storage: R2StorageService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storage: R2StorageService,
+  ) {}
 
   private async ownPlayerProfile(userId: string) {
     const profile = await this.prisma.playerProfile.findUnique({ where: { userId } });
@@ -51,9 +54,11 @@ export class MediaService {
   }
 
   async unlike(userId: string, mediaId: string) {
-    await this.prisma.mediaLike.delete({
-      where: { mediaId_userId: { mediaId, userId } },
-    }).catch(() => undefined);
+    await this.prisma.mediaLike
+      .delete({
+        where: { mediaId_userId: { mediaId, userId } },
+      })
+      .catch(() => undefined);
     return { unliked: true };
   }
 }

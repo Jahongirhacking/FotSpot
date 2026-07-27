@@ -54,9 +54,7 @@ export class RbacService {
 
     const roles = userRoles.map((ur) => ur.role.name);
     const permissions = Array.from(
-      new Set(
-        userRoles.flatMap((ur) => ur.role.permissions.map((rp) => rp.permission.key)),
-      ),
+      new Set(userRoles.flatMap((ur) => ur.role.permissions.map((rp) => rp.permission.key))),
     );
 
     return { roles, permissions };

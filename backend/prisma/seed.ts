@@ -22,7 +22,9 @@ async function main() {
     const role = await prisma.role.findUniqueOrThrow({ where: { name: 'super_admin' } });
     await prisma.userRole.create({ data: { userId: user.id, roleId: role.id } });
     // eslint-disable-next-line no-console
-    console.log(`Seeded super_admin: ${bootstrapEmail} / ${bootstrapPassword} (change this password)`);
+    console.log(
+      `Seeded super_admin: ${bootstrapEmail} / ${bootstrapPassword} (change this password)`,
+    );
   }
 }
 
