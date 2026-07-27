@@ -3,7 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: goalspot_postgres
+    container_name: fotspot_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: goalspot_redis
+    container_name: fotspot_redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ""
     ports:
