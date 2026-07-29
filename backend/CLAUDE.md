@@ -49,8 +49,10 @@ backend/
 │   ├── prisma/                   # PrismaService (@Global module)
 │   ├── rbac/                     # RbacService — role/permission assignment + effective-access lookup
 │   ├── auth/                     # AuthService, AuthController, JwtStrategy, dto/
-│   ├── users/  players/  coaches/  academies/  media/
-│   ├── recommendations/          # + scout-level.util.ts (pure functions, no DI)
+│   ├── redis/                    # RedisService (@Global) + typed key helpers
+│   ├── audit/                    # AuditService (@Global) + AuditAction keys
+│   ├── users/  players/  coaches/  academies/  media/  follows/
+│   ├── recommendations/          # + scout-level.util.ts / scout-trust.util.ts (pure, no DI)
 │   ├── trials/  notifications/  moderation/  admin/
 │   └── .env.example
 └── package.json
@@ -154,7 +156,9 @@ sync deliberately:
 
 ## 8. Testing strategy
 
-No test runner is configured yet (`package.json` has no `test` script). When adding tests:
+**Jest is wired** (`pnpm test`, config in `jest.config.js`, `rootDir: src`, specs matched by
+`*.spec.ts`). Current coverage is the pure reputation utils only — `scout-level.util.spec.ts` and
+`scout-trust.util.spec.ts`. Everything below still applies when extending it:
 
 - Use **Jest** (already NestJS's default tooling, `@nestjs/testing`) — don't introduce Vitest here.
 - **Unit test services** with Prisma mocked (`jest.mock` or a lightweight fake) — the goal is
