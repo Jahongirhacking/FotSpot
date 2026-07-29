@@ -1,9 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.decorator';
 import {
   LoginEmailDto,
+  LogoutDto,
   OAuthLoginDto,
   RefreshTokenDto,
   RegisterEmailDto,
@@ -17,15 +19,15 @@ export class AuthController {
 
   @Public()
   @Post('register/email')
-  registerEmail(@Body() dto: RegisterEmailDto) {
-    return this.authService.registerEmail(dto);
+  registerEmail(@Body() dto: RegisterEmailDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.registerEmail(dto, client);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login/email')
-  loginEmail(@Body() dto: LoginEmailDto) {
-    return this.authService.loginEmail(dto);
+  loginEmail(@Body() dto: LoginEmailDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.loginEmail(dto, client);
   }
 
   @Public()
@@ -37,27 +39,34 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('otp/verify')
-  verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto);
+  verifyOtp(@Body() dto: VerifyOtpDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.verifyOtp(dto, client);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('oauth')
-  oauthLogin(@Body() dto: OAuthLoginDto) {
-    return this.authService.oauthLogin(dto);
+  oauthLogin(@Body() dto: OAuthLoginDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.oauthLogin(dto, client);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto);
+  refresh(@Body() dto: RefreshTokenDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.refresh(dto, client);
   }
 
+  /** Revokes this device by default; `allDevices` revokes every active session. */
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  logout(@CurrentUser() user: AuthUser) {
-    return this.authService.logout(user.userId);
+  logout(@CurrentUser() user: AuthUser, @Body() dto: LogoutDto) {
+    return this.authService.logout(user.userId, user.sessionId, dto.allDevices);
+  }
+
+  /** "Where am I logged in" - README 1.21 device tracking. */
+  @Get('sessions')
+  listSessions(@CurrentUser() user: AuthUser) {
+    return this.authService.listSessions(user.userId);
   }
 }

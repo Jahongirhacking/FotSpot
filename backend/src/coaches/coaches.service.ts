@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.actions';
 import { CreateAssessmentDto, CreateCoachProfileDto } from './dto/coach.dto';
 
 @Injectable()
@@ -14,6 +16,7 @@ export class CoachesService {
   constructor(
     private prisma: PrismaService,
     private rbac: RbacService,
+    private audit: AuditService,
   ) {}
 
   async createProfile(userId: string, dto: CreateCoachProfileDto) {
@@ -38,7 +41,7 @@ export class CoachesService {
   }
 
   /** Admin-only: approves/rejects a pending coach (1.2 status flow). */
-  async verify(coachProfileId: string, approve: boolean) {
+  async verify(coachProfileId: string, approve: boolean, actorId: string | null = null) {
     const profile = await this.prisma.coachProfile.findUnique({ where: { id: coachProfileId } });
     if (!profile) throw new NotFoundException('Coach profile not found');
 
@@ -50,6 +53,8 @@ export class CoachesService {
     if (approve) {
       await this.rbac.assignRole(profile.userId, 'coach');
     }
+
+    await this.audit.record(actorId, AuditAction.COACH_VERIFIED, { coachProfileId, approve });
     return updated;
   }
 

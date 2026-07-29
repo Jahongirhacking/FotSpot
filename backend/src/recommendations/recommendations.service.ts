@@ -7,7 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
-import { computeScoutLevel, computeSuccessRate } from './scout-level.util';
+import {
+  computeRecommendationCredibility,
+  computeScoutLevel,
+  computeSuccessRate,
+} from './scout-level.util';
+import { computeAcademyWeight, TrustState } from './scout-trust.util';
 
 @Injectable()
 export class RecommendationsService {
@@ -52,6 +57,72 @@ export class RecommendationsService {
       where: { academyId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * The academy's inbox, ranked by credibility instead of arrival time (1.5.1/1.5.2).
+   *
+   * Recommendations are grouped per player, each scout's global weight is scaled by
+   * that academy's own trust in them, and the group is collapsed with the harmonic
+   * discount from 1.5.1 - so a hundred throwaway accounts backing one player are
+   * worth far less than one Legendary Scout.
+   */
+  async listRankedForAcademy(userId: string, academyId: string) {
+    await this.assertAcademyManager(userId, academyId);
+
+    const recommendations = await this.prisma.recommendation.findMany({
+      where: { academyId, status: { in: ['PENDING', 'REVIEWING'] } },
+    });
+    if (recommendations.length === 0) return { items: [], total: 0 };
+
+    const scoutIds = [...new Set(recommendations.map((r) => r.scoutId))];
+
+    const [stats, follows, priorAccepted] = await this.prisma.$transaction([
+      this.prisma.scoutStats.findMany({ where: { userId: { in: scoutIds } } }),
+      this.prisma.academyScoutFollow.findMany({
+        where: { academyId, scoutId: { in: scoutIds } },
+      }),
+      // How many of *this academy's* past acceptances came from each scout - the
+      // TRUSTED threshold in scout-trust.util.ts.
+      this.prisma.recommendation.findMany({
+        where: { academyId, scoutId: { in: scoutIds }, status: 'ACCEPTED' },
+        select: { scoutId: true },
+      }),
+    ]);
+
+    const weightOf = new Map(stats.map((s) => [s.userId, s.weight]));
+    const stateOf = new Map(follows.map((f) => [f.scoutId, f.state as TrustState]));
+    const acceptedOf = priorAccepted.reduce(
+      (acc, { scoutId }) => acc.set(scoutId, (acc.get(scoutId) ?? 0) + 1),
+      new Map<string, number>(),
+    );
+
+    // Group by player: credibility is a property of "this player, backed by these
+    // scouts", not of any single recommendation.
+    const byPlayer = new Map<string, { weights: number[]; recommendationIds: string[] }>();
+    for (const rec of recommendations) {
+      const academyWeight = computeAcademyWeight(
+        weightOf.get(rec.scoutId) ?? 1,
+        stateOf.get(rec.scoutId) ?? 'NONE',
+        acceptedOf.get(rec.scoutId) ?? 0,
+      );
+
+      const entry = byPlayer.get(rec.playerId) ?? { weights: [], recommendationIds: [] };
+      entry.weights.push(academyWeight);
+      entry.recommendationIds.push(rec.id);
+      byPlayer.set(rec.playerId, entry);
+    }
+
+    const items = [...byPlayer.entries()]
+      .map(([playerId, entry]) => ({
+        playerId,
+        recommendationIds: entry.recommendationIds,
+        recommendationCount: entry.weights.length,
+        credibility: computeRecommendationCredibility(entry.weights),
+      }))
+      .sort((a, b) => b.credibility - a.credibility);
+
+    return { items, total: items.length };
   }
 
   /** Academy Manager transitions status: PENDING -> REVIEWING -> ACCEPTED/REJECTED (1.8). */

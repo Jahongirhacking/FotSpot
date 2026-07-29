@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './redis/redis.module';
+import { AuditModule } from './audit/audit.module';
 import { RbacModule } from './rbac/rbac.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -10,6 +12,7 @@ import { PlayersModule } from './players/players.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { AcademiesModule } from './academies/academies.module';
 import { MediaModule } from './media/media.module';
+import { FollowsModule } from './follows/follows.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { TrialsModule } from './trials/trials.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -25,6 +28,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RedisModule,
+    AuditModule,
     RbacModule,
     AuthModule,
     UsersModule,
@@ -32,6 +37,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     CoachesModule,
     AcademiesModule,
     MediaModule,
+    FollowsModule,
     RecommendationsModule,
     TrialsModule,
     NotificationsModule,

@@ -9,12 +9,24 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-    return super.canActivate(context);
+
+    if (!isPublic) return (await super.canActivate(context)) as boolean;
+
+    // Public route: still attempt authentication so that a signed-in caller is
+    // identified (@OptionalUser), but never reject. A missing or invalid token
+    // is a normal condition here - guests are first-class on public reads (1.2).
+    // @Public() therefore still means "never 401", exactly as before; it just no
+    // longer discards a perfectly good token.
+    try {
+      await super.canActivate(context);
+    } catch {
+      // Intentionally ignored - see above.
+    }
+    return true;
   }
 }
