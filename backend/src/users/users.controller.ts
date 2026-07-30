@@ -12,6 +12,12 @@ export class UsersController {
     return this.usersService.findMe(user.userId);
   }
 
+  /** Identity + roles + per-role counters for the profile screen, in one request. */
+  @Get('me/profile')
+  myProfile(@CurrentUser() user: AuthUser) {
+    return this.usersService.findMeWithStats(user.userId);
+  }
+
   @Public()
   @Get(':id')
   publicProfile(@Param('id') id: string) {

@@ -28,12 +28,16 @@ export class PlayersService {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
     if (existing) throw new ConflictException('Player profile already exists');
 
-    const profile = await this.prisma.playerProfile.create({
-      data: { userId, ...dto, birthDate: new Date(dto.birthDate) },
+    // Player is an "additional role" per README 1.2, granted on profile creation.
+    // Both halves commit together: a profile without the role leaves the user
+    // unable to apply for trials, and a retry hits "profile already exists".
+    return this.prisma.$transaction(async (tx) => {
+      const profile = await tx.playerProfile.create({
+        data: { userId, ...dto, birthDate: new Date(dto.birthDate) },
+      });
+      await this.rbac.assignRole(userId, 'player', tx);
+      return profile;
     });
-    // Player is an "additional role" per README 1.2 - granted on profile creation.
-    await this.rbac.assignRole(userId, 'player');
-    return profile;
   }
 
   async getOwnProfile(userId: string) {
