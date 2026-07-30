@@ -243,7 +243,113 @@ export const admin = {
 
   createAcademy: (body: AcademyInput, opts: Opts = {}) =>
     apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+
+  /** Read-only for any admin. */
+  userDetail: (userId: string, opts: Opts = {}) =>
+    apiFetch<UserDetail>(`/admin/users/${userId}`, opts),
+
+  /** Super admin only. */
+  setUserActive: (userId: string, isActive: boolean, opts: Opts = {}) =>
+    apiFetch<{ id: string; isActive: boolean }>(`/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { isActive },
+      ...opts,
+    }),
+
+  /** Super admin only. */
+  setUserRole: (userId: string, role: string, grant: boolean, opts: Opts = {}) =>
+    apiFetch<{ roles: string[] }>(`/admin/users/${userId}/roles`, {
+      method: 'PATCH',
+      body: { role, grant },
+      ...opts,
+    }),
+
+  auditLogs: (opts: Opts = {}) => apiFetch<AuditLogEntry[]>('/admin/audit-logs', opts),
+
+  roles: (opts: Opts = {}) => apiFetch<RoleWithPermissions[]>('/admin/roles', opts),
+
+  createPermission: (key: string, opts: Opts = {}) =>
+    apiFetch<{ id: string; key: string }>('/admin/permissions', {
+      method: 'POST',
+      body: { key },
+      ...opts,
+    }),
+
+  grantRolePermission: (roleId: string, permissionId: string, opts: Opts = {}) =>
+    apiFetch<unknown>('/admin/roles/permissions', {
+      method: 'POST',
+      body: { roleId, permissionId },
+      ...opts,
+    }),
+
+  pendingReports: (opts: Opts = {}) => apiFetch<Report[]>('/moderation/reports/pending', opts),
+
+  resolveReport: (
+    reportId: string,
+    body: { status: 'RESOLVED' | 'DISMISSED'; resolutionNote?: string; removeMedia?: boolean },
+    opts: Opts = {},
+  ) =>
+    apiFetch<Report>(`/moderation/reports/${reportId}/resolve`, { method: 'PATCH', body, ...opts }),
 };
+
+export interface UserDetail extends AdminUser {
+  isActive: boolean;
+  playerProfile: {
+    id: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    playingStyle: string | null;
+    region: string | null;
+    matches: number;
+    goals: number;
+    assists: number;
+    _count: { media: number; trialApplications: number; recommendations: number };
+  } | null;
+  coachProfile: {
+    id: string;
+    status: string;
+    bio: string | null;
+    _count: { assessments: number };
+  } | null;
+  academyMemberships: { academyId: string; role: string; academy: { name: string } }[];
+  scoutStats: {
+    level: number;
+    totalRecommendations: number;
+    acceptedRecommendations: number;
+    successRate: number;
+    weight: number;
+  } | null;
+  _count: { recommendationsMade: number; sessions: number };
+}
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string | null;
+  action: string;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface RoleWithPermissions {
+  id: string;
+  name: string;
+  description: string | null;
+  permissions: { permission: { id: string; key: string } }[];
+}
+
+export interface Report {
+  id: string;
+  type: 'USER' | 'MEDIA' | 'ACADEMY' | 'COACH';
+  reason: string;
+  reporterId: string;
+  targetUserId?: string | null;
+  targetMediaId?: string | null;
+  targetAcademyId?: string | null;
+  targetCoachId?: string | null;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  resolutionNote?: string | null;
+  createdAt: string;
+}
 
 export interface AcademyInput {
   name: string;

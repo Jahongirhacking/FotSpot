@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
+import { getServerT } from '@/lib/i18n/server';
 import { PlayerHome } from './PlayerHome';
 import { ScoutHome } from './ScoutHome';
 import { AcademyHome } from './AcademyHome';
@@ -22,6 +23,7 @@ export default async function DashboardPage() {
   if (!session) redirect('/login?next=/dashboard');
 
   const { activeRole, roles, onboarded } = session;
+  const { t } = await getServerT();
 
   return (
     <div className="space-y-6">
@@ -34,7 +36,7 @@ export default async function DashboardPage() {
       {activeRole === 'coach' && <CoachHome token={session.accessToken} />}
       {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} />}
       {(activeRole === 'admin' || activeRole === 'super_admin') && (
-        <AdminHome isSuperAdmin={activeRole === 'super_admin'} />
+        <AdminHome isSuperAdmin={activeRole === 'super_admin'} t={t} />
       )}
     </div>
   );

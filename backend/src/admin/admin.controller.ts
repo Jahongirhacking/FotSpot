@@ -8,6 +8,8 @@ import {
   CreatePermissionDto,
   GrantRolePermissionDto,
   VerifyDto,
+  SetUserActiveDto,
+  SetUserRoleDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
@@ -41,6 +43,28 @@ export class AdminController {
     @Query('pageSize') pageSize = '20',
   ) {
     return this.adminService.searchUsers(query, Number(page) || 1, Number(pageSize) || 20);
+  }
+
+  /** Read-only, any admin. Mutations below are super-admin only. */
+  @Get('users/:id')
+  userDetail(@Param('id') id: string) {
+    return this.adminService.getUserDetail(id);
+  }
+
+  @Roles('super_admin')
+  @Patch('users/:id/status')
+  setUserActive(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SetUserActiveDto,
+  ) {
+    return this.adminService.setUserActive(user.userId, id, dto.isActive);
+  }
+
+  @Roles('super_admin')
+  @Patch('users/:id/roles')
+  setUserRole(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetUserRoleDto) {
+    return this.adminService.setUserRole(user.userId, id, dto.role, dto.grant);
   }
 
   @Get('audit-logs')
