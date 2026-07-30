@@ -2,12 +2,19 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { AcademiesService } from './academies.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { AddStaffMemberDto, CreateAcademyDto, UpdateAcademyDto } from './dto/academy.dto';
 
 @Controller('academies')
 export class AcademiesController {
   constructor(private academiesService: AcademiesService) {}
 
+  /**
+   * Admin-only. There are roughly fifty academies in Uzbekistan, so they are
+   * onboarded by the platform team rather than self-registered — see
+   * AcademiesService.register for the reasoning.
+   */
+  @Roles('admin', 'super_admin')
   @Post()
   register(@CurrentUser() user: AuthUser, @Body() dto: CreateAcademyDto) {
     return this.academiesService.register(user.userId, dto);

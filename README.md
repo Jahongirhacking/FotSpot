@@ -59,7 +59,7 @@ Coach Assessment, Academy Recruitment, Trial Management.
 | **Scout**           | default on registration | Follow players & academies, like media, recommend a player, scout notes, history                                    | Assess players, manage academies        |
 | **Player**          | additional role         | Create player profile, upload media, apply for trials, manage stats                                                 | Recommend, assess                       |
 | **Coach**           | verified role           | Assess players, verify skills, coach reports, recommend                                                             | Manage academies                        |
-| **Academy Manager** | verified role           | Manage academy, create trials, review recommendations, accept/reject, manage staff, **follow/mute scouts** (§1.5.2) | Verify other academies                  |
+| **Academy Manager** | **assigned by an admin** when the academy is created (§1.10) | Manage their academy, create trials, review recommendations, accept/reject, manage staff, **follow/mute scouts** (§1.5.2) | **Create an academy**, verify other academies |
 | **Admin**           | granted by super admin  | Verify coaches & academies, moderate media/users, handle reports                                                    | Create admins, change platform settings |
 | **Super Admin**     | bootstrap / seeded      | CRUD admins, roles, permissions; platform settings; audit logs; feature flags                                       | —                                       |
 
@@ -315,8 +315,21 @@ coach profile may submit an assessment.
 
 ### 1.10. Academy management
 
-Registration: `Request → Admin review → Approved`. Structure: Academy → Academy Manager →
-Academy Coaches → Academy Scouts (`academy_members` with role + status).
+**Academies are created by an admin, not self-registered** (revised — see the note below).
+Structure: Academy → Academy Manager → Academy Coaches → Academy Scouts (`academy_members`
+with role + status).
+
+> **Revised from `Request → Admin review → Approved`.** Uzbekistan has roughly **50 football
+> academies in total**. At that scale a self-service registration queue is more attack surface
+> than convenience: nearly every submission would be a duplicate or a fake, and each one is an
+> institution asking for access to children (§11). So an admin or super admin creates the
+> academy record and names its manager, who is granted `academy_manager` at that moment.
+> Because a human has already vetted it, an admin-created academy starts `VERIFIED` — there is
+> no second reviewer to wait for. A prospective academy contacts the platform team instead of
+> filling in a form.
+>
+> This does not change what an Academy Manager *does* once assigned (§1.11, §1.5.2); it only
+> changes who brings the academy into existence.
 
 ### 1.11. Trial management
 

@@ -21,27 +21,64 @@ export class AcademiesService {
     private audit: AuditService,
   ) {}
 
-  /** 1.10: Request -> Admin Review -> Approved. Creator becomes the pending manager. */
-  async register(userId: string, dto: CreateAcademyDto) {
-    await this.assertNotPlayer(userId);
+  /**
+   * Creates an academy. **Admin / super_admin only** — enforced by @Roles on the
+   * controller.
+   *
+   * This replaces self-registration + admin review (the original README §1.10
+   * flow). Uzbekistan has roughly fifty football academies in total: at that scale
+   * a self-service queue is more attack surface than convenience, since almost
+   * every submission would be either a duplicate or a fake, and each one is an
+   * institution asking for access to children (§11). The platform team onboards
+   * them instead.
+   *
+   * Because an admin has therefore already vetted the academy, it is created
+   * VERIFIED rather than PENDING — there is no second reviewer to wait for.
+   *
+   * `actorId` is the admin. It is NOT made the manager: an admin creating a record
+   * on someone else's behalf shouldn't end up running it.
+   */
+  async register(actorId: string, dto: CreateAcademyDto) {
+    const { managerUserId, ...profile } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
-      const academy = await tx.academyProfile.create({ data: { ...dto } });
-      await tx.academyMember.create({
-        data: { academyId: academy.id, userId, role: 'MANAGER' },
+    if (managerUserId) {
+      const manager = await this.prisma.user.findUnique({ where: { id: managerUserId } });
+      if (!manager) throw new BadRequestException('That manager account does not exist');
+      await this.assertNotPlayer(managerUserId);
+    }
+
+    const academy = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.academyProfile.create({
+        data: { ...profile, status: 'VERIFIED' },
       });
-      return academy;
+
+      if (managerUserId) {
+        await tx.academyMember.create({
+          data: { academyId: created.id, userId: managerUserId, role: 'MANAGER' },
+        });
+        await this.rbac.assignRole(managerUserId, 'academy_manager', tx);
+      }
+
+      return created;
     });
+
+    await this.invalidate(academy.id, academy.region);
+    await this.audit.record(actorId, AuditAction.ACADEMY_VERIFIED, {
+      academyId: academy.id,
+      createdByAdmin: true,
+      managerUserId: managerUserId ?? null,
+    });
+
+    return academy;
   }
 
   /**
-   * A player account cannot register an academy.
+   * A player account cannot manage an academy.
    *
-   * Most player accounts belong to minors (README §11), and an academy is an
-   * institution that recruits them — letting the same account be both is a
-   * conflict of interest and a safeguarding hole, not merely an odd UI state.
-   * Checked against the database rather than the JWT so a token minted before the
-   * player role was granted can't slip past.
+   * Most player accounts belong to minors (README §11), and an academy is the
+   * institution that recruits them — one account being both is a safeguarding
+   * hole, not merely an odd UI state. Checked against the database rather than the
+   * JWT so a stale token can't slip past.
    */
   private async assertNotPlayer(userId: string) {
     const playerRole = await this.prisma.userRole.findFirst({
@@ -50,7 +87,7 @@ export class AcademiesService {
 
     if (playerRole) {
       throw new ForbiddenException(
-        'A player account cannot register an academy. Ask an academy manager to invite you as staff instead.',
+        'A player account cannot manage an academy. Use a separate account for academy staff.',
       );
     }
   }
