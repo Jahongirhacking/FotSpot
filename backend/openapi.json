@@ -1254,6 +1254,134 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/endorsements": {
+      "post": {
+        "operationId": "academies_endorse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndorseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      },
+      "get": {
+        "operationId": "academies_listEndorsements",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EndorsementRole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "This academy's endorsed scouts and coaches. Manager only.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/endorsements/{userId}/{role}": {
+      "delete": {
+        "operationId": "academies_revokeEndorsement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ends the relationship. The record is kept as REVOKED, not deleted.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/follows": {
       "post": {
         "operationId": "follows_follow",
@@ -1530,7 +1658,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1652,6 +1787,35 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/player/{playerId}": {
+      "get": {
+        "operationId": "recommendations_playerSummary",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A player's recommendation record: who vouched for them, with what weight, and\nthe decayable public `globalWeight`. Per-academy extras stay in the inbox.",
         "tags": [
           "recommendations"
         ]
@@ -2952,6 +3116,37 @@
           "role"
         ]
       },
+      "EndorsementRole": {
+        "type": "string",
+        "enum": [
+          "SCOUT",
+          "COACH"
+        ]
+      },
+      "EndorseDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EndorsementRole"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Internal note, visible to the academy only."
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "userId"
+        ]
+      },
       "FollowTargetType": {
         "type": "string",
         "enum": [
@@ -3004,13 +3199,33 @@
           "scoutId"
         ]
       },
+      "RecommendationType": {
+        "type": "string",
+        "enum": [
+          "GLOBAL",
+          "SPECIFIC"
+        ]
+      },
       "CreateRecommendationDto": {
         "type": "object",
         "properties": {
-          "playerId": {
-            "type": "string"
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationType"
+              }
+            ]
           },
-          "academyId": {
+          "academyIds": {
+            "description": "Required for SPECIFIC, rejected for GLOBAL — a cross-field rule, so it is\nenforced in the service alongside the endorsement check rather than split\nacross two places.\n\nCapped at 5: a \"specific\" recommendation addressed to every academy on the\nplatform is a global one wearing a disguise.",
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playerId": {
             "type": "string"
           },
           "note": {
@@ -3018,8 +3233,8 @@
           }
         },
         "required": [
-          "playerId",
-          "academyId"
+          "type",
+          "playerId"
         ]
       },
       "UpdateRecommendationStatusDto": {
@@ -3032,6 +3247,10 @@
               "ACCEPTED",
               "REJECTED"
             ]
+          },
+          "academyId": {
+            "type": "string",
+            "description": "Which academy is deciding. Required when the caller manages more than one, so\na verdict is never written to the wrong academy's target row."
           }
         },
         "required": [

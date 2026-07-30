@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -38,6 +39,16 @@ export class RecommendationsController {
     @Body() dto: UpdateRecommendationStatusDto,
   ) {
     return this.recommendationsService.updateStatus(user.userId, id, dto);
+  }
+
+  /**
+   * A player's recommendation record: who vouched for them, with what weight, and
+   * the decayable public `globalWeight`. Per-academy extras stay in the inbox.
+   */
+  @Public()
+  @Get('player/:playerId')
+  playerSummary(@Param('playerId') playerId: string) {
+    return this.recommendationsService.playerRecommendationSummary(playerId);
   }
 
   @Get('scout-stats/me')

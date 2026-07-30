@@ -4,7 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EndorsementRole, RecommendationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EndorsementsService } from '../academies/endorsements.service';
+import { academyVisibleWeight, contributionOf } from './recommendation-weight.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import {
@@ -12,37 +15,131 @@ import {
   computeScoutLevel,
   computeSuccessRate,
 } from './scout-level.util';
-import { computeAcademyWeight, TrustState } from './scout-trust.util';
 
 @Injectable()
 export class RecommendationsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private endorsements: EndorsementsService,
   ) {}
 
-  /** Scout selects Player -> Academy -> Recommendation (1.8). */
+  /**
+   * Files a recommendation — README 1.5.3.
+   *
+   * GLOBAL is open to any scout and addressed to nobody. SPECIFIC must name
+   * academies that currently **endorse** this scout; following is explicitly not
+   * enough, because following is social and carries no commitment either way.
+   *
+   * Both raise the player's global weight. SPECIFIC additionally raises the
+   * private weight the target academies see, because the scout has staked a
+   * relationship that academy already granted them.
+   */
   async create(scoutId: string, dto: CreateRecommendationDto) {
     const player = await this.prisma.playerProfile.findUnique({ where: { id: dto.playerId } });
     if (!player) throw new BadRequestException('Player not found');
 
-    const academy = await this.prisma.academyProfile.findUnique({ where: { id: dto.academyId } });
-    if (!academy) throw new BadRequestException('Academy not found');
+    const targets = await this.resolveTargets(scoutId, dto);
 
-    const recommendation = await this.prisma.recommendation.create({
-      data: {
-        scoutId,
-        playerId: dto.playerId,
-        academyId: dto.academyId,
-        note: dto.note,
-      },
+    // Snapshot the weight now: a recommendation is evidence about a moment, and
+    // the decay job needs a stable number (see Recommendation.scoutWeight).
+    const stats = await this.prisma.scoutStats.findUnique({ where: { userId: scoutId } });
+    const scoutWeight = stats?.weight ?? 1;
+    const contribution = contributionOf(dto.type, scoutWeight);
+
+    const recommendation = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.recommendation.create({
+        data: {
+          scoutId,
+          playerId: dto.playerId,
+          type: dto.type,
+          note: dto.note,
+          scoutWeight,
+          // Kept in step with `targets` for the single-academy case so existing
+          // reads that still use it stay correct.
+          academyId: targets.length === 1 ? targets[0] : null,
+          targets: { create: targets.map((academyId) => ({ academyId })) },
+        },
+        include: { targets: true },
+      });
+
+      await tx.playerRecommendationWeight.upsert({
+        where: { playerId: dto.playerId },
+        create: {
+          playerId: dto.playerId,
+          globalWeight: contribution.global,
+          recommendationCount: 1,
+          lastRecommendedAt: created.createdAt,
+        },
+        update: {
+          globalWeight: { increment: contribution.global },
+          recommendationCount: { increment: 1 },
+          lastRecommendedAt: created.createdAt,
+        },
+      });
+
+      for (const academyId of targets) {
+        await tx.playerAcademyRecommendationWeight.upsert({
+          where: { playerId_academyId: { playerId: dto.playerId, academyId } },
+          create: {
+            playerId: dto.playerId,
+            academyId,
+            extraWeight: contribution.perAcademy,
+            recommendationCount: 1,
+          },
+          update: {
+            extraWeight: { increment: contribution.perAcademy },
+            recommendationCount: { increment: 1 },
+          },
+        });
+      }
+
+      return created;
     });
 
-    // total_recommendations increments the moment a recommendation is filed;
-    // acceptance is reflected later in accepted_recommendations (1.5/1.8).
-    await this.bumpScoutStats(scoutId, { totalDelta: 1 });
+    // Only SPECIFIC recommendations enter the success-rate denominator. A GLOBAL
+    // one can never be accepted or rejected by anybody, so counting it would drag
+    // every scout's success rate toward zero for doing something useful (§1.5).
+    if (dto.type === RecommendationType.SPECIFIC) {
+      await this.bumpScoutStats(scoutId, { totalDelta: targets.length });
+    }
 
     return recommendation;
+  }
+
+  /**
+   * Validates the type/academy combination and the endorsement gate.
+   * Returns the academy ids this recommendation targets (empty for GLOBAL).
+   */
+  private async resolveTargets(scoutId: string, dto: CreateRecommendationDto): Promise<string[]> {
+    if (dto.type === RecommendationType.GLOBAL) {
+      if (dto.academyIds?.length) {
+        throw new BadRequestException(
+          'A global recommendation is not addressed to an academy. Use type SPECIFIC to name one.',
+        );
+      }
+      return [];
+    }
+
+    const requested = [...new Set(dto.academyIds ?? [])];
+    if (requested.length === 0) {
+      throw new BadRequestException('A specific recommendation must name at least one academy');
+    }
+
+    const endorsing = await this.endorsements.filterEndorsing(
+      requested,
+      scoutId,
+      EndorsementRole.SCOUT,
+    );
+
+    const rejected = requested.filter((id) => !endorsing.includes(id));
+    if (rejected.length > 0) {
+      throw new ForbiddenException(
+        'You can only recommend to academies that have endorsed you. Following an academy is not enough.',
+      );
+    }
+
+    return endorsing;
   }
 
   async listMine(scoutId: string) {
@@ -60,57 +157,51 @@ export class RecommendationsService {
   }
 
   /**
-   * The academy's inbox, ranked by credibility instead of arrival time (1.5.1/1.5.2).
+   * The academy's inbox — README 1.5.3.
    *
-   * Recommendations are grouped per player, each scout's global weight is scaled by
-   * that academy's own trust in them, and the group is collapsed with the harmonic
-   * discount from 1.5.1 - so a hundred throwaway accounts backing one player are
-   * worth far less than one Legendary Scout.
+   * Ranked by what this academy actually sees: the player's public global weight
+   * plus the private extra earned by recommendations addressed to them. Each
+   * player's backing is still collapsed with the §1.5.1 harmonic discount, so a
+   * hundred throwaway accounts remain worth far less than one proven scout.
+   *
+   * Note what no longer appears here: the follow-based trust multiplier. Following
+   * is social and carries no weight (§1.5.2); the endorsement a scout needed in
+   * order to address this academy at all is the trust signal now, and the extra
+   * weight is where it shows up.
    */
   async listRankedForAcademy(userId: string, academyId: string) {
     await this.assertAcademyManager(userId, academyId);
 
-    const recommendations = await this.prisma.recommendation.findMany({
+    const targets = await this.prisma.recommendationTarget.findMany({
       where: { academyId, status: { in: ['PENDING', 'REVIEWING'] } },
+      include: { recommendation: true },
     });
-    if (recommendations.length === 0) return { items: [], total: 0 };
+    if (targets.length === 0) return { items: [], total: 0 };
 
-    const scoutIds = [...new Set(recommendations.map((r) => r.scoutId))];
+    const playerIds = [...new Set(targets.map((t) => t.recommendation.playerId))];
 
-    const [stats, follows, priorAccepted] = await this.prisma.$transaction([
-      this.prisma.scoutStats.findMany({ where: { userId: { in: scoutIds } } }),
-      this.prisma.academyScoutFollow.findMany({
-        where: { academyId, scoutId: { in: scoutIds } },
-      }),
-      // How many of *this academy's* past acceptances came from each scout - the
-      // TRUSTED threshold in scout-trust.util.ts.
-      this.prisma.recommendation.findMany({
-        where: { academyId, scoutId: { in: scoutIds }, status: 'ACCEPTED' },
-        select: { scoutId: true },
+    const [globals, extras] = await this.prisma.$transaction([
+      this.prisma.playerRecommendationWeight.findMany({ where: { playerId: { in: playerIds } } }),
+      this.prisma.playerAcademyRecommendationWeight.findMany({
+        where: { academyId, playerId: { in: playerIds } },
       }),
     ]);
 
-    const weightOf = new Map(stats.map((s) => [s.userId, s.weight]));
-    const stateOf = new Map(follows.map((f) => [f.scoutId, f.state as TrustState]));
-    const acceptedOf = priorAccepted.reduce(
-      (acc, { scoutId }) => acc.set(scoutId, (acc.get(scoutId) ?? 0) + 1),
-      new Map<string, number>(),
-    );
+    const globalOf = new Map(globals.map((w) => [w.playerId, w.globalWeight]));
+    const extraOf = new Map(extras.map((w) => [w.playerId, w.extraWeight]));
 
-    // Group by player: credibility is a property of "this player, backed by these
-    // scouts", not of any single recommendation.
-    const byPlayer = new Map<string, { weights: number[]; recommendationIds: string[] }>();
-    for (const rec of recommendations) {
-      const academyWeight = computeAcademyWeight(
-        weightOf.get(rec.scoutId) ?? 1,
-        stateOf.get(rec.scoutId) ?? 'NONE',
-        acceptedOf.get(rec.scoutId) ?? 0,
-      );
+    const byPlayer = new Map<
+      string,
+      { weights: number[]; recommendationIds: string[]; specific: number }
+    >();
 
-      const entry = byPlayer.get(rec.playerId) ?? { weights: [], recommendationIds: [] };
-      entry.weights.push(academyWeight);
-      entry.recommendationIds.push(rec.id);
-      byPlayer.set(rec.playerId, entry);
+    for (const target of targets) {
+      const { playerId, id, scoutWeight, type } = target.recommendation;
+      const entry = byPlayer.get(playerId) ?? { weights: [], recommendationIds: [], specific: 0 };
+      entry.weights.push(scoutWeight);
+      entry.recommendationIds.push(id);
+      if (type === RecommendationType.SPECIFIC) entry.specific += 1;
+      byPlayer.set(playerId, entry);
     }
 
     const items = [...byPlayer.entries()]
@@ -118,46 +209,119 @@ export class RecommendationsService {
         playerId,
         recommendationIds: entry.recommendationIds,
         recommendationCount: entry.weights.length,
+        specificCount: entry.specific,
+        /** Harmonic collapse of the backing scouts (§1.5.1). */
         credibility: computeRecommendationCredibility(entry.weights),
+        /** Public, decayable (§1.5.3). */
+        globalWeight: globalOf.get(playerId) ?? 0,
+        /** This academy's private extra. */
+        academyExtraWeight: extraOf.get(playerId) ?? 0,
+        academyWeight: academyVisibleWeight(
+          globalOf.get(playerId) ?? 0,
+          extraOf.get(playerId) ?? 0,
+        ),
       }))
-      .sort((a, b) => b.credibility - a.credibility);
+      .sort((a, b) => b.academyWeight - a.academyWeight || b.credibility - a.credibility);
 
     return { items, total: items.length };
   }
 
-  /** Academy Manager transitions status: PENDING -> REVIEWING -> ACCEPTED/REJECTED (1.8). */
+  /**
+   * A player's public recommendation record — the shape the client renders.
+   *
+   * `globalWeight` is deliberately its own stored number rather than a sum
+   * computed here: a scheduled job decays it so that newly recommended young
+   * players can reach the top, and a derived sum has nowhere to put that decay.
+   */
+  async playerRecommendationSummary(playerId: string) {
+    const [weight, recommendations] = await Promise.all([
+      this.prisma.playerRecommendationWeight.findUnique({ where: { playerId } }),
+      this.prisma.recommendation.findMany({
+        where: { playerId },
+        include: {
+          scout: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          targets: { select: { academyId: true, status: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      playerId,
+      globalWeight: weight?.globalWeight ?? 0,
+      recommendationCount: weight?.recommendationCount ?? 0,
+      lastRecommendedAt: weight?.lastRecommendedAt ?? null,
+      scouts: recommendations.map((recommendation) => ({
+        id: recommendation.scout.id,
+        name: [recommendation.scout.firstName, recommendation.scout.lastName]
+          .filter(Boolean)
+          .join(' '),
+        avatarUrl: recommendation.scout.avatarUrl,
+        recommendation: {
+          id: recommendation.id,
+          weight: recommendation.scoutWeight,
+          type: recommendation.type,
+          // Empty for GLOBAL. Which academies were named is not secret — that a
+          // scout vouched for a player to a particular academy is the scout's own
+          // public act — but the resulting extra weight stays private to it.
+          recommendedAcademies: recommendation.targets.map((t) => t.academyId),
+          note: recommendation.note,
+          date: recommendation.createdAt,
+        },
+      })),
+    };
+  }
+
+  /**
+   * An academy decides on a recommendation — README 1.8.
+   *
+   * The verdict is written to that academy's **target row**, not to the
+   * recommendation itself: a specific recommendation can name several academies,
+   * and two of them are allowed to disagree about the same player. The scout's
+   * success rate counts each verdict separately, which is what makes recommending
+   * widely a real risk rather than a free bet.
+   */
   async updateStatus(userId: string, recommendationId: string, dto: UpdateRecommendationStatusDto) {
     const recommendation = await this.prisma.recommendation.findUnique({
       where: { id: recommendationId },
+      include: { targets: true },
     });
     if (!recommendation) throw new NotFoundException('Recommendation not found');
 
-    await this.assertAcademyManager(userId, recommendation.academyId);
-
-    if (recommendation.status === 'ACCEPTED' || recommendation.status === 'REJECTED') {
-      throw new BadRequestException('Recommendation is already finalized');
+    if (recommendation.type === RecommendationType.GLOBAL) {
+      throw new BadRequestException(
+        'A global recommendation is not addressed to an academy and cannot be accepted or rejected.',
+      );
     }
 
-    const updated = await this.prisma.recommendation.update({
-      where: { id: recommendationId },
+    const academyId = await this.resolveDecidingAcademy(userId, recommendation.targets, dto);
+    const target = recommendation.targets.find((t) => t.academyId === academyId);
+
+    if (!target) throw new ForbiddenException('This recommendation was not sent to your academy');
+    if (target.status === 'ACCEPTED' || target.status === 'REJECTED') {
+      throw new BadRequestException('Your academy has already decided on this recommendation');
+    }
+
+    const updated = await this.prisma.recommendationTarget.update({
+      where: { recommendationId_academyId: { recommendationId, academyId } },
       data: { status: dto.status },
     });
 
     if (dto.status === 'ACCEPTED') {
-      // Acceptance affects Scout Reputation / Level / Weight (1.8).
       await this.bumpScoutStats(recommendation.scoutId, { acceptedDelta: 1 });
       await this.notifications.notify(recommendation.scoutId, 'RECOMMENDATION_ACCEPTED', {
         recommendationId,
         playerId: recommendation.playerId,
-        academyId: recommendation.academyId,
+        academyId,
       });
+
       const player = await this.prisma.playerProfile.findUnique({
         where: { id: recommendation.playerId },
       });
       if (player) {
         await this.notifications.notify(player.userId, 'RECOMMENDATION_ACCEPTED', {
           recommendationId,
-          academyId: recommendation.academyId,
+          academyId,
         });
       }
     }
@@ -166,11 +330,54 @@ export class RecommendationsService {
       await this.notifications.notify(recommendation.scoutId, 'RECOMMENDATION_REJECTED', {
         recommendationId,
         playerId: recommendation.playerId,
-        academyId: recommendation.academyId,
+        academyId,
+      });
+    }
+
+    // Mirror onto the recommendation for single-target rows, so existing reads
+    // that still look at `status` stay truthful.
+    if (recommendation.targets.length === 1) {
+      await this.prisma.recommendation.update({
+        where: { id: recommendationId },
+        data: { status: dto.status },
       });
     }
 
     return updated;
+  }
+
+  /**
+   * Which of the caller's academies is deciding.
+   *
+   * Explicit when they manage several — guessing would eventually write a verdict
+   * to the wrong academy's row, and the scout's reputation would move for a
+   * decision nobody made.
+   */
+  private async resolveDecidingAcademy(
+    userId: string,
+    targets: { academyId: string }[],
+    dto: UpdateRecommendationStatusDto,
+  ): Promise<string> {
+    if (dto.academyId) {
+      await this.assertAcademyManager(userId, dto.academyId);
+      return dto.academyId;
+    }
+
+    const managed = await this.prisma.academyMember.findMany({
+      where: { userId, role: 'MANAGER', academyId: { in: targets.map((t) => t.academyId) } },
+      select: { academyId: true },
+    });
+
+    if (managed.length === 0) {
+      throw new ForbiddenException('Only the academy manager can review recommendations');
+    }
+    if (managed.length > 1) {
+      throw new BadRequestException(
+        'You manage more than one of the academies this was sent to — name the deciding academy in `academyId`.',
+      );
+    }
+
+    return managed[0].academyId;
   }
 
   async getScoutStats(userId: string) {

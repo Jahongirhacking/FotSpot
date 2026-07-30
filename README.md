@@ -212,73 +212,92 @@ A **verified coach**'s recommendation (§2.4) enters this sum at a floor of **20
 scout level: a coach is identity-verified and professionally accountable, which is a different
 kind of evidence from community volume.
 
-### 1.5.2. Academy → scout following (per-academy trust)
+### 1.5.2. Following and liking are social, not functional
 
-§1.5's weight is _objective_ reputation: the same number for everybody. But an academy in Fergana
-that has twice signed players found by a local school coach trusts that coach more than the
-platform average says it should — and an academy that keeps rejecting a particular scout's
-suggestions wants to stop seeing them.
+**Follows and likes work like Instagram: they signal interest and change nothing.**
+A scout following a player, a user liking a clip, an academy following a scout —
+none of it moves a ranking, unlocks an action, or feeds reputation.
 
-So an **Academy Manager can follow (or mute) a scout**, and that relationship scales the scout's
-weight _inside that academy's ranking only_.
+This is deliberate. A signal that costs nothing must be worth nothing, or it
+becomes the cheapest thing to fake. Follows drive feeds, alerts and "who is
+watching me" — real product value, zero authority.
+
+> **Superseded.** An earlier version of this section gave academy→scout *follows* a
+> capped trust multiplier in ranking. That is retired: the functional relationship
+> is now **endorsement** (§1.5.3), which an academy grants deliberately. Muting
+> likewise no longer affects ranking; it only quiets a feed.
+
+### 1.5.3. Endorsement, and the two kinds of recommendation
+
+**An academy can *endorse* (hire/accredit) a scout or a coach.** Unlike a follow,
+this is a commitment with consequences, and it is the gate for everything below.
+
+#### Two recommendation types
+
+| | **Global** | **Specific** |
+| --- | --- | --- |
+| Addressed to | nobody | 1–5 named academies |
+| Who may file it | any scout | only scouts those academies have **endorsed** |
+| Raises public `global_weight` | ✅ | ✅ |
+| Raises that academy's private extra | — | ✅ |
+| Can be accepted / rejected | ✗ (nobody to decide) | ✅, per academy |
+| Counts toward `success_rate` (§1.5) | ✗ | ✅ |
+
+A global recommendation is "this player is worth looking at", said to the room. A
+specific one is "…and specifically right for you", said to an academy that already
+decided this scout's judgement is worth having.
+
+**Following an academy is not enough to recommend to it.** Anyone can follow;
+endorsement is the academy choosing.
+
+#### How weight accrues
+
+A recommendation is stamped with the scout's §1.5 weight **at the moment of
+filing** — evidence about a point in time. Later promotion doesn't retroactively
+reweight everything they ever said, and the decay job needs a stable number.
 
 ```
-academy_weight(scout, academy) = weight(scout) × trust(scout, academy)
+global_weight(player)        += scout_weight          # every recommendation
+academy_extra(player, A)     += scout_weight          # specific ones naming A
+academy_sees(player, A)       = global_weight + academy_extra(player, A)
 ```
 
-| Academy's relationship to the scout                                              | `trust` |
-| -------------------------------------------------------------------------------- | ------- |
-| **Muted** — academy chose to suppress this scout                                 | 0.25    |
-| **None** — default                                                               | 1.0     |
-| **Followed** — explicit, manual                                                  | 1.5     |
-| **Trusted** — followed _and_ ≥3 recommendations already accepted from this scout | 2.0     |
+A specific recommendation therefore counts **twice for its target** and once for
+everyone else. Worked example, scout weight 5, specific to academy 123:
 
-The result feeds into §1.5.1's credibility sum in place of the raw weight. `trust` is **capped at
-2.0**, and that cap is not arbitrary:
+```jsonc
+{
+  "playerId": "…",
+  "globalWeight": 5,              // the specific recommendation also lands here
+  "scouts": [{
+    "id": 1, "name": "…",
+    "recommendation": { "weight": 5, "type": "SPECIFIC",
+                        "recommendedAcademies": [123], "date": "…" }
+  }]
+}
+// academy 123 additionally sees +5 → 10. Every other academy sees 5.
+```
 
-> **Trust can never promote a scout a full tier.** Every step in the §1.5 weight ladder is a
-> factor of ≥2.5 (1 → 3 → 8 → 20 → 50 → 125), so a doubled scout always lands _below_ the next
-> tier's base weight: a trusted Talent Hunter reaches 16 against an untrusted Elite Scout's 20;
-> a trusted Master Scout reaches 100 against a Legendary's 125.
+The doubling is capped by the same invariant that governed the retired trust
+multiplier: §1.5's ladder steps by ≥2.5×, so a targeted recommendation from a
+lesser scout can never outrank an untargeted one from a better scout.
 
-An academy can therefore reorder its own inbox by conviction, but it cannot manufacture
-credibility. A followed Observer is worth 1.5 — still nothing against a Legendary Scout's 125.
+#### Why `global_weight` is stored separately
 
-**Hard boundary: following does not touch global reputation.** `total_recommendations`,
-`accepted_recommendations`, `success_rate`, level and global `weight` (§1.5) are computed from raw
-outcomes only. Following affects exactly three things: ordering inside that academy's
-recommendation inbox, that academy's alerts, and nothing else. Without this separation a scout
-could lobby academies into following them, rank higher, get accepted more, and inflate their
-_global_ level — a feedback loop that would corrupt the reputation system for everyone.
+It is a materialised column, not a sum computed on read, because **a scheduled job
+will decay it**. Without decay, weight is pure accumulation and the top of every
+search belongs permanently to whoever joined first — a 13-year-old recommended last
+week could never surface above a 19-year-old recommended fifty times over three
+years. Since discovery of new talent is the entire product (§1.1), that failure
+mode is fatal rather than cosmetic.
 
-**What following is actually for** (the ranking boost is the smaller half):
+Decay is half-life shaped (default 180 days) and continuous, so running the job
+nightly or weekly produces the same curve and a late run doesn't over-penalise.
+Per-academy extras are not decayed: they are one academy's private working record,
+not a discovery ranking.
 
-- **A scout network per academy** — "12 scouts we trust", the academy's own private talent radar.
-- **Alerts** — "3 scouts you follow recommended players this week", the thing that brings an
-  academy manager back into the product weekly.
-- **A reward loop for scouts** — a scout sees _which_ academies follow them. For an unpaid
-  volunteer coach, "4 academies follow my recommendations" is real status, and it costs nothing
-  to give.
-- **Mute is the underrated half** — an academy drowning in low-quality suggestions currently has
-  no remedy except ignoring them. Muting keeps them in the product instead of churning.
-
-Note that **mute suppresses, it does not delete**: a muted Legendary Scout still lands at 31.25,
-low in the list but visible. An academy that has decided it dislikes a scout should not be able to
-blind itself to the platform's single strongest signal — 125 children placed is evidence the
-academy's opinion doesn't erase. Muting a low-tier scout, where the annoyance actually lives,
-drops them to 0.25 and effectively out of sight.
-
-Model: `academy_scout_follows` (`academy_id`, `scout_id`, `state ∈ {FOLLOWING, MUTED}`,
-`created_at`, unique on the pair). Mutes are private to the academy — never shown to the scout,
-who simply sees no signal either way. Publicising a mute would be a punishment the scout can't
-appeal and can't learn from.
-
-> **Frozen.** The `success_rate` formula, the six tier names, and the recommendation/success-rate
-> thresholds are copied verbatim into `backend/src/recommendations/scout-level.util.ts`.
-> Changing them is a product decision, not a refactor. The **weights** were revised (v2.0) from
-> a linear 1–6 scale by owner decision, and `scout-level.util.ts` was updated in the same change
-> — the two must never diverge. Anti-gaming rules that _surround_ the formula (rate limits,
-> decay, duplicate detection) live in §12 and may evolve freely.
+> Implemented in `recommendation-weight.util.ts` and unit-tested. The job itself is
+> not scheduled yet — no BullMQ workers exist (§1.18).
 
 ### 1.6. Player profile
 

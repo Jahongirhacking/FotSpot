@@ -80,6 +80,7 @@ model User {
   reportsFiled  Report[] @relation("ReportsFiled")
   follows       Follow[] @relation("UserFollows")
   followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
+  academyEndorsements AcademyEndorsement[] @relation("AcademyEndorsements")
   mediaComments MediaComment[]
 
   createdAt DateTime @default(now())
@@ -214,6 +215,8 @@ model PlayerProfile {
 
   media           Media[]
   recommendations Recommendation[]
+  recommendationWeight PlayerRecommendationWeight?
+  academyWeights  PlayerAcademyRecommendationWeight[]
   coachAssessments CoachAssessment[]
   trialApplications TrialApplication[]
 
@@ -252,6 +255,9 @@ model AcademyProfile {
   trials   Trial[]
   recommendations Recommendation[]
   scoutFollows AcademyScoutFollow[]
+  endorsements AcademyEndorsement[]
+  recommendationTargets RecommendationTarget[]
+  playerWeights PlayerAcademyRecommendationWeight[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -389,6 +395,93 @@ enum AcademyScoutFollowState {
   MUTED
 }
 
+/** Who an academy can take on: a scout, or a coach. */
+enum EndorsementRole {
+  SCOUT
+  COACH
+}
+
+enum EndorsementStatus {
+  ACTIVE
+  REVOKED
+}
+
+/**
+ * An academy has endorsed (hired / accredited) a scout or coach - README 1.5.3.
+ *
+ * This is the ONLY academy→person relationship with functional consequences, and
+ * the distinction from `AcademyScoutFollow` is the point: following is social and
+ * changes nothing, the way following someone on Instagram doesn't give them a job.
+ * Endorsement does two things:
+ *
+ *   1. It is the gate for SPECIFIC recommendations — a scout may only address a
+ *      recommendation to an academy that has endorsed them.
+ *   2. It is what earns a specific recommendation its extra weight for that
+ *      academy, because the academy has already staked its own judgement on the
+ *      person making it.
+ *
+ * Revoked rather than deleted: an academy that drops a scout should not silently
+ * rewrite the history of recommendations that scout already made for them.
+ */
+model AcademyEndorsement {
+  id        String @id @default(uuid())
+  academyId String
+  userId    String
+  role      EndorsementRole
+  status    EndorsementStatus @default(ACTIVE)
+
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user      User           @relation("AcademyEndorsements", fields: [userId], references: [id], onDelete: Cascade)
+
+  note      String?
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  updatedAt DateTime  @updatedAt
+
+  @@unique([academyId, userId, role])
+  @@index([userId, status])
+}
+
+/**
+ * A player's discoverability weight, accumulated from every recommendation.
+ *
+ * Stored rather than computed on read for one specific reason: a scheduled job
+ * will decay it, so that a player recommended two years ago doesn't outrank a
+ * 13-year-old recommended last week purely by accumulation. A derived-on-read sum
+ * has nowhere to put that decay. `lastDecayedAt` is the cron's bookmark.
+ */
+model PlayerRecommendationWeight {
+  playerId            String   @id
+  player              PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  globalWeight        Float    @default(0)
+  recommendationCount Int      @default(0)
+  lastRecommendedAt   DateTime?
+  lastDecayedAt       DateTime?
+  updatedAt           DateTime @updatedAt
+
+  @@index([globalWeight])
+}
+
+/**
+ * The extra weight one academy sees for one player, from SPECIFIC recommendations
+ * addressed to them. Never leaves that academy: it is their own scouts' opinion of
+ * a player, not a public score (README 21.5 — no public ranking of minors).
+ */
+model PlayerAcademyRecommendationWeight {
+  playerId            String
+  academyId           String
+  player              PlayerProfile  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  academy             AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  extraWeight         Float    @default(0)
+  recommendationCount Int      @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@id([playerId, academyId])
+  @@index([academyId, extraWeight])
+}
+
 /**
  * Academy -> scout trust (README 1.5.2). Separate from `Follow` because the
  * follower is an *academy*, not a user, and because MUTED has no meaning in the
@@ -434,20 +527,74 @@ enum RecommendationStatus {
   REJECTED
 }
 
+/**
+ * GLOBAL  - "this player is worth looking at", addressed to nobody. Any scout may
+ *           file one. It raises the player's discoverability weight and has no
+ *           accept/reject lifecycle, so it never counts toward success_rate.
+ * SPECIFIC- addressed to one or more academies that have ENDORSED this scout
+ *           (README 1.5.3). Each target academy decides independently, and those
+ *           decisions are what move the scout's reputation.
+ */
+enum RecommendationType {
+  GLOBAL
+  SPECIFIC
+}
+
 model Recommendation {
   id         String @id @default(uuid())
   scoutId    String
   playerId   String
-  academyId  String
+  type       RecommendationType @default(SPECIFIC)
+
+  /**
+   * Legacy single-academy column, kept for rows created before targets existed and
+   * for the common one-academy case. GLOBAL recommendations leave it null; the
+   * authoritative target list is `targets`.
+   */
+  academyId  String?
   status     RecommendationStatus @default(PENDING)
   note       String?
 
+  /**
+   * The scout's §1.5 weight at the moment of filing, not a live lookup.
+   * A recommendation is evidence about a point in time: if the scout later climbs
+   * to Legendary, that shouldn't retroactively reweight everything they ever said,
+   * and the future decay cron needs a stable number to decay.
+   */
+  scoutWeight Int @default(1)
+
   scout      User @relation("ScoutRecommendations", fields: [scoutId], references: [id])
   player     PlayerProfile @relation(fields: [playerId], references: [id])
-  academy    AcademyProfile @relation(fields: [academyId], references: [id])
+  academy    AcademyProfile? @relation(fields: [academyId], references: [id])
+  targets    RecommendationTarget[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([playerId])
+  @@index([scoutId])
+}
+
+/**
+ * One target academy of a SPECIFIC recommendation, with its own decision.
+ *
+ * Separate status per academy because two academies can legitimately disagree
+ * about the same player, and the scout's success rate has to reflect each verdict
+ * rather than collapsing them into one.
+ */
+model RecommendationTarget {
+  recommendationId String
+  academyId        String
+  status           RecommendationStatus @default(PENDING)
+
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([recommendationId, academyId])
+  @@index([academyId, status])
 }
 
 // ---------- COACH ASSESSMENT (1.9) ----------
