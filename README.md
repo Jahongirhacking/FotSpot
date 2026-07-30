@@ -35,8 +35,6 @@ Technical Specification (TZ) + Technical Solution (TY) · Version 2.0
 | [20](#20-explicit-non-goals)                                                    | Explicit non-goals                                | Permanent                                     |
 | [21](#21-player-experience--card-system)                                        | Player cards & UX (eFootball-style)               | Phase 1.5 (player retention)                  |
 
----
-
 ## 1. PRODUCT OVERVIEW
 
 ### 1.1. Problem
