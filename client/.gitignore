@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# .env.example carries no secrets and must be committed — the README tells people to copy it.
+!.env.example
