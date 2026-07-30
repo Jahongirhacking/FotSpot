@@ -3,7 +3,10 @@ import { ModerationService } from './moderation.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('moderation')
+@ApiBearerAuth('bearer')
 @Controller('moderation')
 export class ModerationController {
   constructor(private moderationService: ModerationService) {}

@@ -43,3 +43,5 @@ coverage/
 .idea/
 *.swp
 *.swo
+# Transient artefact of backend `pnpm docs:check` — never committed.
+openapi.json.pre-check

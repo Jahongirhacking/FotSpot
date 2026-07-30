@@ -15,10 +15,10 @@ export default async function AcademiesPage() {
   const session = await getSession();
   const { t } = await getServerT();
 
-  // A player account cannot register an academy (backend enforces it too) — so
-  // don't offer the button. Showing a control that always 403s is worse than
-  // hiding it.
-  const canRegisterAcademy = !session?.roles.includes('player');
+  // Academies are onboarded by the platform team, not self-registered — there are
+  // only ~50 in the country. Admins only (the backend enforces it with @Roles).
+  const canRegisterAcademy =
+    session?.roles.includes('admin') || session?.roles.includes('super_admin');
 
   const list = await academies
     .listPublic(

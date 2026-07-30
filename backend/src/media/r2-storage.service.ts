@@ -21,7 +21,12 @@ export class R2StorageService {
   buildKeyUnder(prefix: string, filename: string) {
     // Extension only, from the last dot: a filename is caller-supplied and must
     // never be able to steer the key outside its prefix.
-    const ext = filename.includes('.') ? filename.split('.').pop()!.replace(/[^a-z0-9]/gi, '') : 'bin';
+    const ext = filename.includes('.')
+      ? filename
+          .split('.')
+          .pop()!
+          .replace(/[^a-z0-9]/gi, '')
+      : 'bin';
     return `${prefix}/${crypto.randomUUID()}.${ext || 'bin'}`;
   }
 

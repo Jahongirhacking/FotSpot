@@ -1,11 +1,13 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ShieldCheck, ArrowLeft, Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
+import { useI18n } from '@/components/layout/I18nProvider';
 import {
   PLAYING_STYLES,
   POSITIONS,
@@ -33,7 +35,11 @@ type Step = 'identity' | 'guardian' | 'football';
  * name + date of birth only, and an under-18 answer routes into the guardian gate
  * before any position, region, measurement or clip is asked for.
  */
-export function PlayerWizard() {
+export function PlayerWizard({
+  knownName,
+}: {
+  knownName: { firstName: string; lastName: string };
+}) {
   const [step, setStep] = React.useState<Step>('identity');
   const [identity, setIdentity] = React.useState<PlayerIdentityValues | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -49,6 +55,7 @@ export function PlayerWizard() {
 
       {step === 'identity' && (
         <IdentityStep
+          knownName={knownName}
           defaults={identity}
           onDone={(values) => {
             setIdentity(values);
@@ -114,15 +121,29 @@ function Steps({ current, isMinor }: { current: Step; isMinor: boolean }) {
 }
 
 function IdentityStep({
+  knownName,
   defaults,
   onDone,
 }: {
+  knownName: { firstName: string; lastName: string };
   defaults: PlayerIdentityValues | null;
   onDone: (values: PlayerIdentityValues) => void;
 }) {
+  const { t } = useI18n();
+
+  // If the account already has a name, don't ask for it again — show it, with a
+  // link to change it in one place (the profile) rather than duplicating the field
+  // here and letting the two drift apart.
+  const nameIsKnown = Boolean(knownName.firstName.trim() && knownName.lastName.trim());
+
   const form = useForm<PlayerIdentityValues>({
     resolver: zodResolver(playerIdentitySchema),
-    defaultValues: defaults ?? { firstName: '', lastName: '', birthDate: '', gender: 'male' },
+    defaultValues: defaults ?? {
+      firstName: knownName.firstName,
+      lastName: knownName.lastName,
+      birthDate: '',
+      gender: 'male',
+    },
   });
 
   return (
@@ -136,24 +157,45 @@ function IdentityStep({
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onDone)} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="First name"
-              htmlFor="firstName"
-              required
-              error={form.formState.errors.firstName?.message}
-            >
-              <Input id="firstName" {...form.register('firstName')} />
-            </Field>
-            <Field
-              label="Last name"
-              htmlFor="lastName"
-              required
-              error={form.formState.errors.lastName?.message}
-            >
-              <Input id="lastName" {...form.register('lastName')} />
-            </Field>
-          </div>
+          {nameIsKnown ? (
+            <div className="border-border bg-surface-2 flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <p className="text-muted text-xs">
+                  {t.auth.firstName} · {t.auth.lastName}
+                </p>
+                <p className="truncate font-medium">
+                  {knownName.firstName} {knownName.lastName}
+                </p>
+              </div>
+              <Link
+                href="/profile/edit"
+                className="text-primary shrink-0 text-xs font-medium hover:underline"
+              >
+                {t.profile.editProfile}
+              </Link>
+              <input type="hidden" {...form.register('firstName')} />
+              <input type="hidden" {...form.register('lastName')} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label={t.auth.firstName}
+                htmlFor="firstName"
+                required
+                error={form.formState.errors.firstName?.message}
+              >
+                <Input id="firstName" {...form.register('firstName')} />
+              </Field>
+              <Field
+                label={t.auth.lastName}
+                htmlFor="lastName"
+                required
+                error={form.formState.errors.lastName?.message}
+              >
+                <Input id="lastName" {...form.register('lastName')} />
+              </Field>
+            </div>
+          )}
 
           <Field
             label="Date of birth"

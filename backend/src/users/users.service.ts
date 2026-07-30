@@ -86,7 +86,11 @@ export class UsersService {
         this.prisma.scoutStats.findUnique({ where: { userId } }),
         this.prisma.academyMember.findMany({
           where: { userId },
-          select: { academyId: true, role: true, academy: { select: { name: true, status: true } } },
+          select: {
+            academyId: true,
+            role: true,
+            academy: { select: { name: true, status: true } },
+          },
         }),
         this.prisma.follow.count({ where: { followerId: userId } }),
         this.prisma.academyScoutFollow.count({

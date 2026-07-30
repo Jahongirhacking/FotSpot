@@ -121,6 +121,29 @@ template: it's independently unit-testable without spinning up Nest's DI contain
   (academies profile reads). Cache keys go through `RedisService`'s typed key helpers — don't
   build raw Redis key strings inline in a service.
 
+## 5.1 API documentation — keep it generated, never hand-written
+
+The OpenAPI spec is produced from the code by `@nestjs/swagger` (CLI plugin
+configured in `nest-cli.json`), served at `/docs`, and committed as `openapi.json`.
+
+**After changing any route, DTO or response shape, run `pnpm docs:generate` and
+commit `openapi.json` in the same change.** `pnpm docs:check` fails when the two
+disagree, so a stale spec is a review comment rather than a surprise for whoever
+integrates against the API.
+
+- A doc comment above a handler becomes its description in the reference
+  (`introspectComments`), so write the explanation where the code is — not in a
+  separate document that will drift.
+- New `@ApiTags` must match a tag declared in `src/swagger.ts`'s `API_TAGS`,
+  otherwise the operation lands in an untitled group.
+- A **Prisma enum** in a DTO renders as an opaque `{ "type": "object" }` unless the
+  field also carries `@ApiProperty({ enum: X, enumName: 'X' })` — the plugin only
+  sees a type reference, not the values. See `playingStyle` / `channel` /
+  `targetType` for the pattern.
+- Generation runs in Nest **preview mode**, so it needs no database. Don't
+  "simplify" it into something that boots the app for real; `PrismaService`
+  connects eagerly and that would make the spec ungeneratable in CI.
+
 ## 6. Error handling
 
 - Throw NestJS's built-in exceptions; let `HttpExceptionFilter` (global) normalize the response

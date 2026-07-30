@@ -14,6 +14,8 @@ export const AuditAction = {
   ROLE_REMOVED: 'role.removed',
   PERMISSION_CREATED: 'permission.created',
   ROLE_PERMISSION_GRANTED: 'role_permission.granted',
+  ENDORSEMENT_GRANTED: 'endorsement.granted',
+  ENDORSEMENT_REVOKED: 'endorsement.revoked',
   REPORT_RESOLVED: 'report.resolved',
   MEDIA_TAKEN_DOWN: 'media.taken_down',
 } as const;

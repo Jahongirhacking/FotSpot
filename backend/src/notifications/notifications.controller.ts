@@ -1,7 +1,10 @@
 import { Controller, Get, Param, Patch } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('notifications')
+@ApiBearerAuth('bearer')
 @Controller('notifications')
 export class NotificationsController {
   constructor(private notificationsService: NotificationsService) {}

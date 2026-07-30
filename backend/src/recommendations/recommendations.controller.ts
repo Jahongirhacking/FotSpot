@@ -1,8 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('recommendations')
+@ApiBearerAuth('bearer')
 @Controller('recommendations')
 export class RecommendationsController {
   constructor(private recommendationsService: RecommendationsService) {}
@@ -35,6 +39,25 @@ export class RecommendationsController {
     @Body() dto: UpdateRecommendationStatusDto,
   ) {
     return this.recommendationsService.updateStatus(user.userId, id, dto);
+  }
+
+  /**
+   * A player's recommendation record: who vouched for them, with what weight, and
+   * the decayable public `globalWeight`. Per-academy extras stay in the inbox.
+   */
+  @Public()
+  @Get('player/:playerId')
+  playerSummary(@Param('playerId') playerId: string) {
+    return this.recommendationsService.playerRecommendationSummary(playerId);
+  }
+
+  /**
+   * Academies that currently endorse me — the only valid targets for a SPECIFIC
+   * recommendation. Drives the picker, so it can only ever offer valid choices.
+   */
+  @Get('endorsing-academies')
+  endorsingAcademies(@CurrentUser() user: AuthUser) {
+    return this.recommendationsService.endorsingAcademies(user.userId);
   }
 
   @Get('scout-stats/me')

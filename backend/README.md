@@ -89,8 +89,12 @@ a clearly marked stub body, not faked as if it worked:
 - **Coach verification gating** (1.9): assessments can only be submitted by
   a `CoachProfile` with `status = VERIFIED`; verifying a coach grants the
   `coach` RBAC role.
-- **Academy registration → review → approval** (1.10): creator becomes a
-  pending `MANAGER` member; approval grants `academy_manager`.
+- **Academy creation** (1.10, revised): **admin/super_admin only** — there are
+  roughly 50 academies in Uzbekistan, so they are onboarded by the platform team
+  rather than self-registered. An optional `managerUserId` names the account that
+  will run it and is granted `academy_manager`; the creating admin does not become
+  the manager. Admin-created academies start `VERIFIED` (a human already vetted
+  them) and the creation is audit-logged.
 - **Trial application flow** (1.11): Applied → Shortlisted → Invited →
   Rejected/Accepted, with an age-range check against the player's
   `birthDate` and the trial `date`.
@@ -123,8 +127,8 @@ These come from README sections the spec's own §9 defers. They were built at th
 owner's request, not by scope drift:
 
 - **Academy → scout trust** (1.5.2): `AcademyScoutFollow` (FOLLOWING/MUTED) plus
-  `scout-trust.util.ts`. An academy's trust scales a scout's weight *in that
-  academy's ranking only*, capped at 2.0 so it can never promote a scout a full
+  `scout-trust.util.ts`. An academy's trust scales a scout's weight _in that
+  academy's ranking only_, capped at 2.0 so it can never promote a scout a full
   tier. It deliberately does not feed global reputation — see the util's header.
 - **Ranked academy inbox** (1.5.1): `GET /recommendations/academy/:id/ranked`
   groups recommendations per player and collapses them with the harmonic
@@ -144,6 +148,52 @@ npm run start:dev
 
 API is served under `/api/v1`. WebSocket notifications connect to the
 `/notifications` namespace with `{ auth: { token: <accessToken> } }`.
+
+## API reference
+
+```bash
+pnpm start:dev            # then open http://localhost:3000/docs
+```
+
+`/docs` is an interactive Swagger UI: every endpoint, its request body, its
+responses, and a **Try it out** button. Paste an `accessToken` into _Authorize_
+once and it persists across reloads. The raw spec is at `/docs/openapi.json`, and
+a committed copy lives at [`openapi.json`](./openapi.json) so it can be diffed in
+review and fed to client generators without running the server.
+
+### Keeping it in sync
+
+The spec is **generated from the code**, never hand-written. Routes come from the
+controllers; request and response schemas come from the DTO classes, read by the
+`@nestjs/swagger` CLI plugin (configured in `nest-cli.json`) which infers types
+from TypeScript and `class-validator` decorators. Doc comments on a route become
+its description, so the explanation lives next to the code it explains.
+
+```bash
+pnpm docs:generate   # rebuild openapi.json after changing a route or DTO
+pnpm docs:check      # fails if openapi.json is stale — run this in CI
+```
+
+`docs:check` regenerates and compares. If they differ it prints which operations
+were added or removed and exits non-zero, leaving your working tree untouched:
+
+```
+openapi.json is out of date — the API changed but the spec was not regenerated.
+
+  added (1):
+    + GET /api/v1/notifications/unread-count
+
+Fix with: pnpm docs:generate   (then commit openapi.json)
+```
+
+Two things worth knowing:
+
+- Generation runs in Nest's **preview mode**, so it needs no database, no Redis and
+  no credentials — it works in CI and on a laptop with nothing running.
+- A Prisma enum used in a DTO renders as an opaque object unless the field also
+  carries `@ApiProperty({ enum: X, enumName: 'X' })`. The plugin only sees a type
+  reference. `playingStyle`, `channel`, `targetType` and `state` are annotated for
+  this reason — copy that pattern for any new Prisma-enum field.
 
 ## Testing
 

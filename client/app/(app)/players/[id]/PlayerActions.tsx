@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart, Send, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyProfile, Follow } from '@/lib/api/types';
+import type { Follow } from '@/lib/api/types';
 import { useSession } from '@/components/layout/SessionProvider';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Button } from '@/components/ui/Button';
@@ -103,9 +103,15 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
   const [academyId, setAcademyId] = React.useState('');
   const [note, setNote] = React.useState('');
 
-  const { data: academies } = useQuery({
-    queryKey: ['academies'],
-    queryFn: () => browserFetch<AcademyProfile[]>('/academies'),
+  // Only academies that ENDORSE this scout may be targeted (README §1.5.3);
+  // following one is not enough, so the generic academy list would offer choices
+  // the backend would reject.
+  const { data: endorsing } = useQuery({
+    queryKey: ['endorsing-academies'],
+    queryFn: () =>
+      browserFetch<{ academy: { id: string; name: string } }[]>(
+        '/recommendations/endorsing-academies',
+      ),
     enabled: open,
   });
 
@@ -113,7 +119,14 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
     mutationFn: () =>
       browserFetch('/recommendations', {
         method: 'POST',
-        body: { playerId, academyId, note: note || undefined },
+        body: {
+          playerId,
+          // No academy chosen means a global recommendation — open to any scout
+          // and addressed to nobody (§1.5.3).
+          type: academyId ? 'SPECIFIC' : 'GLOBAL',
+          ...(academyId ? { academyIds: [academyId] } : {}),
+          note: note || undefined,
+        },
       }),
     onSuccess: () => setOpen(false),
   });
@@ -144,11 +157,10 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
               value={academyId}
               onChange={(event) => setAcademyId(event.target.value)}
             >
-              <option value="">Choose an academy…</option>
-              {academies?.map((academy) => (
+              <option value="">Everyone (global recommendation)</option>
+              {endorsing?.map(({ academy }) => (
                 <option key={academy.id} value={academy.id}>
                   {academy.name}
-                  {academy.region ? ` — ${academy.region}` : ''}
                 </option>
               ))}
             </Select>
@@ -173,11 +185,7 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button
-            disabled={!academyId}
-            loading={recommend.isPending}
-            onClick={() => recommend.mutate()}
-          >
+          <Button loading={recommend.isPending} onClick={() => recommend.mutate()}>
             Send recommendation
           </Button>
         </DialogFooter>

@@ -1,4 +1,13 @@
-import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, Length, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  Length,
+  MaxLength,
+} from 'class-validator';
 import { VerificationChannel } from '@prisma/client';
 
 export class UpdateProfileDto {
@@ -24,12 +33,16 @@ export class AvatarUploadUrlDto {
  * switch a decorator on a sibling field's value.
  */
 export class RequestContactChangeDto {
-  @IsEnum(VerificationChannel) channel: VerificationChannel;
+  @ApiProperty({ enum: VerificationChannel, enumName: 'VerificationChannel' })
+  @IsEnum(VerificationChannel)
+  channel: VerificationChannel;
   @IsString() @MaxLength(200) destination: string;
 }
 
 export class VerifyContactChangeDto {
-  @IsEnum(VerificationChannel) channel: VerificationChannel;
+  @ApiProperty({ enum: VerificationChannel, enumName: 'VerificationChannel' })
+  @IsEnum(VerificationChannel)
+  channel: VerificationChannel;
   @IsString() @MaxLength(200) destination: string;
   @IsString() @Length(6, 6) code: string;
 }

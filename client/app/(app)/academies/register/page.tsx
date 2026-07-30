@@ -16,13 +16,15 @@ export default async function RegisterAcademyPage() {
 
   const { t } = await getServerT();
 
-  // Backend enforces this too (AcademiesService.assertNotPlayer). Explaining it
-  // here means a player who followed a stale link gets a reason, not a 403.
-  if (session.roles.includes('player')) {
+  // Backend enforces this with @Roles('admin','super_admin'). Explaining it here
+  // means anyone following a stale link gets a reason rather than a bare 403.
+  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
+
+  if (!isAdmin) {
     return (
       <div className="mx-auto max-w-lg space-y-4">
         <Alert tone="warning" title={t.academy.register}>
-          {t.academy.playersCannotRegister}
+          {t.academy.adminOnly}
         </Alert>
         <Button asChild variant="outline">
           <Link href="/academies">{t.nav.academies}</Link>

@@ -233,9 +233,27 @@ export interface CreateAssessmentBody {
 
 // ---------- Recommendations ----------
 
+/**
+ * README §1.5.3. GLOBAL is addressed to nobody and open to any scout; SPECIFIC
+ * names academies that have endorsed the caller (following one is not enough).
+ */
+export interface CreateRecommendationBody {
+  playerId: string;
+  type: 'GLOBAL' | 'SPECIFIC';
+  academyIds?: string[];
+  note?: string;
+}
+
 export const recommendations = {
-  create: (body: { playerId: string; academyId: string; note?: string }, opts: Opts = {}) =>
+  create: (body: CreateRecommendationBody, opts: Opts = {}) =>
     apiFetch<Recommendation>('/recommendations', { method: 'POST', body, ...opts }),
+
+  /** Academies that currently endorse me — the only valid SPECIFIC targets. */
+  myEndorsingAcademies: (opts: Opts = {}) =>
+    apiFetch<{ academyId: string; academy: { id: string; name: string } }[]>(
+      '/recommendations/endorsing-academies',
+      opts,
+    ),
 
   listMine: (opts: Opts = {}) => apiFetch<Recommendation[]>('/recommendations/mine', opts),
 

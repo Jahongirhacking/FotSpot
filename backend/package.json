@@ -16,7 +16,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "docs:generate": "nest build && node dist/src/openapi.js",
+    "docs:check": "node scripts/check-openapi.mjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.0",
@@ -27,6 +29,7 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.0",
     "@nestjs/platform-socket.io": "^10.4.0",
+    "@nestjs/swagger": "^8.1.1",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^6.19.3",
     "argon2": "^0.40.3",
