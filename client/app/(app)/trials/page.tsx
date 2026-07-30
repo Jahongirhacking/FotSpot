@@ -1,0 +1,84 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { CalendarDays, MapPin } from 'lucide-react';
+import { trials } from '@/lib/api/resources';
+import { getSession } from '@/lib/session';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/Feedback';
+import { formatDate } from '@/lib/utils';
+
+export const metadata: Metadata = { title: 'Trials' };
+
+export default async function TrialsPage() {
+  const session = await getSession();
+  const list = await trials
+    .listUpcoming(session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 })
+    .catch(() => []);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-xl font-bold">Open trials</h1>
+        <p className="text-muted text-sm">
+          Apply directly. Academies see your card alongside your application.
+        </p>
+      </header>
+
+      {list.length === 0 ? (
+        <EmptyState
+          icon={CalendarDays}
+          title="No open trials right now"
+          description="Follow the academies you're interested in and you'll be notified when they post one."
+          action={
+            <Button asChild variant="outline">
+              <Link href="/academies">Browse academies</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {list.map((trial) => (
+            <li key={trial.id}>
+              <Card className="hover:border-primary/40 h-full transition-colors">
+                <Link href={`/trials/${trial.id}`} className="block">
+                  <CardContent className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold">{trial.title}</p>
+                      <Badge variant="primary" className="shrink-0">
+                        U{trial.ageRangeMax}
+                      </Badge>
+                    </div>
+                    <dl className="text-muted space-y-1 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="size-3.5" aria-hidden />
+                        <dt className="sr-only">Date</dt>
+                        <dd>{formatDate(trial.date)}</dd>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="size-3.5" aria-hidden />
+                        <dt className="sr-only">Location</dt>
+                        <dd>{trial.location}</dd>
+                      </div>
+                    </dl>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant="outline">
+                        Ages {trial.ageRangeMin}–{trial.ageRangeMax}
+                      </Badge>
+                      {trial.positions.slice(0, 4).map((position) => (
+                        <Badge key={position} variant="neutral" className="font-mono">
+                          {position}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
