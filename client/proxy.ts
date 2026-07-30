@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   '/welcome',
   '/onboarding',
   '/notifications',
+  '/profile',
   '/settings',
   '/recommendations',
   '/my',

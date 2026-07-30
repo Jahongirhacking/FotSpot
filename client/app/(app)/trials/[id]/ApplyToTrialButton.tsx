@@ -6,6 +6,8 @@ import { Check, Send } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { TrialApplicationStatus } from '@/lib/api/types';
 import { useSession } from '@/components/layout/SessionProvider';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Feedback';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -24,12 +26,24 @@ export function ApplyToTrialButton({
   existingStatus: TrialApplicationStatus | null;
   ageRange: { min: number; max: number };
 }) {
-  const { hasRole } = useSession();
+  const { t } = useI18n();
+  const { hasRole, isAuthenticated } = useSession();
+  const requireAuth = useRequireAuth();
 
   const apply = useMutation({
     mutationFn: () => browserFetch(`/trials/${trialId}/apply`, { method: 'POST' }),
     onSuccess: () => window.location.reload(),
   });
+
+  // A guest is asked to sign in; only a signed-in non-player is told they need a
+  // card, because only then is that actually the missing step.
+  if (!isAuthenticated) {
+    return (
+      <Button size="lg" className="w-full" onClick={() => requireAuth()}>
+        <Send aria-hidden /> {t.trials.apply}
+      </Button>
+    );
+  }
 
   if (!hasRole('player')) {
     return (

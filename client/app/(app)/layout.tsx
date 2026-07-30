@@ -10,14 +10,19 @@ import { initials } from '@/lib/utils';
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
 
-  // Only for the avatar monogram — a failure here must not blank the whole app.
+  // Guests reach these routes too (players, academies, trials are public), so a
+  // missing session is normal here — not a reason to redirect.
+  // Only for the avatar monogram; a failure must not blank the whole app.
   const me = session
     ? await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
     : null;
 
   return (
     <>
-      <AppHeader initials={initials(me?.firstName, me?.lastName)} />
+      <AppHeader
+        initials={initials(me?.firstName, me?.lastName)}
+        avatarUrl={me?.avatarUrl ?? null}
+      />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
       <footer className="text-muted border-border mt-auto border-t px-4 py-6 text-center text-xs">
         FotSpot · Grassroots → Academy → Professional

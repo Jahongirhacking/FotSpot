@@ -15,9 +15,9 @@ import { navForRole } from './nav';
 import { Button } from '@/components/ui/Button';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 
-export function AppHeader({ initials }: { initials: string }) {
+export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl: string | null }) {
   const { t } = useI18n();
-  const { activeRole } = useSession();
+  const { activeRole, isAuthenticated } = useSession();
   const pathname = usePathname();
 
   // The drawer records *which route* it was opened on, so navigating away closes it
@@ -62,10 +62,26 @@ export function AppHeader({ initials }: { initials: string }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1 md:ml-0">
-          <RoleSwitcher />
-          <LanguageSwitcher compact />
-          <NotificationBell />
-          <ProfileMenu initials={initials} />
+          {/* Guests browse the same pages, so they get the same shell minus the
+              signed-in controls — and a way in, rather than a forced redirect. */}
+          {isAuthenticated ? (
+            <>
+              <RoleSwitcher />
+              <LanguageSwitcher compact />
+              <NotificationBell />
+              <ProfileMenu initials={initials} avatarUrl={avatarUrl} />
+            </>
+          ) : (
+            <>
+              <LanguageSwitcher compact />
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">{t.auth.signIn}</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/register">{t.auth.createAccount}</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

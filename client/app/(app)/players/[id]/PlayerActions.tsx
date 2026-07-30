@@ -6,6 +6,7 @@ import { Heart, Send, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyProfile, Follow } from '@/lib/api/types';
 import { useSession } from '@/components/layout/SessionProvider';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
@@ -28,12 +29,16 @@ import {
  * recommendation from a user without the role regardless of what this renders.
  */
 export function PlayerActions({ playerId, playerName }: { playerId: string; playerName: string }) {
-  const { activeRole, hasRole } = useSession();
+  const { activeRole, hasRole, isAuthenticated } = useSession();
+  const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
 
   const { data: following } = useQuery({
     queryKey: ['follows', 'player'],
     queryFn: () => browserFetch<{ items: Follow[] }>('/follows/me?targetType=PLAYER'),
+    // A guest has no follow list; asking for one 401s and used to bounce them to
+    // the login page just for opening a profile.
+    enabled: isAuthenticated,
   });
 
   const isFollowing = following?.items.some((follow) => follow.targetId === playerId) ?? false;
@@ -47,7 +52,8 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['follows', 'player'] }),
   });
 
-  const canRecommend = hasRole('scout') || hasRole('coach');
+  // Guests see it and are sent to login on click; signed-in users need the role.
+  const canRecommend = !isAuthenticated || hasRole('scout') || hasRole('coach');
 
   return (
     <div className="space-y-4">
@@ -60,7 +66,9 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
             variant={isFollowing ? 'outline' : 'primary'}
             className="w-full"
             loading={toggleFollow.isPending}
-            onClick={() => toggleFollow.mutate()}
+            onClick={() => {
+              if (requireAuth()) toggleFollow.mutate();
+            }}
           >
             {isFollowing ? (
               <>

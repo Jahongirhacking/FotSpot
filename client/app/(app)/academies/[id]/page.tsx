@@ -71,7 +71,7 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
-        {session && <FollowAcademyButton academyId={academy.id} />}
+        <FollowAcademyButton academyId={academy.id} />
       </header>
 
       {academy.description && (

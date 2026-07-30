@@ -8,9 +8,12 @@ import { getServerT } from '@/lib/i18n/server';
 import { sortRoles } from '@/lib/roles';
 import { ageBand, formatDate, humanizeEnum, initials } from '@/lib/utils';
 import { ProfileRoleList } from './ProfileRoleList';
+import { SyncRoles } from './SyncRoles';
+import { EditProfileButton } from './EditProfileButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { Alert } from '@/components/ui/Feedback';
 
 export const metadata: Metadata = { title: 'Profile' };
@@ -29,25 +32,29 @@ export default async function ProfilePage() {
     return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
   }
 
+  // `profile.roles` comes from the database and is authoritative; the session
+  // cookie can lag behind it (see SyncRoles).
   const roles = sortRoles(profile.roles);
   const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <SyncRoles authoritativeRoles={profile.roles} />
+
       <header className="flex flex-wrap items-center gap-4">
-        <span
-          className="bg-primary/15 text-primary grid size-16 shrink-0 place-items-center rounded-full text-xl font-bold"
-          aria-hidden
-        >
-          {initials(profile.firstName, profile.lastName)}
-        </span>
-        <div className="min-w-0">
+        <Avatar
+          src={profile.avatarUrl}
+          fallback={initials(profile.firstName, profile.lastName)}
+          className="size-16 text-xl"
+        />
+        <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{name || t.profile.myProfile}</h1>
           <p className="text-muted truncate text-sm">{profile.email ?? profile.phone ?? ''}</p>
           <p className="text-muted mt-0.5 text-xs">
             {t.profile.memberSince} {formatDate(profile.createdAt)}
           </p>
         </div>
+        <EditProfileButton label={t.profile.editProfile} />
       </header>
 
       <Card>

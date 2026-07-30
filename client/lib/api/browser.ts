@@ -24,6 +24,15 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
   let response = await run();
 
   if (response.status === 401) {
+    // Only someone who *had* a session can have had it expire. A guest browsing
+    // public pages must never be bounced to login by a background request — that
+    // is browsing, not an expired session. Without this guard, simply opening a
+    // player profile as a guest redirected to /login, because the follow-state
+    // query 401s.
+    if (!hasSessionCookie()) {
+      throw new ApiError(401, 'Sign in to do that.');
+    }
+
     const refreshed = await fetch('/api/auth/refresh', { method: 'POST' });
     if (refreshed.ok) {
       response = await run();
@@ -50,6 +59,18 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
   }
 
   return payload as T;
+}
+
+/**
+ * Whether this browser believes it is signed in.
+ *
+ * `fs_roles` is the one session cookie that is deliberately not httpOnly (it holds
+ * role names, no credential), which makes it the only signal available to page
+ * scripts. The access token itself is unreadable here by design.
+ */
+function hasSessionCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return document.cookie.split('; ').some((entry) => entry.startsWith('fs_roles='));
 }
 
 function safeJson(text: string): unknown {

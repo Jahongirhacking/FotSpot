@@ -15,6 +15,7 @@ import {
   MenuTrigger,
 } from '@/components/ui/Menu';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 
 /**
  * Account button: profile, role switching, settings, sign out.
@@ -24,7 +25,13 @@ import { cn } from '@/lib/utils';
  * The role list is omitted entirely for single-role users — a switcher with one
  * option only raises questions.
  */
-export function ProfileMenu({ initials }: { initials: string }) {
+export function ProfileMenu({
+  initials,
+  avatarUrl,
+}: {
+  initials: string;
+  avatarUrl: string | null;
+}) {
   const { t } = useI18n();
   const { roles, activeRole, setActiveRole } = useSession();
   const router = useRouter();
@@ -48,12 +55,11 @@ export function ProfileMenu({ initials }: { initials: string }) {
     <Menu>
       <MenuTrigger
         className={cn(
-          'bg-primary/15 text-primary hover:bg-primary/25 grid size-11 shrink-0 place-items-center',
-          'rounded-full text-sm font-semibold transition-colors',
+          'hover:bg-surface-2 grid size-11 shrink-0 place-items-center rounded-full transition-colors',
         )}
         aria-label={t.nav.account}
       >
-        {initials}
+        <Avatar src={avatarUrl} fallback={initials} className="size-9" />
       </MenuTrigger>
 
       <MenuContent className="min-w-64">
