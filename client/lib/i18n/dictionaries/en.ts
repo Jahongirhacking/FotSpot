@@ -240,6 +240,10 @@ export const en: Dictionary = {
     playersCannotRegister:
       'A player account cannot register an academy. Ask an academy manager to invite you as staff instead.',
     noneListed: 'No academies listed yet',
+    adminOnly:
+      'Academies are onboarded by the platform team. There are only around 50 in Uzbekistan, so an admin registers them. Get in touch to have yours added.',
+    managerUser: 'Manager (user ID)',
+    managerUserHint: 'The account that will run this academy. Can be added later.',
     followForTrials: 'Follow for trials',
     following: 'Following',
   },
@@ -421,6 +425,14 @@ export const en: Dictionary = {
     pillar3Body:
       'Search by age band, region, position and playing style. Review credible recommendations instead of running an open trial for three hundred strangers.',
     recentlyJoined: 'Recently joined',
+    viewMyCard: 'View my card',
+    watchHighlights: 'Watch highlights',
+    latestClips: 'Latest clips',
+    latestClipsBody: 'Players showing what they can do — in 60 seconds.',
+    noClipsYet: 'No clips uploaded yet. Be the first.',
+    statPlayers: 'Players',
+    statAcademies: 'Academies',
+    statTrials: 'Open trials',
     safetyTitle: 'Built for under-18s, carefully.',
     safetyBody:
       'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',

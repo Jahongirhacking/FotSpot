@@ -245,6 +245,10 @@ export const uz = {
     playersCannotRegister:
       'Futbolchi hisobi akademiya ro‘yxatdan o‘tkaza olmaydi. Buning o‘rniga akademiya rahbaridan sizni xodim sifatida qo‘shishini so‘rang.',
     noneListed: 'Hali akademiyalar yo‘q',
+    adminOnly:
+      'Akademiyalar platforma jamoasi tomonidan qo‘shiladi. O‘zbekistonda ~50 akademiya bor, shuning uchun ularni faqat administrator ro‘yxatga oladi. Akademiyangizni qo‘shish uchun biz bilan bog‘laning.',
+    managerUser: 'Rahbar (foydalanuvchi ID)',
+    managerUserHint: 'Bu akademiyani boshqaradigan hisob. Keyinroq ham qo‘shish mumkin.',
     followForTrials: 'Sinovlar uchun kuzatish',
     following: 'Kuzatilmoqda',
   },
@@ -428,6 +432,14 @@ export const uz = {
     pillar3Body:
       'Yosh, viloyat, pozitsiya va o‘yin uslubi bo‘yicha qidiring. Uch yuz notanish odam uchun ochiq sinov o‘tkazish shart emas.',
     recentlyJoined: 'Yaqinda qo‘shilganlar',
+    viewMyCard: 'Kartamni ko‘rish',
+    watchHighlights: 'Videolarni ko‘rish',
+    latestClips: 'Yangi videolar',
+    latestClipsBody: 'Futbolchilar o‘z mahoratini ko‘rsatadi — 60 soniyada.',
+    noClipsYet: 'Hali video yuklanmagan. Birinchi bo‘ling.',
+    statPlayers: 'Futbolchilar',
+    statAcademies: 'Akademiyalar',
+    statTrials: 'Ochiq sinovlar',
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
     safetyBody:
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',
