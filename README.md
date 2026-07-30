@@ -10,30 +10,30 @@ Technical Specification (TZ) + Technical Solution (TY) · Version 2.0
 > Renumbering §1–§10 breaks those references. New material is appended as §11+.
 >
 > **Language.** This spec is written in English (matching the rest of the repo's docs and code).
-> The *product* ships in Uzbek (Latin), Russian and English — see §14.
+> The _product_ ships in Uzbek (Latin), Russian and English — see §14.
 
 ---
 
 ## Table of contents
 
-| §                     | Topic                          | Status                 |
-| --------------------- | ------------------------------ | ---------------------- |
-| [1](#1-product-overview) | Product overview & MVP spec | **MVP — API implemented, client pending** |
-| [2](#2-academy-admission-process-real-world-model) | Real-world admission paths | MVP (informs modelling) |
-| [3](#3-post-acceptance-player-lifecycle)–[8](#8-recommendation-value-long-term) | Post-acceptance lifecycle, pro transition, badges | **Phase 2 — deferred** |
-| [9](#9-scope-mvp-vs-phase-15--phase-2) | Scope split                    | Reference              |
-| [10](#10-phase-2-additional-tables) | Phase 2 tables              | Reference              |
-| [11](#11-trust-safety--minor-protection) | Trust, safety & minor protection | **Phase 1.5 — required before public launch** |
-| [12](#12-anti-fraud--data-integrity) | Anti-fraud & data integrity | Phase 1.5              |
-| [13](#13-fotspot-combine--player-index) | Combine tests & Player Index | Phase 1.5 (key differentiator) |
-| [14](#14-localization-access--low-bandwidth-design) | Localization & low-bandwidth | Phase 1.5 |
-| [15](#15-business-model--monetization) | Business model & monetization | Phase 2+               |
-| [16](#16-go-to-market--the-cold-start-problem) | GTM & cold start        | Ongoing                |
-| [17](#17-roadmap) | Roadmap                                      | Ongoing                |
-| [18](#18-metrics--instrumentation) | Metrics & instrumentation   | Ongoing                |
-| [19](#19-risks--mitigations) | Risks                             | Ongoing                |
-| [20](#20-explicit-non-goals) | Explicit non-goals                | Permanent              |
-| [21](#21-player-experience--card-system) | Player cards & UX (eFootball-style) | Phase 1.5 (player retention) |
+| §                                                                               | Topic                                             | Status                                        |
+| ------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------- |
+| [1](#1-product-overview)                                                        | Product overview & MVP spec                       | **MVP — API implemented, client pending**     |
+| [2](#2-academy-admission-process-real-world-model)                              | Real-world admission paths                        | MVP (informs modelling)                       |
+| [3](#3-post-acceptance-player-lifecycle)–[8](#8-recommendation-value-long-term) | Post-acceptance lifecycle, pro transition, badges | **Phase 2 — deferred**                        |
+| [9](#9-scope-mvp-vs-phase-15--phase-2)                                          | Scope split                                       | Reference                                     |
+| [10](#10-phase-2-additional-tables)                                             | Phase 2 tables                                    | Reference                                     |
+| [11](#11-trust-safety--minor-protection)                                        | Trust, safety & minor protection                  | **Phase 1.5 — required before public launch** |
+| [12](#12-anti-fraud--data-integrity)                                            | Anti-fraud & data integrity                       | Phase 1.5                                     |
+| [13](#13-fotspot-combine--player-index)                                         | Combine tests & Player Index                      | Phase 1.5 (key differentiator)                |
+| [14](#14-localization-access--low-bandwidth-design)                             | Localization & low-bandwidth                      | Phase 1.5                                     |
+| [15](#15-business-model--monetization)                                          | Business model & monetization                     | Phase 2+                                      |
+| [16](#16-go-to-market--the-cold-start-problem)                                  | GTM & cold start                                  | Ongoing                                       |
+| [17](#17-roadmap)                                                               | Roadmap                                           | Ongoing                                       |
+| [18](#18-metrics--instrumentation)                                              | Metrics & instrumentation                         | Ongoing                                       |
+| [19](#19-risks--mitigations)                                                    | Risks                                             | Ongoing                                       |
+| [20](#20-explicit-non-goals)                                                    | Explicit non-goals                                | Permanent                                     |
+| [21](#21-player-experience--card-system)                                        | Player cards & UX (eFootball-style)               | Phase 1.5 (player retention)                  |
 
 ---
 
@@ -41,10 +41,10 @@ Technical Specification (TZ) + Technical Solution (TY) · Version 2.0
 
 ### 1.1. Problem
 
-Talented young footballers in Uzbekistan play in street football, school teams, *mahalla*
+Talented young footballers in Uzbekistan play in street football, school teams, _mahalla_
 tournaments and small football centres — but they are invisible to academies, unreachable by
 professional scouts, and have no way to present themselves. Academies, from the other side,
-struggle to *find* talent and carry high selection costs (travel, open-trial logistics, wasted
+struggle to _find_ talent and carry high selection costs (travel, open-trial logistics, wasted
 scouting days).
 
 Both sides lose to the same thing: **there is no shared, trustworthy, searchable record of who
@@ -55,26 +55,99 @@ Coach Assessment, Academy Recruitment, Trial Management.
 
 ### 1.2. User roles
 
-| Role                | How obtained            | Core permissions                                                                 | Cannot                                     |
-| ------------------- | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| **Guest**           | unauthenticated         | View public players / academies / media, search players                          | Like, follow, recommend                    |
-| **Scout**           | default on registration | Follow players & academies, like media, recommend a player, scout notes, history | Assess players, manage academies           |
-| **Player**          | additional role         | Create player profile, upload media, apply for trials, manage stats              | Recommend, assess                          |
-| **Coach**           | verified role           | Assess players, verify skills, coach reports, recommend                          | Manage academies                           |
-| **Academy Manager** | verified role           | Manage academy, create trials, review recommendations, accept/reject, manage staff, **follow/mute scouts** (§1.5.2) | Verify other academies                     |
-| **Admin**           | granted by super admin  | Verify coaches & academies, moderate media/users, handle reports                 | Create admins, change platform settings    |
-| **Super Admin**     | bootstrap / seeded      | CRUD admins, roles, permissions; platform settings; audit logs; feature flags    | —                                          |
+| Role                | How obtained            | Core permissions                                                                                                    | Cannot                                  |
+| ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **Guest**           | unauthenticated         | View public players / academies / media, search players                                                             | Like, follow, recommend                 |
+| **Scout**           | default on registration | Follow players & academies, like media, recommend a player, scout notes, history                                    | Assess players, manage academies        |
+| **Player**          | additional role         | Create player profile, upload media, apply for trials, manage stats                                                 | Recommend, assess                       |
+| **Coach**           | verified role           | Assess players, verify skills, coach reports, recommend                                                             | Manage academies                        |
+| **Academy Manager** | verified role           | Manage academy, create trials, review recommendations, accept/reject, manage staff, **follow/mute scouts** (§1.5.2) | Verify other academies                  |
+| **Admin**           | granted by super admin  | Verify coaches & academies, moderate media/users, handle reports                                                    | Create admins, change platform settings |
+| **Super Admin**     | bootstrap / seeded      | CRUD admins, roles, permissions; platform settings; audit logs; feature flags                                       | —                                       |
 
 Coach and Academy Manager statuses: `PENDING_VERIFICATION → VERIFIED | REJECTED`.
 A user may hold several roles (a coach is usually also a scout).
 
+### 1.2.1. Active role & persistence
+
+A user holding several roles has exactly one **active role** at a time. It selects _which product
+they see_ — a player sees their card and trials, an academy manager sees the recommendation inbox.
+
+**Rule: the active role is restored to whatever it last was.** It must survive a page refresh, a
+full logout → login, and moving to a different device. A user who works as an academy manager every
+day should never land in the scout view again after logging back in.
+
+| Concern                      | Rule                                                                                                                                                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage                      | `users.last_active_role`, server-side — so it follows the account, not the browser. Mirrored into a cookie so the first server render is already correct without waiting on an API call.                  |
+| Survives logout              | **Yes, deliberately.** The cookie is not cleared on logout; the value is a role name, not a credential.                                                                                                   |
+| On restore                   | Validate against the roles the user _currently_ holds. A coach whose verification was later rejected falls back to the highest-priority role they still have, silently.                                   |
+| Priority for a fresh account | `super_admin → admin → academy_manager → coach → player → scout` — the most specific role wins, since it is the one with a purpose-built dashboard.                                                       |
+| Never                        | Do not use the active role for authorization. It is a **view preference**. Every permission decision uses the JWT claims and the backend guards (§1.4). A tampered cookie must change nothing but layout. |
+
+### 1.2.2. First-login role discovery ("are you a player?")
+
+Registration grants `scout` by default (§1.2), which is wrong for a large share of signups: a
+15-year-old joining to _be seen_ is not a scout. The platform has to ask — and _how_ it asks
+decides whether the primary supply side ever completes a profile.
+
+**Rule: ask once, on a dedicated welcome route immediately after the first login — never in the
+signup form, never in a modal.**
+
+```
+first login  →  /welcome  →  "What brings you to FotSpot?"
+                              ┌──────────────────┐  ┌──────────────────┐
+                              │  ⚽ I play       │  │  🔍 I spot       │
+                              │  football        │  │  talent          │
+                              └──────────────────┘  └──────────────────┘
+                              [ I'll decide later ]
+```
+
+Why this shape, having rejected the alternatives:
+
+| Option                                 | Verdict                                                                                                                                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Role picker **inside the signup form** | ✗ Adds a decision before the user has seen any value — the most expensive place to put friction. Also unanswerable for the common "parent registering for a son" case.                  |
+| **Blocking modal** over the dashboard  | ✗ A modal over an empty dashboard gives no context to decide, traps mobile keyboards, and reads as an interrogation. Dismissal is the likely outcome, and then it is never asked again. |
+| **Dedicated welcome route** _(chosen)_ | ✓ The user has just arrived with intent. Full-screen means large touch targets for §14's target device. Being a real route makes it linkable, back-button-safe and testable.            |
+| Behavioural inference only             | ✗ Too slow on its own — but see the fallback below, where it is genuinely the right mechanic.                                                                                           |
+
+Rules attached to it:
+
+- **Asked once per account, not per device.** The prompt state lives on the user record
+  (`onboarding_completed_at`), so a second phone doesn't re-ask.
+- **"I play football" adds the `player` role, it does not replace `scout`** (§1.2 — roles
+  accumulate). The user keeps their scouting abilities.
+- **Skipping is free and non-terminal.** A skipped welcome becomes a dismissible card on the
+  dashboard, and the question returns _just-in-time_ the moment the user attempts something
+  player-only ("Uploading a video needs a player profile — create one?"). Behavioural inference is
+  the right fallback precisely because that moment carries its own motivation.
+- **The player path is age-gated first** (§11.1). Birth date is the _first_ question after choosing
+  "I play", and an under-18 answer routes into the guardian-consent flow before anything else is
+  collected. Never collect a minor's media, position or stats before consent exists.
+
+### 1.2.3. Switching between roles
+
+For multi-role users, switching must be one tap from anywhere.
+
+- **A persistent role switcher in the app header**, showing the active role and every other role
+  the user holds. Not buried in a settings page.
+- Roles still awaiting verification appear **disabled with their status** (`Coach · pending
+review`) rather than being hidden — an invisible pending role generates support questions.
+- Switching **only changes the view**, never privileges (§1.2.1). The JWT already carries every
+  role at once, so switching costs no round trip and needs no token refresh.
+- Switching **persists immediately** as the new `last_active_role`, so the next login lands there.
+- A single-role user sees **no switcher at all** — it would be chrome that explains nothing.
+- Anything genuinely role-specific and destructive stays gated by the backend regardless of the
+  active role; the switcher never becomes a privilege-escalation surface.
+
 ### 1.3. Authentication
 
-| Method                | Flow                                       | Notes                                                                 |
-| --------------------- | ------------------------------------------ | --------------------------------------------------------------------- |
-| **Phone + OTP**       | phone → send OTP → verify → login          | Primary method in UZ. Rate-limited (§1.21). SMS gateway is a stub — see backend README. |
-| **Email + password**  | email → password → login                   | Argon2 hashing, password reset flow.                                  |
-| **OAuth**             | provider login → account linking           | Google, Facebook, OneID. Apple deferred. Token verification is a stub. |
+| Method               | Flow                              | Notes                                                                                   |
+| -------------------- | --------------------------------- | --------------------------------------------------------------------------------------- |
+| **Phone + OTP**      | phone → send OTP → verify → login | Primary method in UZ. Rate-limited (§1.21). SMS gateway is a stub — see backend README. |
+| **Email + password** | email → password → login          | Argon2 hashing, password reset flow.                                                    |
+| **OAuth**            | provider login → account linking  | Google, Facebook, OneID. Apple deferred. Token verification is a stub.                  |
 
 Sessions: short-lived JWT access token + rotating refresh token, device-bound (§1.21).
 
@@ -92,16 +165,16 @@ Effective access is resolved at login/refresh and embedded as JWT claims. Guard 
 success_rate = accepted_recommendations / total_recommendations * 100
 ```
 
-| Level | Name             | Min recommendations | Min success rate | Proven placements¹ | Weight |
-| ----- | ---------------- | ------------------- | ---------------- | ------------------ | ------ |
-| 1     | Observer         | 0                   | —                | 0                  | **1**   |
-| 2     | Spotter          | 5                   | 10%              | 1                  | **3**   |
-| 3     | Talent Hunter    | 20                  | 20%              | 4                  | **8**   |
-| 4     | Elite Scout      | 50                  | 30%              | 15                 | **20**  |
-| 5     | Master Scout     | 100                 | 40%              | 40                 | **50**  |
-| 6     | Legendary Scout  | 250                 | 50%              | 125                | **125** |
+| Level | Name            | Min recommendations | Min success rate | Proven placements¹ | Weight  |
+| ----- | --------------- | ------------------- | ---------------- | ------------------ | ------- |
+| 1     | Observer        | 0                   | —                | 0                  | **1**   |
+| 2     | Spotter         | 5                   | 10%              | 1                  | **3**   |
+| 3     | Talent Hunter   | 20                  | 20%              | 4                  | **8**   |
+| 4     | Elite Scout     | 50                  | 30%              | 15                 | **20**  |
+| 5     | Master Scout    | 100                 | 40%              | 40                 | **50**  |
+| 6     | Legendary Scout | 250                 | 50%              | 125                | **125** |
 
-¹ *Proven placements* = `min_recommendations × min_success_rate` — the minimum number of players
+¹ _Proven placements_ = `min_recommendations × min_success_rate` — the minimum number of players
 this scout has actually put into an academy to reach the tier.
 
 **Why the weights are geometric, not linear.** The tiers' difficulty is already geometric
@@ -110,7 +183,7 @@ directions: they under-paid a Legendary Scout who had placed 125 children, and t
 brand-new accounts — which cost six phone numbers and five minutes — outrank them. Weight now
 tracks proven placements, so a tier's weight is roughly what it cost to earn.
 
-An Observer's weight of **1** is correct as an absolute floor: level 1 has *no* success
+An Observer's weight of **1** is correct as an absolute floor: level 1 has _no_ success
 requirement, so an Observer's success rate is unknown and their recommendation carries no
 evidence beyond "somebody looked".
 
@@ -124,13 +197,13 @@ Legendary Scout. Recommendations for the same player are therefore aggregated wi
 credibility = Σ (w₍ₖ₎ / k)   for k = 1…n,  w₍₁₎ ≥ w₍₂₎ ≥ … ≥ w₍ₙ₎
 ```
 
-| Backing a player                | Credibility |
-| ------------------------------- | ----------- |
-| 1 Legendary Scout               | 125         |
-| 6 Observers                     | 2.45        |
-| 125 Observers                   | 5.41        |
-| 5 Talent Hunters                | 18.27       |
-| 1 Legendary + 1 Elite Scout     | 135         |
+| Backing a player            | Credibility |
+| --------------------------- | ----------- |
+| 1 Legendary Scout           | 125         |
+| 6 Observers                 | 2.45        |
+| 125 Observers               | 5.41        |
+| 5 Talent Hunters            | 18.27       |
+| 1 Legendary + 1 Elite Scout | 135         |
 
 The harmonic discount grows like `ln(n)`, so manufacturing accounts yields almost nothing,
 while genuine corroboration by credible scouts still adds real signal. Only recommendations
@@ -143,30 +216,30 @@ kind of evidence from community volume.
 
 ### 1.5.2. Academy → scout following (per-academy trust)
 
-§1.5's weight is *objective* reputation: the same number for everybody. But an academy in Fergana
+§1.5's weight is _objective_ reputation: the same number for everybody. But an academy in Fergana
 that has twice signed players found by a local school coach trusts that coach more than the
 platform average says it should — and an academy that keeps rejecting a particular scout's
 suggestions wants to stop seeing them.
 
 So an **Academy Manager can follow (or mute) a scout**, and that relationship scales the scout's
-weight *inside that academy's ranking only*.
+weight _inside that academy's ranking only_.
 
 ```
 academy_weight(scout, academy) = weight(scout) × trust(scout, academy)
 ```
 
-| Academy's relationship to the scout                            | `trust` |
-| -------------------------------------------------------------- | ------- |
-| **Muted** — academy chose to suppress this scout                | 0.25    |
-| **None** — default                                              | 1.0     |
-| **Followed** — explicit, manual                                 | 1.5     |
-| **Trusted** — followed *and* ≥3 recommendations already accepted from this scout | 2.0 |
+| Academy's relationship to the scout                                              | `trust` |
+| -------------------------------------------------------------------------------- | ------- |
+| **Muted** — academy chose to suppress this scout                                 | 0.25    |
+| **None** — default                                                               | 1.0     |
+| **Followed** — explicit, manual                                                  | 1.5     |
+| **Trusted** — followed _and_ ≥3 recommendations already accepted from this scout | 2.0     |
 
 The result feeds into §1.5.1's credibility sum in place of the raw weight. `trust` is **capped at
 2.0**, and that cap is not arbitrary:
 
 > **Trust can never promote a scout a full tier.** Every step in the §1.5 weight ladder is a
-> factor of ≥2.5 (1 → 3 → 8 → 20 → 50 → 125), so a doubled scout always lands *below* the next
+> factor of ≥2.5 (1 → 3 → 8 → 20 → 50 → 125), so a doubled scout always lands _below_ the next
 > tier's base weight: a trusted Talent Hunter reaches 16 against an untrusted Elite Scout's 20;
 > a trusted Master Scout reaches 100 against a Legendary's 125.
 
@@ -178,14 +251,14 @@ credibility. A followed Observer is worth 1.5 — still nothing against a Legend
 outcomes only. Following affects exactly three things: ordering inside that academy's
 recommendation inbox, that academy's alerts, and nothing else. Without this separation a scout
 could lobby academies into following them, rank higher, get accepted more, and inflate their
-*global* level — a feedback loop that would corrupt the reputation system for everyone.
+_global_ level — a feedback loop that would corrupt the reputation system for everyone.
 
 **What following is actually for** (the ranking boost is the smaller half):
 
 - **A scout network per academy** — "12 scouts we trust", the academy's own private talent radar.
 - **Alerts** — "3 scouts you follow recommended players this week", the thing that brings an
   academy manager back into the product weekly.
-- **A reward loop for scouts** — a scout sees *which* academies follow them. For an unpaid
+- **A reward loop for scouts** — a scout sees _which_ academies follow them. For an unpaid
   volunteer coach, "4 academies follow my recommendations" is real status, and it costs nothing
   to give.
 - **Mute is the underrated half** — an academy drowning in low-quality suggestions currently has
@@ -206,7 +279,7 @@ appeal and can't learn from.
 > thresholds are copied verbatim into `backend/src/recommendations/scout-level.util.ts`.
 > Changing them is a product decision, not a refactor. The **weights** were revised (v2.0) from
 > a linear 1–6 scale by owner decision, and `scout-level.util.ts` was updated in the same change
-> — the two must never diverge. Anti-gaming rules that *surround* the formula (rate limits,
+> — the two must never diverge. Anti-gaming rules that _surround_ the formula (rate limits,
 > decay, duplicate detection) live in §12 and may evolve freely.
 
 ### 1.6. Player profile
@@ -327,7 +400,7 @@ Minor-specific requirements are in §11 and are **not optional**.
 
 Counts and rates: players, scouts, coaches, academies, recommendations, acceptance rate,
 trials, applications, academy conversion rate, top scouts, top players.
-The metric *tree* (what actually drives the business) is §18.
+The metric _tree_ (what actually drives the business) is §18.
 
 ### 1.23. MVP SCOPE
 
@@ -340,19 +413,19 @@ Analysis · Mobile Apps · Fantasy Football.
 
 > Several "excluded" items return deliberately later — Payments in Phase 2 (§15) because
 > that is where revenue lives, and constrained Chat in Phase 1.5 (§11) because academies
-> need a *safe*, logged way to contact a minor's guardian. AI video analysis and fantasy
+> need a _safe_, logged way to contact a minor's guardian. AI video analysis and fantasy
 > football remain out (§20).
 
 ### 1.24. Success KPI (Month 6)
 
-| Metric                                 | Target |
-| -------------------------------------- | ------ |
-| Players                                | 1 000+ |
-| Scouts                                 | 500+   |
-| Coaches                                | 100+   |
-| Academies                              | 50+    |
-| Recommendations                        | 5 000+ |
-| **Players accepted into an academy**   | 100+   |
+| Metric                               | Target |
+| ------------------------------------ | ------ |
+| Players                              | 1 000+ |
+| Scouts                               | 500+   |
+| Coaches                              | 100+   |
+| Academies                            | 50+    |
+| Recommendations                      | 5 000+ |
+| **Players accepted into an academy** | 100+   |
 
 **North star: players accepted into an academy through the platform.** Every other number is
 a leading indicator of that one. Full metric tree: §18.
@@ -362,19 +435,19 @@ a leading indicator of that one. Full metric tree: §18.
 ## 2. ACADEMY ADMISSION PROCESS (REAL-WORLD MODEL)
 
 Admission is rarely a single open trial. The product must model all five real paths, because
-an academy that cannot run its *actual* process will not use the platform.
+an academy that cannot run its _actual_ process will not use the platform.
 
-| Path                     | Description                                             | Source of candidates            | Process                                  |
-| ------------------------ | ------------------------------------------------------- | ------------------------------- | ---------------------------------------- |
-| **2.1 Open trial**       | Public announcement, anyone may attend                  | Self-application                | Registration → physical tests → small-sided games → coach rating |
-| **2.2 Private invitation** | Academy pre-selects and invites an individual         | Scout recommendation, coach assessment, video | Individual session → assessment → decision |
-| **2.3 Scout recommendation** | A community scout puts a player forward              | Community                       | Reputation-weighted (§1.5) → academy review |
-| **2.4 Coach recommendation** | A verified coach assesses and recommends             | Verified coaches                | Enters ranking at a weight floor of 20 (§1.5.1) — above any scout below Elite |
-| **2.5 Direct recruitment** | Academy observes and signs without a trial            | Tournaments, video scouting, past results | Direct offer                    |
+| Path                         | Description                                   | Source of candidates                          | Process                                                                       |
+| ---------------------------- | --------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| **2.1 Open trial**           | Public announcement, anyone may attend        | Self-application                              | Registration → physical tests → small-sided games → coach rating              |
+| **2.2 Private invitation**   | Academy pre-selects and invites an individual | Scout recommendation, coach assessment, video | Individual session → assessment → decision                                    |
+| **2.3 Scout recommendation** | A community scout puts a player forward       | Community                                     | Reputation-weighted (§1.5) → academy review                                   |
+| **2.4 Coach recommendation** | A verified coach assesses and recommends      | Verified coaches                              | Enters ranking at a weight floor of 20 (§1.5.1) — above any scout below Elite |
+| **2.5 Direct recruitment**   | Academy observes and signs without a trial    | Tournaments, video scouting, past results     | Direct offer                                                                  |
 
 Outcome of any path: `Accepted` · `Rejected` · `Waitlist`.
 
-**Key insight.** Admission is a *pipeline*, not an event: scouting + recommendation +
+**Key insight.** Admission is a _pipeline_, not an event: scouting + recommendation +
 video review + direct selection. The player status flow that spans all five paths is defined
 once, in §3.1.
 
@@ -405,27 +478,27 @@ graph TD
 
 ### 3.2 `player_academy_histories`
 
-| Field                   | Type    | Description                                          |
-| ----------------------- | ------- | ---------------------------------------------------- |
-| `id`                    | uuid    | —                                                    |
-| `player_id`             | uuid    | —                                                    |
-| `academy_id`            | uuid    | —                                                    |
-| `joined_date`           | date    | —                                                    |
-| `left_date`             | date    | `null` = currently active                            |
+| Field                   | Type    | Description                                                  |
+| ----------------------- | ------- | ------------------------------------------------------------ |
+| `id`                    | uuid    | —                                                            |
+| `player_id`             | uuid    | —                                                            |
+| `academy_id`            | uuid    | —                                                            |
+| `joined_date`           | date    | —                                                            |
+| `left_date`             | date    | `null` = currently active                                    |
 | `status`                | enum    | `ACTIVE`, `TRANSFERRED`, `RELEASED`, `EXPELLED`, `GRADUATED` |
-| `transfer_reason`       | text    | optional                                             |
-| `professional_contract` | boolean | —                                                    |
-| `contract_start`        | date    | —                                                    |
-| `contract_end`          | date    | —                                                    |
-| `club_name`             | string  | professional club                                    |
-| `league`                | string  | e.g. Uzbekistan Super League, Pro League             |
+| `transfer_reason`       | text    | optional                                                     |
+| `professional_contract` | boolean | —                                                            |
+| `contract_start`        | date    | —                                                            |
+| `contract_end`          | date    | —                                                            |
+| `club_name`             | string  | professional club                                            |
+| `league`                | string  | e.g. Uzbekistan Super League, Pro League                     |
 
 ---
 
 ## 4. PROFESSIONAL TRANSITION MODULE
 
-A dedicated **"Pro Window"** section, showing who actually made it — and, crucially, *who
-helped them get there*. This is the retention mechanic for scouts and the marketing asset for
+A dedicated **"Pro Window"** section, showing who actually made it — and, crucially, _who
+helped them get there_. This is the retention mechanic for scouts and the marketing asset for
 academies.
 
 - **Player** — gold "Pro" badge, club/league/jersey number, career timeline (Academy → Pro),
@@ -441,11 +514,11 @@ academies.
 Phase 2 adds long-term outcome tracking on top of §1.5. The canonical point values live in
 §8 — this section only names the metrics and the higher tiers.
 
-| Metric                      | Meaning                                            |
-| --------------------------- | -------------------------------------------------- |
-| `accepted_recommendations`  | Academy accepted the recommendation                |
-| `retained_6m` / `retained_12m` | Player still at the academy after 6 / 12 months  |
-| `professional_developments` | Player signed a professional contract              |
+| Metric                         | Meaning                                         |
+| ------------------------------ | ----------------------------------------------- |
+| `accepted_recommendations`     | Academy accepted the recommendation             |
+| `retained_6m` / `retained_12m` | Player still at the academy after 6 / 12 months |
+| `professional_developments`    | Player signed a professional contract           |
 
 Extended levels: **7 – Pro Scout** · **8 – Elite Producer** · **9 – Legend Maker**.
 
@@ -457,12 +530,12 @@ total_score = Σ (point value from §8 for each recommendation outcome)
 
 ## 6. BADGE SYSTEM
 
-| Holder      | Badges                                                       |
-| ----------- | ------------------------------------------------------------ |
-| **Player**  | Pro Debut · Academy Graduate · Fast Tracker                  |
+| Holder      | Badges                                                              |
+| ----------- | ------------------------------------------------------------------- |
+| **Player**  | Pro Debut · Academy Graduate · Fast Tracker                         |
 | **Scout**   | First Pro Recommendation · Multiple Pro Producer · Talent Whisperer |
-| **Academy** | Pro Factory · Best Talent Developer · Highest Conversion Rate |
-| **Coach**   | Pro Coach · Player Developer                                 |
+| **Academy** | Pro Factory · Best Talent Developer · Highest Conversion Rate       |
+| **Coach**   | Pro Coach · Player Developer                                        |
 
 Stored in `badges` + `user_badges` / `academy_badges` (see §10).
 
@@ -486,14 +559,14 @@ Each of those actions automatically:
 ## 8. RECOMMENDATION VALUE (LONG-TERM)
 
 **Canonical point table.** A recommendation's value grows as the outcome proves itself.
-Points are *cumulative* along the outcome path.
+Points are _cumulative_ along the outcome path.
 
-| Outcome                             | Points | Awarded when                              |
-| ----------------------------------- | ------ | ----------------------------------------- |
-| Recommendation accepted             | **+1** | Academy sets status `ACCEPTED`            |
-| Player retained 6 months            | **+2** | Scheduled job, 6 months after `joined_date` |
-| Player retained 12 months           | **+3** | Scheduled job, 12 months after `joined_date` |
-| Player signs a professional contract | **+8** | Academy marks "graduated to professional" |
+| Outcome                              | Points | Awarded when                                 |
+| ------------------------------------ | ------ | -------------------------------------------- |
+| Recommendation accepted              | **+1** | Academy sets status `ACCEPTED`               |
+| Player retained 6 months             | **+2** | Scheduled job, 6 months after `joined_date`  |
+| Player retained 12 months            | **+3** | Scheduled job, 12 months after `joined_date` |
+| Player signs a professional contract | **+8** | Academy marks "graduated to professional"    |
 
 Maximum lifetime value of one correct recommendation: **14 points**. This is the single
 source of truth for §5's `total_score`.
@@ -530,13 +603,13 @@ section is wrong. Treat every item here as a launch blocker, not a feature.
 
 ### 11.1 Guardian-linked accounts
 
-- Any profile whose `birth_date` implies **under 18** is a *minor profile*.
+- Any profile whose `birth_date` implies **under 18** is a _minor profile_.
 - A minor profile requires a linked **guardian** (`guardians`, `guardian_consents`) with a
   verified phone number. The guardian consents to: profile creation, media publication,
   contactability, and each trial application.
 - Consent is **granular and revocable**. Revoking media consent unpublishes media within
   minutes; revoking the profile triggers full deletion (§11.4).
-- Minors cannot register alone. The registration flow branches on age *before* collecting
+- Minors cannot register alone. The registration flow branches on age _before_ collecting
   anything else.
 
 ### 11.2 Contact gating
@@ -551,11 +624,11 @@ section is wrong. Treat every item here as a launch blocker, not a feature.
 
 Three profile visibility levels, default to the most private that still works:
 
-| Level        | Who sees the profile                                  | Default for |
-| ------------ | ----------------------------------------------------- | ----------- |
-| `PRIVATE`    | Only the player, guardian, and academies they applied to | Under 14 |
-| `DISCOVERABLE` | Verified academies, coaches and scouts (logged access) | 14–17 |
-| `PUBLIC`     | Anyone, including guests                              | 18+ only, opt-in |
+| Level          | Who sees the profile                                     | Default for      |
+| -------------- | -------------------------------------------------------- | ---------------- |
+| `PRIVATE`      | Only the player, guardian, and academies they applied to | Under 14         |
+| `DISCOVERABLE` | Verified academies, coaches and scouts (logged access)   | 14–17            |
+| `PUBLIC`       | Anyone, including guests                                 | 18+ only, opt-in |
 
 Precise location is never public: show **region/district**, never an address, school name, or
 training-ground schedule. Strip EXIF/GPS from every uploaded image and video.
@@ -571,12 +644,12 @@ training-ground schedule. Strip EXIF/GPS from every uploaded image and video.
 
 ### 11.5 Moderation SLA
 
-| Report type                        | First response target |
-| ---------------------------------- | --------------------- |
-| Child-safety report                | **< 1 hour**          |
-| Impersonation / fake academy       | < 12 hours            |
-| Inappropriate media                | < 24 hours            |
-| Spam recommendation                | < 72 hours            |
+| Report type                  | First response target |
+| ---------------------------- | --------------------- |
+| Child-safety report          | **< 1 hour**          |
+| Impersonation / fake academy | < 12 hours            |
+| Inappropriate media          | < 24 hours            |
+| Spam recommendation          | < 72 hours            |
 
 Child-safety reports bypass the queue and page a human. Build the escalation path before
 launch, not after the first incident.
@@ -602,17 +675,17 @@ platform that doesn't solve them is a prettier Instagram. This section is the mo
 
 Rules that surround the frozen §1.5 formula:
 
-- **Rate limit:** max *N* recommendations per scout per academy per rolling 7 days.
+- **Rate limit:** max _N_ recommendations per scout per academy per rolling 7 days.
 - **Deduplication:** the same (player, academy) pair cannot be re-recommended while a prior
   recommendation is open, or within 90 days of a rejection.
 - **Reputation decay:** inactivity for 6 months decays weight by one level — reputation is a
-  measure of *current* judgment.
+  measure of _current_ judgment.
 - **Collusion detection:** flag scout↔academy pairs with an anomalously high acceptance rate
   and low volume elsewhere; flag clusters of accounts sharing devices/IPs (§1.21 already
   tracks both).
 - **Self-recommendation and same-household recommendation are blocked** by guardian/phone match.
 - **Per-academy trust (§1.5.2) is not an exemption.** A followed scout gets a ranking boost, not
-  a lighter integrity check — collusion detection runs on *raw* acceptance data, where the trust
+  a lighter integrity check — collusion detection runs on _raw_ acceptance data, where the trust
   multiplier does not exist. Note the deliberate tension: §1.5.2 rewards a tight scout↔academy
   pair while this section flags one. They coexist because the reward is capped at 2× and stays
   local, while the flag looks for the distinguishing feature of real collusion — a pair with a
@@ -642,20 +715,20 @@ The differentiator: **comparable, measured data** instead of subjective highligh
 A short, standardised, phone-recordable test battery, defined once and run identically
 everywhere:
 
-| Test                    | Measures            | Protocol                                          |
-| ----------------------- | ------------------- | ------------------------------------------------- |
-| 30 m sprint             | Straight-line speed | Timing marker in frame, single take               |
-| 5-10-5 shuttle          | Agility             | Cone spacing shown, single take                   |
-| Juggling (60 s)         | Ball control        | Continuous take, counted on video                 |
-| Wall-pass accuracy (30 s) | Passing            | Fixed target size and distance                    |
-| Dribble slalom          | Close control       | Fixed cone layout                                 |
-| Vertical jump           | Power               | Marked wall reference                             |
+| Test                      | Measures            | Protocol                            |
+| ------------------------- | ------------------- | ----------------------------------- |
+| 30 m sprint               | Straight-line speed | Timing marker in frame, single take |
+| 5-10-5 shuttle            | Agility             | Cone spacing shown, single take     |
+| Juggling (60 s)           | Ball control        | Continuous take, counted on video   |
+| Wall-pass accuracy (30 s) | Passing             | Fixed target size and distance      |
+| Dribble slalom            | Close control       | Fixed cone layout                   |
+| Vertical jump             | Power               | Marked wall reference               |
 
 Two ways to submit:
 
 1. **Self-submitted** (`combine_results.verified = false`) — instant, free, gets a player into
    search with a caveat chip.
-2. **Witnessed** at a *Combine Day* run by a verified coach or academy
+2. **Witnessed** at a _Combine Day_ run by a verified coach or academy
    (`verified = true`, `witness_id` set) — the credible one.
 
 Combine Days double as the acquisition engine (§16) and later as a revenue line (§15).
@@ -678,8 +751,8 @@ Rules that keep it honest:
 - The index is **explainable**: every profile shows the contribution of each component. An
   unexplainable score is a score academies won't trust.
 - Zero verified inputs → **no index**, not a zero. Absence is not a low score.
-- Never rank minors publicly on a global leaderboard. Ranking is a *search-and-filter tool for
-  academies*, not a public scoreboard for children.
+- Never rank minors publicly on a global leaderboard. Ranking is a _search-and-filter tool for
+  academies_, not a public scoreboard for children.
 
 ### 13.3 Why this matters commercially
 
@@ -703,7 +776,7 @@ somewhere in Fergana. Design for that user first.
   check-in and scoring queue locally and sync on reconnect. This one feature is what makes
   academies actually use the product on the day it matters.
 - **Telegram bot as a first-class surface** (uploads, notifications, trial reminders,
-  guardian consent prompts). In Uzbekistan Telegram *is* the notification layer; SMS is the
+  guardian consent prompts). In Uzbekistan Telegram _is_ the notification layer; SMS is the
   expensive fallback.
 - **Data-light mode:** a toggle that disables video previews entirely.
 - **Accessibility:** proper contrast, tappable targets, text alternatives — the audience
@@ -714,36 +787,36 @@ somewhere in Fergana. Design for that user first.
 ## 15. BUSINESS MODEL & MONETIZATION
 
 **Principle: never charge the supply side.** Players, guardians and scouts use FotSpot free,
-permanently. They *are* the asset. Revenue comes from the institutions that save money because
+permanently. They _are_ the asset. Revenue comes from the institutions that save money because
 that asset exists.
 
 ### 15.1 Revenue lines, in the order they should be built
 
-| # | Line                          | Payer                | Model                                | Phase | Confidence |
-| - | ----------------------------- | -------------------- | ------------------------------------ | ----- | ---------- |
-| 1 | **Academy SaaS subscription** | Academies            | Monthly/annual per academy, tiered   | 2     | High       |
-| 2 | **Combine Day events**        | Players/guardians, sponsors | Per-entry fee, sponsor-funded  | 2     | High       |
-| 3 | **Trial listing & applications** | Academies         | Featured listing + % of trial fee    | 2     | Medium     |
-| 4 | **Verification services**     | Academies, coaches   | Annual verified-badge fee            | 2     | Medium     |
-| 5 | **Academy fee collection**    | Academies            | Take rate on tuition collected       | 3     | Medium     |
-| 6 | **Federation / club data**    | UFA, pro clubs       | Annual licence for aggregated insight | 3    | Medium     |
-| 7 | **Sponsorship & brand**       | Kit/beverage brands  | Sponsored Combine Days, region cups  | 3     | Medium     |
+| #   | Line                             | Payer                       | Model                                 | Phase | Confidence |
+| --- | -------------------------------- | --------------------------- | ------------------------------------- | ----- | ---------- |
+| 1   | **Academy SaaS subscription**    | Academies                   | Monthly/annual per academy, tiered    | 2     | High       |
+| 2   | **Combine Day events**           | Players/guardians, sponsors | Per-entry fee, sponsor-funded         | 2     | High       |
+| 3   | **Trial listing & applications** | Academies                   | Featured listing + % of trial fee     | 2     | Medium     |
+| 4   | **Verification services**        | Academies, coaches          | Annual verified-badge fee             | 2     | Medium     |
+| 5   | **Academy fee collection**       | Academies                   | Take rate on tuition collected        | 3     | Medium     |
+| 6   | **Federation / club data**       | UFA, pro clubs              | Annual licence for aggregated insight | 3     | Medium     |
+| 7   | **Sponsorship & brand**          | Kit/beverage brands         | Sponsored Combine Days, region cups   | 3     | Medium     |
 
 ### 15.2 Academy subscription tiers (illustrative — validate before pricing)
 
-| | **Free** | **Pro** | **Elite** |
-| --- | --- | --- | --- |
-| Academy profile, receive recommendations | ✅ | ✅ | ✅ |
-| Trial creation | 1 active | Unlimited | Unlimited |
-| Search filters | Basic | Full (Player Index, verified-only, combine ranges) | Full + saved searches |
-| Watchlists | 10 players | Unlimited | Unlimited |
-| Trusted scout network (§1.5.2) | Follow 5 scouts | Unlimited + mute | Unlimited + mute |
-| Alerts ("new U14 GK in Fergana above index 70") | — | ✅ | ✅ |
-| Applicant CRM + trial-day scoring app | — | ✅ | ✅ |
-| Analytics (funnel, conversion, retention) | — | Basic | Full + export |
-| Seats | 1 | 5 | Unlimited |
-| Branded public academy page | — | — | ✅ |
-| Priority verification & support | — | — | ✅ |
+|                                                 | **Free**        | **Pro**                                            | **Elite**             |
+| ----------------------------------------------- | --------------- | -------------------------------------------------- | --------------------- |
+| Academy profile, receive recommendations        | ✅              | ✅                                                 | ✅                    |
+| Trial creation                                  | 1 active        | Unlimited                                          | Unlimited             |
+| Search filters                                  | Basic           | Full (Player Index, verified-only, combine ranges) | Full + saved searches |
+| Watchlists                                      | 10 players      | Unlimited                                          | Unlimited             |
+| Trusted scout network (§1.5.2)                  | Follow 5 scouts | Unlimited + mute                                   | Unlimited + mute      |
+| Alerts ("new U14 GK in Fergana above index 70") | —               | ✅                                                 | ✅                    |
+| Applicant CRM + trial-day scoring app           | —               | ✅                                                 | ✅                    |
+| Analytics (funnel, conversion, retention)       | —               | Basic                                              | Full + export         |
+| Seats                                           | 1               | 5                                                  | Unlimited             |
+| Branded public academy page                     | —               | —                                                  | ✅                    |
+| Priority verification & support                 | —               | —                                                  | ✅                    |
 
 Price in **UZS**, billed via **Payme / Click / Uzum**, with card fallback. Anchor the price
 against what an academy already spends on one open-trial day (venue, staff, travel,
@@ -756,7 +829,7 @@ advertising) — the pitch is "one subscription costs less than one wasted trial
 - **Personal data of minors.** Federation/club products are aggregated and anonymised only.
 - **Agent-style placement commissions on minors.** FIFA rules on minors and intermediaries
   make this legally hazardous; any "success fee" model needs legal review and should be
-  charged to *academies* as a recruitment-service fee, never taken from a family.
+  charged to _academies_ as a recruitment-service fee, never taken from a family.
 - **Ads targeted at children.** Sponsorship is brand-level and non-personalised.
 
 ### 15.4 Unit economics to track from day one
@@ -765,7 +838,7 @@ advertising) — the pitch is "one subscription costs less than one wasted trial
 - Cost per player acquired (Combine Day cost ÷ players registered).
 - Infrastructure cost per active player — dominated by **video storage and egress**; this is
   the number that quietly kills the margin. Enforce the 60 s cap, transcode aggressively,
-  lifecycle-expire unviewed media, and use R2 precisely *because* egress is free.
+  lifecycle-expire unviewed media, and use R2 precisely _because_ egress is free.
 - Payment processing take rate.
 - Gross margin per academy tier.
 
@@ -786,7 +859,7 @@ manually.
 1. **Pick one region.** Tashkent or Fergana valley. National launch is a way to be irrelevant
    everywhere at once.
 2. **Sign 10 academies before writing the marketing page.** Onboard them by hand; digitise
-   their *existing* trial day for free. The product's first job is to be a better clipboard.
+   their _existing_ trial day for free. The product's first job is to be a better clipboard.
 3. **Run Combine Days** at schools and mahalla grounds. Each one produces 100–300 verified
    player profiles in a day — with guardian consent collected in person, which also solves
    §11.1's hardest UX problem.
@@ -802,21 +875,21 @@ manually.
 
 ## 17. ROADMAP
 
-| Phase | Theme | Contents | Exit criterion |
-| ----- | ----- | -------- | -------------- |
-| **v1.0 — MVP** *(API done, client scaffold only)* | Working pipeline | §1.23 | API + client run end-to-end locally |
-| **v1.1 — Pilot-ready** | Safety & real data | §11 (guardian consent, contact gating, visibility), §14 (uz/ru, video caps, Telegram notifications), §21 card shell (position, playing style, video slots) | Safe to onboard real minors in one region |
-| **v1.2 — Credibility** | Trust | §12 (age verification, integrity rules), §13.1 (Combine), §21.2/§21.4 measured attribute bars + progression | Academies filter by verified data; players return to raise a bar |
-| **v1.3 — Value** | Discovery | §13.2 (Player Index), follow model + academy→scout trust (§1.5.2), saved searches, alerts, trial-day offline mode | An academy says "we'd pay for this" |
-| **v2.0 — Revenue** | Monetization | §15.1 lines 1–2, subscriptions & billing, §3–§8 lifecycle tracking | First 10 paying academies |
-| **v2.1 — Proof** | Long-term outcomes | §4 Pro Window, §6 badges, §5/§8 impact scoring | First "Grassroots → Pro" story published |
-| **v3.0 — Scale** | Expansion | Multi-region, federation integration, §15.1 lines 5–7 | Second region at pilot-region density |
+| Phase                                             | Theme              | Contents                                                                                                                                                   | Exit criterion                                                   |
+| ------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **v1.0 — MVP** _(API done, client scaffold only)_ | Working pipeline   | §1.23                                                                                                                                                      | API + client run end-to-end locally                              |
+| **v1.1 — Pilot-ready**                            | Safety & real data | §11 (guardian consent, contact gating, visibility), §14 (uz/ru, video caps, Telegram notifications), §21 card shell (position, playing style, video slots) | Safe to onboard real minors in one region                        |
+| **v1.2 — Credibility**                            | Trust              | §12 (age verification, integrity rules), §13.1 (Combine), §21.2/§21.4 measured attribute bars + progression                                                | Academies filter by verified data; players return to raise a bar |
+| **v1.3 — Value**                                  | Discovery          | §13.2 (Player Index), follow model + academy→scout trust (§1.5.2), saved searches, alerts, trial-day offline mode                                          | An academy says "we'd pay for this"                              |
+| **v2.0 — Revenue**                                | Monetization       | §15.1 lines 1–2, subscriptions & billing, §3–§8 lifecycle tracking                                                                                         | First 10 paying academies                                        |
+| **v2.1 — Proof**                                  | Long-term outcomes | §4 Pro Window, §6 badges, §5/§8 impact scoring                                                                                                             | First "Grassroots → Pro" story published                         |
+| **v3.0 — Scale**                                  | Expansion          | Multi-region, federation integration, §15.1 lines 5–7                                                                                                      | Second region at pilot-region density                            |
 
 ---
 
 ## 18. METRICS & INSTRUMENTATION
 
-**North star:** *players accepted into an academy through FotSpot* (§1.24).
+**North star:** _players accepted into an academy through FotSpot_ (§1.24).
 
 The funnel behind it — instrument every step, or improvements are guesswork:
 
@@ -834,15 +907,15 @@ Registered player
 
 Health metrics that predict the north star:
 
-| Category    | Metric                                                                 |
-| ----------- | ---------------------------------------------------------------------- |
-| Liquidity   | % of players viewed by ≥1 academy within 30 days; academy searches/week |
-| Quality     | Recommendation acceptance rate; % of profiles with verified data       |
-| Retention   | Scout 30-day retention; academy weekly active seats                    |
+| Category    | Metric                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------ |
+| Liquidity   | % of players viewed by ≥1 academy within 30 days; academy searches/week                                      |
+| Quality     | Recommendation acceptance rate; % of profiles with verified data                                             |
+| Retention   | Scout 30-day retention; academy weekly active seats                                                          |
 | Player pull | Card shares per player; repeat Combine rate (a player raising a bar a second time is the §21.4 loop working) |
-| Safety      | Reports per 1 000 users; child-safety report response time             |
-| Cost        | Storage & egress per active player; SMS cost per verified signup       |
-| Commercial  | Paying academies; net revenue retention; CAC payback months            |
+| Safety      | Reports per 1 000 users; child-safety report response time                                                   |
+| Cost        | Storage & egress per active player; SMS cost per verified signup                                             |
+| Commercial  | Paying academies; net revenue retention; CAC payback months                                                  |
 
 Add **cohort analysis by region and age band** — national averages hide the only thing that
 matters, which is whether one region reached liquidity.
@@ -851,16 +924,16 @@ matters, which is whether one region reached liquidity.
 
 ## 19. RISKS & MITIGATIONS
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| **Child-safety incident** | Existential | §11 in full before public launch; sub-1h escalation; no adult→child DMs |
-| **Cold start** — academies see no players, players see no academies | Existential | §16: demand first, Combine Days seed supply in bulk, one region only |
-| **Fake/inflated data** destroys academy trust | Severe | §12: verification tiers, duplicate media detection, verified-only search |
-| **Video cost outruns revenue** | Severe | 60 s cap, aggressive transcode, R2 (free egress), lifecycle expiry of unviewed media |
-| **Academies won't pay** | Severe | Validate with 10 pilot academies *before* building billing; price against a wasted trial day |
-| **Regulatory (personal-data localisation, minors)** | Severe | Local legal review pre-launch; in-country/compliant hosting; export & deletion built in |
-| **Scout reputation gaming** | Moderate | §12.2 rate limits, decay, collusion detection |
-| **Key-person / single-market dependence** | Moderate | Document everything (this repo's CLAUDE.md files); design region-agnostic from the start |
+| Risk                                                                | Impact      | Mitigation                                                                                   |
+| ------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
+| **Child-safety incident**                                           | Existential | §11 in full before public launch; sub-1h escalation; no adult→child DMs                      |
+| **Cold start** — academies see no players, players see no academies | Existential | §16: demand first, Combine Days seed supply in bulk, one region only                         |
+| **Fake/inflated data** destroys academy trust                       | Severe      | §12: verification tiers, duplicate media detection, verified-only search                     |
+| **Video cost outruns revenue**                                      | Severe      | 60 s cap, aggressive transcode, R2 (free egress), lifecycle expiry of unviewed media         |
+| **Academies won't pay**                                             | Severe      | Validate with 10 pilot academies _before_ building billing; price against a wasted trial day |
+| **Regulatory (personal-data localisation, minors)**                 | Severe      | Local legal review pre-launch; in-country/compliant hosting; export & deletion built in      |
+| **Scout reputation gaming**                                         | Moderate    | §12.2 rate limits, decay, collusion detection                                                |
+| **Key-person / single-market dependence**                           | Moderate    | Document everything (this repo's CLAUDE.md files); design region-agnostic from the start     |
 
 ---
 
@@ -890,7 +963,7 @@ Build exactly that — but powered by real data. eFootball invents its numbers; 
 measured Combine tests (§13.1) and verified coach assessments (§1.9). That inversion is the whole
 product: **the game layer and the business model pull in the same direction.** A player chasing a
 higher Pace bar goes and runs a timed, witnessed 30 m sprint — which is precisely the verified
-data academies will pay to search (§15). Motivation for the child *is* data acquisition for the
+data academies will pay to search (§15). Motivation for the child _is_ data acquisition for the
 platform. Nothing else in this spec has that property.
 
 ### 21.1 Card anatomy
@@ -918,18 +991,18 @@ platform. Nothing else in this spec has that property.
 
 Every bar carries its **provenance icon** — this is §12.4's verified/unverified requirement
 rendered as card design instead of legal fine print. A self-reported bar looks visibly weaker
-than a measured one, which makes verification something the player *wants*, not a chore.
+than a measured one, which makes verification something the player _wants_, not a chore.
 
 ### 21.2 Attributes map to data you already collect
 
-| Card attribute | Source                                                                    |
-| -------------- | ------------------------------------------------------------------------- |
-| **Pace**       | 30 m sprint + 5-10-5 shuttle (§13.1)                                      |
-| **Dribbling**  | Dribble slalom (§13.1) + coach Dribbling rating (§1.9)                    |
-| **Passing**    | Wall-pass accuracy (§13.1) + coach Passing/Vision (§1.9)                  |
-| **Finishing**  | Coach Finishing rating (§1.9) + match goals (§1.6, self-reported)         |
-| **Physical**   | Vertical jump (§13.1) + coach Physical (§1.9)                             |
-| **Technique**  | 60 s juggling (§13.1) + coach ratings                                     |
+| Card attribute | Source                                                            |
+| -------------- | ----------------------------------------------------------------- |
+| **Pace**       | 30 m sprint + 5-10-5 shuttle (§13.1)                              |
+| **Dribbling**  | Dribble slalom (§13.1) + coach Dribbling rating (§1.9)            |
+| **Passing**    | Wall-pass accuracy (§13.1) + coach Passing/Vision (§1.9)          |
+| **Finishing**  | Coach Finishing rating (§1.9) + match goals (§1.6, self-reported) |
+| **Physical**   | Vertical jump (§13.1) + coach Physical (§1.9)                     |
+| **Technique**  | 60 s juggling (§13.1) + coach ratings                             |
 
 Six bars, not eight — a card that needs scrolling isn't a card. Leadership and Discipline (§1.9)
 stay on the academy-facing profile, where they belong; they don't render as game stats.
@@ -940,15 +1013,15 @@ Pace means "fast for twelve", and the card says so.
 ### 21.3 Playing styles
 
 The single highest-excitement, lowest-risk addition — and genuinely useful recruitment metadata,
-since academies recruit *for a role*, not for a position. Add `playing_style` to the player
+since academies recruit _for a role_, not for a position. Add `playing_style` to the player
 profile (§1.6), selected by the player and confirmable by a coach:
 
-| Position group | Styles                                                                |
-| -------------- | --------------------------------------------------------------------- |
-| **Forward**    | Poacher · Target Man · Deep-Lying Forward · Wide Threat               |
-| **Midfield**   | Box-to-Box · Playmaker · Destroyer · Orchestrator                     |
-| **Defence**    | Ball-Playing Defender · Stopper · Overlapping Full-Back · Sweeper     |
-| **Goalkeeper** | Offensive Keeper · Defensive Keeper                                   |
+| Position group | Styles                                                            |
+| -------------- | ----------------------------------------------------------------- |
+| **Forward**    | Poacher · Target Man · Deep-Lying Forward · Wide Threat           |
+| **Midfield**   | Box-to-Box · Playmaker · Destroyer · Orchestrator                 |
+| **Defence**    | Ball-Playing Defender · Stopper · Overlapping Full-Back · Sweeper |
+| **Goalkeeper** | Offensive Keeper · Defensive Keeper                               |
 
 Academies get `playing_style` as a search filter — "we need a Destroyer, U16, Fergana" is a real
 recruitment query that positions alone can't express.
