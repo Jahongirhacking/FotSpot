@@ -203,6 +203,222 @@ export const academies = {
     apiFetch<AcademyProfile['members']>(`/academies/${id}/staff`, opts),
 };
 
+// ---------- Admin console ----------
+
+export interface AdminUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  roles: string[];
+  /** False for super admins — the bootstrap account must stay reachable. */
+  revocable?: boolean;
+}
+
+export const admin = {
+  listAdmins: (opts: Opts = {}) => apiFetch<AdminUser[]>('/admin/admins', opts),
+
+  /** Admin-gated user lookup, so promoting someone doesn't mean pasting a UUID. */
+  searchUsers: (query: string, opts: Opts = {}) =>
+    apiFetch<Page<AdminUser>>(`/admin/users${toQuery({ query, pageSize: 10 })}`, opts),
+
+  grantAdmin: (userId: string, opts: Opts = {}) =>
+    apiFetch<{ assigned: boolean }>('/admin/admins', { method: 'POST', body: { userId }, ...opts }),
+
+  revokeAdmin: (userId: string, opts: Opts = {}) =>
+    apiFetch<{ revoked: boolean }>(`/admin/admins/${userId}/revoke`, { method: 'PATCH', ...opts }),
+
+  /** Every academy, including pending and archived. */
+  listAllAcademies: (opts: Opts = {}) =>
+    apiFetch<(AcademyProfile & { members: { userId: string }[] })[]>('/academies/admin/all', opts),
+
+  archiveAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'DELETE', ...opts }),
+
+  updateAcademy: (academyId: string, body: Partial<AcademyInput>, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'PATCH', body, ...opts }),
+
+  createAcademy: (body: AcademyInput, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+
+  /** Read-only for any admin. */
+  userDetail: (userId: string, opts: Opts = {}) =>
+    apiFetch<UserDetail>(`/admin/users/${userId}`, opts),
+
+  /** Super admin only. */
+  setUserActive: (userId: string, isActive: boolean, opts: Opts = {}) =>
+    apiFetch<{ id: string; isActive: boolean }>(`/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { isActive },
+      ...opts,
+    }),
+
+  /** Super admin only. */
+  setUserRole: (userId: string, role: string, grant: boolean, opts: Opts = {}) =>
+    apiFetch<{ roles: string[] }>(`/admin/users/${userId}/roles`, {
+      method: 'PATCH',
+      body: { role, grant },
+      ...opts,
+    }),
+
+  auditLogs: (opts: Opts = {}) => apiFetch<AuditLogEntry[]>('/admin/audit-logs', opts),
+
+  roles: (opts: Opts = {}) => apiFetch<RoleWithPermissions[]>('/admin/roles', opts),
+
+  createPermission: (key: string, opts: Opts = {}) =>
+    apiFetch<{ id: string; key: string }>('/admin/permissions', {
+      method: 'POST',
+      body: { key },
+      ...opts,
+    }),
+
+  grantRolePermission: (roleId: string, permissionId: string, opts: Opts = {}) =>
+    apiFetch<unknown>('/admin/roles/permissions', {
+      method: 'POST',
+      body: { roleId, permissionId },
+      ...opts,
+    }),
+
+  pendingReports: (opts: Opts = {}) => apiFetch<Report[]>('/moderation/reports/pending', opts),
+
+  resolveReport: (
+    reportId: string,
+    body: { status: 'RESOLVED' | 'DISMISSED'; resolutionNote?: string; removeMedia?: boolean },
+    opts: Opts = {},
+  ) =>
+    apiFetch<Report>(`/moderation/reports/${reportId}/resolve`, { method: 'PATCH', body, ...opts }),
+};
+
+export interface UserDetail extends AdminUser {
+  isActive: boolean;
+  playerProfile: {
+    id: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    playingStyle: string | null;
+    region: string | null;
+    matches: number;
+    goals: number;
+    assists: number;
+    _count: { media: number; trialApplications: number; recommendations: number };
+  } | null;
+  coachProfile: {
+    id: string;
+    status: string;
+    bio: string | null;
+    _count: { assessments: number };
+  } | null;
+  academyMemberships: { academyId: string; role: string; academy: { name: string } }[];
+  scoutStats: {
+    level: number;
+    totalRecommendations: number;
+    acceptedRecommendations: number;
+    successRate: number;
+    weight: number;
+  } | null;
+  _count: { recommendationsMade: number; sessions: number };
+}
+
+export interface AuditLogEntry {
+  id: string;
+  userId: string | null;
+  action: string;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface RoleWithPermissions {
+  id: string;
+  name: string;
+  description: string | null;
+  permissions: { permission: { id: string; key: string } }[];
+}
+
+export interface Report {
+  id: string;
+  type: 'USER' | 'MEDIA' | 'ACADEMY' | 'COACH';
+  reason: string;
+  reporterId: string;
+  targetUserId?: string | null;
+  targetMediaId?: string | null;
+  targetAcademyId?: string | null;
+  targetCoachId?: string | null;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  resolutionNote?: string | null;
+  createdAt: string;
+}
+
+export interface AcademyInput {
+  name: string;
+  region?: string;
+  district?: string;
+  description?: string;
+  managerUserId?: string;
+}
+
+// ---------- Endorsements (README §1.5.3) ----------
+
+export type EndorsementRole = 'SCOUT' | 'COACH';
+export type EndorsementStatus = 'ACTIVE' | 'REVOKED';
+
+export interface Endorsement {
+  id: string;
+  academyId: string;
+  userId: string;
+  role: EndorsementRole;
+  status: EndorsementStatus;
+  note?: string | null;
+  createdAt: string;
+  revokedAt?: string | null;
+  user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null };
+}
+
+export const endorsements = {
+  list: (academyId: string, role?: EndorsementRole, opts: Opts = {}) =>
+    apiFetch<Endorsement[]>(`/academies/${academyId}/endorsements${toQuery({ role })}`, opts),
+
+  endorse: (
+    academyId: string,
+    body: { userId: string; role: EndorsementRole; note?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<Endorsement>(`/academies/${academyId}/endorsements`, {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  revoke: (academyId: string, userId: string, role: EndorsementRole, opts: Opts = {}) =>
+    apiFetch<Endorsement>(`/academies/${academyId}/endorsements/${userId}/${role}`, {
+      method: 'DELETE',
+      ...opts,
+    }),
+};
+
+/** Public recommendation record for a player — README §1.5.3. */
+export interface PlayerRecommendationSummary {
+  playerId: string;
+  globalWeight: number;
+  recommendationCount: number;
+  lastRecommendedAt: string | null;
+  scouts: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    recommendation: {
+      id: string;
+      weight: number;
+      type: 'GLOBAL' | 'SPECIFIC';
+      recommendedAcademies: string[];
+      note: string | null;
+      date: string;
+    };
+  }[];
+}
+
 // ---------- Coaches ----------
 
 export const coaches = {
@@ -273,6 +489,9 @@ export const recommendations = {
       body: { status },
       ...opts,
     }),
+
+  getPlayerSummary: (playerId: string, opts: Opts = {}) =>
+    apiFetch<PlayerRecommendationSummary>(`/recommendations/player/${playerId}`, opts),
 
   myScoutStats: (opts: Opts = {}) => apiFetch<ScoutStats>('/recommendations/scout-stats/me', opts),
 };

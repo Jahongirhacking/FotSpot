@@ -1,5 +1,5 @@
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
@@ -8,6 +8,8 @@ import {
   CreatePermissionDto,
   GrantRolePermissionDto,
   VerifyDto,
+  SetUserActiveDto,
+  SetUserRoleDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
@@ -25,6 +27,44 @@ export class AdminController {
   @Patch('academies/:id/verify')
   verifyAcademy(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: VerifyDto) {
     return this.adminService.verifyAcademy(user.userId, id, dto.approve);
+  }
+
+  @Roles('super_admin')
+  @Get('admins')
+  listAdmins() {
+    return this.adminService.listAdmins();
+  }
+
+  /** Find a user to promote or endorse, instead of pasting a UUID. */
+  @Get('users')
+  searchUsers(
+    @Query('query') query = '',
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+  ) {
+    return this.adminService.searchUsers(query, Number(page) || 1, Number(pageSize) || 20);
+  }
+
+  /** Read-only, any admin. Mutations below are super-admin only. */
+  @Get('users/:id')
+  userDetail(@Param('id') id: string) {
+    return this.adminService.getUserDetail(id);
+  }
+
+  @Roles('super_admin')
+  @Patch('users/:id/status')
+  setUserActive(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SetUserActiveDto,
+  ) {
+    return this.adminService.setUserActive(user.userId, id, dto.isActive);
+  }
+
+  @Roles('super_admin')
+  @Patch('users/:id/roles')
+  setUserRole(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetUserRoleDto) {
+    return this.adminService.setUserRole(user.userId, id, dto.role, dto.grant);
   }
 
   @Get('audit-logs')

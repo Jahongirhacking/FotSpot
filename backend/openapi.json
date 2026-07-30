@@ -1006,6 +1006,45 @@
         ]
       }
     },
+    "/api/v1/coaches/academy/{academyId}": {
+      "post": {
+        "operationId": "coaches_createForAcademy",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCoachForAcademyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An academy manager adds a coach to their academy. Created VERIFIED — the\nacademy vouches for them, and the platform already vetted the academy.",
+        "tags": [
+          "coaches"
+        ]
+      }
+    },
     "/api/v1/coaches/assessments": {
       "post": {
         "operationId": "coaches_createAssessment",
@@ -1185,6 +1224,64 @@
             "bearer": []
           }
         ],
+        "summary": "Manager edits their own; an admin may correct any (§1.10).",
+        "tags": [
+          "academies"
+        ]
+      },
+      "delete": {
+        "operationId": "academies_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archives an academy (admin only). Sets status REJECTED rather than deleting —\na hard delete would cascade through trials, applications and recommendation\nhistory. See AcademiesService.archive.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/admin/all": {
+      "get": {
+        "operationId": "academies_listAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every academy including pending/archived — admin console list.",
         "tags": [
           "academies"
         ]
@@ -2365,9 +2462,9 @@
         ]
       }
     },
-    "/api/v1/admin/audit-logs": {
+    "/api/v1/admin/admins": {
       "get": {
-        "operationId": "admin_listAuditLogs",
+        "operationId": "admin_listAdmins",
         "parameters": [],
         "responses": {
           "200": {
@@ -2382,9 +2479,7 @@
         "tags": [
           "admin"
         ]
-      }
-    },
-    "/api/v1/admin/admins": {
+      },
       "post": {
         "operationId": "admin_assignAdmin",
         "parameters": [],
@@ -2400,6 +2495,150 @@
         },
         "responses": {
           "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "operationId": "admin_searchUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a user to promote or endorse, instead of pasting a UUID.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "operationId": "admin_userDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read-only, any admin. Mutations below are super-admin only.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/status": {
+      "patch": {
+        "operationId": "admin_setUserActive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserActiveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/roles": {
+      "patch": {
+        "operationId": "admin_setUserRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "operationId": "admin_listAuditLogs",
+        "parameters": [],
+        "responses": {
+          "200": {
             "description": ""
           }
         },
@@ -3012,6 +3251,21 @@
           }
         }
       },
+      "CreateCoachForAcademyDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
       "CreateAssessmentDto": {
         "type": "object",
         "properties": {
@@ -3407,6 +3661,39 @@
         },
         "required": [
           "approve"
+        ]
+      },
+      "SetUserActiveDto": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isActive"
+        ]
+      },
+      "SetUserRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "scout",
+              "player",
+              "coach",
+              "academy_manager",
+              "admin"
+            ]
+          },
+          "grant": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "role",
+          "grant"
         ]
       },
       "AssignAdminDto": {

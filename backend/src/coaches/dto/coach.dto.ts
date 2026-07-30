@@ -1,4 +1,13 @@
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateCoachProfileDto {
   @IsOptional() @IsString() bio?: string;
@@ -19,4 +28,10 @@ export class CreateAssessmentDto {
   @IsOptional() @IsString() notes?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) mediaUrls?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) documentUrls?: string[];
+}
+
+/** Academy manager takes on a coach (README §1.9, revised). */
+export class CreateCoachForAcademyDto {
+  @IsUUID() userId: string;
+  @IsOptional() @IsString() @MaxLength(1000) bio?: string;
 }

@@ -19,6 +19,50 @@ export class CoachesService {
     private audit: AuditService,
   ) {}
 
+  /**
+   * An academy takes on a coach — the academy vouches, so the profile is created
+   * VERIFIED and the `coach` role is granted immediately.
+   *
+   * This replaces admin verification of coaches. Academies are themselves
+   * onboarded by the platform team (README §1.10), so the trust chain is already
+   * established one level up: an admin vetted the academy, and the academy vets
+   * its own staff. Routing every coach through a second admin queue would add a
+   * reviewer with strictly less knowledge of the person than the academy hiring
+   * them.
+   */
+  async createForAcademy(
+    actorId: string,
+    academyId: string,
+    dto: { userId: string; bio?: string },
+  ) {
+    const membership = await this.prisma.academyMember.findUnique({
+      where: { academyId_userId: { academyId, userId: actorId } },
+    });
+    if (!membership || membership.role !== 'MANAGER') {
+      throw new ForbiddenException('Only the academy manager can add a coach');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
+    if (!user) throw new BadRequestException('That account does not exist');
+
+    return this.prisma.$transaction(async (tx) => {
+      const profile = await tx.coachProfile.upsert({
+        where: { userId: dto.userId },
+        update: { status: 'VERIFIED', ...(dto.bio ? { bio: dto.bio } : {}) },
+        create: { userId: dto.userId, bio: dto.bio, status: 'VERIFIED' },
+      });
+
+      await tx.academyMember.upsert({
+        where: { academyId_userId: { academyId, userId: dto.userId } },
+        update: { role: 'COACH', coachId: profile.id },
+        create: { academyId, userId: dto.userId, role: 'COACH', coachId: profile.id },
+      });
+
+      await this.rbac.assignRole(dto.userId, 'coach', tx);
+      return profile;
+    });
+  }
+
   async createProfile(userId: string, dto: CreateCoachProfileDto) {
     const existing = await this.prisma.coachProfile.findUnique({ where: { userId } });
     if (existing) throw new ConflictException('Coach profile already exists');

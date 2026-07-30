@@ -3,6 +3,7 @@ import { CoachesService } from './coaches.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateAssessmentDto, CreateCoachProfileDto } from './dto/coach.dto';
+import { CreateCoachForAcademyDto } from './dto/coach.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('coaches')
@@ -25,6 +26,19 @@ export class CoachesController {
   @Get(':id')
   getPublicProfile(@Param('id') id: string) {
     return this.coachesService.getPublicProfile(id);
+  }
+
+  /**
+   * An academy manager adds a coach to their academy. Created VERIFIED — the
+   * academy vouches for them, and the platform already vetted the academy.
+   */
+  @Post('academy/:academyId')
+  createForAcademy(
+    @CurrentUser() user: AuthUser,
+    @Param('academyId') academyId: string,
+    @Body() dto: CreateCoachForAcademyDto,
+  ) {
+    return this.coachesService.createForAcademy(user.userId, academyId, dto);
   }
 
   @Post('assessments')

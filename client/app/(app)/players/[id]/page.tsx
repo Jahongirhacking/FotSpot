@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ApiError } from '@/lib/api/client';
-import { coaches, players } from '@/lib/api/resources';
+import { coaches, players, recommendations } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
+import { getServerT } from '@/lib/i18n/server';
 import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
 import { PlayerCard } from '@/components/player/PlayerCard';
+import { RecommendationSummary } from '@/components/player/RecommendationSummary';
 import { PlayerActions } from './PlayerActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -40,6 +42,16 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     throw error;
   }
 
+  const { t } = await getServerT();
+
+  // Public endpoint — a guest browsing a profile sees who vouched too.
+  const summary = await recommendations
+    .getPlayerSummary(
+      id,
+      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 },
+    )
+    .catch(() => null);
+
   const assessments = session
     ? await coaches
         .assessmentsForPlayer(id, { token: session.accessToken, cache: 'no-store' })
@@ -50,6 +62,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
         <PlayerCard player={player} assessments={assessments} />
+
+        {summary && <RecommendationSummary summary={summary} t={t} />}
 
         <Card>
           <CardHeader>

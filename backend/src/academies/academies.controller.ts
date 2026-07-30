@@ -41,9 +41,29 @@ export class AcademiesController {
     return this.academiesService.getPublicProfile(id);
   }
 
+  /** Manager edits their own; an admin may correct any (§1.10). */
   @Patch(':id')
   update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateAcademyDto) {
-    return this.academiesService.update(user.userId, id, dto);
+    const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin');
+    return this.academiesService.update(user.userId, id, dto, isAdmin);
+  }
+
+  /**
+   * Archives an academy (admin only). Sets status REJECTED rather than deleting —
+   * a hard delete would cascade through trials, applications and recommendation
+   * history. See AcademiesService.archive.
+   */
+  @Roles('admin', 'super_admin')
+  @Delete(':id')
+  archive(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.academiesService.archive(user.userId, id);
+  }
+
+  /** Every academy including pending/archived — admin console list. */
+  @Roles('admin', 'super_admin')
+  @Get('admin/all')
+  listAll() {
+    return this.academiesService.listAll();
   }
 
   @Post(':id/staff')

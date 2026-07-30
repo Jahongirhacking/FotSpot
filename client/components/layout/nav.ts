@@ -57,8 +57,9 @@ export function navForRole(role: Role | null): NavItem[] {
     case 'super_admin':
       return [
         { href: '/dashboard', label: 'home', icon: Home },
-        { href: '/admin/verification', label: 'verification', icon: ShieldCheck },
-        { href: '/admin/moderation', label: 'moderation', icon: Users },
+        { href: '/admin/academies', label: 'academies', icon: Building2 },
+        { href: '/admin/users', label: 'users', icon: Users },
+        { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
         { href: '/players', label: 'players', icon: Search },
       ];
 
