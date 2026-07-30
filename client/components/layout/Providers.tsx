@@ -4,6 +4,8 @@ import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/client';
 import { SessionProvider, type SessionSeed } from './SessionProvider';
+import { I18nProvider } from './I18nProvider';
+import type { Locale } from '@/lib/i18n';
 
 function makeQueryClient() {
   return new QueryClient({
@@ -27,15 +29,19 @@ function makeQueryClient() {
 export function Providers({
   children,
   session,
+  locale,
 }: {
   children: React.ReactNode;
   session: SessionSeed | null;
+  locale: Locale;
 }) {
   const [queryClient] = React.useState(makeQueryClient);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider seed={session}>{children}</SessionProvider>
+      <I18nProvider locale={locale}>
+        <SessionProvider seed={session}>{children}</SessionProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
