@@ -29,6 +29,55 @@ import type {
 
 type Opts = Pick<RequestOptions, 'token' | 'revalidate' | 'tags' | 'cache'>;
 
+// ---------- Users ----------
+
+export const users = {
+  me: (opts: Opts = {}) => apiFetch<MeResponse>('/users/me', opts),
+
+  /** Identity + roles + per-role counters for the profile screen, in one request. */
+  myProfile: (opts: Opts = {}) => apiFetch<MyProfileResponse>('/users/me/profile', opts),
+};
+
+export interface MeResponse {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  createdAt: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface MyProfileResponse extends MeResponse {
+  stats: {
+    player: {
+      profileId: string;
+      birthDate: string;
+      primaryPosition: string | null;
+      playingStyle: PlayingStyle | null;
+      region: string | null;
+      matches: number;
+      goals: number;
+      assists: number;
+      mediaCount: number;
+      trialApplications: number;
+      recommendationsReceived: number;
+    } | null;
+    coach: { profileId: string; status: string; assessments: number } | null;
+    scout: {
+      totalRecommendations: number;
+      acceptedRecommendations: number;
+      successRate: number;
+      level: number;
+      weight: number;
+      followerAcademies: number;
+    } | null;
+    academies: { academyId: string; name: string; status: string; role: string }[];
+    following: number;
+  };
+}
+
 // ---------- Players ----------
 
 export interface PlayerSearchParams {
