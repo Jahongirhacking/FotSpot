@@ -116,8 +116,18 @@ export class AcademiesService {
     );
   }
 
-  async update(userId: string, academyId: string, dto: UpdateAcademyDto) {
-    await this.assertManager(userId, academyId);
+  /** Admin console: every academy regardless of status, newest first. */
+  async listAll() {
+    return this.prisma.academyProfile.findMany({
+      include: { members: { where: { role: 'MANAGER' }, select: { userId: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async update(userId: string, academyId: string, dto: UpdateAcademyDto, isAdmin = false) {
+    // Admins onboard academies (§1.10) and therefore have to be able to correct
+    // them; a manager can still edit their own.
+    if (!isAdmin) await this.assertManager(userId, academyId);
     const updated = await this.prisma.academyProfile.update({
       where: { id: academyId },
       data: dto,
@@ -147,6 +157,33 @@ export class AcademiesService {
     await this.invalidate(academyId, updated.region);
     await this.audit.record(actorId, AuditAction.ACADEMY_VERIFIED, { academyId, approve });
     return updated;
+  }
+
+  /**
+   * Archives an academy — admin only.
+   *
+   * Sets status to REJECTED rather than deleting the row. A hard delete would
+   * cascade through its trials, applications and recommendation targets, silently
+   * destroying scouts' reputation history and players' application records for
+   * what is usually a duplicate entry. Archived academies drop out of the public
+   * list because that already filters on VERIFIED.
+   */
+  async archive(actorId: string, academyId: string) {
+    const academy = await this.prisma.academyProfile.findUnique({ where: { id: academyId } });
+    if (!academy) throw new NotFoundException('Academy not found');
+
+    const archived = await this.prisma.academyProfile.update({
+      where: { id: academyId },
+      data: { status: 'REJECTED' },
+    });
+
+    await this.invalidate(academyId, archived.region);
+    await this.audit.record(actorId, AuditAction.ACADEMY_VERIFIED, {
+      academyId,
+      archived: true,
+    });
+
+    return archived;
   }
 
   async addStaff(userId: string, academyId: string, dto: AddStaffMemberDto) {

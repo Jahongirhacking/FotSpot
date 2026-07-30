@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CoachesService } from '../coaches/coaches.service';
@@ -43,6 +44,83 @@ export class AdminService {
       });
     }
     return result;
+  }
+
+  /**
+   * User lookup for the admin console.
+   *
+   * Exists because promoting someone to admin, or endorsing them, previously meant
+   * pasting a UUID from the database — a step that invites pasting the wrong one.
+   * Admin-gated: a public user directory is not something this platform should
+   * have, given most accounts belong to minors (README §11.3).
+   */
+  async searchUsers(query: string, page = 1, pageSize = 20) {
+    const term = query.trim();
+    const where: Prisma.UserWhereInput = term
+      ? {
+          OR: [
+            { firstName: { contains: term, mode: 'insensitive' } },
+            { lastName: { contains: term, mode: 'insensitive' } },
+            { email: { contains: term, mode: 'insensitive' } },
+            { phone: { contains: term } },
+          ],
+        }
+      : {};
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          avatarUrl: true,
+          createdAt: true,
+          roles: { select: { role: { select: { name: true } } } },
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items: items.map(({ roles, ...user }) => ({
+        ...user,
+        roles: roles.map((entry) => entry.role.name),
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Everyone currently holding admin or super_admin. */
+  async listAdmins() {
+    const admins = await this.prisma.user.findMany({
+      where: { roles: { some: { role: { name: { in: ['admin', 'super_admin'] } } } } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        avatarUrl: true,
+        createdAt: true,
+        roles: { select: { role: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return admins.map(({ roles, ...user }) => ({
+      ...user,
+      roles: roles.map((entry) => entry.role.name),
+      // A super admin cannot be demoted through this screen — the seeded bootstrap
+      // account must stay reachable, and locking everyone out is unrecoverable.
+      revocable: !roles.some((entry) => entry.role.name === 'super_admin'),
+    }));
   }
 
   async listAuditLogs(take = 100) {

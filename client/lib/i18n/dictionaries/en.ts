@@ -432,6 +432,37 @@ export const en: Dictionary = {
     superAdminSubtitle: 'Full platform control, including roles and audit logs.',
   },
 
+  admin: {
+    console: 'Admin console',
+    manageAdmins: 'Administrators',
+    manageAdminsHint:
+      'Admins verify coaches and academies and handle moderation. Only a super admin can appoint them.',
+    currentAdmins: 'Current administrators',
+    grantAdmin: 'Make admin',
+    revokeAdmin: 'Revoke access',
+    findUser: 'Find a user (name or email)',
+    superAdminProtected: 'Super admin access cannot be revoked from here.',
+    confirmRevoke: 'Revoke admin access for this user?',
+    manageAcademies: 'Academies',
+    manageAcademiesHint:
+      'Academies are onboarded by the platform team. A created academy counts as verified immediately.',
+    newAcademy: 'New academy',
+    academyName: 'Name',
+    assignManager: 'Assign a manager',
+    assignManagerHint: 'Optional. Can be assigned later.',
+    createAcademy: 'Add academy',
+    editAcademy: 'Edit',
+    archive: 'Archive',
+    archived: 'Archived',
+    confirmArchive: 'This academy will be archived and removed from the public list. Continue?',
+    archiveHint:
+      'Archiving is not deletion: trials, applications and recommendation history are kept.',
+    noAcademies: 'No academies added yet.',
+    manager: 'Manager',
+    noManager: 'No manager assigned',
+    saved: 'Saved',
+  },
+
   landing: {
     heroTitle: "The best young player in your mahalla shouldn't go unseen.",
     heroBody:

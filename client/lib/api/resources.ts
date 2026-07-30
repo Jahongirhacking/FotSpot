@@ -203,6 +203,56 @@ export const academies = {
     apiFetch<AcademyProfile['members']>(`/academies/${id}/staff`, opts),
 };
 
+// ---------- Admin console ----------
+
+export interface AdminUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  roles: string[];
+  /** False for super admins — the bootstrap account must stay reachable. */
+  revocable?: boolean;
+}
+
+export const admin = {
+  listAdmins: (opts: Opts = {}) => apiFetch<AdminUser[]>('/admin/admins', opts),
+
+  /** Admin-gated user lookup, so promoting someone doesn't mean pasting a UUID. */
+  searchUsers: (query: string, opts: Opts = {}) =>
+    apiFetch<Page<AdminUser>>(`/admin/users${toQuery({ query, pageSize: 10 })}`, opts),
+
+  grantAdmin: (userId: string, opts: Opts = {}) =>
+    apiFetch<{ assigned: boolean }>('/admin/admins', { method: 'POST', body: { userId }, ...opts }),
+
+  revokeAdmin: (userId: string, opts: Opts = {}) =>
+    apiFetch<{ revoked: boolean }>(`/admin/admins/${userId}/revoke`, { method: 'PATCH', ...opts }),
+
+  /** Every academy, including pending and archived. */
+  listAllAcademies: (opts: Opts = {}) =>
+    apiFetch<(AcademyProfile & { members: { userId: string }[] })[]>('/academies/admin/all', opts),
+
+  archiveAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'DELETE', ...opts }),
+
+  updateAcademy: (academyId: string, body: Partial<AcademyInput>, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'PATCH', body, ...opts }),
+
+  createAcademy: (body: AcademyInput, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+};
+
+export interface AcademyInput {
+  name: string;
+  region?: string;
+  district?: string;
+  description?: string;
+  managerUserId?: string;
+}
+
 // ---------- Endorsements (README §1.5.3) ----------
 
 export type EndorsementRole = 'SCOUT' | 'COACH';

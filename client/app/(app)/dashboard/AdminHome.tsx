@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Flag, ShieldCheck, ScrollText, KeyRound } from 'lucide-react';
+import { Building2, Flag, ShieldCheck, ScrollText, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
@@ -31,6 +31,12 @@ export function AdminHome({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           href="/admin/verification"
         />
         <AdminTile
+          icon={Building2}
+          title="Academies"
+          description="Create, edit and archive academies. Only the platform team onboards them."
+          href="/admin/academies"
+        />
+        <AdminTile
           icon={Flag}
           title="Moderation queue"
           description="Reports against users, media, academies and coaches."
@@ -42,13 +48,13 @@ export function AdminHome({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               icon={KeyRound}
               title="Roles & permissions"
               description="Grant or revoke admin access and manage the permission catalogue."
-              href="/admin/roles"
+              href="/admin/admins"
             />
             <AdminTile
               icon={ScrollText}
               title="Audit log"
               description="Every privileged action, attributed to the admin who took it."
-              href="/admin/audit"
+              href="/admin/audit-logs"
             />
           </>
         )}

@@ -439,6 +439,37 @@ export const uz = {
     superAdminSubtitle: 'To‘liq nazorat, jumladan rollar va audit jurnallari.',
   },
 
+  admin: {
+    console: 'Boshqaruv paneli',
+    manageAdmins: 'Administratorlar',
+    manageAdminsHint:
+      'Administratorlar murabbiy va akademiyalarni tasdiqlaydi hamda moderatsiya qiladi. Faqat bosh administrator ularni tayinlay oladi.',
+    currentAdmins: 'Joriy administratorlar',
+    grantAdmin: 'Administrator qilish',
+    revokeAdmin: 'Huquqni olib tashlash',
+    findUser: 'Foydalanuvchini qidiring (ism yoki email)',
+    superAdminProtected: 'Bosh administrator huquqini bu yerdan olib bo‘lmaydi.',
+    confirmRevoke: 'Rostdan ham administrator huquqini olib tashlaysizmi?',
+    manageAcademies: 'Akademiyalar',
+    manageAcademiesHint:
+      'Akademiyalarni platforma jamoasi qo‘shadi. Yaratilgan akademiya darhol tasdiqlangan hisoblanadi.',
+    newAcademy: 'Yangi akademiya',
+    academyName: 'Nomi',
+    assignManager: 'Rahbar tayinlash',
+    assignManagerHint: 'Ixtiyoriy. Keyinroq ham tayinlash mumkin.',
+    createAcademy: 'Akademiya qo‘shish',
+    editAcademy: 'Tahrirlash',
+    archive: 'Arxivlash',
+    archived: 'Arxivlangan',
+    confirmArchive: 'Bu akademiya arxivlanadi va ro‘yxatdan olib tashlanadi. Davom etasizmi?',
+    archiveHint:
+      'Arxivlash o‘chirish emas: sinovlar, arizalar va tavsiyalar tarixi saqlanib qoladi.',
+    noAcademies: 'Hali akademiya qo‘shilmagan.',
+    manager: 'Rahbar',
+    noManager: 'Rahbar tayinlanmagan',
+    saved: 'Saqlandi',
+  },
+
   landing: {
     heroTitle: 'Mahallangizdagi eng yaxshi yosh futbolchi e’tibordan chetda qolmasligi kerak.',
     heroBody:

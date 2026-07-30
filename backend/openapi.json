@@ -1185,6 +1185,64 @@
             "bearer": []
           }
         ],
+        "summary": "Manager edits their own; an admin may correct any (§1.10).",
+        "tags": [
+          "academies"
+        ]
+      },
+      "delete": {
+        "operationId": "academies_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Archives an academy (admin only). Sets status REJECTED rather than deleting —\na hard delete would cascade through trials, applications and recommendation\nhistory. See AcademiesService.archive.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/admin/all": {
+      "get": {
+        "operationId": "academies_listAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every academy including pending/archived — admin console list.",
         "tags": [
           "academies"
         ]
@@ -2365,9 +2423,9 @@
         ]
       }
     },
-    "/api/v1/admin/audit-logs": {
+    "/api/v1/admin/admins": {
       "get": {
-        "operationId": "admin_listAuditLogs",
+        "operationId": "admin_listAdmins",
         "parameters": [],
         "responses": {
           "200": {
@@ -2382,9 +2440,7 @@
         "tags": [
           "admin"
         ]
-      }
-    },
-    "/api/v1/admin/admins": {
+      },
       "post": {
         "operationId": "admin_assignAdmin",
         "parameters": [],
@@ -2400,6 +2456,45 @@
         },
         "responses": {
           "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "operationId": "admin_searchUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a user to promote or endorse, instead of pasting a UUID.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "operationId": "admin_listAuditLogs",
+        "parameters": [],
+        "responses": {
+          "200": {
             "description": ""
           }
         },
