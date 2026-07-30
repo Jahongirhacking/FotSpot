@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import {
   AssignAdminDto,
   CreatePermissionDto,
@@ -14,13 +15,13 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Patch('coaches/:id/verify')
-  verifyCoach(@Param('id') id: string, @Body() dto: VerifyDto) {
-    return this.adminService.verifyCoach(id, dto.approve);
+  verifyCoach(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: VerifyDto) {
+    return this.adminService.verifyCoach(user.userId, id, dto.approve);
   }
 
   @Patch('academies/:id/verify')
-  verifyAcademy(@Param('id') id: string, @Body() dto: VerifyDto) {
-    return this.adminService.verifyAcademy(id, dto.approve);
+  verifyAcademy(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: VerifyDto) {
+    return this.adminService.verifyAcademy(user.userId, id, dto.approve);
   }
 
   @Get('audit-logs')
@@ -32,14 +33,14 @@ export class AdminController {
 
   @Roles('super_admin')
   @Post('admins')
-  assignAdmin(@Body() dto: AssignAdminDto) {
-    return this.adminService.assignAdmin(dto.userId);
+  assignAdmin(@CurrentUser() user: AuthUser, @Body() dto: AssignAdminDto) {
+    return this.adminService.assignAdmin(user.userId, dto.userId);
   }
 
   @Roles('super_admin')
   @Patch('admins/:userId/revoke')
-  revokeAdmin(@Param('userId') userId: string) {
-    return this.adminService.revokeAdmin(userId);
+  revokeAdmin(@CurrentUser() user: AuthUser, @Param('userId') userId: string) {
+    return this.adminService.revokeAdmin(user.userId, userId);
   }
 
   @Roles('super_admin')
@@ -50,13 +51,13 @@ export class AdminController {
 
   @Roles('super_admin')
   @Post('permissions')
-  createPermission(@Body() dto: CreatePermissionDto) {
-    return this.adminService.createPermission(dto.key);
+  createPermission(@CurrentUser() user: AuthUser, @Body() dto: CreatePermissionDto) {
+    return this.adminService.createPermission(user.userId, dto.key);
   }
 
   @Roles('super_admin')
   @Post('roles/permissions')
-  grantRolePermission(@Body() dto: GrantRolePermissionDto) {
-    return this.adminService.grantRolePermission(dto.roleId, dto.permissionId);
+  grantRolePermission(@CurrentUser() user: AuthUser, @Body() dto: GrantRolePermissionDto) {
+    return this.adminService.grantRolePermission(user.userId, dto.roleId, dto.permissionId);
   }
 }

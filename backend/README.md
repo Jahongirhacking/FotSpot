@@ -12,6 +12,27 @@ section 9** and are intentionally not modeled — adding them later is additive
 (new tables + a module), not a rewrite, because `player_academy_histories`
 and friends don't conflict with anything here.
 
+## Project Setup
+
+```bash
+npx prisma generate
+```
+
+```bash
+sudo docker run --name fotspot-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=fotspot \
+  -p 5432:5432 \
+  -d postgres:16
+```
+
+```bash
+sudo docker run --name fotspot-redis \
+  -p 6379:6379 \
+  -d redis:7
+```
+
 ## Stack & why
 
 - **NestJS** (modular monolith, per 1.15), modules matching 1.15 closely
@@ -23,9 +44,14 @@ and friends don't conflict with anything here.
   `ValidationPipe` in `main.ts`).
 - **argon2** for password/OTP hashing (spec 1.3/1.21).
 - **@nestjs/websockets** (Socket.IO) for the notifications-only gateway
-  (spec 1.17). Redis adapter is *not* wired in this MVP (single instance is
+  (spec 1.17). Redis adapter is _not_ wired in this MVP (single instance is
   enough until horizontal scaling is actually needed) — it's a one-line
   addition (`@socket.io/redis-adapter`) when it is.
+- **ioredis** behind a `RedisService` (`src/redis/`) for the read-through cache
+  in 1.19. Cache failures degrade to Postgres rather than erroring — Postgres
+  stays authoritative, so nothing is lost when Redis is down.
+- **Jest** (`pnpm test`) for unit tests. Currently covering the pure reputation
+  utils; see "Testing" below.
 - **BullMQ** is declared as a dependency for the queue jobs in 1.18, but no
   workers are implemented in this pass — video/thumbnail/email jobs aren't
   "necessary and minimal" for a functioning MVP API and are pure
@@ -76,6 +102,35 @@ a clearly marked stub body, not faked as if it worked:
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
   plain admins can verify coaches/academies/moderate/view audit logs but
   cannot create admins or manage roles/permissions — only `super_admin` can.
+- **Follows** (1.2): scouts follow players and academies (`Follow`, polymorphic
+  over `targetType`). Unfollow is idempotent, as with `MediaService.unlike`.
+- **Media engagement** (1.14): `media_views` (guest-attributable, never pushed
+  over WebSocket per 1.17) and `media_comments` with author-only deletion.
+- **Sessions & device tracking** (1.21): one `Session` row per logged-in device,
+  refresh tokens carry their session id as `sid` and rotate per device. Reusing
+  an already-rotated refresh token revokes that session (replay detection).
+  `GET /auth/sessions` lists active devices; logout takes one device or all.
+- **Caching** (1.19): player and academy profile reads go through `RedisService`,
+  invalidated on every write that could stale them (including media upload,
+  which is embedded in the player profile payload).
+- **Audit logging** (1.21): `AuditService.record()` writes an actor-attributed
+  row for coach/academy verification, admin grants and revocations, permission
+  and role-permission changes, report resolution and media takedown.
+
+## Beyond MVP: v1.1/v1.3 items built with explicit sign-off
+
+These come from README sections the spec's own §9 defers. They were built at the
+owner's request, not by scope drift:
+
+- **Academy → scout trust** (1.5.2): `AcademyScoutFollow` (FOLLOWING/MUTED) plus
+  `scout-trust.util.ts`. An academy's trust scales a scout's weight *in that
+  academy's ranking only*, capped at 2.0 so it can never promote a scout a full
+  tier. It deliberately does not feed global reputation — see the util's header.
+- **Ranked academy inbox** (1.5.1): `GET /recommendations/academy/:id/ranked`
+  groups recommendations per player and collapses them with the harmonic
+  discount, so fabricated volume is worth ~ln(n).
+- **`playingStyle`** (21.3): enum on `PlayerProfile` + a search filter, so
+  "we need a Destroyer, U16, Fergana" is expressible.
 
 ## Running it
 
@@ -90,9 +145,48 @@ npm run start:dev
 API is served under `/api/v1`. WebSocket notifications connect to the
 `/notifications` namespace with `{ auth: { token: <accessToken> } }`.
 
+## Testing
+
+```bash
+pnpm test          # unit specs, no infrastructure required
+pnpm test:cov      # with coverage
+```
+
+Unit specs sit beside the code (`*.spec.ts`). Current coverage is the pure
+reputation logic — `scout-level.util.spec.ts` (tier boundaries, the geometric
+weight ladder, credibility aggregation) and `scout-trust.util.spec.ts` (trust
+multipliers, and the invariant that trust can never promote a scout a tier).
+Service-level specs with a mocked Prisma and e2e specs under a top-level
+`test/` dir are still to come — see `CLAUDE.md` §8.
+
+> `pnpm lint` currently crashes on Node 18 (ESLint 10's stylish formatter calls
+> `util.styleText`, added in Node 20). Use `npx eslint . -f compact` until the
+> toolchain moves to Node 20+. Unrelated to application code.
+
 ## Deliberately not built (per MVP scope, 1.23 "Excluded" + section 9)
 
 Chat, Payments, Live Streaming, Transfer Market, AI Video Analysis, Mobile
 Apps, Fantasy Football, and everything in README sections 3–8 (player
 academy history, pro-transition dashboard, badges, long-term scout impact,
 transfer/release workflow).
+
+Also still unbuilt from the Phase 1.5 sections: §11 guardian consent and minor
+visibility, §12 age verification and integrity rules, §13 Combine sessions and
+the Player Index, §15 subscriptions. **§11 in particular is a launch blocker —
+this API currently has no notion of a guardian, and must not be pointed at real
+minors until it does.**
+
+## Migrations
+
+The migration `20260729145853_add_sessions_follows_media_engagement_playing_style`
+was generated offline with `prisma migrate diff` (no database was reachable in
+the authoring environment) and has **not yet been applied or round-tripped
+against a live Postgres**. Before trusting it:
+
+```bash
+docker compose up -d postgres redis
+pnpm prisma:migrate         # applies and verifies against the dev database
+```
+
+Note it drops `User.refreshTokenHash` in favour of the `Session` table, so any
+existing logged-in users are signed out once applied.

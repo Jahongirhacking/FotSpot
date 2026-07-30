@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.actions';
 import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
 
 @Injectable()
 export class ModerationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async fileReport(reporterId: string, dto: CreateReportDto) {
     const hasTarget =
@@ -33,7 +38,7 @@ export class ModerationService {
   }
 
   /** Admin-only: resolves a report, optionally taking down reported media. */
-  async resolve(reportId: string, dto: ResolveReportDto) {
+  async resolve(actorId: string, reportId: string, dto: ResolveReportDto) {
     const report = await this.prisma.report.findUnique({ where: { id: reportId } });
     if (!report) throw new NotFoundException('Report not found');
 
@@ -42,16 +47,31 @@ export class ModerationService {
         where: { id: report.targetMediaId },
         data: { status: 'REMOVED' },
       });
+      await this.audit.record(actorId, AuditAction.MEDIA_TAKEN_DOWN, {
+        mediaId: report.targetMediaId,
+        reportId,
+      });
     }
 
-    return this.prisma.report.update({
+    const resolved = await this.prisma.report.update({
       where: { id: reportId },
       data: { status: dto.status, resolutionNote: dto.resolutionNote },
     });
+
+    await this.audit.record(actorId, AuditAction.REPORT_RESOLVED, {
+      reportId,
+      status: dto.status,
+    });
+    return resolved;
   }
 
   /** Admin-only: flag media without a formal report (e.g. proactive moderation). */
-  async flagMedia(mediaId: string) {
-    return this.prisma.media.update({ where: { id: mediaId }, data: { status: 'FLAGGED' } });
+  async flagMedia(actorId: string, mediaId: string) {
+    const media = await this.prisma.media.update({
+      where: { id: mediaId },
+      data: { status: 'FLAGGED' },
+    });
+    await this.audit.record(actorId, AuditAction.MEDIA_TAKEN_DOWN, { mediaId, flaggedOnly: true });
+    return media;
   }
 }

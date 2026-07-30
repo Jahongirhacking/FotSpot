@@ -4,7 +4,10 @@ import { RbacService } from '../rbac/rbac.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService, private rbac: RbacService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rbac: RbacService,
+  ) {}
 
   async findMe(userId: string) {
     const user = await this.prisma.user.findUnique({

@@ -1,4 +1,11 @@
-import { IsEmail, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterEmailDto {
   @IsEmail()
@@ -41,6 +48,13 @@ export class VerifyOtpDto {
 export class RefreshTokenDto {
   @IsString()
   refreshToken: string;
+}
+
+export class LogoutDto {
+  /** Defaults to this device only; true revokes every active session (1.21). */
+  @IsOptional()
+  @IsBoolean()
+  allDevices?: boolean;
 }
 
 export class OAuthLoginDto {

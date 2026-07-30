@@ -5,7 +5,10 @@ import { NotificationEvent, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService, private gateway: NotificationsGateway) {}
+  constructor(
+    private prisma: PrismaService,
+    private gateway: NotificationsGateway,
+  ) {}
 
   async notify(userId: string, event: NotificationEvent, payload: Record<string, unknown>) {
     const notification = await this.prisma.notification.create({

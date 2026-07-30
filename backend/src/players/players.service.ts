@@ -1,5 +1,13 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
+import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
 import {
   CreatePlayerProfileDto,
@@ -10,7 +18,11 @@ import {
 
 @Injectable()
 export class PlayersService {
-  constructor(private prisma: PrismaService, private rbac: RbacService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rbac: RbacService,
+    private redis: RedisService,
+  ) {}
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
@@ -30,36 +42,44 @@ export class PlayersService {
     return profile;
   }
 
+  /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
   async getPublicProfile(playerId: string) {
-    const profile = await this.prisma.playerProfile.findUnique({
-      where: { id: playerId },
-      include: { media: { where: { status: 'ACTIVE' } } },
-    });
+    const profile = await this.redis.wrap(
+      RedisKeys.playerProfile(playerId),
+      CacheTtl.playerProfile,
+      () =>
+        this.prisma.playerProfile.findUnique({
+          where: { id: playerId },
+          include: { media: { where: { status: 'ACTIVE' } } },
+        }),
+    );
     if (!profile) throw new NotFoundException('Player not found');
     return profile;
   }
 
   async updateProfile(userId: string, dto: UpdatePlayerProfileDto) {
     await this.assertOwner(userId);
-    return this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    const updated = await this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    await this.redis.del(RedisKeys.playerProfile(updated.id));
+    return updated;
   }
 
   async updateStats(userId: string, dto: UpdatePlayerStatsDto) {
     await this.assertOwner(userId);
-    return this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    const updated = await this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    await this.redis.del(RedisKeys.playerProfile(updated.id));
+    return updated;
   }
 
   async search(dto: SearchPlayersDto) {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 20;
 
-    const where: any = {};
+    const where: Prisma.PlayerProfileWhereInput = {};
     if (dto.region) where.region = dto.region;
+    if (dto.playingStyle) where.playingStyle = dto.playingStyle;
     if (dto.position) {
-      where.OR = [
-        { primaryPosition: dto.position },
-        { secondaryPosition: dto.position },
-      ];
+      where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];
     }
     if (dto.query) {
       where.AND = [

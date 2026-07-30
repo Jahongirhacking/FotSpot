@@ -6,6 +6,8 @@ import { AuthUser } from '../../common/decorators/current-user.decorator';
 
 export interface JwtPayload {
   sub: string;
+  /** Session this token was issued to, so logout can target one device (1.21). */
+  sid?: string;
   roles: string[];
   permissions: string[];
 }
@@ -21,6 +23,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthUser> {
-    return { userId: payload.sub, roles: payload.roles, permissions: payload.permissions };
+    return {
+      userId: payload.sub,
+      sessionId: payload.sid,
+      roles: payload.roles,
+      permissions: payload.permissions,
+    };
   }
 }

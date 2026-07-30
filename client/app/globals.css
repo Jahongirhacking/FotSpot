@@ -1,26 +1,192 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/*
+ * FotSpot design tokens — Tailwind v4 CSS-first config.
+ * There is deliberately no tailwind.config.ts (client/CLAUDE.md §10): extend the
+ * @theme block below instead.
+ *
+ * Palette intent: a pitch-green primary with an electric accent — energetic enough
+ * for a 13-year-old's player card, sober enough for an academy manager reviewing
+ * recommendations. Both audiences use the same app.
+ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --background: oklch(99% 0.004 250);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(97% 0.005 250);
+  --surface-3: oklch(94% 0.008 250);
+  --foreground: oklch(21% 0.02 255);
+  --muted: oklch(52% 0.018 257);
+  --border: oklch(91% 0.008 255);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --primary: oklch(58% 0.15 155);
+  --primary-strong: oklch(50% 0.15 155);
+  --primary-foreground: oklch(99% 0.01 155);
+  --accent: oklch(78% 0.19 128);
+  --accent-foreground: oklch(24% 0.06 140);
+
+  --success: oklch(60% 0.15 152);
+  --warning: oklch(72% 0.16 75);
+  --danger: oklch(58% 0.2 22);
+  --info: oklch(62% 0.14 245);
+
+  /* Provenance chips — README §12.4 / §21.1. Distinct hues so a self-reported
+     number never visually passes as a measured one. */
+  --prov-combine: oklch(62% 0.14 245);
+  --prov-coach: oklch(60% 0.15 152);
+  --prov-self: oklch(58% 0.02 257);
+
+  --ring: oklch(58% 0.15 155);
+  --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: oklch(17% 0.015 258);
+    --surface: oklch(21% 0.018 258);
+    --surface-2: oklch(25% 0.02 258);
+    --surface-3: oklch(30% 0.022 258);
+    --foreground: oklch(96% 0.006 250);
+    --muted: oklch(70% 0.02 255);
+    --border: oklch(31% 0.02 258);
+
+    --primary: oklch(70% 0.16 155);
+    --primary-strong: oklch(78% 0.17 152);
+    --primary-foreground: oklch(18% 0.04 155);
+    --accent: oklch(85% 0.2 128);
+    --accent-foreground: oklch(20% 0.06 140);
+
+    --success: oklch(72% 0.16 152);
+    --warning: oklch(80% 0.15 78);
+    --danger: oklch(68% 0.19 22);
+    --info: oklch(72% 0.13 245);
+
+    --prov-combine: oklch(72% 0.13 245);
+    --prov-coach: oklch(72% 0.16 152);
+    --prov-self: oklch(66% 0.02 257);
+
+    --ring: oklch(70% 0.16 155);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Explicit theme override must win over the media query in both directions. */
+:root[data-theme='light'] {
+  --background: oklch(99% 0.004 250);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(97% 0.005 250);
+  --surface-3: oklch(94% 0.008 250);
+  --foreground: oklch(21% 0.02 255);
+  --muted: oklch(52% 0.018 257);
+  --border: oklch(91% 0.008 255);
+  --primary: oklch(58% 0.15 155);
+  --primary-strong: oklch(50% 0.15 155);
+  --primary-foreground: oklch(99% 0.01 155);
+  --accent: oklch(78% 0.19 128);
+  --accent-foreground: oklch(24% 0.06 140);
+  --prov-combine: oklch(62% 0.14 245);
+  --prov-coach: oklch(60% 0.15 152);
+  --prov-self: oklch(58% 0.02 257);
+}
+
+:root[data-theme='dark'] {
+  --background: oklch(17% 0.015 258);
+  --surface: oklch(21% 0.018 258);
+  --surface-2: oklch(25% 0.02 258);
+  --surface-3: oklch(30% 0.022 258);
+  --foreground: oklch(96% 0.006 250);
+  --muted: oklch(70% 0.02 255);
+  --border: oklch(31% 0.02 258);
+  --primary: oklch(70% 0.16 155);
+  --primary-strong: oklch(78% 0.17 152);
+  --primary-foreground: oklch(18% 0.04 155);
+  --accent: oklch(85% 0.2 128);
+  --accent-foreground: oklch(20% 0.06 140);
+  --prov-combine: oklch(72% 0.13 245);
+  --prov-coach: oklch(72% 0.16 152);
+  --prov-self: oklch(66% 0.02 257);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --color-prov-combine: var(--prov-combine);
+  --color-prov-coach: var(--prov-coach);
+  --color-prov-self: var(--prov-self);
+
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-card: var(--radius);
+}
+
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Honest, visible focus. The audience includes parents on old devices and
+     keyboard users; a suppressed outline is not a style choice. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+}
+
+@layer utilities {
+  /* Wide content (tables, filter rows) scrolls inside its own container so the
+     page body never scrolls horizontally on a phone. */
+  .scroll-x {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .pitch-gradient {
+    background-image:
+      radial-gradient(
+        ellipse 80% 60% at 50% -10%,
+        color-mix(in oklab, var(--primary) 22%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 90% 10%,
+        color-mix(in oklab, var(--accent) 14%, transparent),
+        transparent 70%
+      );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

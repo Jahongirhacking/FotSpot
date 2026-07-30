@@ -1,0 +1,291 @@
+/**
+ * Typed wrappers, one group per backend controller (client/CLAUDE.md §6).
+ * Route strings mirror the NestJS controllers 1:1 — if a route moves, it moves here.
+ */
+import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
+import type {
+  AcademyProfile,
+  AcademyScoutFollow,
+  AcademyScoutFollowState,
+  AppNotification,
+  CoachAssessment,
+  CoachProfile,
+  DeviceSession,
+  Follow,
+  FollowTargetType,
+  Media,
+  MediaCategory,
+  MediaType,
+  PlayerProfile,
+  PlayingStyle,
+  RankedRecommendation,
+  Recommendation,
+  RecommendationStatus,
+  ScoutStats,
+  Trial,
+  TrialApplication,
+  TrialApplicationStatus,
+} from './types';
+
+type Opts = Pick<RequestOptions, 'token' | 'revalidate' | 'tags' | 'cache'>;
+
+// ---------- Players ----------
+
+export interface PlayerSearchParams {
+  region?: string;
+  position?: string;
+  playingStyle?: PlayingStyle;
+  query?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export const players = {
+  search: (params: PlayerSearchParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<PlayerProfile>>(`/players/search${toQuery({ ...params })}`, opts),
+
+  getById: (id: string, opts: Opts = {}) => apiFetch<PlayerProfile>(`/players/${id}`, opts),
+
+  getMine: (opts: Opts = {}) => apiFetch<PlayerProfile>('/players/me', opts),
+
+  createProfile: (body: CreatePlayerProfileBody, opts: Opts = {}) =>
+    apiFetch<PlayerProfile>('/players/me', { method: 'POST', body, ...opts }),
+
+  updateProfile: (body: UpdatePlayerProfileBody, opts: Opts = {}) =>
+    apiFetch<PlayerProfile>('/players/me', { method: 'PATCH', body, ...opts }),
+
+  updateStats: (body: UpdatePlayerStatsBody, opts: Opts = {}) =>
+    apiFetch<PlayerProfile>('/players/me/stats', { method: 'PATCH', body, ...opts }),
+};
+
+export interface CreatePlayerProfileBody {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  gender: string;
+  height?: number;
+  weight?: number;
+  dominantFoot?: 'LEFT' | 'RIGHT' | 'BOTH';
+  primaryPosition?: string;
+  secondaryPosition?: string;
+  playingStyle?: PlayingStyle;
+  region?: string;
+  district?: string;
+}
+
+export type UpdatePlayerProfileBody = Partial<
+  Omit<CreatePlayerProfileBody, 'firstName' | 'lastName' | 'birthDate' | 'gender'>
+>;
+
+export interface UpdatePlayerStatsBody {
+  matches?: number;
+  goals?: number;
+  assists?: number;
+  cleanSheets?: number;
+  sprintTime?: number;
+  jugglingRecord?: number;
+}
+
+// ---------- Academies ----------
+
+export const academies = {
+  listPublic: (region?: string, opts: Opts = {}) =>
+    apiFetch<AcademyProfile[]>(`/academies${toQuery({ region })}`, opts),
+
+  getById: (id: string, opts: Opts = {}) => apiFetch<AcademyProfile>(`/academies/${id}`, opts),
+
+  register: (
+    body: { name: string; region?: string; district?: string; description?: string },
+    opts: Opts = {},
+  ) => apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+
+  listStaff: (id: string, opts: Opts = {}) =>
+    apiFetch<AcademyProfile['members']>(`/academies/${id}/staff`, opts),
+};
+
+// ---------- Coaches ----------
+
+export const coaches = {
+  getMine: (opts: Opts = {}) => apiFetch<CoachProfile>('/coaches/me', opts),
+
+  createProfile: (body: { bio?: string }, opts: Opts = {}) =>
+    apiFetch<CoachProfile>('/coaches/me', { method: 'POST', body, ...opts }),
+
+  assess: (body: CreateAssessmentBody, opts: Opts = {}) =>
+    apiFetch<CoachAssessment>('/coaches/assessments', { method: 'POST', body, ...opts }),
+
+  assessmentsForPlayer: (playerId: string, opts: Opts = {}) =>
+    apiFetch<CoachAssessment[]>(`/coaches/assessments/player/${playerId}`, opts),
+};
+
+export interface CreateAssessmentBody {
+  playerId: string;
+  speed: number;
+  passing: number;
+  vision: number;
+  dribbling: number;
+  finishing: number;
+  physical: number;
+  leadership: number;
+  discipline: number;
+  notes?: string;
+}
+
+// ---------- Recommendations ----------
+
+export const recommendations = {
+  create: (body: { playerId: string; academyId: string; note?: string }, opts: Opts = {}) =>
+    apiFetch<Recommendation>('/recommendations', { method: 'POST', body, ...opts }),
+
+  listMine: (opts: Opts = {}) => apiFetch<Recommendation[]>('/recommendations/mine', opts),
+
+  listForAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
+
+  /** Credibility-ranked inbox — README §1.5.1/§1.5.2. */
+  listRanked: (academyId: string, opts: Opts = {}) =>
+    apiFetch<{ items: RankedRecommendation[]; total: number }>(
+      `/recommendations/academy/${academyId}/ranked`,
+      opts,
+    ),
+
+  updateStatus: (id: string, status: RecommendationStatus, opts: Opts = {}) =>
+    apiFetch<Recommendation>(`/recommendations/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+      ...opts,
+    }),
+
+  myScoutStats: (opts: Opts = {}) => apiFetch<ScoutStats>('/recommendations/scout-stats/me', opts),
+};
+
+// ---------- Trials ----------
+
+export const trials = {
+  /** GET /trials — @Public(), returns upcoming trials. */
+  listUpcoming: (opts: Opts = {}) => apiFetch<Trial[]>('/trials', opts),
+
+  listForAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<Trial[]>(`/trials/academy/${academyId}`, opts),
+
+  getById: (id: string, opts: Opts = {}) => apiFetch<Trial>(`/trials/${id}`, opts),
+
+  create: (academyId: string, body: CreateTrialBody, opts: Opts = {}) =>
+    apiFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body, ...opts }),
+
+  apply: (trialId: string, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/${trialId}/apply`, { method: 'POST', ...opts }),
+
+  myApplications: (opts: Opts = {}) =>
+    apiFetch<TrialApplication[]>('/trials/applications/mine', opts),
+
+  listApplications: (trialId: string, opts: Opts = {}) =>
+    apiFetch<TrialApplication[]>(`/trials/${trialId}/applications`, opts),
+
+  updateApplicationStatus: (
+    applicationId: string,
+    status: TrialApplicationStatus,
+    opts: Opts = {},
+  ) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/status`, {
+      method: 'PATCH',
+      body: { status },
+      ...opts,
+    }),
+};
+
+export interface CreateTrialBody {
+  title: string;
+  ageRangeMin: number;
+  ageRangeMax: number;
+  positions: string[];
+  location: string;
+  date: string;
+  requirements?: string;
+}
+
+// ---------- Media ----------
+
+export const media = {
+  listForPlayer: (playerId: string, opts: Opts = {}) =>
+    apiFetch<Media[]>(`/media/player/${playerId}`, opts),
+
+  requestUpload: (
+    body: { filename: string; type: MediaType; category: MediaCategory },
+    opts: Opts = {},
+  ) =>
+    apiFetch<{ storageKey: string; uploadUrl: string }>('/media/upload-url', {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  confirmUpload: (
+    body: { storageKey: string; type: MediaType; category: MediaCategory },
+    opts: Opts = {},
+  ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
+
+  like: (id: string, opts: Opts = {}) =>
+    apiFetch<unknown>(`/media/${id}/like`, { method: 'POST', ...opts }),
+
+  unlike: (id: string, opts: Opts = {}) =>
+    apiFetch<unknown>(`/media/${id}/like`, { method: 'DELETE', ...opts }),
+
+  recordView: (id: string, opts: Opts = {}) =>
+    apiFetch<unknown>(`/media/${id}/view`, { method: 'POST', ...opts }),
+
+  engagement: (id: string, opts: Opts = {}) =>
+    apiFetch<{ mediaId: string; views: number; likes: number; comments: number }>(
+      `/media/${id}/engagement`,
+      opts,
+    ),
+};
+
+// ---------- Follows ----------
+
+export const follows = {
+  follow: (body: { targetType: FollowTargetType; targetId: string }, opts: Opts = {}) =>
+    apiFetch<Follow>('/follows', { method: 'POST', body, ...opts }),
+
+  unfollow: (body: { targetType: FollowTargetType; targetId: string }, opts: Opts = {}) =>
+    apiFetch<{ unfollowed: boolean }>('/follows', { method: 'DELETE', body, ...opts }),
+
+  listMine: (params: { targetType?: FollowTargetType; page?: number } = {}, opts: Opts = {}) =>
+    apiFetch<Page<Follow>>(`/follows/me${toQuery({ ...params })}`, opts),
+
+  countFollowers: (targetType: FollowTargetType, targetId: string, opts: Opts = {}) =>
+    apiFetch<{ followers: number }>(`/follows/count/${targetType}/${targetId}`, opts),
+
+  /** Academy → scout trust (README §1.5.2). */
+  setScoutState: (
+    academyId: string,
+    body: { scoutId: string; state: AcademyScoutFollowState },
+    opts: Opts = {},
+  ) =>
+    apiFetch<AcademyScoutFollow>(`/follows/academy/${academyId}/scouts`, {
+      method: 'PUT',
+      body,
+      ...opts,
+    }),
+
+  scoutNetwork: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyScoutFollow[]>(`/follows/academy/${academyId}/scouts`, opts),
+
+  academiesFollowingMe: (opts: Opts = {}) =>
+    apiFetch<{ academyId: string; createdAt: string }[]>('/follows/me/academies', opts),
+};
+
+// ---------- Notifications ----------
+
+export const notifications = {
+  list: (opts: Opts = {}) => apiFetch<AppNotification[]>('/notifications', opts),
+
+  markRead: (id: string, opts: Opts = {}) =>
+    apiFetch<AppNotification>(`/notifications/${id}/read`, { method: 'PATCH', ...opts }),
+};
+
+// ---------- Auth / sessions ----------
+
+export const auth = {
+  sessions: (opts: Opts = {}) => apiFetch<DeviceSession[]>('/auth/sessions', opts),
+};

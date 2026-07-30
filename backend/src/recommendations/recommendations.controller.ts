@@ -22,6 +22,12 @@ export class RecommendationsController {
     return this.recommendationsService.listForAcademy(academyId);
   }
 
+  /** Manager-only: same inbox ranked by per-academy credibility (1.5.1/1.5.2). */
+  @Get('academy/:academyId/ranked')
+  listRankedForAcademy(@CurrentUser() user: AuthUser, @Param('academyId') academyId: string) {
+    return this.recommendationsService.listRankedForAcademy(user.userId, academyId);
+  }
+
   @Patch(':id/status')
   updateStatus(
     @CurrentUser() user: AuthUser,

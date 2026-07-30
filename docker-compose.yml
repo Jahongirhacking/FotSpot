@@ -1,4 +1,25 @@
-version: "3.8"
+# FotSpot local development infrastructure.
+#
+# Provisions Postgres and Redis ONLY. The API and the frontend are run directly
+# with pnpm/npm, not through Compose (see CLAUDE.md §2) — which is why both
+# services publish their ports to the host.
+#
+# CREDENTIALS MUST MATCH backend/.env. The defaults below are the two halves of
+# the same setting:
+#
+#   backend/.env  DATABASE_URL="postgresql://postgres:postgres@localhost:5432/fotspot"
+#                                            └─user─┘ └─pass─┘           └port┘ └─db──┘
+#   here          POSTGRES_USER=postgres  POSTGRES_PASSWORD=postgres  POSTGRES_DB=fotspot
+#
+#   backend/.env  REDIS_URL="redis://localhost:6379"   (no password — see redis service)
+#
+# Every value is overridable from a root .env file (Compose reads `.env` next to
+# THIS file, not backend/.env — that is why the previous version started with
+# empty credentials and Postgres refused to initialise). Copy .env.example if you
+# need to change a port or password; otherwise the defaults just work.
+#
+# Service names `postgres` and `redis` are load-bearing per CLAUDE.md §7 — don't
+# rename them.
 
 services:
   postgres:
@@ -6,44 +27,44 @@ services:
     container_name: fotspot_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-fotspot}
     ports:
-      - "5432:5432"
+      # Host port is configurable so a pre-existing local Postgres on 5432 can be
+      # worked around without editing this file. If you change it, change the port
+      # in backend/.env's DATABASE_URL too.
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
+      # -d as well as -U: `pg_isready -U` alone reports ready before the database
+      # named in POSTGRES_DB has been created, so migrations can still fail.
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fotspot}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
     container_name: fotspot_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ""
+    # No requirepass: backend/.env's REDIS_URL carries no password, and the
+    # previous `--requirepass ""` was a no-op that only looked like auth.
+    # Redis holds cache only — nothing here that can't be rebuilt from Postgres
+    # (backend/CLAUDE.md §7) — but appendonly keeps a dev restart from cold.
+    command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-
-  # Uncomment for Redis GUI (optional)
-  # redis-commander:
-  #   image: rediscommander/redis-commander:latest
-  #   container_name: goalspot_redis_ui
-  #   environment:
-  #     REDIS_HOSTS: local:redis:6379
-  #   ports:
-  #     - '8081:8081'
-  #   depends_on:
-  #     - redis
+      retries: 10
 
 volumes:
   postgres_data:

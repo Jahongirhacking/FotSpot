@@ -64,9 +64,9 @@ model User {
   firstName     String?
   lastName      String?
   isActive      Boolean  @default(true)
-  refreshTokenHash String?
 
   roles         UserRole[]
+  sessions      Session[]
   playerProfile PlayerProfile?
   coachProfile  CoachProfile?
   academyMemberships AcademyMember[]
@@ -76,9 +76,36 @@ model User {
   otpCodes      OtpCode[]
   auditLogs     AuditLog[]
   reportsFiled  Report[] @relation("ReportsFiled")
+  follows       Follow[] @relation("UserFollows")
+  followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
+  mediaComments MediaComment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * One row per logged-in device - README 1.21 (Refresh Tokens + Device Tracking).
+ * Replaces the single User.refreshTokenHash, which allowed exactly one session per
+ * user: logging in on a phone silently killed the tablet. The refresh token carries
+ * this row's id as its `sid` claim, so rotation and revocation target one device.
+ */
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String
+  deviceId         String?
+  userAgent        String?
+  ipAddress        String?
+
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model OtpCode {
@@ -100,6 +127,32 @@ enum DominantFoot {
   BOTH
 }
 
+/**
+ * Playing style - README 21.3. Recruitment metadata, not decoration: academies
+ * recruit for a *role* ("we need a Destroyer, U16, Fergana"), which position alone
+ * cannot express. Grouped by position in the spec; stored flat here.
+ */
+enum PlayingStyle {
+  // Forward
+  POACHER
+  TARGET_MAN
+  DEEP_LYING_FORWARD
+  WIDE_THREAT
+  // Midfield
+  BOX_TO_BOX
+  PLAYMAKER
+  DESTROYER
+  ORCHESTRATOR
+  // Defence
+  BALL_PLAYING_DEFENDER
+  STOPPER
+  OVERLAPPING_FULL_BACK
+  SWEEPER
+  // Goalkeeper
+  OFFENSIVE_KEEPER
+  DEFENSIVE_KEEPER
+}
+
 model PlayerProfile {
   id               String   @id @default(uuid())
   userId           String   @unique
@@ -116,6 +169,7 @@ model PlayerProfile {
   dominantFoot     DominantFoot?
   primaryPosition  String?
   secondaryPosition String?
+  playingStyle     PlayingStyle?
 
   region      String?
   district    String?
@@ -166,6 +220,7 @@ model AcademyProfile {
   members  AcademyMember[]
   trials   Trial[]
   recommendations Recommendation[]
+  scoutFollows AcademyScoutFollow[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -226,6 +281,8 @@ model Media {
   status     MediaStatus @default(ACTIVE)
 
   likes      MediaLike[]
+  views      MediaView[]
+  comments   MediaComment[]
   reports    Report[] @relation("ReportedMedia")
 
   createdAt DateTime @default(now())
@@ -240,6 +297,88 @@ model MediaLike {
   createdAt DateTime @default(now())
 
   @@unique([mediaId, userId])
+}
+
+/**
+ * View counter rows (1.14 `media_views`). `userId` is null for guests, who may view
+ * public media (1.2). Deliberately NOT unique per (media, user): a view is an event,
+ * not a state, unlike a like.
+ */
+model MediaView {
+  id      String @id @default(uuid())
+  mediaId String
+  userId  String?
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([mediaId])
+}
+
+model MediaComment {
+  id      String @id @default(uuid())
+  mediaId String
+  userId  String
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  body    String
+  status  MediaStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mediaId])
+}
+
+// ---------- FOLLOWS (1.2 / 1.5.2) ----------
+
+enum FollowTargetType {
+  PLAYER
+  ACADEMY
+}
+
+/** Scout -> player / academy following (1.2 Scout permissions). */
+model Follow {
+  id         String @id @default(uuid())
+  followerId String
+  follower   User   @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
+
+  targetType FollowTargetType
+  targetId   String
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+enum AcademyScoutFollowState {
+  FOLLOWING
+  MUTED
+}
+
+/**
+ * Academy -> scout trust (README 1.5.2). Separate from `Follow` because the
+ * follower is an *academy*, not a user, and because MUTED has no meaning in the
+ * scout->player direction. Affects that academy's own recommendation ranking only -
+ * never the scout's global reputation (1.5).
+ */
+model AcademyScoutFollow {
+  id        String @id @default(uuid())
+  academyId String
+  scoutId   String
+
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  scout     User           @relation("AcademyScoutFollows", fields: [scoutId], references: [id], onDelete: Cascade)
+
+  state     AcademyScoutFollowState @default(FOLLOWING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([academyId, scoutId])
+  @@index([scoutId])
 }
 
 // ---------- SCOUT REPUTATION (1.5) ----------

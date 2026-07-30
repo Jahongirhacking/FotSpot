@@ -21,13 +21,13 @@ export class ModerationController {
 
   @Roles('admin', 'super_admin')
   @Patch('reports/:id/resolve')
-  resolve(@Param('id') id: string, @Body() dto: ResolveReportDto) {
-    return this.moderationService.resolve(id, dto);
+  resolve(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: ResolveReportDto) {
+    return this.moderationService.resolve(user.userId, id, dto);
   }
 
   @Roles('admin', 'super_admin')
   @Patch('media/:id/flag')
-  flagMedia(@Param('id') id: string) {
-    return this.moderationService.flagMedia(id);
+  flagMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.flagMedia(user.userId, id);
   }
 }
