@@ -3,7 +3,10 @@ import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateTrialDto, UpdateTrialApplicationStatusDto } from './dto/trial.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('trials')
+@ApiBearerAuth('bearer')
 @Controller('trials')
 export class TrialsController {
   constructor(private trialsService: TrialsService) {}

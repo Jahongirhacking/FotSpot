@@ -1,8 +1,11 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { AcademyScoutFollowState, FollowTargetType } from '@prisma/client';
 
 export class CreateFollowDto {
+  @ApiProperty({ enum: FollowTargetType, enumName: 'FollowTargetType' })
+  @ApiProperty({ enum: FollowTargetType, enumName: 'FollowTargetType' })
   @IsEnum(FollowTargetType)
   targetType: FollowTargetType;
 
@@ -11,7 +14,9 @@ export class CreateFollowDto {
 }
 
 export class ListFollowsDto {
+  @ApiPropertyOptional({ enum: FollowTargetType, enumName: 'FollowTargetType' })
   @IsOptional()
+  @ApiPropertyOptional({ enum: FollowTargetType, enumName: 'FollowTargetType' })
   @IsEnum(FollowTargetType)
   targetType?: FollowTargetType;
 
@@ -33,6 +38,8 @@ export class SetScoutFollowStateDto {
   @IsString()
   scoutId: string;
 
+  @ApiProperty({ enum: AcademyScoutFollowState, enumName: 'AcademyScoutFollowState' })
+  @ApiProperty({ enum: AcademyScoutFollowState, enumName: 'AcademyScoutFollowState' })
   @IsEnum(AcademyScoutFollowState)
   state: AcademyScoutFollowState;
 }

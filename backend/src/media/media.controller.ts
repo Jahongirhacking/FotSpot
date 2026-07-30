@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -20,6 +21,8 @@ import {
   RequestUploadDto,
 } from './dto/media.dto';
 
+@ApiTags('media')
+@ApiBearerAuth('bearer')
 @Controller('media')
 export class MediaController {
   constructor(private mediaService: MediaService) {}

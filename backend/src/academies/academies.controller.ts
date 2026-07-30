@@ -4,7 +4,10 @@ import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AddStaffMemberDto, CreateAcademyDto, UpdateAcademyDto } from './dto/academy.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('academies')
+@ApiBearerAuth('bearer')
 @Controller('academies')
 export class AcademiesController {
   constructor(private academiesService: AcademiesService) {}

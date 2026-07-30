@@ -2,7 +2,10 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('recommendations')
+@ApiBearerAuth('bearer')
 @Controller('recommendations')
 export class RecommendationsController {
   constructor(private recommendationsService: RecommendationsService) {}

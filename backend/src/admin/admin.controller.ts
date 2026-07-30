@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -9,6 +10,8 @@ import {
   VerifyDto,
 } from './dto/admin.dto';
 
+@ApiTags('admin')
+@ApiBearerAuth('bearer')
 @Controller('admin')
 @Roles('admin', 'super_admin')
 export class AdminController {

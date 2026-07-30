@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -13,6 +14,8 @@ import {
   VerifyOtpDto,
 } from './dto/auth.dto';
 
+@ApiTags('auth')
+@ApiBearerAuth('bearer')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}

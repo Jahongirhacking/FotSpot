@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -9,6 +10,8 @@ import {
   VerifyContactChangeDto,
 } from './dto/user.dto';
 
+@ApiTags('users')
+@ApiBearerAuth('bearer')
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}

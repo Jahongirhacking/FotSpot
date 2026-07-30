@@ -3,7 +3,10 @@ import { CoachesService } from './coaches.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateAssessmentDto, CreateCoachProfileDto } from './dto/coach.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('coaches')
+@ApiBearerAuth('bearer')
 @Controller('coaches')
 export class CoachesController {
   constructor(private coachesService: CoachesService) {}

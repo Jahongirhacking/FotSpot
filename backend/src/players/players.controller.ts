@@ -1,3 +1,4 @@
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PlayersService } from './players.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -9,6 +10,8 @@ import {
   UpdatePlayerStatsDto,
 } from './dto/player.dto';
 
+@ApiTags('players')
+@ApiBearerAuth('bearer')
 @Controller('players')
 export class PlayersController {
   constructor(private playersService: PlayersService) {}

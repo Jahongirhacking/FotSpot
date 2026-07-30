@@ -4,7 +4,10 @@ import { FollowsService } from './follows.service';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateFollowDto, ListFollowsDto, SetScoutFollowStateDto } from './dto/follow.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('follows')
+@ApiBearerAuth('bearer')
 @Controller('follows')
 export class FollowsController {
   constructor(private followsService: FollowsService) {}
