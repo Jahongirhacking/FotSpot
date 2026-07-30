@@ -51,6 +51,15 @@ export class RecommendationsController {
     return this.recommendationsService.playerRecommendationSummary(playerId);
   }
 
+  /**
+   * Academies that currently endorse me — the only valid targets for a SPECIFIC
+   * recommendation. Drives the picker, so it can only ever offer valid choices.
+   */
+  @Get('endorsing-academies')
+  endorsingAcademies(@CurrentUser() user: AuthUser) {
+    return this.recommendationsService.endorsingAcademies(user.userId);
+  }
+
   @Get('scout-stats/me')
   myStats(@CurrentUser() user: AuthUser) {
     return this.recommendationsService.getScoutStats(user.userId);

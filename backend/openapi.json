@@ -1821,6 +1821,36 @@
         ]
       }
     },
+    "/api/v1/recommendations/endorsing-academies": {
+      "get": {
+        "operationId": "recommendations_endorsingAcademies",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Academies that currently endorse me — the only valid targets for a SPECIFIC\nrecommendation. Drives the picker, so it can only ever offer valid choices.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/scout-stats/me": {
       "get": {
         "operationId": "recommendations_myStats",

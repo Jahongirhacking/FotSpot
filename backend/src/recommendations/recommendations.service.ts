@@ -380,6 +380,11 @@ export class RecommendationsService {
     return managed[0].academyId;
   }
 
+  /** Academies that endorse this scout — the valid SPECIFIC targets. */
+  async endorsingAcademies(userId: string) {
+    return this.endorsements.listForUser(userId, EndorsementRole.SCOUT);
+  }
+
   async getScoutStats(userId: string) {
     const stats = await this.prisma.scoutStats.findUnique({ where: { userId } });
     return (
