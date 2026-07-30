@@ -14,14 +14,29 @@ export class R2StorageService {
   constructor(private config: ConfigService) {}
 
   buildKey(playerId: string, filename: string) {
-    const ext = filename.split('.').pop();
-    return `players/${playerId}/${crypto.randomUUID()}.${ext}`;
+    return this.buildKeyUnder(`players/${playerId}`, filename);
+  }
+
+  /** Key under an explicit prefix, for objects that aren't player media. */
+  buildKeyUnder(prefix: string, filename: string) {
+    // Extension only, from the last dot: a filename is caller-supplied and must
+    // never be able to steer the key outside its prefix.
+    const ext = filename.includes('.') ? filename.split('.').pop()!.replace(/[^a-z0-9]/gi, '') : 'bin';
+    return `${prefix}/${crypto.randomUUID()}.${ext || 'bin'}`;
   }
 
   /** Returns { uploadUrl, storageKey, publicUrl }. uploadUrl is a stub until
    * real R2 credentials are configured; see class doc above. */
   async getUploadUrl(playerId: string, filename: string) {
-    const storageKey = this.buildKey(playerId, filename);
+    return this.presign(this.buildKey(playerId, filename));
+  }
+
+  /** Avatars live under `avatars/`, not under `players/` — they belong to a user. */
+  async getAvatarUploadUrl(userId: string, filename: string) {
+    return this.presign(this.buildKeyUnder(`avatars/${userId}`, filename));
+  }
+
+  private presign(storageKey: string) {
     const base = this.config.get<string>('R2_PUBLIC_BASE_URL') ?? '';
     return {
       uploadUrl: `${base}/__stub_presigned_put__/${storageKey}`,

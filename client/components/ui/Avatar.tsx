@@ -2,35 +2,44 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Initials-only avatar. There is no user photo upload in the MVP, and for minor
- * profiles a photo is guardian-consented content (README §11.1) — so initials are
- * the correct default rather than a placeholder that implies a missing image.
+ * Avatar image with an initials fallback.
+ *
+ * Plain `<img>` rather than `next/image`: avatars come from R2 at a runtime-
+ * configured host, so they'd need `images.remotePatterns` per deployment, and the
+ * optimiser buys little for a 64px square. `referrerPolicy` keeps the app's URLs
+ * out of the image host's logs.
+ *
+ * For minor profiles a photo is guardian-consented content (README §11.1), so
+ * initials are the correct default rather than a placeholder implying a missing
+ * image.
  */
 export function Avatar({
-  name,
-  size = 'md',
+  src,
+  fallback,
   className,
+  alt = '',
 }: {
-  name: string;
-  size?: 'sm' | 'md' | 'lg';
+  src?: string | null;
+  fallback: string;
   className?: string;
+  alt?: string;
 }) {
-  const sizes = {
-    sm: 'size-8 text-xs',
-    md: 'size-10 text-sm',
-    lg: 'size-14 text-base',
-  };
+  const base = 'grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold';
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        referrerPolicy="no-referrer"
+        className={cn(base, 'bg-surface-3 size-10 object-cover', className)}
+      />
+    );
+  }
 
   return (
-    <span
-      className={cn(
-        'bg-primary/15 text-primary grid shrink-0 place-items-center rounded-full font-semibold',
-        sizes[size],
-        className,
-      )}
-      aria-hidden
-    >
-      {name}
+    <span className={cn(base, 'bg-primary/15 text-primary size-10 text-sm', className)} aria-hidden>
+      {fallback}
     </span>
   );
 }

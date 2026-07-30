@@ -5,6 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ShieldCheck, ArrowLeft, Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
 import {
   PLAYING_STYLES,
   POSITIONS,
@@ -279,6 +280,14 @@ function FootballStep({
           birthDate: new Date(identity.birthDate).toISOString(),
         },
       });
+
+      // Creating the profile granted the `player` role server-side, but the
+      // current token still claims only the roles held at login. Without this the
+      // new role is missing from the switcher until the user signs out and back
+      // in — which is exactly the bug this fixes.
+      await refreshSession();
+      await setActiveRoleCookie('player');
+
       // Land on the card they just created — that is the payoff (§21.6: the card is
       // the player's home screen).
       window.location.assign('/dashboard');

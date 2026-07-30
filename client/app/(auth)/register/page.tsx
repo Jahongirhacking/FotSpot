@@ -1,15 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RegisterForm } from './RegisterForm';
+import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export const metadata: Metadata = { title: 'Create an account' };
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const { t } = await getServerT();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Create your account</CardTitle>
+        <CardTitle className="text-xl">{t.auth.createAccountTitle}</CardTitle>
         <CardDescription>
           Free, always. We&apos;ll ask what you&apos;re here for once you&apos;re in.
         </CardDescription>
@@ -17,9 +20,9 @@ export default function RegisterPage() {
       <CardContent>
         <RegisterForm />
         <p className="text-muted mt-6 text-center text-sm">
-          Already have an account?{' '}
+          {t.auth.alreadyHaveAccount}{' '}
           <Link href="/login" className="text-primary font-medium hover:underline">
-            Sign in
+            {t.auth.signIn}
           </Link>
         </p>
       </CardContent>

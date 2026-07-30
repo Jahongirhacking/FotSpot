@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/layout/Providers';
 import { getSession } from '@/lib/session';
+import { getLocale } from '@/lib/i18n/server';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -37,12 +38,16 @@ export default async function RootLayout({
 }>) {
   // Read the session server-side so the shell renders with the correct role on the
   // first paint — no flash of the wrong dashboard (README §1.2.1).
-  const session = await getSession();
+  const [session, locale] = await Promise.all([getSession(), getLocale()]);
 
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col">
         <Providers
+          locale={locale}
           session={
             session
               ? {

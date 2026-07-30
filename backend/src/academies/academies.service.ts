@@ -23,6 +23,8 @@ export class AcademiesService {
 
   /** 1.10: Request -> Admin Review -> Approved. Creator becomes the pending manager. */
   async register(userId: string, dto: CreateAcademyDto) {
+    await this.assertNotPlayer(userId);
+
     return this.prisma.$transaction(async (tx) => {
       const academy = await tx.academyProfile.create({ data: { ...dto } });
       await tx.academyMember.create({
@@ -30,6 +32,27 @@ export class AcademiesService {
       });
       return academy;
     });
+  }
+
+  /**
+   * A player account cannot register an academy.
+   *
+   * Most player accounts belong to minors (README §11), and an academy is an
+   * institution that recruits them — letting the same account be both is a
+   * conflict of interest and a safeguarding hole, not merely an odd UI state.
+   * Checked against the database rather than the JWT so a token minted before the
+   * player role was granted can't slip past.
+   */
+  private async assertNotPlayer(userId: string) {
+    const playerRole = await this.prisma.userRole.findFirst({
+      where: { userId, role: { name: 'player' } },
+    });
+
+    if (playerRole) {
+      throw new ForbiddenException(
+        'A player account cannot register an academy. Ask an academy manager to invite you as staff instead.',
+      );
+    }
   }
 
   /** Read-heavy, slow-changing (1.19) - served from cache, invalidated on every write below. */

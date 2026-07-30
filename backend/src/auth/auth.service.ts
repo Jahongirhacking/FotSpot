@@ -46,15 +46,22 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
 
     const passwordHash = await argon2.hash(dto.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-      },
+
+    // One transaction: a user without their default role is a broken account —
+    // it can't register again (409) and its JWT carries no roles at all.
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+        },
+      });
+      await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
+      return created;
     });
-    await this.rbac.assignRole(user.id, DEFAULT_ROLE_ON_SIGNUP);
+
     return this.issueTokens(user.id, client);
   }
 
@@ -101,8 +108,15 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
     if (!user) {
-      user = await this.prisma.user.create({ data: { phone: dto.phone } });
-      await this.rbac.assignRole(user.id, DEFAULT_ROLE_ON_SIGNUP);
+      user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({ data: { phone: dto.phone } });
+        await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
+        return created;
+      });
+    } else {
+      // Self-heal an account created before the role catalogue existed: without
+      // this it keeps signing in with an empty `roles` claim and no working UI.
+      await this.rbac.ensureDefaultRoleFor(user.id, DEFAULT_ROLE_ON_SIGNUP);
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
@@ -117,8 +131,13 @@ export class AuthService {
     // Left as an explicit extension point rather than faked.
     let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
-      user = await this.prisma.user.create({ data: { email: dto.email } });
-      await this.rbac.assignRole(user.id, DEFAULT_ROLE_ON_SIGNUP);
+      user = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({ data: { email: dto.email } });
+        await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
+        return created;
+      });
+    } else {
+      await this.rbac.ensureDefaultRoleFor(user.id, DEFAULT_ROLE_ON_SIGNUP);
     }
     return this.issueTokens(user.id, client);
   }

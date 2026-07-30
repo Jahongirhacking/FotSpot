@@ -9,18 +9,20 @@ import {
   Users,
 } from 'lucide-react';
 import type { Role } from '@/lib/roles';
+import type { Dictionary } from '@/lib/i18n';
 
 export interface NavItem {
   href: string;
-  label: string;
+  /** Key into the translated nav dictionary, so labels aren't hardcoded English. */
+  label: keyof Dictionary['nav'];
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const COMMON: NavItem[] = [
-  { href: '/dashboard', label: 'Home', icon: Home },
-  { href: '/players', label: 'Players', icon: Search },
-  { href: '/academies', label: 'Academies', icon: Building2 },
-  { href: '/trials', label: 'Trials', icon: CalendarDays },
+  { href: '/dashboard', label: 'home', icon: Home },
+  { href: '/players', label: 'players', icon: Search },
+  { href: '/academies', label: 'academies', icon: Building2 },
+  { href: '/trials', label: 'trials', icon: CalendarDays },
 ];
 
 /**
@@ -32,34 +34,32 @@ export function navForRole(role: Role | null): NavItem[] {
   switch (role) {
     case 'player':
       return [
-        { href: '/dashboard', label: 'My card', icon: Sparkles },
-        { href: '/trials', label: 'Trials', icon: CalendarDays },
-        { href: '/academies', label: 'Academies', icon: Building2 },
-        { href: '/players', label: 'Players', icon: Search },
+        { href: '/dashboard', label: 'myCard', icon: Sparkles },
+        { href: '/trials', label: 'trials', icon: CalendarDays },
+        { href: '/academies', label: 'academies', icon: Building2 },
+        { href: '/players', label: 'players', icon: Search },
       ];
 
     case 'scout':
-      return [...COMMON, { href: '/recommendations', label: 'My picks', icon: Inbox }];
-
     case 'coach':
-      return [...COMMON, { href: '/recommendations', label: 'My picks', icon: Inbox }];
+      return [...COMMON, { href: '/recommendations', label: 'myPicks', icon: Inbox }];
 
     case 'academy_manager':
       return [
-        { href: '/dashboard', label: 'Home', icon: Home },
-        { href: '/recommendations/inbox', label: 'Inbox', icon: Inbox },
-        { href: '/players', label: 'Find players', icon: Search },
-        { href: '/trials', label: 'Trials', icon: CalendarDays },
-        { href: '/academies', label: 'Academies', icon: Building2 },
+        { href: '/dashboard', label: 'home', icon: Home },
+        { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
+        { href: '/players', label: 'findPlayers', icon: Search },
+        { href: '/trials', label: 'trials', icon: CalendarDays },
+        { href: '/academies', label: 'academies', icon: Building2 },
       ];
 
     case 'admin':
     case 'super_admin':
       return [
-        { href: '/dashboard', label: 'Home', icon: Home },
-        { href: '/admin/verification', label: 'Verification', icon: ShieldCheck },
-        { href: '/admin/moderation', label: 'Moderation', icon: Users },
-        { href: '/players', label: 'Players', icon: Search },
+        { href: '/dashboard', label: 'home', icon: Home },
+        { href: '/admin/verification', label: 'verification', icon: ShieldCheck },
+        { href: '/admin/moderation', label: 'moderation', icon: Users },
+        { href: '/players', label: 'players', icon: Search },
       ];
 
     default:

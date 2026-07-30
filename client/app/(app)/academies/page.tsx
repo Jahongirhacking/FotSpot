@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Building2, MapPin } from 'lucide-react';
 import { academies } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
+import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +13,13 @@ export const metadata: Metadata = { title: 'Academies' };
 
 export default async function AcademiesPage() {
   const session = await getSession();
+  const { t } = await getServerT();
+
+  // A player account cannot register an academy (backend enforces it too) — so
+  // don't offer the button. Showing a control that always 403s is worse than
+  // hiding it.
+  const canRegisterAcademy = !session?.roles.includes('player');
+
   const list = await academies
     .listPublic(
       undefined,
@@ -23,12 +31,14 @@ export default async function AcademiesPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Academies</h1>
-          <p className="text-muted text-sm">Verified academies recruiting through FotSpot.</p>
+          <h1 className="text-xl font-bold">{t.nav.academies}</h1>
+          <p className="text-muted text-sm">{t.common.tagline}</p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/academies/register">Register an academy</Link>
-        </Button>
+        {canRegisterAcademy && (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/academies/register">{t.academy.register}</Link>
+          </Button>
+        )}
       </header>
 
       {list.length === 0 ? (

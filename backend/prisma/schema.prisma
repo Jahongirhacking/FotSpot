@@ -63,6 +63,7 @@ model User {
   passwordHash  String?
   firstName     String?
   lastName      String?
+  avatarUrl     String?
   isActive      Boolean  @default(true)
 
   roles         UserRole[]
@@ -74,6 +75,7 @@ model User {
   coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
   notifications Notification[]
   otpCodes      OtpCode[]
+  verificationCodes VerificationCode[]
   auditLogs     AuditLog[]
   reportsFiled  Report[] @relation("ReportsFiled")
   follows       Follow[] @relation("UserFollows")
@@ -117,6 +119,35 @@ model OtpCode {
   consumed  Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+enum VerificationChannel {
+  PHONE
+  EMAIL
+}
+
+/**
+ * Confirms ownership of a NEW phone number or email before it replaces the one on
+ * the account.
+ *
+ * Separate from OtpCode, which authenticates a *login* against a phone that may not
+ * belong to any user yet. This proves an already-authenticated user controls a
+ * destination they are moving to — different lifecycle, different owner, and
+ * reusing OtpCode would have meant stuffing an email address into a `phone` column.
+ */
+model VerificationCode {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  channel     VerificationChannel
+  destination String
+  codeHash    String
+  expiresAt   DateTime
+  consumed    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, channel])
 }
 
 // ---------- PLAYER PROFILE (1.6) ----------

@@ -29,6 +29,106 @@ import type {
 
 type Opts = Pick<RequestOptions, 'token' | 'revalidate' | 'tags' | 'cache'>;
 
+// ---------- Users ----------
+
+export const users = {
+  me: (opts: Opts = {}) => apiFetch<MeResponse>('/users/me', opts),
+
+  /** Identity + roles + per-role counters for the profile screen, in one request. */
+  myProfile: (opts: Opts = {}) => apiFetch<MyProfileResponse>('/users/me/profile', opts),
+
+  updateProfile: (body: UpdateProfileBody, opts: Opts = {}) =>
+    apiFetch<{
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    }>('/users/me', { method: 'PATCH', body, ...opts }),
+
+  avatarUploadUrl: (body: { filename: string }, opts: Opts = {}) =>
+    apiFetch<AvatarUploadUrl>('/users/me/avatar/upload-url', { method: 'POST', body, ...opts }),
+
+  /** Step 1 of a phone/email change: prove control of the new destination. */
+  requestContactChange: (body: ContactChangeRequest, opts: Opts = {}) =>
+    apiFetch<ContactChangeTicket>('/users/me/contact/request', { method: 'POST', body, ...opts }),
+
+  verifyContactChange: (body: ContactChangeRequest & { code: string }, opts: Opts = {}) =>
+    apiFetch<{ id: string; email: string | null; phone: string | null }>(
+      '/users/me/contact/verify',
+      { method: 'POST', body, ...opts },
+    ),
+};
+
+export interface UpdateProfileBody {
+  firstName?: string;
+  lastName?: string;
+  avatarStorageKey?: string;
+}
+
+export interface AvatarUploadUrl {
+  uploadUrl: string;
+  storageKey: string;
+  publicUrl: string;
+  /** False while R2 credentials are unset — the PUT will not persist bytes. */
+  storageConfigured: boolean;
+}
+
+export type ContactChannel = 'PHONE' | 'EMAIL';
+
+export interface ContactChangeRequest {
+  channel: ContactChannel;
+  destination: string;
+}
+
+export interface ContactChangeTicket {
+  sent: boolean;
+  deliveryConfigured: boolean;
+  expiresInSeconds: number;
+  /** Non-production only: SMS/email delivery is a documented stub. */
+  devCode?: string;
+}
+
+export interface MeResponse {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
+  createdAt: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface MyProfileResponse extends MeResponse {
+  stats: {
+    player: {
+      profileId: string;
+      birthDate: string;
+      primaryPosition: string | null;
+      playingStyle: PlayingStyle | null;
+      region: string | null;
+      matches: number;
+      goals: number;
+      assists: number;
+      mediaCount: number;
+      trialApplications: number;
+      recommendationsReceived: number;
+    } | null;
+    coach: { profileId: string; status: string; assessments: number } | null;
+    scout: {
+      totalRecommendations: number;
+      acceptedRecommendations: number;
+      successRate: number;
+      level: number;
+      weight: number;
+      followerAcademies: number;
+    } | null;
+    academies: { academyId: string; name: string; status: string; role: string }[];
+    following: number;
+  };
+}
+
 // ---------- Players ----------
 
 export interface PlayerSearchParams {

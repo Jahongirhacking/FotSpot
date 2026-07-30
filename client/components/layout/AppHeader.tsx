@@ -1,37 +1,32 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import * as React from 'react';
-import { LogOut, Menu as MenuIcon, Settings, X } from 'lucide-react';
+import { Menu as MenuIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from './I18nProvider';
 import { useSession } from './SessionProvider';
 import { RoleSwitcher } from './RoleSwitcher';
 import { NotificationBell } from './NotificationBell';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { ProfileMenu } from './ProfileMenu';
 import { navForRole } from './nav';
 import { Button } from '@/components/ui/Button';
-import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/Menu';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 
-export function AppHeader() {
-  const { activeRole } = useSession();
+export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl: string | null }) {
+  const { t } = useI18n();
+  const { activeRole, isAuthenticated } = useSession();
   const pathname = usePathname();
-  const router = useRouter();
+
   // The drawer records *which route* it was opened on, so navigating away closes it
-  // by derivation. An effect that called setState on pathname change would work but
-  // triggers a cascading render — deriving is both cheaper and simpler.
+  // by derivation rather than by a setState-in-effect cascade.
   const [openedOnPath, setOpenedOnPath] = React.useState<string | null>(null);
   const mobileOpen = openedOnPath === pathname;
   const setMobileOpen = (open: boolean) => setOpenedOnPath(open ? pathname : null);
 
   const nav = navForRole(activeRole);
-
-  async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    // Full navigation, not router.push: every cached Server Component payload for
-    // this user must be discarded.
-    window.location.assign('/');
-  }
 
   return (
     <header className="bg-surface/85 border-border sticky top-0 z-40 border-b backdrop-blur">
@@ -41,7 +36,7 @@ export function AppHeader() {
           size="icon"
           className="md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
           aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X aria-hidden /> : <MenuIcon aria-hidden />}
@@ -49,35 +44,44 @@ export function AppHeader() {
 
         <Link href="/dashboard" className="mr-1 flex items-center gap-2">
           <FotSpotMark className="size-7" />
-          <span className="hidden text-base font-bold tracking-tight sm:inline">FotSpot</span>
+          <span className="hidden text-base font-bold tracking-tight sm:inline">
+            {t.common.appName}
+          </span>
         </Link>
 
         <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 md:flex">
           {nav.map((item) => (
-            <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} />
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={t.nav[item.label]}
+              icon={item.icon}
+              active={isActive(pathname, item.href)}
+            />
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-          <RoleSwitcher />
-          <NotificationBell />
-          <Menu>
-            <MenuTrigger
-              className="hover:bg-surface-2 grid size-11 shrink-0 place-items-center rounded-lg"
-              aria-label="Account"
-            >
-              <Settings className="size-4" aria-hidden />
-            </MenuTrigger>
-            <MenuContent>
-              <MenuItem onSelect={() => router.push('/settings')}>
-                <Settings aria-hidden /> Settings & devices
-              </MenuItem>
-              <MenuSeparator />
-              <MenuItem onSelect={logout} className="text-danger">
-                <LogOut aria-hidden /> Log out
-              </MenuItem>
-            </MenuContent>
-          </Menu>
+        <div className="ml-auto flex items-center gap-1 md:ml-0">
+          {/* Guests browse the same pages, so they get the same shell minus the
+              signed-in controls — and a way in, rather than a forced redirect. */}
+          {isAuthenticated ? (
+            <>
+              <RoleSwitcher />
+              <LanguageSwitcher compact />
+              <NotificationBell />
+              <ProfileMenu initials={initials} avatarUrl={avatarUrl} />
+            </>
+          ) : (
+            <>
+              <LanguageSwitcher compact />
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">{t.auth.signIn}</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/register">{t.auth.createAccount}</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -87,7 +91,14 @@ export function AppHeader() {
           className="border-border bg-surface flex flex-col gap-0.5 border-t p-2 md:hidden"
         >
           {nav.map((item) => (
-            <NavLink key={item.href} {...item} active={isActive(pathname, item.href)} mobile />
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={t.nav[item.label]}
+              icon={item.icon}
+              active={isActive(pathname, item.href)}
+              mobile
+            />
           ))}
         </nav>
       )}
