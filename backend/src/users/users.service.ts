@@ -1,12 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { VerificationChannel } from '@prisma/client';
+import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
+import { R2StorageService } from '../media/r2-storage.service';
+import {
+  AvatarUploadUrlDto,
+  RequestContactChangeDto,
+  UpdateProfileDto,
+  VerifyContactChangeDto,
+} from './dto/user.dto';
+
+const CONTACT_CODE_TTL_SECONDS = 600;
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private rbac: RbacService,
+    private storage: R2StorageService,
+    private config: ConfigService,
   ) {}
 
   async findMe(userId: string) {
@@ -18,6 +41,7 @@ export class UsersService {
         phone: true,
         firstName: true,
         lastName: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });
@@ -112,10 +136,163 @@ export class UsersService {
     };
   }
 
+  // ---------- Profile editing ----------
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const base = this.config.get<string>('R2_PUBLIC_BASE_URL') ?? '';
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.firstName !== undefined ? { firstName: dto.firstName.trim() } : {}),
+        ...(dto.lastName !== undefined ? { lastName: dto.lastName.trim() } : {}),
+        // Built from the storage key, never from a caller-supplied URL.
+        ...(dto.avatarStorageKey !== undefined
+          ? { avatarUrl: `${base}/${dto.avatarStorageKey}` }
+          : {}),
+      },
+      select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+    });
+
+    return user;
+  }
+
+  /**
+   * Presigned PUT for an avatar.
+   *
+   * NOTE: R2 is a documented stub (backend/README) — this returns a real key and a
+   * placeholder upload URL, so the bytes are not stored until credentials are
+   * configured. The caller is told, rather than being handed a URL that silently
+   * discards the file.
+   */
+  async avatarUploadUrl(userId: string, dto: AvatarUploadUrlDto) {
+    const result = await this.storage.getAvatarUploadUrl(userId, dto.filename);
+    const configured = Boolean(this.config.get<string>('R2_ACCESS_KEY_ID'));
+
+    return { ...result, storageConfigured: configured };
+  }
+
+  // ---------- Changing phone / email ----------
+
+  /**
+   * Issues a code to the NEW destination, proving the caller controls it before it
+   * replaces what's on the account.
+   *
+   * Delivery is a stub for both channels (SMS gateway and email provider are the
+   * documented unimplemented integrations). In non-production the code is echoed
+   * back so the flow is testable; in production nothing is sent and the caller is
+   * told so, rather than being left waiting for a message that never arrives.
+   */
+  async requestContactChange(userId: string, dto: RequestContactChangeDto) {
+    const destination = this.normaliseDestination(dto.channel, dto.destination);
+    await this.assertDestinationFree(dto.channel, destination, userId);
+
+    const code = crypto.randomInt(100000, 999999).toString();
+    const codeHash = await argon2.hash(code);
+
+    await this.prisma.verificationCode.create({
+      data: {
+        userId,
+        channel: dto.channel,
+        destination,
+        codeHash,
+        expiresAt: new Date(Date.now() + CONTACT_CODE_TTL_SECONDS * 1000),
+      },
+    });
+
+    const isProduction = this.config.get('NODE_ENV') === 'production';
+    if (isProduction) {
+      this.logger.warn(
+        `No ${dto.channel} delivery is configured; a contact-change code was generated but not sent.`,
+      );
+    }
+
+    return {
+      sent: !isProduction,
+      deliveryConfigured: false,
+      expiresInSeconds: CONTACT_CODE_TTL_SECONDS,
+      ...(isProduction ? {} : { devCode: code }),
+    };
+  }
+
+  async verifyContactChange(userId: string, dto: VerifyContactChangeDto) {
+    const destination = this.normaliseDestination(dto.channel, dto.destination);
+
+    const record = await this.prisma.verificationCode.findFirst({
+      where: { userId, channel: dto.channel, destination, consumed: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) throw new BadRequestException('No pending code for that destination');
+    if (record.expiresAt < new Date()) throw new BadRequestException('That code has expired');
+
+    const valid = await argon2.verify(record.codeHash, dto.code);
+    if (!valid) throw new BadRequestException('That code is not correct');
+
+    // Re-check at the moment of the write: someone else may have taken the
+    // address between the request and the confirmation.
+    await this.assertDestinationFree(dto.channel, destination, userId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.verificationCode.update({
+        where: { id: record.id },
+        data: { consumed: true },
+      });
+
+      return tx.user.update({
+        where: { id: userId },
+        data:
+          dto.channel === VerificationChannel.PHONE
+            ? { phone: destination }
+            : { email: destination },
+        select: { id: true, email: true, phone: true },
+      });
+    });
+  }
+
+  private normaliseDestination(channel: VerificationChannel, raw: string): string {
+    const value = raw.trim();
+
+    if (channel === VerificationChannel.EMAIL) {
+      const normalised = value.toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalised)) {
+        throw new BadRequestException('Enter a valid email address');
+      }
+      return normalised;
+    }
+
+    // E.164. The backend's login DTOs use class-validator's @IsPhoneNumber; this
+    // mirrors the shape rather than importing a validator for one field.
+    const normalised = value.replace(/[\s-]/g, '');
+    if (!/^\+[1-9]\d{7,14}$/.test(normalised)) {
+      throw new BadRequestException('Enter the number in full, e.g. +998901234567');
+    }
+    return normalised;
+  }
+
+  private async assertDestinationFree(
+    channel: VerificationChannel,
+    destination: string,
+    userId: string,
+  ) {
+    const existing = await this.prisma.user.findUnique({
+      where:
+        channel === VerificationChannel.PHONE ? { phone: destination } : { email: destination },
+      select: { id: true },
+    });
+
+    if (existing && existing.id !== userId) {
+      throw new ConflictException(
+        channel === VerificationChannel.PHONE
+          ? 'That phone number is already used by another account'
+          : 'That email is already used by another account',
+      );
+    }
+  }
+
   async findPublicProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, firstName: true, lastName: true, createdAt: true },
+      select: { id: true, firstName: true, lastName: true, avatarUrl: true, createdAt: true },
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
