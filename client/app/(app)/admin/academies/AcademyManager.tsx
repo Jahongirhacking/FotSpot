@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Building2, Check, KeyRound, Pencil, Plus, UserCog, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import { admin as adminApi, type ManagerCredentials } from '@/lib/api/resources';
+import type { ManagerCredentials } from '@/lib/api/resources';
 import type { AcademyProfile } from '@/lib/api/types';
 import { UZBEK_REGIONS } from '@/lib/schemas/player';
 import { useI18n } from '@/components/layout/I18nProvider';

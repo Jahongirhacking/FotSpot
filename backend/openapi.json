@@ -552,17 +552,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -570,15 +560,15 @@
             "bearer": []
           }
         ],
-        "summary": "A player's clips, newest first. `category` filters to one attribute's history.",
+        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nPublic, but metadata only — `posterUrl` is signed and included solely for a\ncaller allowed to see the footage, and there is never a playable URL here.",
         "tags": [
           "media"
         ]
       }
     },
-    "/api/v1/media/{id}/url": {
-      "get": {
-        "operationId": "media_playbackUrl",
+    "/api/v1/media/{id}": {
+      "patch": {
+        "operationId": "media_update",
         "parameters": [
           {
             "name": "id",
@@ -589,9 +579,26 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -599,13 +606,11 @@
             "bearer": []
           }
         ],
-        "summary": "A short-lived signed URL for one clip.\n\nAuthenticated, and authorized per clip: the owner, or someone acting in a\nrecruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.",
+        "summary": "The uploader corrects their own clip's title, description or rating.",
         "tags": [
           "media"
         ]
-      }
-    },
-    "/api/v1/media/{id}": {
+      },
       "delete": {
         "operationId": "media_remove",
         "parameters": [
@@ -636,6 +641,35 @@
           }
         ],
         "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/url": {
+      "get": {
+        "operationId": "media_playbackUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A short-lived signed URL for one clip.\n\nAuthenticated, and authorized per clip: the owner, or someone acting in a\nrecruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.",
         "tags": [
           "media"
         ]
@@ -746,6 +780,7 @@
             "bearer": []
           }
         ],
+        "summary": "Counts, plus `likedByMe` when a token is present — one like per account.",
         "tags": [
           "media"
         ]
@@ -3452,6 +3487,11 @@
           "description": {
             "type": "string",
             "maxLength": 1000
+          },
+          "posterKey": {
+            "type": "string",
+            "description": "Key of the cover frame, from the same upload ticket. Optional: capture can\n fail, and a clip without a cover beats a refused upload.",
+            "maxLength": 512
           }
         },
         "required": [
@@ -3459,6 +3499,24 @@
           "storageKey",
           "type"
         ]
+      },
+      "UpdateMediaDto": {
+        "type": "object",
+        "properties": {
+          "selfRating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
       },
       "CreateMediaCommentDto": {
         "type": "object",

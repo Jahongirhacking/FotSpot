@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
-import { formatDate } from '@/lib/utils';
 
 /**
  * The player's home screen IS their card (README §21.6) — not a subpage, not a feed.

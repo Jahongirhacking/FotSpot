@@ -3,6 +3,7 @@ import type { Dictionary } from './uz';
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
 export const en: Dictionary = {
   common: {
+    edit: 'Edit',
     delete: 'Delete',
     copy: 'Copy',
     copied: 'Copied',
@@ -326,6 +327,10 @@ export const en: Dictionary = {
   },
 
   clips: {
+    pause: 'Pause',
+    seek: 'Seek',
+    likeOnce: 'One like per account — switching roles does not add another.',
+    signInToLike: 'Sign in to like this',
     uploadBlocked: 'Your browser could not reach the storage service. This usually means its CORS policy is not set up yet — retrying will not help; tell an administrator.',
     play: 'Play',
     notAllowed: 'You cannot watch this clip',

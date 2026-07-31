@@ -341,6 +341,18 @@ model Media {
   /// through `GET /media/:id/url`, which authorizes first and then signs a URL
   /// that expires in minutes.
   storageKey String
+
+  /// Object key of a still frame, captured in the browser at upload time.
+  ///
+  /// The grid shows covers, not players: loading a dozen videos to render a dozen
+  /// first frames would cost a player on mobile data more than the rest of the app
+  /// (§14). Private like the video it came from — a frame of a child's clip is the
+  /// same content, so it is signed at read time and never public.
+  ///
+  /// Nullable: capture can fail (an unseekable file, a codec the browser will not
+  /// decode) and a clip without a cover is far better than a refused upload.
+  posterKey  String?
+
   status     MediaStatus @default(ACTIVE)
 
   title       String?

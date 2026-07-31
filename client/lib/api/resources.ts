@@ -681,10 +681,14 @@ export const media = {
     },
     opts: Opts = {},
   ) =>
-    apiFetch<{ storageKey: string; uploadUrl: string; publicUrl: string; expiresIn: number }>(
-      '/media/upload-url',
-      { method: 'POST', body, ...opts },
-    ),
+    apiFetch<{
+      storageKey: string;
+      uploadUrl: string;
+      expiresIn: number;
+      /** Second ticket for the cover frame, from the same round trip. */
+      posterUploadUrl: string;
+      posterKey: string;
+    }>('/media/upload-url', { method: 'POST', body, ...opts }),
 
   confirmUpload: (
     body: {
@@ -695,9 +699,17 @@ export const media = {
       selfRating?: number;
       title?: string;
       description?: string;
+      posterKey?: string;
     },
     opts: Opts = {},
   ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
+
+  /** The uploader corrects their own clip. Category is deliberately not editable. */
+  update: (
+    id: string,
+    body: { title?: string; description?: string; selfRating?: number },
+    opts: Opts = {},
+  ) => apiFetch<Media>(`/media/${id}`, { method: 'PATCH', body, ...opts }),
 
   /**
    * A short-lived signed URL for one clip, issued only after the API authorizes
@@ -719,8 +731,14 @@ export const media = {
     apiFetch<unknown>(`/media/${id}/view`, { method: 'POST', ...opts }),
 
   engagement: (id: string, opts: Opts = {}) =>
-    apiFetch<{ mediaId: string; views: number; likes: number; comments: number }>(
-      `/media/${id}/engagement`,
+    apiFetch<{
+      mediaId: string;
+      views: number;
+      likes: number;
+      comments: number;
+      /** One like per account — see MediaService.getEngagement. */
+      likedByMe: boolean;
+    }>(`/media/${id}/engagement`,
       opts,
     ),
 };

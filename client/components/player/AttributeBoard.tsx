@@ -7,12 +7,12 @@ import {
   ATTRIBUTE_CATEGORY,
   ATTRIBUTE_KEYS,
   attributeHistory,
-  currentClaim,
   type AttributeKey,
 } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { AttributeBars } from '@/components/player/AttributeBars';
-import { ClipCard } from '@/components/player/ClipCard';
+import { ClipTile } from '@/components/player/ClipTile';
+import { ClipModal } from '@/components/player/ClipModal';
 import { ClipUploader } from '@/components/player/ClipUploader';
 import { RatingHistoryChart } from '@/components/player/RatingHistoryChart';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +51,7 @@ export function AttributeBoard({
   const [items, setItems] = React.useState(clips);
   const [filter, setFilter] = React.useState<Filter>('ALL');
   const [uploading, setUploading] = React.useState(false);
+  const [openId, setOpenId] = React.useState<string | null>(null);
 
   // The server is the source of truth: after a router.refresh() the fresh list
   // replaces the optimistic one, without losing the tab the user is on.
@@ -68,6 +69,8 @@ export function AttributeBoard({
 
   const countFor = (category: MediaCategory) =>
     items.filter((clip) => clip.category === category).length;
+
+  const openClip = items.find((clip) => clip.id === openId) ?? null;
 
   const select = (key: AttributeKey) => {
     const category = ATTRIBUTE_CATEGORY[key];
@@ -152,29 +155,38 @@ export function AttributeBoard({
               description={canUpload ? t.clips.noneHintOwn : t.clips.noneHint}
             />
           ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {visible.map((clip) => {
-                const attribute = ATTRIBUTE_KEYS.find(
-                  (key) => ATTRIBUTE_CATEGORY[key] === clip.category,
-                );
-                const current = attribute ? currentClaim(items, attribute) : null;
-                return (
-                  <li key={clip.id}>
-                    <ClipCard
-                      clip={clip}
-                      canDelete={canUpload}
-                      isCurrent={current?.id === clip.id}
-                      onDeleted={(id) =>
-                        setItems((rest) => rest.filter((entry) => entry.id !== id))
-                      }
-                    />
-                  </li>
-                );
-              })}
+            /* Instagram's proportions: square tiles, tight gutters, three across
+               on a phone. A grid is for scanning — the clip that deserves a
+               minute of someone's attention gets opened. */
+            <ul className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:grid-cols-4">
+              {visible.map((clip) => (
+                <li key={clip.id}>
+                  <ClipTile clip={clip} onOpen={() => setOpenId(clip.id)} />
+                </li>
+              ))}
             </ul>
           )}
         </CardContent>
       </Card>
+
+      {/* One modal, driven by which tile was pressed — twelve mounted dialogs
+          would each hold their own queries and video element. */}
+      {openClip && (
+        <ClipModal
+          clip={openClip}
+          canEdit={canUpload}
+          open
+          onOpenChange={(next) => !next && setOpenId(null)}
+          onDeleted={(id) => setItems((rest) => rest.filter((entry) => entry.id !== id))}
+          onUpdated={(updated) =>
+            setItems((rest) =>
+              rest.map((entry) =>
+                entry.id === updated.id ? { ...entry, ...updated, posterUrl: entry.posterUrl } : entry,
+              ),
+            )
+          }
+        />
+      )}
     </div>
   );
 }

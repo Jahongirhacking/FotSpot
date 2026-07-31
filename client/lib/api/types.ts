@@ -62,6 +62,11 @@ export interface Media {
   description?: string | null;
   /** The player's own 0–100 claim this clip evidences. Null for highlights. */
   selfRating?: number | null;
+  /**
+   * Signed, short-lived URL for the cover frame. Present only for a caller
+   * allowed to see the footage, and null when capture failed at upload.
+   */
+  posterUrl?: string | null;
   createdAt: string;
 }
 

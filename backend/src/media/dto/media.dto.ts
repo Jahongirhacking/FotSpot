@@ -60,6 +60,31 @@ export class ConfirmUploadDto {
 
   @IsOptional() @IsString() @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(1000) description?: string;
+
+  /** Key of the cover frame, from the same upload ticket. Optional: capture can
+   *  fail, and a clip without a cover beats a refused upload. */
+  @IsOptional() @IsString() @MaxLength(512) posterKey?: string;
+}
+
+/**
+ * Owner edits after the fact.
+ *
+ * The category is deliberately absent. A clip's category is the bar it argues
+ * for, so re-pointing an old clip at a different attribute would rewrite a claim
+ * history the chart has already drawn. Delete and re-upload instead — that leaves
+ * an honest record.
+ */
+export class UpdateMediaDto {
+  @IsOptional() @IsString() @MaxLength(120) title?: string;
+  @IsOptional() @IsString() @MaxLength(1000) description?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  selfRating?: number;
 }
 
 export class ListPlayerMediaDto {

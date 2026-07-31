@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleStop, Trophy, Upload, Video, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { uploadToStorage } from '@/lib/api/upload';
+import { capturePoster } from '@/lib/poster';
 import type { Media, MediaCategory } from '@/lib/api/types';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -86,7 +87,12 @@ export function ClipUploader({
       // 1. Presigned PUT, 2. straight to R2 — the video never transits the API,
       // which matters on mobile data (§14). 3. Confirm, which is what creates the
       // row and moves the bar.
-      const ticket = await browserFetch<{ uploadUrl: string; storageKey: string }>(
+      const ticket = await browserFetch<{
+        uploadUrl: string;
+        storageKey: string;
+        posterUploadUrl: string;
+        posterKey: string;
+      }>(
         '/media/upload-url',
         {
           method: 'POST',
@@ -104,6 +110,21 @@ export function ClipUploader({
         rejected: t.clips.uploadFailed,
       });
 
+      // The cover is a nicety, so its failure must never cost the clip: capture
+      // returns null rather than throwing, and a failed poster PUT is swallowed
+      // here. A tile without a cover falls back to a themed placeholder.
+      let posterKey: string | undefined;
+      const poster = await capturePoster(file);
+      if (poster) {
+        const stored = await uploadToStorage(ticket.posterUploadUrl, poster, {
+          blocked: '',
+          rejected: '',
+        })
+          .then(() => true)
+          .catch(() => false);
+        if (stored) posterKey = ticket.posterKey;
+      }
+
       return browserFetch<Media>('/media/confirm', {
         method: 'POST',
         body: {
@@ -113,6 +134,7 @@ export function ClipUploader({
           ...(category === 'MATCH_HIGHLIGHTS' ? {} : { selfRating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
+          ...(posterKey ? { posterKey } : {}),
         },
       });
     },

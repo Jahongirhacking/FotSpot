@@ -3,6 +3,7 @@ import type { Dictionary } from './uz';
 /** Russian. Typed against the Uzbek source, so a missing key is a build error. */
 export const ru: Dictionary = {
   common: {
+    edit: 'Редактировать',
     delete: 'Удалить',
     copy: 'Копировать',
     copied: 'Скопировано',
@@ -325,6 +326,10 @@ export const ru: Dictionary = {
   },
 
   clips: {
+    pause: 'Пауза',
+    seek: 'Перемотка',
+    likeOnce: 'Один аккаунт — один лайк; смена роли ничего не меняет.',
+    signInToLike: 'Войдите, чтобы поставить лайк',
     uploadBlocked: 'Браузер не смог отправить файл в хранилище. Обычно это значит, что не настроен CORS — сообщите администратору.',
     play: 'Воспроизвести',
     notAllowed: 'Нет доступа к этому видео',

@@ -9,7 +9,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { StorageService } from '../storage/storage.service';
-import { assertKeyUnder, playerMediaKey, playerMediaPrefix } from '../storage/storage.keys';
+import {
+  assertKeyUnder,
+  playerMediaKey,
+  playerMediaPrefix,
+  playerPosterKey,
+} from '../storage/storage.keys';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   ConfirmUploadDto,
@@ -17,6 +22,7 @@ import {
   ListMediaCommentsDto,
   ListPlayerMediaDto,
   RequestUploadDto,
+  UpdateMediaDto,
 } from './dto/media.dto';
 
 /** Highlights show off a performance; every other category evidences one bar. */
@@ -84,7 +90,16 @@ export class MediaService {
   async requestUpload(userId: string, dto: RequestUploadDto) {
     const profile = await this.ownPlayerProfile(userId);
     const storageKey = playerMediaKey(profile.id, dto.filename);
-    return this.storage.createUploadUrl(storageKey, dto.contentType);
+
+    // Both tickets in one round trip. The browser captures the cover frame from
+    // the file it already holds, so making it ask again for a second signature
+    // would be a wasted request on a connection that is the scarce resource here.
+    const [video, poster] = await Promise.all([
+      this.storage.createUploadUrl(storageKey, dto.contentType),
+      this.storage.createUploadUrl(playerPosterKey(profile.id), 'image/jpeg'),
+    ]);
+
+    return { ...video, posterUploadUrl: poster.uploadUrl, posterKey: poster.storageKey };
   }
 
   /**
@@ -116,6 +131,7 @@ export class MediaService {
     // attacker-controlled: re-check it addresses *this* player's own directory
     // before a row is written against it.
     assertKeyUnder(dto.storageKey, playerMediaPrefix(profile.id));
+    if (dto.posterKey) assertKeyUnder(dto.posterKey, playerMediaPrefix(profile.id));
 
     const media = await this.prisma.media.create({
       data: {
@@ -123,6 +139,7 @@ export class MediaService {
         type: dto.type,
         category: dto.category,
         storageKey: dto.storageKey,
+        posterKey: dto.posterKey ?? null,
         // Server-side, always: a timestamp a player can set is a timestamp that
         // proves nothing about when the clip was actually taken.
         selfRating: isAttribute ? dto.selfRating : null,
@@ -149,13 +166,23 @@ export class MediaService {
     });
     if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
 
-    const isOwner = media.player.userId === user.userId;
-    const isViewer = user.roles.some((role) => VIEWER_ROLES.includes(role));
-    if (!isOwner && !isViewer) {
+    if (!this.canView(media.player.userId, user)) {
       throw new ForbiddenException('This clip is not public');
     }
 
     return this.storage.createReadUrl(media.storageKey);
+  }
+
+  /**
+   * Owner, or somebody acting in a recruiting role. One definition, used for both
+   * the video and its cover — a cover the whole internet can see is the video's
+   * first frame, which is the same disclosure with extra steps.
+   */
+  private canView(ownerUserId: string, user?: AuthUser | null) {
+    if (!user) return false;
+    return (
+      ownerUserId === user.userId || user.roles.some((role) => VIEWER_ROLES.includes(role))
+    );
   }
 
   /**
@@ -165,12 +192,66 @@ export class MediaService {
    * so a guest looking at a profile still sees "pace 85, backed by a clip". The
    * footage itself needs `GET /media/:id/url` and an authorized caller.
    */
-  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}) {
-    const items = await this.prisma.media.findMany({
-      where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
-      orderBy: { createdAt: 'desc' },
+  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}, user?: AuthUser | null) {
+    const [player, items] = await Promise.all([
+      this.prisma.playerProfile.findUnique({
+        where: { id: playerId },
+        select: { userId: true },
+      }),
+      this.prisma.media.findMany({
+        where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    // Covers ride along on the list rather than costing a request each: a grid is
+    // a dozen tiles, and a dozen extra round trips on a phone is the difference
+    // between a screen that loads and one that does not. Signing is local HMAC,
+    // so the batch is cheap — but it still happens only for a caller allowed to
+    // see them, and the URLs die in minutes like every other private read.
+    const mayView = player ? this.canView(player.userId, user) : false;
+
+    return Promise.all(
+      items.map(async (item) => ({
+        ...toPublicMedia(item),
+        posterUrl:
+          mayView && item.posterKey
+            ? (await this.storage.createReadUrl(item.posterKey)).url
+            : null,
+      })),
+    );
+  }
+
+  /**
+   * The uploader corrects their own clip.
+   *
+   * Category is not editable — see UpdateMediaDto. The rating is, because a
+   * mistyped 8 for 80 otherwise strands the player with a claim they cannot fix,
+   * and the clip evidencing it has not changed.
+   */
+  async update(userId: string, mediaId: string, dto: UpdateMediaDto) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) {
+      throw new ForbiddenException('You can only edit your own clips');
+    }
+    if (dto.selfRating !== undefined && media.category === 'MATCH_HIGHLIGHTS') {
+      throw new BadRequestException('Highlights are not evidence for a single attribute');
+    }
+
+    const updated = await this.prisma.media.update({
+      where: { id: mediaId },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description.trim() || null }
+          : {}),
+        ...(dto.selfRating !== undefined ? { selfRating: dto.selfRating } : {}),
+      },
     });
-    return items.map(toPublicMedia);
+    await this.redis.del(RedisKeys.playerProfile(profile.id));
+    return toPublicMedia(updated);
   }
 
   /**
@@ -235,17 +316,27 @@ export class MediaService {
     return { recorded: true };
   }
 
-  async getEngagement(mediaId: string) {
+  /**
+   * Counts, plus whether the caller has already liked this.
+   *
+   * `likedByMe` is keyed on user id and nothing else. A like is one per account —
+   * the unique constraint is `(mediaId, userId)`, so switching from scout to
+   * admin and pressing it again upserts the same row rather than adding a second.
+   * That is the behaviour, not an accident of it, and the flag is what lets the
+   * button render the truth instead of guessing.
+   */
+  async getEngagement(mediaId: string, userId?: string) {
     const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
     if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
 
-    const [views, likes, comments] = await this.prisma.$transaction([
+    const [views, likes, comments, mine] = await this.prisma.$transaction([
       this.prisma.mediaView.count({ where: { mediaId } }),
       this.prisma.mediaLike.count({ where: { mediaId } }),
       this.prisma.mediaComment.count({ where: { mediaId, status: 'ACTIVE' } }),
+      this.prisma.mediaLike.count({ where: { mediaId, ...(userId ? { userId } : { userId: '' }) } }),
     ]);
 
-    return { mediaId, views, likes, comments };
+    return { mediaId, views, likes, comments, likedByMe: Boolean(userId) && mine > 0 };
   }
 
   // ---------- Comments (1.14 media_comments) ----------

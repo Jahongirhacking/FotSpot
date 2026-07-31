@@ -61,6 +61,15 @@ export function playerMediaKey(playerId: string, filename: string): string {
   return `${playerMediaPrefix(playerId)}${objectName(filename)}`;
 }
 
+/**
+ * Cover frame for a clip. Same private prefix as the video — a still of a child's
+ * clip is the same content, and putting it in the public tier to save a signature
+ * would undo the whole point of separating them.
+ */
+export function playerPosterKey(playerId: string): string {
+  return `${playerMediaPrefix(playerId)}${objectName('poster.jpg')}`;
+}
+
 export function isPublicKey(key: string): boolean {
   return key.startsWith(PUBLIC_PREFIX);
 }

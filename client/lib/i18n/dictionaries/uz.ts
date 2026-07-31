@@ -7,6 +7,7 @@
  */
 export const uz = {
   common: {
+    edit: 'Tahrirlash',
     delete: 'O‘chirish',
     copy: 'Nusxalash',
     copied: 'Nusxalandi',
@@ -331,6 +332,10 @@ export const uz = {
   },
 
   clips: {
+    pause: 'Pauza',
+    seek: 'Vaqtni o‘zgartirish',
+    likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
+    signInToLike: 'Yoqtirish uchun tizimga kiring',
     uploadBlocked: 'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
     play: 'Ijro etish',
     notAllowed: 'Bu videoni ko‘rish uchun ruxsat yo‘q',

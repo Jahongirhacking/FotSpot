@@ -13,7 +13,7 @@ import { RecommendationSummary } from '@/components/player/RecommendationSummary
 import { PlayerActions } from './PlayerActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { formatDate, humanizeEnum } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
 export async function generateMetadata({

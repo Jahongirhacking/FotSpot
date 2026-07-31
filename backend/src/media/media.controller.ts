@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
   ListMediaCommentsDto,
   ListPlayerMediaDto,
   RequestUploadDto,
+  UpdateMediaDto,
 } from './dto/media.dto';
 
 @ApiTags('media')
@@ -44,11 +46,30 @@ export class MediaController {
     return this.mediaService.confirmUpload(user.userId, dto);
   }
 
-  /** A player's clips, newest first. `category` filters to one attribute's history. */
+  /**
+   * A player's clips, newest first. `category` filters to one attribute's history.
+   *
+   * Public, but metadata only — `posterUrl` is signed and included solely for a
+   * caller allowed to see the footage, and there is never a playable URL here.
+   */
   @Public()
   @Get('player/:playerId')
-  listForPlayer(@Param('playerId') playerId: string, @Query() dto: ListPlayerMediaDto) {
-    return this.mediaService.listForPlayer(playerId, dto);
+  listForPlayer(
+    @Param('playerId') playerId: string,
+    @Query() dto: ListPlayerMediaDto,
+    @CurrentUser() user?: AuthUser,
+  ) {
+    return this.mediaService.listForPlayer(playerId, dto, user);
+  }
+
+  /** The uploader corrects their own clip's title, description or rating. */
+  @Patch(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateMediaDto,
+  ) {
+    return this.mediaService.update(user.userId, id, dto);
   }
 
   /**
@@ -89,10 +110,11 @@ export class MediaController {
     return this.mediaService.recordView(id, userId);
   }
 
+  /** Counts, plus `likedByMe` when a token is present — one like per account. */
   @Public()
   @Get(':id/engagement')
-  getEngagement(@Param('id') id: string) {
-    return this.mediaService.getEngagement(id);
+  getEngagement(@Param('id') id: string, @OptionalUser() userId?: string) {
+    return this.mediaService.getEngagement(id, userId);
   }
 
   // ---- Comments (1.14) ----
