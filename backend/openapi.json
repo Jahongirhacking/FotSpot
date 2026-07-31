@@ -552,7 +552,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -560,7 +570,7 @@
             "bearer": []
           }
         ],
-        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nPublic, but metadata only — `posterUrl` is signed and included solely for a\ncaller allowed to see the footage, and there is never a playable URL here.",
+        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nCarries permanent `url` and `posterUrl`: clips are public and stay reachable\nuntil the player deletes them.",
         "tags": [
           "media"
         ]
@@ -641,35 +651,6 @@
           }
         ],
         "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
-        "tags": [
-          "media"
-        ]
-      }
-    },
-    "/api/v1/media/{id}/url": {
-      "get": {
-        "operationId": "media_playbackUrl",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "A short-lived signed URL for one clip.\n\nAuthenticated, and authorized per clip: the owner, or someone acting in a\nrecruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.",
         "tags": [
           "media"
         ]

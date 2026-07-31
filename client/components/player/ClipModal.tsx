@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Lock, Pause, Pencil, Play, Trash2, Trophy } from 'lucide-react';
+import { Heart, Pause, Pencil, Play, Trash2, Trophy } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Media } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
@@ -28,12 +28,10 @@ interface Engagement {
  *
  * ## No native controls
  *
- * `controls` is off and the only affordance is a scrubber. The browser's default
- * bar carries a download item, a picture-in-picture button and a "copy video
- * address" entry in the context menu — on private footage of a child, each of
- * those is a way to hand the file to someone who was never authorized. None of
- * it is a real barrier (a determined viewer has the signed URL either way), but
- * there is no reason to put a download button on it.
+ * `controls` is off and the only affordance is a scrubber, per the design of this
+ * screen. It is presentation, not protection: the clip is public and its URL is
+ * in the page, so hiding the browser's download button hides nothing. It just
+ * keeps the lightbox to one job.
  *
  * Tapping the frame toggles play, which is what the missing controls would have
  * done and what people expect from a video in a lightbox anyway.
@@ -60,17 +58,6 @@ export function ClipModal({
 
   const [editing, setEditing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  // Only once the dialog is open: a grid of twelve tiles must not fetch twelve
-  // signed URLs for videos nobody has chosen to watch.
-  const playback = useQuery({
-    queryKey: ['media-url', clip.id],
-    queryFn: () => browserFetch<{ url: string }>(`/media/${clip.id}/url`),
-    enabled: open,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 2 * 60 * 1000,
-    retry: false,
-  });
 
   const engagement = useQuery({
     queryKey: ['media-engagement', clip.id],
@@ -109,16 +96,7 @@ export function ClipModal({
         <div className="space-y-3 p-4 pt-12 sm:pt-4">
           {error && <Alert tone="danger">{error}</Alert>}
 
-          {playback.isError ? (
-            <div className="bg-surface-3 text-muted grid aspect-video w-full place-items-center rounded-lg">
-              <span className="flex flex-col items-center gap-1.5 px-4 text-center">
-                <Lock className="size-5" aria-hidden />
-                <span className="text-sm">{t.clips.notAllowed}</span>
-              </span>
-            </div>
-          ) : (
-            <ClipPlayer src={playback.data?.url} loading={playback.isFetching} />
-          )}
+          <ClipPlayer src={clip.url} />
 
           <div className="flex flex-wrap items-center gap-2">
             {isHighlight ? (
@@ -215,7 +193,7 @@ export function ClipModal({
  * bar and far cheaper than a rAF loop on a phone. While the user is dragging, the
  * bar follows the pointer rather than the video, so it does not fight them.
  */
-function ClipPlayer({ src, loading }: { src?: string; loading: boolean }) {
+function ClipPlayer({ src }: { src: string }) {
   const { t } = useI18n();
   const ref = React.useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = React.useState(false);
@@ -232,8 +210,7 @@ function ClipPlayer({ src, loading }: { src?: string; loading: boolean }) {
 
   return (
     <div className="relative overflow-hidden rounded-lg bg-black">
-      {src ? (
-        <video
+      <video
           ref={ref}
           src={src}
           playsInline
@@ -247,17 +224,11 @@ function ClipPlayer({ src, loading }: { src?: string; loading: boolean }) {
           }}
           className="max-h-[60dvh] w-full cursor-pointer"
         />
-      ) : (
-        <div className="grid aspect-video w-full place-items-center">
-          <Play className={cn('size-8 text-white/40', loading && 'animate-pulse')} aria-hidden />
-        </div>
-      )}
 
       <div className="flex items-center gap-2 bg-black/70 px-2 py-1.5">
         <button
           type="button"
           onClick={toggle}
-          disabled={!src}
           className="grid size-7 shrink-0 place-items-center rounded-full text-white disabled:opacity-40"
           aria-label={playing ? t.clips.pause : t.clips.play}
         >
@@ -270,7 +241,7 @@ function ClipPlayer({ src, loading }: { src?: string; loading: boolean }) {
           max={duration || 0}
           step={0.05}
           value={time}
-          disabled={!src || !duration}
+          disabled={!duration}
           onPointerDown={() => setScrubbing(true)}
           onPointerUp={() => setScrubbing(false)}
           onChange={(event) => {

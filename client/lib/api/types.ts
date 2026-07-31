@@ -48,9 +48,12 @@ export interface AuthSession {
 }
 
 /**
- * Clip metadata. **No URL and no storage key** — private media has no permanent
- * address. Playback comes from `GET /media/:id/url`, which authorizes the caller
- * and returns a URL that expires in minutes.
+ * Clip metadata, with permanent URLs.
+ *
+ * Clips are public and stay reachable until the player deletes them, so the URL
+ * is stable, cacheable and safe to hand straight to a `<video>`. The storage key
+ * is still absent — it is an internal address, and callers that hold keys start
+ * building URLs themselves, which is what stops CDN changes being config changes.
  */
 export interface Media {
   id: string;
@@ -62,10 +65,9 @@ export interface Media {
   description?: string | null;
   /** The player's own 0–100 claim this clip evidences. Null for highlights. */
   selfRating?: number | null;
-  /**
-   * Signed, short-lived URL for the cover frame. Present only for a caller
-   * allowed to see the footage, and null when capture failed at upload.
-   */
+  /** Permanent URL of the video. */
+  url: string;
+  /** Permanent URL of the cover frame; null when capture failed at upload. */
   posterUrl?: string | null;
   createdAt: string;
 }

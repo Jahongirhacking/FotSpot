@@ -107,17 +107,26 @@ exactly like no policy at all.** Note the port: this backend takes 3000, so
 `R2_CORS_ORIGINS` (comma-separated) to override the list per environment without
 editing the JSON.
 
-### 2. Only `public/` may be served publicly
+### 2. `public/` must be publicly readable
 
 Object keys are split into two tiers (`src/storage/storage.keys.ts`):
-`public/avatars/…` is meant to be cached and linked forever, while
-`private/players/…` must never be reachable without a signature. The API never
-hands out a private path, but **the bucket must also be configured to expose
-`public/` and nothing else** — that half is deployment configuration, not code.
 
-`R2_PUBLIC_BASE_URL` must point at that public origin. Left unset, avatars
-resolve to `null` and the service warns once at startup rather than emitting a
-relative path that would 404.
+- `public/avatars/…` and `public/players/…` — avatars and player clips. Both are
+  meant to be watched, cached and hotlinked, and **a clip stays reachable until
+  its player deletes it**: no signature, no expiry. The consequence is worth
+  stating rather than discovering — a clip URL that has been seen once keeps
+  working for anyone until the object is removed.
+- `private/…` — reachable only through a short-lived signed URL the API issues
+  after an authorization check. Nothing uses it today; it is kept for the §12.1
+  age and identity documents, where a permanent link would be the wrong answer.
+
+So the bucket needs **public read access on `public/`** — via an r2.dev domain or
+a custom domain on the bucket.
+
+**`R2_PUBLIC_BASE_URL` is mandatory.** Every clip and avatar URL is built from it
+at read time, so with it unset the media endpoints fail with a 503 saying exactly
+that, and the service logs an error at startup. It is not optional the way it was
+when clips were signed.
 
 ## Business logic implemented in full
 

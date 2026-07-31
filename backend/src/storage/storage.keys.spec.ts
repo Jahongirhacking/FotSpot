@@ -34,12 +34,16 @@ describe('safeExtension', () => {
 });
 
 describe('key tiers', () => {
-  it('puts avatars in public and clips in private', () => {
+  it('puts avatars and clips in the public tier', () => {
+    // Clips are meant to be watched and stay reachable until their player
+    // deletes them, so they carry a permanent URL like an avatar does. The
+    // private tier is kept for the §12.1 identity documents, which are not
+    // built yet — hence nothing here asserts a private producer.
     expect(isPublicKey(avatarKey('user-1', 'a.jpg'))).toBe(true);
     expect(isPrivateKey(avatarKey('user-1', 'a.jpg'))).toBe(false);
 
-    expect(isPrivateKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(true);
-    expect(isPublicKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(false);
+    expect(isPublicKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(true);
+    expect(isPrivateKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(false);
   });
 
   it('never reuses a key', () => {
@@ -81,14 +85,18 @@ describe('assertKeyUnder', () => {
   });
 
   it('rejects a prefix-lookalike directory', () => {
-    // `private/players/player-10/` starts with `private/players/player-1` as a
-    // string, which is why prefixes carry their trailing slash.
-    expect(() => assertKeyUnder('private/players/player-10/clip.mp4', mine)).toThrow(
+    // `public/players/player-10/` starts with `public/players/player-1` as a
+    // string, which is why prefixes carry their trailing slash. Still the check
+    // that matters most: it is what stops one player writing into another's
+    // directory, and it is unaffected by which tier they live in.
+    expect(() => assertKeyUnder('public/players/player-10/clip.mp4', mine)).toThrow(
       ForbiddenException,
     );
   });
 
-  it('rejects crossing tiers', () => {
+  it("rejects another owner's directory even within the same tier", () => {
+    // Avatars and clips now share the public tier, so the prefix is doing all
+    // the work: an avatar key is still not somewhere a clip may be written.
     expect(() => assertKeyUnder(avatarKey('player-1', 'a.jpg'), mine)).toThrow(ForbiddenException);
     expect(() => assertKeyUnder(playerMediaKey('p1', 'a.mp4'), avatarPrefix('p1'))).toThrow(
       ForbiddenException,

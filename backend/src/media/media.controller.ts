@@ -49,17 +49,13 @@ export class MediaController {
   /**
    * A player's clips, newest first. `category` filters to one attribute's history.
    *
-   * Public, but metadata only — `posterUrl` is signed and included solely for a
-   * caller allowed to see the footage, and there is never a playable URL here.
+   * Carries permanent `url` and `posterUrl`: clips are public and stay reachable
+   * until the player deletes them.
    */
   @Public()
   @Get('player/:playerId')
-  listForPlayer(
-    @Param('playerId') playerId: string,
-    @Query() dto: ListPlayerMediaDto,
-    @CurrentUser() user?: AuthUser,
-  ) {
-    return this.mediaService.listForPlayer(playerId, dto, user);
+  listForPlayer(@Param('playerId') playerId: string, @Query() dto: ListPlayerMediaDto) {
+    return this.mediaService.listForPlayer(playerId, dto);
   }
 
   /** The uploader corrects their own clip's title, description or rating. */
@@ -70,17 +66,6 @@ export class MediaController {
     @Body() dto: UpdateMediaDto,
   ) {
     return this.mediaService.update(user.userId, id, dto);
-  }
-
-  /**
-   * A short-lived signed URL for one clip.
-   *
-   * Authenticated, and authorized per clip: the owner, or someone acting in a
-   * recruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.
-   */
-  @Get(':id/url')
-  playbackUrl(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.mediaService.getPlaybackUrl(id, user);
   }
 
   /** Removes one of your own clips. The previous one in that category becomes

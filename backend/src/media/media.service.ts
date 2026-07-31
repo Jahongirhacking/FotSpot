@@ -35,29 +35,26 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
   'TECHNIQUE',
 ];
 
-/**
- * Roles that may watch another player's clips.
- *
- * Recruiting roles only. Player media is footage of children, and the reason it
- * exists on this platform is so scouts, coaches and academies can evaluate it —
- * not so it can be browsed. Guests and other players get metadata (the bars, the
- * ratings, the categories) and no bytes.
- *
- * Checked against the *acting* role (§1.2.1), so a scout browsing as a player is
- * treated as a player.
- */
-const VIEWER_ROLES = ['scout', 'coach', 'academy_manager', 'admin', 'super_admin'];
 
 /**
  * What a media row looks like on the way out.
  *
- * `storageKey` is stripped. It is not a secret — nothing here treats it as one —
- * but publishing the address of every private object invites exactly the guessing
- * game this design removes, and no client has a use for it.
+ * `storageKey` is replaced by the URL built from it. The key stays out of
+ * responses not because it is secret — clips are public and their URL is right
+ * there — but because it is an internal address: callers that hold keys start
+ * assembling URLs themselves, and then changing CDN or provider stops being a
+ * config change. One builder, one place (StorageService).
  */
-export function toPublicMedia<T extends { storageKey: string }>(media: T) {
-  const { storageKey: _storageKey, ...rest } = media;
-  return rest;
+export function toMediaResponse<T extends { storageKey: string; posterKey?: string | null }>(
+  media: T,
+  storage: StorageService,
+) {
+  const { storageKey, posterKey, ...rest } = media;
+  return {
+    ...rest,
+    url: storage.buildPublicUrl(storageKey),
+    posterUrl: posterKey ? storage.buildPublicUrl(posterKey) : null,
+  };
 }
 
 @Injectable()
@@ -149,40 +146,7 @@ export class MediaService {
     });
     // PlayersService.getPublicProfile embeds active media, so its cache is now stale.
     await this.redis.del(RedisKeys.playerProfile(profile.id));
-    return toPublicMedia(media);
-  }
-
-  /**
-   * A short-lived signed URL for one clip — the only way to reach the bytes.
-   *
-   * Authorization happens here and the URL is signed only afterwards, in that
-   * order. The URL is never persisted and expires in minutes, so one copied out
-   * of dev tools and pasted into a group chat is dead on arrival.
-   */
-  async getPlaybackUrl(mediaId: string, user: AuthUser) {
-    const media = await this.prisma.media.findUnique({
-      where: { id: mediaId },
-      include: { player: { select: { userId: true } } },
-    });
-    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
-
-    if (!this.canView(media.player.userId, user)) {
-      throw new ForbiddenException('This clip is not public');
-    }
-
-    return this.storage.createReadUrl(media.storageKey);
-  }
-
-  /**
-   * Owner, or somebody acting in a recruiting role. One definition, used for both
-   * the video and its cover — a cover the whole internet can see is the video's
-   * first frame, which is the same disclosure with extra steps.
-   */
-  private canView(ownerUserId: string, user?: AuthUser | null) {
-    if (!user) return false;
-    return (
-      ownerUserId === user.userId || user.roles.some((role) => VIEWER_ROLES.includes(role))
-    );
+    return toMediaResponse(media, this.storage);
   }
 
   /**
@@ -192,34 +156,12 @@ export class MediaService {
    * so a guest looking at a profile still sees "pace 85, backed by a clip". The
    * footage itself needs `GET /media/:id/url` and an authorized caller.
    */
-  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}, user?: AuthUser | null) {
-    const [player, items] = await Promise.all([
-      this.prisma.playerProfile.findUnique({
-        where: { id: playerId },
-        select: { userId: true },
-      }),
-      this.prisma.media.findMany({
-        where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
-
-    // Covers ride along on the list rather than costing a request each: a grid is
-    // a dozen tiles, and a dozen extra round trips on a phone is the difference
-    // between a screen that loads and one that does not. Signing is local HMAC,
-    // so the batch is cheap — but it still happens only for a caller allowed to
-    // see them, and the URLs die in minutes like every other private read.
-    const mayView = player ? this.canView(player.userId, user) : false;
-
-    return Promise.all(
-      items.map(async (item) => ({
-        ...toPublicMedia(item),
-        posterUrl:
-          mayView && item.posterKey
-            ? (await this.storage.createReadUrl(item.posterKey)).url
-            : null,
-      })),
-    );
+  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}) {
+    const items = await this.prisma.media.findMany({
+      where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
+      orderBy: { createdAt: 'desc' },
+    });
+    return items.map((item) => toMediaResponse(item, this.storage));
   }
 
   /**
@@ -251,7 +193,7 @@ export class MediaService {
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
-    return toPublicMedia(updated);
+    return toMediaResponse(updated, this.storage);
   }
 
   /**
@@ -275,7 +217,7 @@ export class MediaService {
       data: { status: 'REMOVED' },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
-    return toPublicMedia(removed);
+    return toMediaResponse(removed, this.storage);
   }
 
   async like(userId: string, mediaId: string) {

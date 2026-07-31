@@ -22,16 +22,17 @@ const READ_URL_TTL_SECONDS = 300;
  *
  * ## Two kinds of URL, and only one of them is permanent
  *
- * - `publicUrl` — a plain CDN URL, and **only** for `public/` keys. Avatars are
- *   meant to be cached, hotlinked and indexed, so a permanent URL is the point.
+ * - `publicUrl` — a plain CDN URL, and **only** for `public/` keys. Avatars and
+ *   player clips: both are meant to be watched, cached and hotlinked, and a clip
+ *   stays reachable until its player deletes it.
  * - `createReadUrl` — a signed, minutes-long URL for a `private/` key, issued
- *   only after the caller has been authorized. Never stored, never returned in a
- *   list response, never guessable.
+ *   only after the caller has been authorized. Nothing uses it today; it is kept
+ *   for the §12.1 identity documents, where a permanent link would be wrong.
  *
- * `buildPublicUrl` refuses private keys rather than trusting every future caller
- * to remember which tier they hold. That is the whole failure mode this refactor
- * exists to remove: one careless `${base}/${key}` and a child's video is on the
- * open internet permanently, with nothing to revoke.
+ * `buildPublicUrl` still refuses private keys. The tiers no longer split media
+ * from avatars, but they do split "safe to link forever" from "must be
+ * authorized every time", and a builder that silently published the second kind
+ * is exactly the mistake worth making impossible.
  *
  * With no credentials, presigning throws 503 and `isConfigured` is false, so the
  * UI can say so up front rather than after a player has recorded a minute of
@@ -51,14 +52,16 @@ export class StorageService {
     this.bucket = config.get<string>('R2_BUCKET') ?? '';
     this.publicBaseUrl = (config.get<string>('R2_PUBLIC_BASE_URL') ?? '').replace(/\/+$/, '');
 
-    // Separate from the credential check on purpose: uploads and signed reads
-    // work perfectly well without a public base, so a missing one must not
-    // disable them — it only breaks avatars, and it does so silently, which is
-    // why it gets its own warning rather than being folded into the one below.
+    // Now that clips are public too, this is not a cosmetic gap: every endpoint
+    // that returns a clip builds its URL from this, so an unset value takes the
+    // whole media surface down with a 503. Separate from the credential warning
+    // because the failure is different — uploads still presign fine, and it is
+    // reading them back that breaks.
     if (!this.publicBaseUrl) {
-      this.logger.warn(
-        'R2_PUBLIC_BASE_URL is not set — avatar URLs cannot be built. Uploads and ' +
-          'private playback are unaffected; set it to the public bucket/CDN origin.',
+      this.logger.error(
+        'R2_PUBLIC_BASE_URL is not set. Clips and avatars have no address without ' +
+          'it, so listing media will fail with 503. Set it to the public bucket ' +
+          'origin (an r2.dev domain, or your own CDN hostname).',
       );
     }
 

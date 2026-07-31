@@ -14,9 +14,15 @@ import * as crypto from 'crypto';
  * So the prefix does not *protect* anything; it *declares* intent, and the bucket
  * is configured to serve only `public/` over the CDN. Two visible tiers:
  *
- * - `public/`  — cacheable, indexable, linkable forever. Avatars only.
+ * - `public/`  — cacheable, indexable, linkable forever. Avatars and player
+ *                clips: a clip stays reachable until its player deletes it, which
+ *                is a **product decision**, not an oversight. The cost is real and
+ *                worth stating: a URL that has been seen once works for anyone,
+ *                forever, until the object is removed.
  * - `private/` — never served directly. Reachable solely through a short-lived
- *                signed URL the API issues after an authorization check.
+ *                signed URL the API issues after an authorization check. Nothing
+ *                uses it yet; it is kept for the age and identity documents of
+ *                §12.1, where the calculus is completely different.
  *
  * Pure and DI-free (backend/CLAUDE.md §2), so the traversal and ownership rules
  * below are unit-testable without a bucket or a Nest container.
@@ -52,20 +58,23 @@ export function avatarKey(userId: string, filename: string): string {
   return `${avatarPrefix(userId)}${objectName(filename)}`;
 }
 
-/** Directory a player's clips live in. Private, always. */
+/**
+ * Directory a player's clips live in.
+ *
+ * Public: clips are the point of the profile and are meant to be watched,
+ * embedded and cached. Serving them through signed URLs cost a round trip before
+ * every play, expired mid-session, and made them uncacheable by the CDN — for
+ * content whose whole purpose is to be shown to scouts.
+ */
 export function playerMediaPrefix(playerId: string): string {
-  return `${PRIVATE_PREFIX}players/${playerId}/`;
+  return `${PUBLIC_PREFIX}players/${playerId}/`;
 }
 
 export function playerMediaKey(playerId: string, filename: string): string {
   return `${playerMediaPrefix(playerId)}${objectName(filename)}`;
 }
 
-/**
- * Cover frame for a clip. Same private prefix as the video — a still of a child's
- * clip is the same content, and putting it in the public tier to save a signature
- * would undo the whole point of separating them.
- */
+/** Cover frame for a clip, in the same tier as the video it was taken from. */
 export function playerPosterKey(playerId: string): string {
   return `${playerMediaPrefix(playerId)}${objectName('poster.jpg')}`;
 }
