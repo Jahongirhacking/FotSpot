@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { CalendarDays, Sparkles, TrendingUp, Video } from 'lucide-react';
-import { players, coaches, trials } from '@/lib/api/resources';
+import { CalendarDays, Sparkles, TrendingUp } from 'lucide-react';
+import { players, coaches, media, trials } from '@/lib/api/resources';
 import { ApiError } from '@/lib/api/client';
 import type { CoachAssessment, PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
 import { cardCompletion } from '@/lib/player-card';
 import { PlayerCard } from '@/components/player/PlayerCard';
-import { AttributeBars } from '@/components/player/AttributeBars';
+import { AttributeBoard } from '@/components/player/AttributeBoard';
 import { OnThePitchCard } from '@/components/player/OnThePitchCard';
-import { RelationBadge } from '@/components/shared/RelationBadge';
 import type { Dictionary } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -44,8 +43,9 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
     );
   }
 
-  const [assessments, applications, upcoming] = await Promise.all([
+  const [assessments, clips, applications, upcoming] = await Promise.all([
     safe(() => coaches.assessmentsForPlayer(profile!.id, { token, cache: 'no-store' }), []),
+    safe(() => media.listForPlayer(profile!.id, undefined, { token, cache: 'no-store' }), []),
     safe(() => trials.myApplications({ token, cache: 'no-store' }), []),
     safe(() => trials.listUpcoming({ revalidate: 300 }), []),
   ]);
@@ -55,45 +55,22 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        <div>
-          <RelationBadge relation="SELF" t={t} />
-        </div>
-
         <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PlayerCard player={profile} assessments={assessments} />
-          <div className="space-y-4">
-            <OnThePitchCard player={profile} t={t} />
-            <AttributeBars player={profile} assessments={assessments} />
+          <PlayerCard player={profile} assessments={assessments} selfLabel={t.relation.you} />
+          <OnThePitchCard player={profile} t={t} />
+
+          {/* The clips live with the bars they move, not in a gallery of their
+              own — uploading one is how a player raises a bar. */}
+          <div className="sm:col-span-2">
+            <AttributeBoard
+              player={profile}
+              assessments={assessments}
+              clips={clips}
+              canUpload
+            />
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Video className="text-primary size-4" aria-hidden /> Your clips
-            </CardTitle>
-            <Badge variant="neutral">{profile.media?.length ?? 0}</Badge>
-          </CardHeader>
-          <CardContent>
-            {profile.media && profile.media.length > 0 ? (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {profile.media.map((item) => (
-                  <li
-                    key={item.id}
-                    className="bg-surface-2 border-border rounded-lg border p-3 text-xs"
-                  >
-                    <Badge variant="primary">{item.category.replace('_', ' ')}</Badge>
-                    <p className="text-muted mt-2">{formatDate(item.createdAt)}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted text-sm">
-                No clips yet. 60 seconds of you dribbling is worth more than any description.
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <aside className="space-y-6">

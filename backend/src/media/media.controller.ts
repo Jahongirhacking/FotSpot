@@ -18,6 +18,7 @@ import {
   ConfirmUploadDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
+  ListPlayerMediaDto,
   RequestUploadDto,
 } from './dto/media.dto';
 
@@ -26,6 +27,12 @@ import {
 @Controller('media')
 export class MediaController {
   constructor(private mediaService: MediaService) {}
+
+  /** Whether uploads can be accepted, so the UI can say so before recording. */
+  @Get('storage-status')
+  storageStatus() {
+    return this.mediaService.storageStatus();
+  }
 
   @Post('upload-url')
   requestUpload(@CurrentUser() user: AuthUser, @Body() dto: RequestUploadDto) {
@@ -37,10 +44,18 @@ export class MediaController {
     return this.mediaService.confirmUpload(user.userId, dto);
   }
 
+  /** A player's clips, newest first. `category` filters to one attribute's history. */
   @Public()
   @Get('player/:playerId')
-  listForPlayer(@Param('playerId') playerId: string) {
-    return this.mediaService.listForPlayer(playerId);
+  listForPlayer(@Param('playerId') playerId: string, @Query() dto: ListPlayerMediaDto) {
+    return this.mediaService.listForPlayer(playerId, dto);
+  }
+
+  /** Removes one of your own clips. The previous one in that category becomes
+   *  the current claim again. */
+  @Delete(':id')
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.mediaService.remove(user.userId, id);
   }
 
   @Post(':id/like')

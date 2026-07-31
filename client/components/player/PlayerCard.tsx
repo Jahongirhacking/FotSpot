@@ -32,6 +32,7 @@ export function PlayerCard({
   assessments = [],
   size = 'lg',
   href,
+  selfLabel,
   className,
 }: {
   player: PlayerProfile;
@@ -39,6 +40,11 @@ export function PlayerCard({
   size?: 'sm' | 'lg';
   /** Wraps the card in a link. Omit for the player's own card. */
   href?: string;
+  /**
+   * Marks the card as the viewer's own. Passed as text rather than a boolean
+   * because this is a Server Component and the label is translated (§1.17).
+   */
+  selfLabel?: string;
   className?: string;
 }) {
   const group = positionGroup(player.primaryPosition);
@@ -101,11 +107,25 @@ export function PlayerCard({
             </p>
           </div>
 
-          {player.secondaryPosition && !small && (
-            <span className="rounded-md bg-black/35 px-1.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-sm">
-              {player.secondaryPosition}
-            </span>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {/* On the card, not above it: the badge belongs to the artefact it
+                marks, and floating it outside read as page furniture. */}
+            {selfLabel && (
+              <span
+                className={cn(
+                  'rounded-full bg-white/90 font-bold tracking-wide text-black uppercase',
+                  small ? 'px-1.5 py-px text-[9px]' : 'px-2 py-0.5 text-[10px]',
+                )}
+              >
+                {selfLabel}
+              </span>
+            )}
+            {player.secondaryPosition && !small && (
+              <span className="rounded-md bg-black/35 px-1.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-sm">
+                {player.secondaryPosition}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex-1" />

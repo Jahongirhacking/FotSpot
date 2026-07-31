@@ -1,4 +1,4 @@
-import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
+import type { CoachAssessment, Media, MediaCategory, PlayerProfile } from '@/lib/api/types';
 
 /**
  * Player card attribute derivation — README §21.2.
@@ -14,12 +14,68 @@ import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
 
 export type Provenance = 'combine' | 'coach' | 'self' | 'none';
 
+export type AttributeKey =
+  | 'pace'
+  | 'dribbling'
+  | 'passing'
+  | 'finishing'
+  | 'physical'
+  | 'technique';
+
+/**
+ * An attribute and the clip category that evidences it.
+ *
+ * One vocabulary, deliberately: a clip's category *is* the bar it argues for, so
+ * "upload a pace clip" and "raise my pace bar" are the same action rather than two
+ * that have to be kept in sync by hand.
+ */
+export const ATTRIBUTE_CATEGORY: Record<AttributeKey, MediaCategory> = {
+  pace: 'PACE',
+  dribbling: 'DRIBBLING',
+  passing: 'PASSING',
+  finishing: 'FINISHING',
+  physical: 'PHYSICAL',
+  technique: 'TECHNIQUE',
+};
+
+export const ATTRIBUTE_KEYS = Object.keys(ATTRIBUTE_CATEGORY) as AttributeKey[];
+
+export const CATEGORY_ATTRIBUTE = Object.fromEntries(
+  ATTRIBUTE_KEYS.map((key) => [ATTRIBUTE_CATEGORY[key], key]),
+) as Record<MediaCategory, AttributeKey | undefined>;
+
 export interface Attribute {
-  key: 'pace' | 'dribbling' | 'passing' | 'finishing' | 'physical' | 'technique';
+  key: AttributeKey;
   label: string;
   /** 0–100, or null when there is no input at all. */
   value: number | null;
   provenance: Provenance;
+  /** The clip backing a self-reported value, when one does. */
+  evidence?: Media | null;
+}
+
+/**
+ * Every claim the player has made for one attribute, oldest first.
+ *
+ * Nothing is overwritten on upload, so this is the whole story — "pace 70 in
+ * July, 85 in September" — and it is what the history chart draws. Only ACTIVE
+ * clips count: removing one steps the bar back to the claim before it, which
+ * falls out of this filter rather than needing bookkeeping.
+ */
+export function attributeHistory(clips: Media[], key: AttributeKey) {
+  const category = ATTRIBUTE_CATEGORY[key];
+  return clips
+    .filter(
+      (clip) =>
+        clip.category === category && clip.status === 'ACTIVE' && clip.selfRating != null,
+    )
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
+/** The newest claim — the one the bar currently shows. */
+export function currentClaim(clips: Media[], key: AttributeKey): Media | null {
+  const history = attributeHistory(clips, key);
+  return history.length > 0 ? history[history.length - 1] : null;
 }
 
 export const PROVENANCE_META: Record<
@@ -86,64 +142,64 @@ function jugglingScore(record: number | null | undefined): number | null {
   return Math.round(Math.min(record / 200, 1) * 100);
 }
 
+/** Coach categories that feed each bar, and the legacy self-reported fallback. */
+const SOURCES: Record<
+  AttributeKey,
+  { label: string; coach: (keyof CoachAssessment)[]; legacy?: (p: PlayerProfile) => number | null }
+> = {
+  pace: { label: 'Pace', coach: ['speed'], legacy: (p) => sprintScore(p.sprintTime) },
+  dribbling: { label: 'Dribbling', coach: ['dribbling'] },
+  passing: { label: 'Passing', coach: ['passing', 'vision'] },
+  finishing: { label: 'Finishing', coach: ['finishing'] },
+  physical: { label: 'Physical', coach: ['physical'] },
+  technique: { label: 'Technique', coach: ['dribbling'], legacy: (p) => jugglingScore(p.jugglingRecord) },
+};
+
+/**
+ * The six bars, each from the strongest source available.
+ *
+ * Precedence is **coach → clip → legacy self-reported number**, and it is not
+ * arbitrary. A coach assessment is somebody else's judgement, which is the only
+ * kind the platform treats as verified (§1.6). A clip-backed self-rating is the
+ * player's own claim with evidence attached — better than a bare number because a
+ * scout can watch it and disagree, but still self-reported, and the card draws it
+ * dashed to say so. Attaching a video does not make a claim true, and a UI that
+ * implied otherwise would hollow out the distinction the whole product rests on.
+ *
+ * `clips` defaults to the media embedded in the profile, so callers that already
+ * have it (the public profile endpoint) need pass nothing.
+ */
 export function deriveAttributes(
   player: PlayerProfile,
   assessments: CoachAssessment[] = [],
+  clips: Media[] = player.media ?? [],
 ): Attribute[] {
-  const hasCoach = assessments.length > 0;
+  return ATTRIBUTE_KEYS.map((key) => {
+    const source = SOURCES[key];
+    const coach = coachAverage(assessments, source.coach);
+    if (coach !== null) {
+      return { key, label: source.label, value: coach, provenance: 'coach' as const };
+    }
 
-  const pace = coachAverage(assessments, ['speed']) ?? sprintScore(player.sprintTime);
-  const technique =
-    coachAverage(assessments, ['dribbling']) ?? jugglingScore(player.jugglingRecord);
+    const claim = currentClaim(clips, key);
+    if (claim?.selfRating != null) {
+      return {
+        key,
+        label: source.label,
+        value: claim.selfRating,
+        provenance: 'self' as const,
+        evidence: claim,
+      };
+    }
 
-  return [
-    {
-      key: 'pace',
-      label: 'Pace',
-      value: pace,
-      provenance:
-        hasCoach && coachAverage(assessments, ['speed']) !== null
-          ? 'coach'
-          : pace !== null
-            ? 'self'
-            : 'none',
-    },
-    {
-      key: 'dribbling',
-      label: 'Dribbling',
-      value: coachAverage(assessments, ['dribbling']),
-      provenance: coachAverage(assessments, ['dribbling']) !== null ? 'coach' : 'none',
-    },
-    {
-      key: 'passing',
-      label: 'Passing',
-      value: coachAverage(assessments, ['passing', 'vision']),
-      provenance: coachAverage(assessments, ['passing', 'vision']) !== null ? 'coach' : 'none',
-    },
-    {
-      key: 'finishing',
-      label: 'Finishing',
-      value: coachAverage(assessments, ['finishing']),
-      provenance: coachAverage(assessments, ['finishing']) !== null ? 'coach' : 'none',
-    },
-    {
-      key: 'physical',
-      label: 'Physical',
-      value: coachAverage(assessments, ['physical']),
-      provenance: coachAverage(assessments, ['physical']) !== null ? 'coach' : 'none',
-    },
-    {
-      key: 'technique',
-      label: 'Technique',
-      value: technique,
-      provenance:
-        coachAverage(assessments, ['dribbling']) !== null
-          ? 'coach'
-          : technique !== null
-            ? 'self'
-            : 'none',
-    },
-  ];
+    const legacy = source.legacy?.(player) ?? null;
+    return {
+      key,
+      label: source.label,
+      value: legacy,
+      provenance: legacy !== null ? ('self' as const) : ('none' as const),
+    };
+  });
 }
 
 /**

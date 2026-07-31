@@ -300,11 +300,18 @@ enum MediaType {
   VIDEO
 }
 
+/// One value per player-card attribute (§21.1), plus highlights.
+///
+/// Renamed from SPRINT/SHOOTING so a clip's category *is* the bar it evidences.
+/// When the two vocabularies differed, nothing could connect a video to the
+/// attribute it was uploaded to prove.
 enum MediaCategory {
+  PACE
   DRIBBLING
   PASSING
-  SHOOTING
-  SPRINT
+  FINISHING
+  PHYSICAL
+  TECHNIQUE
   MATCH_HIGHLIGHTS
 }
 
@@ -325,12 +332,26 @@ model Media {
   url        String
   status     MediaStatus @default(ACTIVE)
 
+  title       String?
+  description String?
+
+  /// The player's own 0–100 claim for `category`, evidenced by this clip.
+  ///
+  /// Null for MATCH_HIGHLIGHTS, which evidences no single attribute. The newest
+  /// ACTIVE clip per category is the player's current claim; older rows are kept
+  /// so the bar has a history rather than just a value. Still self-reported —
+  /// attaching a video does not make it verified (§1.6), and the card renders it
+  /// as self-reported until a coach signs it off.
+  selfRating  Int?
+
   likes      MediaLike[]
   views      MediaView[]
   comments   MediaComment[]
   reports    Report[] @relation("ReportedMedia")
 
   createdAt DateTime @default(now())
+
+  @@index([playerId, category, createdAt(sort: Desc)])
 }
 
 model MediaLike {

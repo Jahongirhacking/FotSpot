@@ -444,6 +444,26 @@
         ]
       }
     },
+    "/api/v1/media/storage-status": {
+      "get": {
+        "operationId": "media_storageStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether uploads can be accepted, so the UI can say so before recording.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/upload-url": {
       "post": {
         "operationId": "media_requestUpload",
@@ -513,6 +533,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MediaCategory"
+            }
           }
         ],
         "responses": {
@@ -525,6 +553,36 @@
             "bearer": []
           }
         ],
+        "summary": "A player's clips, newest first. `category` filters to one attribute's history.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}": {
+      "delete": {
+        "operationId": "media_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
         "tags": [
           "media"
         ]
@@ -1938,6 +1996,7 @@
             "bearer": []
           }
         ],
+        "summary": "Files a recommendation. **Scouts only** (§1.5).\n\nRecommending is the one action the whole reputation system measures, and it\nis measured per scout: `ScoutStats`, the §1.5 level tiers and the §1.5.1\nharmonic credibility all key off a scout identity. A coach or manager filing\none would accrue a reputation nothing in the product surfaces, and an\nacademy recommending a player to itself is not a signal at all.\n\nEnforced on the acting role, so a scout who is also a coach must be acting\nas a scout — see JwtStrategy.validate.",
         "tags": [
           "recommendations"
         ]
@@ -3268,9 +3327,28 @@
           "code"
         ]
       },
+      "MediaCategory": {
+        "type": "string",
+        "enum": [
+          "PACE",
+          "DRIBBLING",
+          "PASSING",
+          "FINISHING",
+          "PHYSICAL",
+          "TECHNIQUE",
+          "MATCH_HIGHLIGHTS"
+        ]
+      },
       "RequestUploadDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          },
           "filename": {
             "type": "string"
           },
@@ -3281,26 +3359,34 @@
               "VIDEO"
             ]
           },
-          "category": {
+          "contentType": {
             "type": "string",
-            "enum": [
-              "DRIBBLING",
-              "PASSING",
-              "SHOOTING",
-              "SPRINT",
-              "MATCH_HIGHLIGHTS"
-            ]
+            "description": "Sent to R2 so the object is served back with the right type.",
+            "maxLength": 100
           }
         },
         "required": [
+          "category",
           "filename",
-          "type",
-          "category"
+          "type"
         ]
       },
       "ConfirmUploadDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          },
+          "selfRating": {
+            "type": "number",
+            "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for the six attribute categories and rejected for\nMATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
+            "minimum": 0,
+            "maximum": 100
+          },
           "storageKey": {
             "type": "string"
           },
@@ -3311,21 +3397,19 @@
               "VIDEO"
             ]
           },
-          "category": {
+          "title": {
             "type": "string",
-            "enum": [
-              "DRIBBLING",
-              "PASSING",
-              "SHOOTING",
-              "SPRINT",
-              "MATCH_HIGHLIGHTS"
-            ]
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
           }
         },
         "required": [
+          "category",
           "storageKey",
-          "type",
-          "category"
+          "type"
         ]
       },
       "CreateMediaCommentDto": {

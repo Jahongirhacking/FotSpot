@@ -29,7 +29,7 @@ import {
  * recommendation from a user without the role regardless of what this renders.
  */
 export function PlayerActions({ playerId, playerName }: { playerId: string; playerName: string }) {
-  const { activeRole, hasRole, isAuthenticated } = useSession();
+  const { activeRole, isAuthenticated } = useSession();
   const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
 
@@ -53,7 +53,21 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
   });
 
   // Guests see it and are sent to login on click; signed-in users need the role.
-  const canRecommend = !isAuthenticated || hasRole('scout') || hasRole('coach');
+  /**
+   * Recommending is a scout's action and only a scout's (§1.5).
+   *
+   * It is the one thing the reputation system measures, and it is measured per
+   * scout — the level tiers and the §1.5.1 harmonic credibility all key off a
+   * scout identity, so a coach filing one would build a reputation nothing in
+   * the product shows. Keyed on the *acting* role, matching the @Roles('scout')
+   * guard on the endpoint: a scout who is also a coach must be wearing the scout
+   * hat, or the button would open a dialog that 403s on submit.
+   *
+   * Guests still see it — pressing it is what sends them to sign in (§1.2), and
+   * hiding the reason to make an account from the people who don't have one yet
+   * is the wrong trade.
+   */
+  const canRecommend = !isAuthenticated || activeRole === 'scout';
 
   return (
     <div className="space-y-4">

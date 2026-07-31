@@ -26,7 +26,15 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
 export type TrialApplicationStatus =
   'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
-export type MediaCategory = 'DRIBBLING' | 'PASSING' | 'SHOOTING' | 'SPRINT' | 'MATCH_HIGHLIGHTS';
+/** One value per card attribute (§21.1), plus highlights. */
+export type MediaCategory =
+  | 'PACE'
+  | 'DRIBBLING'
+  | 'PASSING'
+  | 'FINISHING'
+  | 'PHYSICAL'
+  | 'TECHNIQUE'
+  | 'MATCH_HIGHLIGHTS';
 export type MediaType = 'IMAGE' | 'VIDEO';
 export type FollowTargetType = 'PLAYER' | 'ACADEMY';
 export type AcademyScoutFollowState = 'FOLLOWING' | 'MUTED';
@@ -47,6 +55,10 @@ export interface Media {
   url: string;
   storageKey: string;
   status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
+  title?: string | null;
+  description?: string | null;
+  /** The player's own 0–100 claim this clip evidences. Null for highlights. */
+  selfRating?: number | null;
   createdAt: string;
 }
 

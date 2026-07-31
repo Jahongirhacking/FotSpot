@@ -665,23 +665,43 @@ export interface CreateTrialBody {
 // ---------- Media ----------
 
 export const media = {
-  listForPlayer: (playerId: string, opts: Opts = {}) =>
-    apiFetch<Media[]>(`/media/player/${playerId}`, opts),
+  /** `category` narrows to one attribute's claim history. */
+  listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
+    apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
+
+  /** Whether the server can accept uploads at all — asked before recording. */
+  storageStatus: (opts: Opts = {}) =>
+    apiFetch<{ configured: boolean }>('/media/storage-status', opts),
 
   requestUpload: (
-    body: { filename: string; type: MediaType; category: MediaCategory },
+    body: {
+      filename: string;
+      type: MediaType;
+      category: MediaCategory;
+      contentType?: string;
+    },
     opts: Opts = {},
   ) =>
-    apiFetch<{ storageKey: string; uploadUrl: string }>('/media/upload-url', {
-      method: 'POST',
-      body,
-      ...opts,
-    }),
+    apiFetch<{ storageKey: string; uploadUrl: string; publicUrl: string; expiresIn: number }>(
+      '/media/upload-url',
+      { method: 'POST', body, ...opts },
+    ),
 
   confirmUpload: (
-    body: { storageKey: string; type: MediaType; category: MediaCategory },
+    body: {
+      storageKey: string;
+      type: MediaType;
+      category: MediaCategory;
+      /** Required for the six attribute categories, rejected for highlights. */
+      selfRating?: number;
+      title?: string;
+      description?: string;
+    },
     opts: Opts = {},
   ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
+
+  remove: (id: string, opts: Opts = {}) =>
+    apiFetch<Media>(`/media/${id}`, { method: 'DELETE', ...opts }),
 
   like: (id: string, opts: Opts = {}) =>
     apiFetch<unknown>(`/media/${id}/like`, { method: 'POST', ...opts }),

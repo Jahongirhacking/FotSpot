@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { MediaCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
@@ -7,8 +13,19 @@ import {
   ConfirmUploadDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
+  ListPlayerMediaDto,
   RequestUploadDto,
 } from './dto/media.dto';
+
+/** Highlights show off a performance; every other category evidences one bar. */
+const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
+  'PACE',
+  'DRIBBLING',
+  'PASSING',
+  'FINISHING',
+  'PHYSICAL',
+  'TECHNIQUE',
+];
 
 @Injectable()
 export class MediaService {
@@ -24,13 +41,42 @@ export class MediaService {
     return profile;
   }
 
-  async requestUpload(userId: string, dto: RequestUploadDto) {
-    const profile = await this.ownPlayerProfile(userId);
-    return this.storage.getUploadUrl(profile.id, dto.filename);
+  /** Whether uploads can be accepted at all — surfaced so the UI can say so
+   *  before a player records a video. */
+  storageStatus() {
+    return { configured: this.storage.isConfigured };
   }
 
+  async requestUpload(userId: string, dto: RequestUploadDto) {
+    const profile = await this.ownPlayerProfile(userId);
+    return this.storage.getUploadUrl(profile.id, dto.filename, dto.contentType);
+  }
+
+  /**
+   * Records an uploaded clip and, for the six attribute categories, the claim it
+   * evidences.
+   *
+   * The newest ACTIVE clip in a category is the player's current claim for that
+   * bar; earlier ones stay as history. Nothing is overwritten and nothing is
+   * deleted — "my pace was 70 in July and 85 in September" is the interesting
+   * part, and a schema that replaced the row would throw it away.
+   *
+   * The rating stays **self-reported** however good the video is. A player
+   * scoring themselves is evidence of a claim, not verification of it (§1.6), and
+   * the card renders it dashed until a coach signs it off. Pretending otherwise
+   * would quietly destroy the distinction the platform's credibility rests on.
+   */
   async confirmUpload(userId: string, dto: ConfirmUploadDto) {
     const profile = await this.ownPlayerProfile(userId);
+    const isAttribute = ATTRIBUTE_CATEGORIES.includes(dto.category as MediaCategory);
+
+    if (isAttribute && dto.selfRating === undefined) {
+      throw new BadRequestException('Rate the attribute this clip is evidence for');
+    }
+    if (!isAttribute && dto.selfRating !== undefined) {
+      throw new BadRequestException('Highlights are not evidence for a single attribute');
+    }
+
     const base = process.env.R2_PUBLIC_BASE_URL ?? '';
     const media = await this.prisma.media.create({
       data: {
@@ -39,6 +85,11 @@ export class MediaService {
         category: dto.category,
         storageKey: dto.storageKey,
         url: `${base}/${dto.storageKey}`,
+        // Server-side, always: a timestamp a player can set is a timestamp that
+        // proves nothing about when the clip was actually taken.
+        selfRating: isAttribute ? dto.selfRating : null,
+        title: dto.title ?? null,
+        description: dto.description ?? null,
       },
     });
     // PlayersService.getPublicProfile embeds active media, so its cache is now stale.
@@ -46,11 +97,35 @@ export class MediaService {
     return media;
   }
 
-  async listForPlayer(playerId: string) {
+  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}) {
     return this.prisma.media.findMany({
-      where: { playerId, status: 'ACTIVE' },
+      where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * A player deletes one of their own clips.
+   *
+   * REMOVED rather than deleted, so the moderation trail and the engagement rows
+   * pointing at it survive. Dropping the newest clip in a category promotes the
+   * previous one back to being the current claim, which falls out of
+   * "newest ACTIVE wins" without any bookkeeping here.
+   */
+  async remove(userId: string, mediaId: string) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) {
+      throw new ForbiddenException('You can only remove your own clips');
+    }
+
+    const removed = await this.prisma.media.update({
+      where: { id: mediaId },
+      data: { status: 'REMOVED' },
+    });
+    await this.redis.del(RedisKeys.playerProfile(profile.id));
+    return removed;
   }
 
   async like(userId: string, mediaId: string) {
