@@ -51,6 +51,17 @@ export class MediaController {
     return this.mediaService.listForPlayer(playerId, dto);
   }
 
+  /**
+   * A short-lived signed URL for one clip.
+   *
+   * Authenticated, and authorized per clip: the owner, or someone acting in a
+   * recruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.
+   */
+  @Get(':id/url')
+  playbackUrl(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.mediaService.getPlaybackUrl(id, user);
+  }
+
   /** Removes one of your own clips. The previous one in that category becomes
    *  the current claim again. */
   @Delete(':id')

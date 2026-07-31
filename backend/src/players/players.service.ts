@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
 import {
@@ -21,14 +22,10 @@ import {
  * picture, whether it is showing on a player card or in the admin console.
  *
  * Every profile response flattens it to a top-level `avatarUrl` so no caller has to
- * know that, and so the card component takes one shape rather than two.
+ * know that, and so the card component takes one shape rather than two. The URL is
+ * built from the stored key at read time — see StorageService.
  */
-const AVATAR_INCLUDE = { user: { select: { avatarUrl: true } } } as const;
-
-function withAvatar<T extends { user?: { avatarUrl: string | null } | null }>(profile: T) {
-  const { user, ...rest } = profile;
-  return { ...rest, avatarUrl: user?.avatarUrl ?? null };
-}
+const AVATAR_INCLUDE = { user: { select: { avatarKey: true } } } as const;
 
 @Injectable()
 export class PlayersService {
@@ -36,7 +33,13 @@ export class PlayersService {
     private prisma: PrismaService,
     private rbac: RbacService,
     private redis: RedisService,
+    private storage: StorageService,
   ) {}
+
+  private withAvatar<T extends { user?: { avatarKey: string | null } | null }>(profile: T) {
+    const { user, ...rest } = profile;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) };
+  }
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
@@ -60,7 +63,7 @@ export class PlayersService {
       include: AVATAR_INCLUDE,
     });
     if (!profile) throw new NotFoundException('Player profile not found');
-    return withAvatar(profile);
+    return this.withAvatar(profile);
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
@@ -73,7 +76,7 @@ export class PlayersService {
           where: { id: playerId },
           include: { media: { where: { status: 'ACTIVE' } }, ...AVATAR_INCLUDE },
         });
-        return found && withAvatar(found);
+        return found && this.withAvatar(found);
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
@@ -126,7 +129,7 @@ export class PlayersService {
       this.prisma.playerProfile.count({ where }),
     ]);
 
-    return { items: items.map(withAvatar), total, page, pageSize };
+    return { items: items.map((item) => this.withAvatar(item)), total, page, pageSize };
   }
 
   private async assertOwner(userId: string) {

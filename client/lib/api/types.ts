@@ -47,13 +47,16 @@ export interface AuthSession {
   permissions: string[];
 }
 
+/**
+ * Clip metadata. **No URL and no storage key** — private media has no permanent
+ * address. Playback comes from `GET /media/:id/url`, which authorizes the caller
+ * and returns a URL that expires in minutes.
+ */
 export interface Media {
   id: string;
   playerId: string;
   type: MediaType;
   category: MediaCategory;
-  url: string;
-  storageKey: string;
   status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
   title?: string | null;
   description?: string | null;

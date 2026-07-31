@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { RedisService } from '../redis/redis.service';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -35,6 +36,7 @@ export class InsightsService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private storage: StorageService,
   ) {}
 
   async weekly() {
@@ -77,7 +79,7 @@ export class InsightsService {
         primaryPosition: true,
         playingStyle: true,
         region: true,
-        user: { select: { avatarUrl: true } },
+        user: { select: { avatarKey: true } },
       },
     });
 
@@ -91,7 +93,7 @@ export class InsightsService {
       return [
         {
           ...rest,
-          avatarUrl: user?.avatarUrl ?? null,
+          avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey),
           backingCount: row._count._all,
           backingWeight: row._sum.scoutWeight ?? 0,
         },
@@ -120,7 +122,7 @@ export class InsightsService {
     const [users, stats] = await Promise.all([
       this.prisma.user.findMany({
         where: { id: { in: ids } },
-        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+        select: { id: true, firstName: true, lastName: true, avatarKey: true },
       }),
       this.prisma.scoutStats.findMany({ where: { userId: { in: ids } } }),
     ]);
@@ -133,7 +135,7 @@ export class InsightsService {
       if (!user) return [];
       return [
         {
-          ...user,
+          ...this.storage.withAvatarUrl(user),
           acceptedThisWeek: row._count._all,
           level: statsById.get(row.scoutId)?.level ?? 1,
           successRate: statsById.get(row.scoutId)?.successRate ?? 0,
@@ -156,13 +158,15 @@ export class InsightsService {
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: grouped.map((row) => row.coachUserId) } },
-      select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+      select: { id: true, firstName: true, lastName: true, avatarKey: true },
     });
 
     const byId = new Map(users.map((user) => [user.id, user]));
     return grouped.flatMap((row) => {
       const user = byId.get(row.coachUserId);
-      return user ? [{ ...user, assessmentsThisWeek: row._count._all }] : [];
+      return user
+        ? [{ ...this.storage.withAvatarUrl(user), assessmentsThisWeek: row._count._all }]
+        : [];
     });
   }
 

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { EndorsementRole, RecommendationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { EndorsementsService } from '../academies/endorsements.service';
 import { academyVisibleWeight, contributionOf } from './recommendation-weight.util';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,6 +21,7 @@ import {
 export class RecommendationsService {
   constructor(
     private prisma: PrismaService,
+    private storage: StorageService,
     private notifications: NotificationsService,
     private endorsements: EndorsementsService,
   ) {}
@@ -239,7 +241,7 @@ export class RecommendationsService {
       this.prisma.recommendation.findMany({
         where: { playerId },
         include: {
-          scout: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          scout: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
           targets: { select: { academyId: true, status: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -256,7 +258,7 @@ export class RecommendationsService {
         name: [recommendation.scout.firstName, recommendation.scout.lastName]
           .filter(Boolean)
           .join(' '),
-        avatarUrl: recommendation.scout.avatarUrl,
+        avatarUrl: this.storage.publicUrlOrNull(recommendation.scout.avatarKey),
         recommendation: {
           id: recommendation.id,
           weight: recommendation.scoutWeight,

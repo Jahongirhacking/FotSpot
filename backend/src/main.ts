@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import 'reflect-metadata';
 import { AppModule } from './app.module';
+import './instrument';
 import { setupSwaggerUi } from './swagger';
 
 async function bootstrap() {

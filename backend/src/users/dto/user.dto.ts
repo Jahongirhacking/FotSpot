@@ -24,6 +24,9 @@ export class UpdateProfileDto {
 
 export class AvatarUploadUrlDto {
   @IsString() @MaxLength(200) filename: string;
+
+  /** Sent to R2 so the object is served back with the right type. */
+  @IsOptional() @IsString() @MaxLength(100) contentType?: string;
 }
 
 /**

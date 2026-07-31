@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { EndorsementRole, EndorsementStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 
@@ -15,6 +16,7 @@ import { AuditAction } from '../audit/audit.actions';
 export class EndorsementsService {
   constructor(
     private prisma: PrismaService,
+    private storage: StorageService,
     private audit: AuditService,
   ) {}
 
@@ -83,13 +85,14 @@ export class EndorsementsService {
   async listForAcademy(actorId: string, academyId: string, role?: EndorsementRole) {
     await this.assertManager(actorId, academyId);
 
-    return this.prisma.academyEndorsement.findMany({
+    const rows = await this.prisma.academyEndorsement.findMany({
       where: { academyId, ...(role ? { role } : {}) },
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        user: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
       },
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     });
+    return rows.map((row) => ({ ...row, user: this.storage.withAvatarUrl(row.user) }));
   }
 
   /**

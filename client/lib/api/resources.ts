@@ -700,6 +700,13 @@ export const media = {
     opts: Opts = {},
   ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
 
+  /**
+   * A short-lived signed URL for one clip, issued only after the API authorizes
+   * the caller. Never cache it — it expires in minutes, which is the point.
+   */
+  playbackUrl: (id: string, opts: Opts = {}) =>
+    apiFetch<{ url: string; expiresIn: number; expiresAt: string }>(`/media/${id}/url`, opts),
+
   remove: (id: string, opts: Opts = {}) =>
     apiFetch<Media>(`/media/${id}`, { method: 'DELETE', ...opts }),
 

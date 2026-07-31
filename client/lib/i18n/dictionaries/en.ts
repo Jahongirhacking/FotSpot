@@ -326,6 +326,9 @@ export const en: Dictionary = {
   },
 
   clips: {
+    play: 'Play',
+    notAllowed: 'You cannot watch this clip',
+    privateNote: 'Clips are private: the link expires in minutes and will not work for anyone else.',
     yourClips: 'Clips',
     addClip: 'Add a clip',
     all: 'All',

@@ -67,7 +67,13 @@ model User {
   passwordHash  String?
   firstName     String?
   lastName      String?
-  avatarUrl     String?
+  /// R2 object key, never a URL — see src/storage/storage.keys.ts.
+  ///
+  /// A stored URL outlives every decision that produced it: change the CDN, the
+  /// domain or the provider and every row is wrong, with a migration as the only
+  /// fix. The public URL is built at read time instead. Avatars are the one
+  /// public tier (`public/avatars/…`); everything else is private.
+  avatarKey     String?
   isActive      Boolean  @default(true)
   /// True while the account still has its admin-generated password. The admin who
   /// created it knows that password, so it must not stay valid indefinitely on an
@@ -328,8 +334,13 @@ model Media {
 
   type       MediaType
   category   MediaCategory
-  storageKey String   // Cloudflare R2 object key
-  url        String
+
+  /// R2 object key under `private/players/<playerId>/`. There is deliberately no
+  /// `url` column: a clip of a child must never have a permanent public address,
+  /// and a column holding one is an address nobody can revoke. Playback goes
+  /// through `GET /media/:id/url`, which authorizes first and then signs a URL
+  /// that expires in minutes.
+  storageKey String
   status     MediaStatus @default(ACTIVE)
 
   title       String?

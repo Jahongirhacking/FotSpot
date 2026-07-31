@@ -8,7 +8,9 @@ import { MediaCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
-import { R2StorageService } from './r2-storage.service';
+import { StorageService } from '../storage/storage.service';
+import { assertKeyUnder, playerMediaKey, playerMediaPrefix } from '../storage/storage.keys';
+import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   ConfirmUploadDto,
   CreateMediaCommentDto,
@@ -27,11 +29,36 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
   'TECHNIQUE',
 ];
 
+/**
+ * Roles that may watch another player's clips.
+ *
+ * Recruiting roles only. Player media is footage of children, and the reason it
+ * exists on this platform is so scouts, coaches and academies can evaluate it —
+ * not so it can be browsed. Guests and other players get metadata (the bars, the
+ * ratings, the categories) and no bytes.
+ *
+ * Checked against the *acting* role (§1.2.1), so a scout browsing as a player is
+ * treated as a player.
+ */
+const VIEWER_ROLES = ['scout', 'coach', 'academy_manager', 'admin', 'super_admin'];
+
+/**
+ * What a media row looks like on the way out.
+ *
+ * `storageKey` is stripped. It is not a secret — nothing here treats it as one —
+ * but publishing the address of every private object invites exactly the guessing
+ * game this design removes, and no client has a use for it.
+ */
+export function toPublicMedia<T extends { storageKey: string }>(media: T) {
+  const { storageKey: _storageKey, ...rest } = media;
+  return rest;
+}
+
 @Injectable()
 export class MediaService {
   constructor(
     private prisma: PrismaService,
-    private storage: R2StorageService,
+    private storage: StorageService,
     private redis: RedisService,
   ) {}
 
@@ -47,9 +74,17 @@ export class MediaService {
     return { configured: this.storage.isConfigured };
   }
 
+  /**
+   * Mints the object key **server-side** and presigns a PUT for it.
+   *
+   * The key is derived from the caller's own profile, never from anything they
+   * sent: a client that could name its own key could write into another player's
+   * directory, or into the public tier.
+   */
   async requestUpload(userId: string, dto: RequestUploadDto) {
     const profile = await this.ownPlayerProfile(userId);
-    return this.storage.getUploadUrl(profile.id, dto.filename, dto.contentType);
+    const storageKey = playerMediaKey(profile.id, dto.filename);
+    return this.storage.createUploadUrl(storageKey, dto.contentType);
   }
 
   /**
@@ -77,14 +112,17 @@ export class MediaService {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
 
-    const base = process.env.R2_PUBLIC_BASE_URL ?? '';
+    // The key made a round trip through the browser, so it comes back
+    // attacker-controlled: re-check it addresses *this* player's own directory
+    // before a row is written against it.
+    assertKeyUnder(dto.storageKey, playerMediaPrefix(profile.id));
+
     const media = await this.prisma.media.create({
       data: {
         playerId: profile.id,
         type: dto.type,
         category: dto.category,
         storageKey: dto.storageKey,
-        url: `${base}/${dto.storageKey}`,
         // Server-side, always: a timestamp a player can set is a timestamp that
         // proves nothing about when the clip was actually taken.
         selfRating: isAttribute ? dto.selfRating : null,
@@ -94,14 +132,45 @@ export class MediaService {
     });
     // PlayersService.getPublicProfile embeds active media, so its cache is now stale.
     await this.redis.del(RedisKeys.playerProfile(profile.id));
-    return media;
+    return toPublicMedia(media);
   }
 
+  /**
+   * A short-lived signed URL for one clip — the only way to reach the bytes.
+   *
+   * Authorization happens here and the URL is signed only afterwards, in that
+   * order. The URL is never persisted and expires in minutes, so one copied out
+   * of dev tools and pasted into a group chat is dead on arrival.
+   */
+  async getPlaybackUrl(mediaId: string, user: AuthUser) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      include: { player: { select: { userId: true } } },
+    });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+
+    const isOwner = media.player.userId === user.userId;
+    const isViewer = user.roles.some((role) => VIEWER_ROLES.includes(role));
+    if (!isOwner && !isViewer) {
+      throw new ForbiddenException('This clip is not public');
+    }
+
+    return this.storage.createReadUrl(media.storageKey);
+  }
+
+  /**
+   * Clip metadata — never a playable address.
+   *
+   * Public on purpose: the ratings on this list are what draw the attribute bars,
+   * so a guest looking at a profile still sees "pace 85, backed by a clip". The
+   * footage itself needs `GET /media/:id/url` and an authorized caller.
+   */
   async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}) {
-    return this.prisma.media.findMany({
+    const items = await this.prisma.media.findMany({
       where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
       orderBy: { createdAt: 'desc' },
     });
+    return items.map(toPublicMedia);
   }
 
   /**
@@ -125,7 +194,7 @@ export class MediaService {
       data: { status: 'REMOVED' },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
-    return removed;
+    return toPublicMedia(removed);
   }
 
   async like(userId: string, mediaId: string) {

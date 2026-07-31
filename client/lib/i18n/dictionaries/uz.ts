@@ -331,6 +331,9 @@ export const uz = {
   },
 
   clips: {
+    play: 'Ijro etish',
+    notAllowed: 'Bu videoni ko‘rish uchun ruxsat yo‘q',
+    privateNote: 'Video lavhalar shaxsiy: havola bir necha daqiqada eskiradi va uni boshqalarga ulashib bo‘lmaydi.',
     yourClips: 'Video lavhalar',
     addClip: 'Lavha qo‘shish',
     all: 'Barchasi',

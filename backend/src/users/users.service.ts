@@ -11,7 +11,8 @@ import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
-import { R2StorageService } from '../media/r2-storage.service';
+import { StorageService } from '../storage/storage.service';
+import { assertKeyUnder, avatarKey, avatarPrefix } from '../storage/storage.keys';
 import {
   AvatarUploadUrlDto,
   RequestContactChangeDto,
@@ -28,7 +29,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private rbac: RbacService,
-    private storage: R2StorageService,
+    private storage: StorageService,
     private config: ConfigService,
   ) {}
 
@@ -42,7 +43,7 @@ export class UsersService {
         username: true,
         firstName: true,
         lastName: true,
-        avatarUrl: true,
+        avatarKey: true,
         // Drives the forced password change on an admin-created account — the
         // client can't know to redirect without it.
         mustChangePassword: true,
@@ -51,7 +52,10 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
     const access = await this.rbac.getEffectiveAccess(userId);
-    return { ...user, ...access };
+    // The URL is built here, at read time, so changing CDN or provider is a
+    // config change rather than a migration.
+    const { avatarKey: key, ...rest } = user;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(key), ...access };
   }
 
   /**
@@ -147,37 +151,38 @@ export class UsersService {
   // ---------- Profile editing ----------
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    const base = this.config.get<string>('R2_PUBLIC_BASE_URL') ?? '';
+    // The key round-tripped through the browser. Without this a caller could
+    // point their avatar at any object in the bucket, including someone else's.
+    if (dto.avatarStorageKey !== undefined) {
+      assertKeyUnder(dto.avatarStorageKey, avatarPrefix(userId));
+    }
 
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(dto.firstName !== undefined ? { firstName: dto.firstName.trim() } : {}),
         ...(dto.lastName !== undefined ? { lastName: dto.lastName.trim() } : {}),
-        // Built from the storage key, never from a caller-supplied URL.
-        ...(dto.avatarStorageKey !== undefined
-          ? { avatarUrl: `${base}/${dto.avatarStorageKey}` }
-          : {}),
+        // The key is stored; the URL is derived on the way out.
+        ...(dto.avatarStorageKey !== undefined ? { avatarKey: dto.avatarStorageKey } : {}),
       },
-      select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+      select: { id: true, firstName: true, lastName: true, avatarKey: true },
     });
 
-    return user;
+    const { avatarKey: key, ...rest } = user;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(key) };
   }
 
   /**
-   * Presigned PUT for an avatar.
+   * Presigned PUT for an avatar — the one public tier.
    *
-   * NOTE: R2 is a documented stub (backend/README) — this returns a real key and a
-   * placeholder upload URL, so the bytes are not stored until credentials are
-   * configured. The caller is told, rather than being handed a URL that silently
-   * discards the file.
+   * Avatars are meant to be cached and hotlinked, so they keep a permanent public
+   * URL. The key is minted here from the caller's own id; nothing the client
+   * sends influences where the object lands.
    */
   async avatarUploadUrl(userId: string, dto: AvatarUploadUrlDto) {
-    const result = await this.storage.getAvatarUploadUrl(userId, dto.filename);
-    const configured = Boolean(this.config.get<string>('R2_ACCESS_KEY_ID'));
-
-    return { ...result, storageConfigured: configured };
+    const storageKey = avatarKey(userId, dto.filename);
+    const ticket = await this.storage.createUploadUrl(storageKey, dto.contentType);
+    return { ...ticket, publicUrl: this.storage.buildPublicUrl(storageKey) };
   }
 
   // ---------- Changing phone / email ----------
@@ -300,9 +305,10 @@ export class UsersService {
   async findPublicProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, firstName: true, lastName: true, avatarUrl: true, createdAt: true },
+      select: { id: true, firstName: true, lastName: true, avatarKey: true, createdAt: true },
     });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    const { avatarKey: key, ...rest } = user;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(key) };
   }
 }

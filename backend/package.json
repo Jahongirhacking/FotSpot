@@ -34,6 +34,7 @@
     "@nestjs/swagger": "^8.1.1",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^6.19.3",
+    "@sentry/nestjs": "^10.69.0",
     "argon2": "^0.40.3",
     "bullmq": "^5.12.0",
     "class-transformer": "^0.5.1",

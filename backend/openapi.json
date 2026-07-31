@@ -509,7 +509,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -545,7 +552,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -554,6 +571,35 @@
           }
         ],
         "summary": "A player's clips, newest first. `category` filters to one attribute's history.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/url": {
+      "get": {
+        "operationId": "media_playbackUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A short-lived signed URL for one clip.\n\nAuthenticated, and authorized per clip: the owner, or someone acting in a\nrecruiting role. Never cached, never stored — see MediaService.getPlaybackUrl.",
         "tags": [
           "media"
         ]
@@ -574,7 +620,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1636,17 +1689,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -3268,6 +3311,11 @@
           "filename": {
             "type": "string",
             "maxLength": 200
+          },
+          "contentType": {
+            "type": "string",
+            "description": "Sent to R2 so the object is served back with the right type.",
+            "maxLength": 100
           }
         },
         "required": [

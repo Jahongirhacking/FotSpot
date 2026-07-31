@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CoachesService } from '../coaches/coaches.service';
 import { AcademiesService } from '../academies/academies.service';
@@ -17,6 +18,7 @@ import { AuditAction } from '../audit/audit.actions';
 export class AdminService {
   constructor(
     private prisma: PrismaService,
+    private storage: StorageService,
     private rbac: RbacService,
     private coachesService: CoachesService,
     private academiesService: AcademiesService,
@@ -86,7 +88,7 @@ export class AdminService {
           lastName: true,
           email: true,
           phone: true,
-          avatarUrl: true,
+          avatarKey: true,
           createdAt: true,
           roles: { select: { role: { select: { name: true } } } },
         },
@@ -99,7 +101,7 @@ export class AdminService {
 
     return {
       items: items.map(({ roles, ...user }) => ({
-        ...user,
+        ...this.storage.withAvatarUrl(user),
         roles: roles.map((entry) => entry.role.name),
       })),
       total,
@@ -117,7 +119,7 @@ export class AdminService {
         firstName: true,
         lastName: true,
         email: true,
-        avatarUrl: true,
+        avatarKey: true,
         createdAt: true,
         roles: { select: { role: { select: { name: true } } } },
       },
@@ -125,7 +127,7 @@ export class AdminService {
     });
 
     return admins.map(({ roles, ...user }) => ({
-      ...user,
+      ...this.storage.withAvatarUrl(user),
       roles: roles.map((entry) => entry.role.name),
       // A super admin cannot be demoted through this screen — the seeded bootstrap
       // account must stay reachable, and locking everyone out is unrecoverable.
@@ -151,7 +153,7 @@ export class AdminService {
         email: true,
         phone: true,
         username: true,
-        avatarUrl: true,
+        avatarKey: true,
         isActive: true,
         createdAt: true,
         roles: { select: { role: { select: { name: true } } } },
@@ -180,7 +182,7 @@ export class AdminService {
     if (!user) throw new NotFoundException('User not found');
 
     const scoutStats = await this.prisma.scoutStats.findUnique({ where: { userId } });
-    const { roles, ...rest } = user;
+    const { roles, ...rest } = this.storage.withAvatarUrl(user);
 
     return {
       ...rest,
