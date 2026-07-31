@@ -59,9 +59,11 @@ export class StorageService {
     // reading them back that breaks.
     if (!this.publicBaseUrl) {
       this.logger.error(
-        'R2_PUBLIC_BASE_URL is not set. Clips and avatars have no address without ' +
-          'it, so listing media will fail with 503. Set it to the public bucket ' +
-          'origin (an r2.dev domain, or your own CDN hostname).',
+        'R2_PUBLIC_BASE_URL is not set, so uploaded clips and avatars have no ' +
+          'address and cannot be played or shown. Uploads still work and nothing ' +
+          'is lost. To fix: Cloudflare → R2 → your bucket → Settings → Public ' +
+          'Development URL → Enable, then put that https://pub-….r2.dev origin ' +
+          '(or your own custom domain) in R2_PUBLIC_BASE_URL.',
       );
     }
 

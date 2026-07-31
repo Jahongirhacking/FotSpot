@@ -65,8 +65,12 @@ export interface Media {
   description?: string | null;
   /** The player's own 0–100 claim this clip evidences. Null for highlights. */
   selfRating?: number | null;
-  /** Permanent URL of the video. */
-  url: string;
+  /**
+   * Permanent URL of the video. Null only when the server has no public storage
+   * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
+   * address yet.
+   */
+  url: string | null;
   /** Permanent URL of the cover frame; null when capture failed at upload. */
   posterUrl?: string | null;
   createdAt: string;

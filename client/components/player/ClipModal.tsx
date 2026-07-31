@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Pause, Pencil, Play, Trash2, Trophy } from 'lucide-react';
+import { Heart, Pause, Pencil, Play, Trash2, Trophy, TriangleAlert } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Media } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
@@ -96,7 +96,18 @@ export function ClipModal({
         <div className="space-y-3 p-4 pt-12 sm:pt-4">
           {error && <Alert tone="danger">{error}</Alert>}
 
-          <ClipPlayer src={clip.url} />
+          {clip.url ? (
+            <ClipPlayer src={clip.url} />
+          ) : (
+            /* The clip is stored, but the server has no public origin to serve it
+               from. Say that, rather than showing a player that will never start. */
+            <div className="bg-surface-3 text-muted grid aspect-video w-full place-items-center rounded-lg">
+              <span className="flex flex-col items-center gap-1.5 px-4 text-center">
+                <TriangleAlert className="size-5" aria-hidden />
+                <span className="text-sm">{t.clips.noStorageOrigin}</span>
+              </span>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             {isHighlight ? (

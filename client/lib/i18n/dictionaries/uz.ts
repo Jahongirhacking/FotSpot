@@ -339,6 +339,7 @@ export const uz = {
   },
 
   clips: {
+    noStorageOrigin: 'Video saqlash manzili sozlanmagan, shuning uchun bu lavhani hozircha ijro etib bo‘lmaydi. Lavha saqlangan.',
     pause: 'Pauza',
     seek: 'Vaqtni o‘zgartirish',
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',

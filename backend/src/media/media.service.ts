@@ -51,9 +51,17 @@ export function toMediaResponse<T extends { storageKey: string; posterKey?: stri
 ) {
   const { storageKey, posterKey, ...rest } = media;
   return {
+    // `publicUrlOrNull`, not `buildPublicUrl`: with R2_PUBLIC_BASE_URL unset this
+    // used to throw, which took the whole endpoint down with a 503 — a profile
+    // could not list its clips, delete them, or render its attribute bars, all
+    // because a CDN hostname was missing. Worse on confirm, where the row was
+    // already written and the caller was told the upload had failed.
+    //
+    // A clip with no address degrades to one that cannot be played. Everything
+    // else about it still works, and the UI says why.
     ...rest,
-    url: storage.buildPublicUrl(storageKey),
-    posterUrl: posterKey ? storage.buildPublicUrl(posterKey) : null,
+    url: storage.publicUrlOrNull(storageKey),
+    posterUrl: storage.publicUrlOrNull(posterKey),
   };
 }
 

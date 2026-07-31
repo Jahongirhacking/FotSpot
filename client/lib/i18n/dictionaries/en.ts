@@ -334,6 +334,7 @@ export const en: Dictionary = {
   },
 
   clips: {
+    noStorageOrigin: 'The server has no public storage address configured, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
     likeOnce: 'One like per account — switching roles does not add another.',
