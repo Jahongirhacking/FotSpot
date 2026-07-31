@@ -89,8 +89,23 @@ pnpm r2:cors:check    # print what the bucket currently has
 
 The app's own R2 token is object-scoped and will get `AccessDenied` — that is
 expected. Use an admin R2 token, or paste `r2-cors.json` into
-**Cloudflare → R2 → your bucket → Settings → CORS Policy**. Add every origin the
-app is served from; a missing one fails exactly like no policy at all.
+**Cloudflare → R2 → your bucket → Settings → CORS Policy**.
+
+You can confirm the state without a browser:
+
+```bash
+curl -i -X OPTIONS "https://<bucket>.<account>.r2.cloudflarestorage.com/anything" \
+  -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: PUT'
+```
+
+An unconfigured bucket answers `403 Unauthorized — CORS not configured for this
+bucket`; a configured one echoes `Access-Control-Allow-Origin`.
+
+**Every origin the app is served from must be listed, and a missing one fails
+exactly like no policy at all.** Note the port: this backend takes 3000, so
+`next dev` falls back to **3001** — that, not 3000, is the dev origin here. Set
+`R2_CORS_ORIGINS` (comma-separated) to override the list per environment without
+editing the JSON.
 
 ### 2. Only `public/` may be served publicly
 

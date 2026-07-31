@@ -18,6 +18,12 @@
  *     node scripts/apply-r2-cors.mjs           # apply
  *     node scripts/apply-r2-cors.mjs --check   # print the current policy only
  *
+ * Origins come from `R2_CORS_ORIGINS` (comma-separated) when set, otherwise from
+ * `r2-cors.json`. The override exists because the list is environment-specific
+ * and easy to get wrong in a way that fails identically to having no policy at
+ * all: the backend takes port 3000 here, so `next dev` falls back to **3001**,
+ * and a policy naming only 3000 blocks every upload while looking correct.
+ *
  * The app's own R2 token usually lacks bucket-configuration rights and will get
  * AccessDenied here. Either use an Account-level R2 token with admin
  * permissions, or paste `r2-cors.json` into the Cloudflare dashboard under
@@ -73,6 +79,15 @@ try {
   }
 
   const rules = JSON.parse(readFileSync(join(root, 'r2-cors.json'), 'utf8'));
+
+  const override = (config.R2_CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  if (override.length) {
+    for (const rule of rules) rule.AllowedOrigins = override;
+    console.log('Using R2_CORS_ORIGINS from the environment.');
+  }
   await client.send(
     new PutBucketCorsCommand({ Bucket: bucket, CORSConfiguration: { CORSRules: rules } }),
   );

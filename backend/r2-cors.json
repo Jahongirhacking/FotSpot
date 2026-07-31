@@ -1,8 +1,13 @@
 [
   {
-    "AllowedOrigins": ["http://localhost:3000", "https://fotspot.uz", "https://www.fotspot.uz"],
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://fotspot.uz",
+      "https://www.fotspot.uz"
+    ],
     "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["content-type"],
+    "AllowedHeaders": ["*"],
     "ExposeHeaders": ["etag"],
     "MaxAgeSeconds": 3600
   }
