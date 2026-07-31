@@ -2,9 +2,10 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { RbacService } from '../rbac/rbac.service';
@@ -16,6 +17,8 @@ import { AuditAction } from '../audit/audit.actions';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private prisma: PrismaService,
     private storage: StorageService,
@@ -236,7 +239,20 @@ export class AdminService {
       await this.rbac.assignRole(userId, roleName);
       await this.audit.record(actorId, AuditAction.ROLE_ASSIGNED, { userId, roleName });
     } else {
-      await this.rbac.removeRole(userId, roleName).catch(() => undefined);
+      // `removeRole` deletes a row, so revoking a role the user never had throws
+      // P2025. That case is genuinely idempotent and must not fail the request —
+      // but a blanket catch also swallowed real database errors and then wrote an
+      // audit entry saying the role had been removed. An audit trail that records
+      // something that did not happen is worse than no audit trail, so only the
+      // not-found case is absorbed and anything else propagates.
+      try {
+        await this.rbac.removeRole(userId, roleName);
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025')) {
+          throw error;
+        }
+        this.logger.debug(`Role ${roleName} was already absent from user ${userId}`);
+      }
       await this.audit.record(actorId, AuditAction.ROLE_REMOVED, { userId, roleName });
     }
 
