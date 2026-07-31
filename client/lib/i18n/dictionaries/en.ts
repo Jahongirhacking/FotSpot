@@ -334,14 +334,14 @@ export const en: Dictionary = {
   },
 
   clips: {
-    noStorageOrigin: 'The server has no public storage address configured, so this clip cannot play yet. The clip itself is saved.',
+    noStorageOrigin: 'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',
     uploadBlocked: 'Your browser could not reach the storage service. This usually means its CORS policy is not set up yet — retrying will not help; tell an administrator.',
     play: 'Play',
-    privateNote: 'This clip is public on the profile — the link works until you delete it.',
+    privateNote: 'This clip stays on your profile until you delete it.',
     yourClips: 'Clips',
     addClip: 'Add a clip',
     all: 'All',

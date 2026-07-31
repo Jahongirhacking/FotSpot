@@ -339,14 +339,14 @@ export const uz = {
   },
 
   clips: {
-    noStorageOrigin: 'Video saqlash manzili sozlanmagan, shuning uchun bu lavhani hozircha ijro etib bo‘lmaydi. Lavha saqlangan.',
+    noStorageOrigin: 'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',
     seek: 'Vaqtni o‘zgartirish',
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
     signInToLike: 'Yoqtirish uchun tizimga kiring',
     uploadBlocked: 'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
     play: 'Ijro etish',
-    privateNote: 'Bu lavha profilingizda ochiq turadi — siz o‘chirmaguningizcha havola ishlaydi.',
+    privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',
     addClip: 'Lavha qo‘shish',
     all: 'Barchasi',

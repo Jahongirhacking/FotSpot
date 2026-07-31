@@ -29,9 +29,9 @@ interface Engagement {
  * ## No native controls
  *
  * `controls` is off and the only affordance is a scrubber, per the design of this
- * screen. It is presentation, not protection: the clip is public and its URL is
- * in the page, so hiding the browser's download button hides nothing. It just
- * keeps the lightbox to one job.
+ * screen. It is presentation, not protection: the signed URL is right there in
+ * the page, so hiding the browser's download button hides nothing. It just keeps
+ * the lightbox to one job.
  *
  * Tapping the frame toggles play, which is what the missing controls would have
  * done and what people expect from a video in a lightbox anyway.
@@ -99,8 +99,8 @@ export function ClipModal({
           {clip.url ? (
             <ClipPlayer src={clip.url} />
           ) : (
-            /* The clip is stored, but the server has no public origin to serve it
-               from. Say that, rather than showing a player that will never start. */
+            /* The row exists but storage is unconfigured, so no URL could be
+               signed. Say so, rather than showing a player that never starts. */
             <div className="bg-surface-3 text-muted grid aspect-video w-full place-items-center rounded-lg">
               <span className="flex flex-col items-center gap-1.5 px-4 text-center">
                 <TriangleAlert className="size-5" aria-hidden />

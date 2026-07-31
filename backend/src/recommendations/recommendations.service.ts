@@ -144,11 +144,47 @@ export class RecommendationsService {
     return endorsing;
   }
 
+  /**
+   * Everything this scout has put forward.
+   *
+   * Returns the player's name and the academies by name, not bare ids. The screen
+   * that renders this had been printing `Player 9f96f84d` and `academy 3f934c7b`,
+   * which is unreadable — and it assumed every recommendation targets exactly one
+   * academy, which stopped being true when GLOBAL recommendations landed (§1.5.3):
+   * those carry `academyId: null` and no targets at all.
+   */
   async listMine(scoutId: string) {
-    return this.prisma.recommendation.findMany({
+    const rows = await this.prisma.recommendation.findMany({
       where: { scoutId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        player: { select: { id: true, firstName: true, lastName: true } },
+        academy: { select: { id: true, name: true } },
+        targets: {
+          select: { status: true, academy: { select: { id: true, name: true } } },
+        },
+      },
     });
+
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      status: row.status,
+      note: row.note,
+      createdAt: row.createdAt,
+      player: row.player,
+      /**
+       * One list whichever way the recommendation was addressed: `targets` is
+       * authoritative, with the legacy single `academyId` column folded in for
+       * rows written before targets existed. GLOBAL leaves it empty.
+       */
+      academies:
+        row.targets.length > 0
+          ? row.targets.map((target) => ({ ...target.academy, status: target.status }))
+          : row.academy
+            ? [{ ...row.academy, status: row.status }]
+            : [],
+    }));
   }
 
   async listForAcademy(academyId: string) {

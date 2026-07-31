@@ -19,6 +19,7 @@ import type {
   PlayerProfile,
   PlayingStyle,
   RankedRecommendation,
+  MyRecommendation,
   Recommendation,
   RecommendationStatus,
   ScoutStats,
@@ -603,7 +604,7 @@ export const recommendations = {
       opts,
     ),
 
-  listMine: (opts: Opts = {}) => apiFetch<Recommendation[]>('/recommendations/mine', opts),
+  listMine: (opts: Opts = {}) => apiFetch<MyRecommendation[]>('/recommendations/mine', opts),
 
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
