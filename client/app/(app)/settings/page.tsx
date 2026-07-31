@@ -5,6 +5,8 @@ import { auth } from '@/lib/api/resources';
 import type { DeviceSession } from '@/lib/api/types';
 import { ROLE_META, type Role } from '@/lib/roles';
 import { SessionList } from './SessionList';
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 
@@ -43,6 +45,20 @@ export default async function SettingsPage() {
             );
           })}
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>Password</CardTitle>
+            <CardDescription>
+              Change your password. Every other device is signed out when you do.
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/password">Change</Link>
+          </Button>
+        </CardHeader>
       </Card>
 
       <Card>

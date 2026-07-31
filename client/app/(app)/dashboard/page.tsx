@@ -34,7 +34,7 @@ export default async function DashboardPage() {
       {activeRole === 'player' && <PlayerHome token={session.accessToken} />}
       {activeRole === 'scout' && <ScoutHome token={session.accessToken} />}
       {activeRole === 'coach' && <CoachHome token={session.accessToken} />}
-      {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} />}
+      {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} t={t} />}
       {(activeRole === 'admin' || activeRole === 'super_admin') && (
         <AdminHome isSuperAdmin={activeRole === 'super_admin'} t={t} />
       )}

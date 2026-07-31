@@ -42,7 +42,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  // The app layout forces an admin-generated password to be replaced before
+  // anything else, and needs to know which page it is rendering so it doesn't
+  // redirect the password screen to itself. Server Components can read headers
+  // but not the current path, so it is passed down as one.
+  const headers = new Headers(request.headers);
+  headers.set('x-pathname', pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

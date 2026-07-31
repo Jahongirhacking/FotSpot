@@ -16,8 +16,9 @@ export default async function AcademiesPage() {
   const { t } = await getServerT();
 
   // Academies are onboarded by the platform team, not self-registered — there are
-  // only ~50 in the country. Admins only (the backend enforces it with @Roles).
-  const canRegisterAcademy =
+  // only ~50 in the country. The console is where that happens; there is no
+  // public registration form to link to.
+  const isAdmin =
     session?.roles.includes('admin') || session?.roles.includes('super_admin');
 
   const list = await academies
@@ -34,9 +35,9 @@ export default async function AcademiesPage() {
           <h1 className="text-xl font-bold">{t.nav.academies}</h1>
           <p className="text-muted text-sm">{t.common.tagline}</p>
         </div>
-        {canRegisterAcademy && (
+        {isAdmin && (
           <Button asChild variant="outline" size="sm">
-            <Link href="/academies/register">{t.academy.register}</Link>
+            <Link href="/admin/academies">{t.academy.manageAcademies}</Link>
           </Button>
         )}
       </header>
@@ -44,12 +45,14 @@ export default async function AcademiesPage() {
       {list.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No academies listed yet"
-          description="Academies appear here once an admin has verified them."
+          title={t.academy.noneListed}
+          description={t.academy.adminOnly}
           action={
-            <Button asChild>
-              <Link href="/academies/register">Register the first one</Link>
-            </Button>
+            isAdmin ? (
+              <Button asChild>
+                <Link href="/admin/academies">{t.admin.newAcademy}</Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (

@@ -2,13 +2,20 @@
 
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, Building2, Check, Pencil, Plus, X } from 'lucide-react';
+import { Archive, Building2, Check, KeyRound, Pencil, Plus, UserCog, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { AdminUser } from '@/lib/api/resources';
+import { admin as adminApi, type ManagerCredentials } from '@/lib/api/resources';
 import type { AcademyProfile } from '@/lib/api/types';
 import { UZBEK_REGIONS } from '@/lib/schemas/player';
 import { useI18n } from '@/components/layout/I18nProvider';
-import { UserPicker } from '@/components/shared/UserPicker';
+import {
+  EMPTY_MANAGER,
+  isManagerComplete,
+  managerBody,
+  ManagerFields,
+  type ManagerChoice,
+} from './ManagerFields';
+import { CredentialsPanel } from './CredentialsPanel';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -24,6 +31,9 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
   const [error, setError] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [managingId, setManagingId] = React.useState<string | null>(null);
+  /** Held until the admin acknowledges it — see CredentialsPanel. */
+  const [credentials, setCredentials] = React.useState<ManagerCredentials | null>(null);
 
   const { data: academies } = useQuery({
     queryKey: ['admin-academies'],
@@ -36,11 +46,43 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
 
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      browserFetch('/academies', { method: 'POST', body }),
-    onSuccess: () => {
+      browserFetch<{ credentials: ManagerCredentials | null }>('/academies', {
+        method: 'POST',
+        body,
+      }),
+    onSuccess: (result) => {
       setCreating(false);
       setError(null);
+      // Only present when an account was minted, and only this once.
+      if (result.credentials) setCredentials(result.credentials);
       refresh();
+    },
+    onError: fail,
+  });
+
+  const setManager = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      browserFetch<{ credentials: ManagerCredentials | null }>(`/academies/${id}/manager`, {
+        method: 'PATCH',
+        body,
+      }),
+    onSuccess: (result) => {
+      setManagingId(null);
+      setError(null);
+      if (result.credentials) setCredentials(result.credentials);
+      refresh();
+    },
+    onError: fail,
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: (id: string) =>
+      browserFetch<ManagerCredentials>(`/academies/${id}/manager/reset-password`, {
+        method: 'POST',
+      }),
+    onSuccess: (result) => {
+      setError(null);
+      setCredentials(result);
     },
     onError: fail,
   });
@@ -65,6 +107,10 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
   return (
     <div className="space-y-6">
       {error && <Alert tone="danger">{error}</Alert>}
+
+      {credentials && (
+        <CredentialsPanel credentials={credentials} onDismiss={() => setCredentials(null)} />
+      )}
 
       {creating ? (
         <AcademyForm
@@ -128,10 +174,31 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 flex-wrap gap-1">
                       <Button size="sm" variant="outline" onClick={() => setEditingId(academy.id)}>
                         <Pencil aria-hidden /> {t.admin.editAcademy}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setManagingId(managingId === academy.id ? null : academy.id)}
+                      >
+                        <UserCog aria-hidden /> {t.admin.manager}
+                      </Button>
+                      {academy.members?.length ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={resetPassword.isPending}
+                          onClick={() => {
+                            if (window.confirm(t.admin.confirmResetPassword)) {
+                              resetPassword.mutate(academy.id);
+                            }
+                          }}
+                        >
+                          <KeyRound aria-hidden /> {t.admin.resetPassword}
+                        </Button>
+                      ) : null}
                       {academy.status !== 'REJECTED' && (
                         <Button
                           size="sm"
@@ -146,6 +213,16 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                         </Button>
                       )}
                     </div>
+
+                    {managingId === academy.id && (
+                      <div className="border-border w-full border-t pt-3">
+                        <ManagerPanel
+                          pending={setManager.isPending}
+                          onCancel={() => setManagingId(null)}
+                          onSubmit={(body) => setManager.mutate({ id: academy.id, body })}
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </li>
@@ -182,7 +259,7 @@ function AcademyForm({
   const [region, setRegion] = React.useState(defaults?.region ?? UZBEK_REGIONS[0]);
   const [district, setDistrict] = React.useState(defaults?.district ?? '');
   const [description, setDescription] = React.useState(defaults?.description ?? '');
-  const [manager, setManager] = React.useState<AdminUser | null>(null);
+  const [manager, setManagerChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
 
   return (
     <Card>
@@ -201,7 +278,7 @@ function AcademyForm({
               region,
               ...(district.trim() ? { district: district.trim() } : {}),
               ...(description.trim() ? { description: description.trim() } : {}),
-              ...(withManager && manager ? { managerUserId: manager.id } : {}),
+              ...(withManager ? managerBody(manager) : {}),
             });
           }}
         >
@@ -236,10 +313,14 @@ function AcademyForm({
             />
           </Field>
 
+          {/* Not a <Field>: this is a group of controls with its own internal
+              labels, so it has no single input to point `htmlFor` at. */}
           {withManager && (
-            <Field label={t.admin.assignManager} htmlFor="ac-manager">
-              <UserPicker value={manager} onChange={setManager} placeholder={t.admin.findUser} />
-            </Field>
+            <fieldset className="space-y-1.5">
+              <legend className="text-sm font-medium">{t.admin.assignManager}</legend>
+              <p className="text-muted text-xs">{t.admin.assignManagerOptional}</p>
+              <ManagerFields value={manager} onChange={setManagerChoice} />
+            </fieldset>
           )}
 
           <div className="flex gap-2">
@@ -253,5 +334,48 @@ function AcademyForm({
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Assign or replace an academy's manager after creation.
+ *
+ * Replacing is a transfer, not an addition: the server drops the outgoing
+ * manager's membership and their `academy_manager` role in the same transaction
+ * that grants the incoming one, so there is never a moment when two accounts hold
+ * the same academy's inbox.
+ */
+function ManagerPanel({
+  pending,
+  onSubmit,
+  onCancel,
+}: {
+  pending: boolean;
+  onSubmit: (body: Record<string, unknown>) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const [choice, setChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!isManagerComplete(choice)) return;
+        onSubmit(managerBody(choice));
+      }}
+    >
+      <p className="text-muted text-xs">{t.admin.replaceManagerHint}</p>
+      <ManagerFields value={choice} onChange={setChoice} />
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" loading={pending} disabled={!isManagerComplete(choice)}>
+          <Check aria-hidden /> {t.admin.saveManager}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          <X aria-hidden /> {t.common.cancel}
+        </Button>
+      </div>
+    </form>
   );
 }

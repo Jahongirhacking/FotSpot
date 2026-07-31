@@ -16,6 +16,20 @@ import {
   UpdatePlayerStatsDto,
 } from './dto/player.dto';
 
+/**
+ * The player's photo lives on `User`, not `PlayerProfile` — one account, one
+ * picture, whether it is showing on a player card or in the admin console.
+ *
+ * Every profile response flattens it to a top-level `avatarUrl` so no caller has to
+ * know that, and so the card component takes one shape rather than two.
+ */
+const AVATAR_INCLUDE = { user: { select: { avatarUrl: true } } } as const;
+
+function withAvatar<T extends { user?: { avatarUrl: string | null } | null }>(profile: T) {
+  const { user, ...rest } = profile;
+  return { ...rest, avatarUrl: user?.avatarUrl ?? null };
+}
+
 @Injectable()
 export class PlayersService {
   constructor(
@@ -41,9 +55,12 @@ export class PlayersService {
   }
 
   async getOwnProfile(userId: string) {
-    const profile = await this.prisma.playerProfile.findUnique({ where: { userId } });
+    const profile = await this.prisma.playerProfile.findUnique({
+      where: { userId },
+      include: AVATAR_INCLUDE,
+    });
     if (!profile) throw new NotFoundException('Player profile not found');
-    return profile;
+    return withAvatar(profile);
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
@@ -51,11 +68,13 @@ export class PlayersService {
     const profile = await this.redis.wrap(
       RedisKeys.playerProfile(playerId),
       CacheTtl.playerProfile,
-      () =>
-        this.prisma.playerProfile.findUnique({
+      async () => {
+        const found = await this.prisma.playerProfile.findUnique({
           where: { id: playerId },
-          include: { media: { where: { status: 'ACTIVE' } } },
-        }),
+          include: { media: { where: { status: 'ACTIVE' } }, ...AVATAR_INCLUDE },
+        });
+        return found && withAvatar(found);
+      },
     );
     if (!profile) throw new NotFoundException('Player not found');
     return profile;
@@ -102,11 +121,12 @@ export class PlayersService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
+        include: AVATAR_INCLUDE,
       }),
       this.prisma.playerProfile.count({ where }),
     ]);
 
-    return { items, total, page, pageSize };
+    return { items: items.map(withAvatar), total, page, pageSize };
   }
 
   private async assertOwner(userId: string) {

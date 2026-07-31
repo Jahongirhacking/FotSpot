@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api/client';
 import type { CoachAssessment, PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
 import { cardCompletion } from '@/lib/player-card';
 import { PlayerCard } from '@/components/player/PlayerCard';
+import { AttributeBars } from '@/components/player/AttributeBars';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -51,7 +52,10 @@ export async function PlayerHome({ token }: { token: string }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        <PlayerCard player={profile} assessments={assessments} />
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+          <PlayerCard player={profile} assessments={assessments} />
+          <AttributeBars player={profile} assessments={assessments} />
+        </div>
 
         <Card>
           <CardHeader className="flex-row items-center justify-between">

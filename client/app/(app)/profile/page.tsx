@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Building2, Sparkles, Target, Trophy } from 'lucide-react';
 import { getSession } from '@/lib/session';
-import { users, type MyProfileResponse } from '@/lib/api/resources';
+import { players, users, type MyProfileResponse } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
 import { sortRoles } from '@/lib/roles';
 import { ageBand, formatDate, humanizeEnum, initials } from '@/lib/utils';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Alert } from '@/components/ui/Feedback';
+import { PlayerCard } from '@/components/player/PlayerCard';
+import type { PlayerProfile } from '@/lib/api/types';
 
 export const metadata: Metadata = { title: 'Profile' };
 
@@ -31,6 +33,12 @@ export default async function ProfilePage() {
   if (!profile) {
     return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
   }
+
+  // The card is the player's own, so it is worth a second request — but only when
+  // there is a player role to show one for.
+  const playerCard: PlayerProfile | null = profile.roles.includes('player')
+    ? await players.getMine({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+    : null;
 
   // `profile.roles` comes from the database and is authoritative; the session
   // cookie can lag behind it (see SyncRoles).
@@ -78,7 +86,12 @@ export default async function ProfilePage() {
         <h2 className="text-lg font-semibold">{t.profile.statistics}</h2>
 
         {profile.stats.player ? (
-          <PlayerStats stats={profile.stats.player} t={t} f={f} />
+          /* Large card next to the numbers — the same artefact the player sees on
+             their dashboard, so "my card" means one thing across the app. */
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+            {playerCard && <PlayerCard player={playerCard} />}
+            <PlayerStats stats={profile.stats.player} t={t} f={f} />
+          </div>
         ) : (
           roles.includes('player') === false && (
             <Card>

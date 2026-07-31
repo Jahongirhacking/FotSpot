@@ -39,9 +39,13 @@ export class UsersService {
         id: true,
         email: true,
         phone: true,
+        username: true,
         firstName: true,
         lastName: true,
         avatarUrl: true,
+        // Drives the forced password change on an admin-created account — the
+        // client can't know to redirect without it.
+        mustChangePassword: true,
         createdAt: true,
       },
     });

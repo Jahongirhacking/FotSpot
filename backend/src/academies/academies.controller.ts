@@ -6,7 +6,12 @@ import { EndorsementRole } from '@prisma/client';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AddStaffMemberDto, CreateAcademyDto, UpdateAcademyDto } from './dto/academy.dto';
+import {
+  AddStaffMemberDto,
+  CreateAcademyDto,
+  SetManagerDto,
+  UpdateAcademyDto,
+} from './dto/academy.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('academies')
@@ -35,10 +40,39 @@ export class AcademiesController {
     return this.academiesService.listPublic(region);
   }
 
+  /**
+   * The academy the caller manages, or null.
+   *
+   * Declared before `:id` — Nest matches routes in declaration order, so putting
+   * this after would make `/academies/mine` resolve as an academy whose id is the
+   * literal string "mine".
+   */
+  @Get('mine')
+  findMine(@CurrentUser() user: AuthUser) {
+    return this.academiesService.findMine(user.userId);
+  }
+
   @Public()
   @Get(':id')
   getPublicProfile(@Param('id') id: string) {
     return this.academiesService.getPublicProfile(id);
+  }
+
+  /**
+   * Assigns or replaces the academy's single manager (admin only). Either names an
+   * existing user or mints an account, returning its one-time credentials once.
+   */
+  @Roles('admin', 'super_admin')
+  @Patch(':id/manager')
+  setManager(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetManagerDto) {
+    return this.academiesService.setManager(user.userId, id, dto);
+  }
+
+  /** Issues the manager a fresh one-time password (admin only). */
+  @Roles('admin', 'super_admin')
+  @Post(':id/manager/reset-password')
+  resetManagerPassword(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.academiesService.resetManagerPassword(user.userId, id);
   }
 
   /** Manager edits their own; an admin may correct any (§1.10). */

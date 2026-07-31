@@ -6,11 +6,13 @@ import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
 import { PlayerCard } from '@/components/player/PlayerCard';
+import { AttributeBars } from '@/components/player/AttributeBars';
+import { DominantFootFigure, PitchMap } from '@/components/player/PitchMap';
 import { RecommendationSummary } from '@/components/player/RecommendationSummary';
 import { PlayerActions } from './PlayerActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { formatDate } from '@/lib/utils';
+import { formatDate, humanizeEnum } from '@/lib/utils';
 
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
 export async function generateMetadata({
@@ -61,7 +63,45 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        <PlayerCard player={player} assessments={assessments} />
+        {/* Card beside the shape of the player: where they play and which foot.
+            Both are pictures rather than codes — "AM" and "LEFT" mean nothing to
+            the parent reading this, and the app is read in three languages. */}
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+          <PlayerCard player={player} assessments={assessments} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.player.onThePitch}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="mx-auto max-w-[220px]">
+                <PitchMap
+                  primary={player.primaryPosition}
+                  secondary={player.secondaryPosition}
+                />
+              </div>
+
+              <div className="border-border border-t pt-4">
+                <p className="text-muted mb-2 text-center text-xs uppercase">
+                  {t.player.dominantFoot}
+                </p>
+                <DominantFootFigure foot={player.dominantFoot} />
+              </div>
+
+              {player.playingStyle && (
+                <div className="flex justify-center">
+                  <Badge variant="accent">{humanizeEnum(player.playingStyle)}</Badge>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <AttributeBars
+          player={player}
+          assessments={assessments}
+          title={t.player.attributes}
+        />
 
         {summary && <RecommendationSummary summary={summary} t={t} />}
 

@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { ClientInfo } from '../common/decorators/client-info.decorator';
 import {
+  ChangePasswordDto,
   LoginEmailDto,
   OAuthLoginDto,
   RefreshTokenDto,
@@ -65,8 +66,21 @@ export class AuthService {
     return this.issueTokens(user.id, client);
   }
 
+  /**
+   * Password sign-in by email or username.
+   *
+   * Every failure returns the same "Invalid credentials": distinguishing "no such
+   * user" from "wrong password" turns the endpoint into an oracle for which phone
+   * numbers and academy usernames exist.
+   */
   async loginEmail(dto: LoginEmailDto, client: ClientInfo = {}) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (!dto.email && !dto.username) {
+      throw new BadRequestException('Enter your email or username');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: dto.email ? { email: dto.email } : { username: dto.username },
+    });
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await argon2.verify(user.passwordHash, dto.password);
@@ -74,6 +88,41 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
     return this.issueTokens(user.id, client);
+  }
+
+  /**
+   * Changes the caller's password and revokes every other session.
+   *
+   * The revocation is the point for an admin-created academy manager: the whole
+   * reason to rotate that password is that someone else has seen it, so leaving
+   * their existing sessions alive would rotate the credential without ending the
+   * access it granted.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto, sessionId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+
+    // Only skipped while the account still carries the password an admin handed
+    // over — after that, knowing the current one is required.
+    if (!user.mustChangePassword) {
+      if (!dto.currentPassword || !user.passwordHash) {
+        throw new BadRequestException('Enter your current password');
+      }
+      const valid = await argon2.verify(user.passwordHash, dto.currentPassword);
+      if (!valid) throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await argon2.hash(dto.newPassword), mustChangePassword: false },
+    });
+
+    await this.prisma.session.updateMany({
+      where: { userId, revokedAt: null, ...(sessionId ? { NOT: { id: sessionId } } : {}) },
+      data: { revokedAt: new Date() },
+    });
+
+    return { changed: true };
   }
 
   // ---------- Phone + OTP ----------

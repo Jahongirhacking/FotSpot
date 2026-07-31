@@ -53,7 +53,7 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
         />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{name}</h1>
-          <p className="text-muted truncate text-sm">{user.email ?? user.phone ?? ''}</p>
+          <p className="text-muted truncate text-sm">{user.email ?? user.phone ?? user.username ?? ''}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Badge variant={user.isActive ? 'success' : 'danger'}>
               {user.isActive ? t.admin.active : t.admin.disabled}

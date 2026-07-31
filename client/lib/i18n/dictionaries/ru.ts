@@ -3,6 +3,8 @@ import type { Dictionary } from './uz';
 /** Russian. Typed against the Uzbek source, so a missing key is a build error. */
 export const ru: Dictionary = {
   common: {
+    copy: 'Копировать',
+    copied: 'Скопировано',
     appName: 'FotSpot',
     tagline: 'От махалли до академии',
     save: 'Сохранить',
@@ -214,6 +216,19 @@ export const ru: Dictionary = {
   },
 
   settings: {
+    password: 'Пароль',
+    passwordSubtitle: 'Смените пароль вашего аккаунта.',
+    currentPassword: 'Текущий пароль',
+    newPassword: 'Новый пароль',
+    confirmPassword: 'Повторите новый пароль',
+    passwordHint: 'Минимум 8 символов.',
+    passwordTooShort: 'Нужно минимум 8 символов',
+    passwordMismatch: 'Пароли не совпадают',
+    setPassword: 'Установить пароль',
+    passwordChanged: 'Пароль изменён.',
+    otherSessionsRevoked: 'После смены пароля сеансы на всех остальных устройствах завершаются.',
+    mustChangeTitle: 'Сначала смените пароль',
+    mustChangeHint: 'Ваш аккаунт использует пароль, созданный администратором, — он известен и ему. Установите свой, прежде чем продолжить.',
     title: 'Настройки',
     signedInDevices: 'Где вы вошли',
     signedInDevicesHint:
@@ -226,6 +241,31 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    manageAcademies: 'Управление академиями',
+    noAcademyLinked: 'К вашему аккаунту не привязана академия',
+    postTrial: 'Опубликовать просмотр',
+    inbox: 'Входящие рекомендации',
+    yourTrials: 'Ваши просмотры',
+    noTrials: 'Просмотры ещё не опубликованы.',
+    openTrials: 'Открытые просмотры',
+    noAcademyLinkedHint: 'Руководитель академии не существует без академии. Если управление недавно передали другому аккаунту, это ожидаемо. Иначе обратитесь к команде платформы.',
+    inboxEmpty: 'Нет открытых рекомендаций',
+    inboxEmptyHint: 'Когда скауты предложат игроков, они появятся здесь — упорядоченные по авторитетности предложивших скаутов.',
+    player: 'Игрок',
+    backing: 'поддержка',
+    accepted: 'принято',
+    assessments: 'оценки',
+    pendingRecommendations: 'Ожидают рассмотрения',
+    newThisWeek: 'Новых за неделю',
+    applications: 'Заявки',
+    thisWeek: 'На этой неделе',
+    thisWeekHint: 'Активность за последние 7 дней. Это не сравнение детей между собой, а то, кого выдвигали скауты.',
+    mostBackedPlayers: 'Чаще всего выдвигали',
+    mostBackedPlayersHint: 'По вниманию скаутов, а не по оценке способностей.',
+    topScouts: 'Ведущие скауты',
+    topScoutsHint: 'Чьи рекомендации приняли на этой неделе, а не кто больше отправил.',
+    topCoaches: 'Активные тренеры',
+    topCoachesHint: 'Кто оценил больше всего игроков за неделю.',
     register: 'Зарегистрировать академию',
     registerTitle: 'Зарегистрируйте свою академию',
     registerSubtitle:
@@ -267,6 +307,9 @@ export const ru: Dictionary = {
   },
 
   player: {
+    onThePitch: 'На поле',
+    dominantFoot: 'Сильная нога',
+    attributes: 'Показатели',
     findPlayers: 'Найти игроков',
     searchByName: 'Поиск по имени',
     allRegions: 'Все регионы',
@@ -432,6 +475,27 @@ export const ru: Dictionary = {
   },
 
   admin: {
+    username: 'Логин',
+    password: 'Пароль',
+    firstName: 'Имя',
+    lastName: 'Фамилия',
+    managerExisting: 'Существующий пользователь',
+    managerExistingHint: 'Выберите из зарегистрированных',
+    managerNew: 'Новый аккаунт',
+    managerNewHint: 'Логин и пароль будут созданы',
+    managerPhone: 'Телефон (необязательно)',
+    managerPhoneHint: 'Только для связи — вход выполняется по логину.',
+    managerGeneratedHint: 'Логин и пароль будут показаны один раз после сохранения. Передайте их руководителю — при первом входе он сменит пароль.',
+    assignManagerOptional: 'Одна академия — один руководитель. Можно назначить и позже.',
+    replaceManagerHint: 'При назначении нового руководителя прежний теряет доступ.',
+    saveManager: 'Сохранить руководителя',
+    resetPassword: 'Сбросить пароль',
+    confirmResetPassword: 'Создать руководителю новый пароль? Старый перестанет работать.',
+    credentialsTitle: 'Данные для входа созданы',
+    credentialsHint: 'Передайте их руководителю академии.',
+    credentialsWarning: 'Пароль больше нигде не отобразится — на сервере хранится только его хеш. Скопируйте его сейчас.',
+    credentialsSaved: 'Я сохранил',
+    copyBoth: 'Скопировать оба',
     console: 'Панель управления',
     users: 'Пользователи',
     usersHint:

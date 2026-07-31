@@ -7,6 +7,8 @@
  */
 export const uz = {
   common: {
+    copy: 'Nusxalash',
+    copied: 'Nusxalandi',
     appName: 'FotSpot',
     tagline: 'Mahalladan akademiyagacha',
     save: 'Saqlash',
@@ -220,6 +222,19 @@ export const uz = {
   },
 
   settings: {
+    password: 'Parol',
+    passwordSubtitle: 'Hisobingiz parolini almashtiring.',
+    currentPassword: 'Joriy parol',
+    newPassword: 'Yangi parol',
+    confirmPassword: 'Yangi parolni takrorlang',
+    passwordHint: 'Kamida 8 ta belgi.',
+    passwordTooShort: 'Kamida 8 ta belgi kerak',
+    passwordMismatch: 'Parollar mos kelmadi',
+    setPassword: 'Parolni o‘rnatish',
+    passwordChanged: 'Parol almashtirildi.',
+    otherSessionsRevoked: 'Parolni almashtirganingizda boshqa barcha qurilmalardagi seanslar yakunlanadi.',
+    mustChangeTitle: 'Avval parolni almashtiring',
+    mustChangeHint: 'Hisobingiz administrator yaratgan parol bilan ishlamoqda va uni administrator ham biladi. Davom etishdan oldin o‘zingiznikini o‘rnating.',
     title: 'Sozlamalar',
     signedInDevices: 'Qayerda kirgansiz',
     signedInDevicesHint:
@@ -232,6 +247,31 @@ export const uz = {
   },
 
   academy: {
+    manageAcademies: 'Akademiyalarni boshqarish',
+    noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
+    postTrial: 'Sinov e’lon qilish',
+    inbox: 'Kelgan tavsiyalar',
+    yourTrials: 'Sinovlaringiz',
+    noTrials: 'Hali sinov e’lon qilinmagan.',
+    openTrials: 'Ochiq sinovlar',
+    noAcademyLinkedHint: 'Akademiya rahbari akademiyasiz mavjud bo‘lmaydi. Agar rahbarlik yaqinda boshqa hisobga o‘tkazilgan bo‘lsa, bu kutilgan holat. Aks holda platforma jamoasiga murojaat qiling.',
+    inboxEmpty: 'Ochiq tavsiyalar yo‘q',
+    inboxEmptyHint: 'Skautlar futbolchi tavsiya qilganda ular shu yerda, tavsiya qilgan skautlarning ishonchliligi bo‘yicha tartiblangan holda ko‘rinadi.',
+    player: 'Futbolchi',
+    backing: 'qo‘llab-quvvatlash',
+    accepted: 'qabul qilingan',
+    assessments: 'baholashlar',
+    pendingRecommendations: 'Kutayotgan tavsiyalar',
+    newThisWeek: 'Shu hafta yangi',
+    applications: 'Arizalar',
+    thisWeek: 'Shu hafta',
+    thisWeekHint: 'So‘nggi 7 kundagi faollik. Bu bolalarni bir-biri bilan taqqoslash emas — skautlar kimni ilgari surganini ko‘rsatadi.',
+    mostBackedPlayers: 'Eng ko‘p tavsiya olganlar',
+    mostBackedPlayersHint: 'Skautlar e’tibori bo‘yicha, mahorat bahosi bo‘yicha emas.',
+    topScouts: 'Faol skautlar',
+    topScoutsHint: 'Shu hafta tavsiyasi qabul qilinganlar — yuborganlar emas.',
+    topCoaches: 'Faol murabbiylar',
+    topCoachesHint: 'Shu hafta eng ko‘p futbolchini baholaganlar.',
     register: 'Akademiya ro‘yxatdan o‘tkazish',
     registerTitle: 'Akademiyangizni ro‘yxatdan o‘tkazing',
     registerSubtitle:
@@ -273,6 +313,9 @@ export const uz = {
   },
 
   player: {
+    onThePitch: 'Maydonda',
+    dominantFoot: 'Kuchli oyoq',
+    attributes: 'Ko‘rsatkichlar',
     findPlayers: 'Futbolchilarni topish',
     searchByName: 'Ism bo‘yicha qidirish',
     allRegions: 'Barcha viloyatlar',
@@ -441,6 +484,27 @@ export const uz = {
   },
 
   admin: {
+    username: 'Login',
+    password: 'Parol',
+    firstName: 'Ism',
+    lastName: 'Familiya',
+    managerExisting: 'Mavjud foydalanuvchi',
+    managerExistingHint: 'Ro‘yxatdan o‘tganlardan tanlang',
+    managerNew: 'Yangi hisob',
+    managerNewHint: 'Login va parol yaratiladi',
+    managerPhone: 'Telefon (ixtiyoriy)',
+    managerPhoneHint: 'Faqat bog‘lanish uchun — kirish login orqali amalga oshiriladi.',
+    managerGeneratedHint: 'Login va parol saqlangandan so‘ng bir marta ko‘rsatiladi. Ularni rahbarga yuboring — u birinchi kirishda parolni almashtiradi.',
+    assignManagerOptional: 'Bitta akademiya — bitta rahbar. Keyinroq ham biriktirish mumkin.',
+    replaceManagerHint: 'Yangi rahbar biriktirilsa, avvalgisi kirish huquqini yo‘qotadi.',
+    saveManager: 'Rahbarni saqlash',
+    resetPassword: 'Parolni tiklash',
+    confirmResetPassword: 'Rahbarga yangi parol yaratilsinmi? Eski parol ishlamay qoladi.',
+    credentialsTitle: 'Kirish ma’lumotlari yaratildi',
+    credentialsHint: 'Ularni akademiya rahbariga yuboring.',
+    credentialsWarning: 'Parol boshqa hech qachon ko‘rsatilmaydi — serverda faqat uning shifrlangan nusxasi saqlanadi. Hozir nusxalab oling.',
+    credentialsSaved: 'Saqlab oldim',
+    copyBoth: 'Ikkalasini nusxalash',
     console: 'Boshqaruv paneli',
     users: 'Foydalanuvchilar',
     usersHint:

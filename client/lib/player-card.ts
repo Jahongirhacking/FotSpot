@@ -172,3 +172,89 @@ export function positionGroup(position?: string | null) {
   if (['DM', 'CM', 'AM'].includes(position)) return 'Midfield' as const;
   return 'Forward' as const;
 }
+
+export type PositionGroup = ReturnType<typeof positionGroup>;
+
+/**
+ * Where each position sits on a vertical pitch, as percentages.
+ *
+ * `x` runs left→right, `y` runs from the player's own goal line (0) to the goal
+ * they attack (100), so the map reads the way a team sheet is drawn.
+ */
+export const POSITION_COORDS: Record<string, { x: number; y: number }> = {
+  GK: { x: 50, y: 8 },
+  CB: { x: 50, y: 24 },
+  LB: { x: 17, y: 28 },
+  RB: { x: 83, y: 28 },
+  DM: { x: 50, y: 40 },
+  CM: { x: 50, y: 54 },
+  AM: { x: 50, y: 67 },
+  LW: { x: 16, y: 76 },
+  RW: { x: 84, y: 76 },
+  ST: { x: 50, y: 88 },
+};
+
+/**
+ * How much of the card is backed by someone other than the player.
+ *
+ * ## This rates the evidence, not the child
+ *
+ * §21.5 forbids a composite rating on a player's card, and that rule is not
+ * negotiated away by putting the number in a nicer shape. The stars below count
+ * how many attributes a verified coach has signed off — a fact about how complete
+ * the record is, identical for a gifted player and an average one with the same
+ * paperwork.
+ *
+ * That distinction is also what makes it useful: it gives the card the collectable
+ * feel a fourteen-year-old expects while pointing the ambition at "get a coach to
+ * assess me", which is the one thing that actually improves their standing with an
+ * academy (§1.6).
+ */
+export type EvidenceTier = 'unrated' | 'bronze' | 'silver' | 'gold';
+
+export interface CardEvidence {
+  tier: EvidenceTier;
+  /** 0–5, for the star row along the bottom of the card. */
+  stars: number;
+  verifiedCount: number;
+  total: number;
+}
+
+export function cardEvidence(
+  player: PlayerProfile,
+  assessments: CoachAssessment[] = [],
+): CardEvidence {
+  const attributes = deriveAttributes(player, assessments);
+  const total = attributes.length;
+  const verifiedCount = attributes.filter(
+    (attribute) => attribute.provenance === 'coach' || attribute.provenance === 'combine',
+  ).length;
+
+  const stars = Math.round((verifiedCount / total) * 5);
+  const tier: EvidenceTier =
+    verifiedCount === 0
+      ? 'unrated'
+      : stars >= 5
+        ? 'gold'
+        : stars >= 3
+          ? 'silver'
+          : 'bronze';
+
+  return { tier, stars, verifiedCount, total };
+}
+
+/**
+ * Card theming per position group, in the eFootball idiom: a coloured foil behind
+ * the player, with the position code and evidence tier reading at a glance.
+ *
+ * Plain CSS gradients rather than images — the target device is an entry-level
+ * Android phone on mobile data (§14), and a card that costs 300 KB to look at is
+ * one nobody scrolls through.
+ */
+export const CARD_THEME: Record<PositionGroup, { from: string; to: string; ring: string }> = {
+  Goalkeeper: { from: '#f59e0b', to: '#78350f', ring: '#fbbf24' },
+  Defence: { from: '#3b82f6', to: '#172554', ring: '#60a5fa' },
+  Midfield: { from: '#10b981', to: '#022c22', ring: '#34d399' },
+  Forward: { from: '#ef4444', to: '#450a0a', ring: '#f87171' },
+  Unknown: { from: '#64748b', to: '#0f172a', ring: '#94a3b8' },
+};

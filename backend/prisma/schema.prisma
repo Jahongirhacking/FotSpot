@@ -60,11 +60,19 @@ model User {
   id            String   @id @default(uuid())
   phone         String?  @unique
   email         String?  @unique
+  /// Only set for accounts an admin created on someone else's behalf (academy
+  /// managers, §1.10). Self-registered users sign in with email or phone and
+  /// never get one, hence nullable rather than a required unique handle.
+  username      String?  @unique
   passwordHash  String?
   firstName     String?
   lastName      String?
   avatarUrl     String?
   isActive      Boolean  @default(true)
+  /// True while the account still has its admin-generated password. The admin who
+  /// created it knows that password, so it must not stay valid indefinitely on an
+  /// account with access to children's profiles.
+  mustChangePassword Boolean @default(false)
 
   roles         UserRole[]
   sessions      Session[]

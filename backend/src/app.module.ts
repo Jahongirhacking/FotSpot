@@ -17,6 +17,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
 import { TrialsModule } from './trials/trials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { InsightsModule } from './insights/insights.module';
 import { AdminModule } from './admin/admin.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -43,6 +44,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     NotificationsModule,
     ModerationModule,
     AdminModule,
+    InsightsModule,
   ],
   providers: [
     // Order matters: authenticate first, then authorize by role, then by

@@ -64,7 +64,7 @@ export function UserPicker({
           <p className="truncate text-sm font-medium">
             {[value.firstName, value.lastName].filter(Boolean).join(' ') || value.id.slice(0, 8)}
           </p>
-          <p className="text-muted truncate text-xs">{value.email ?? value.phone ?? ''}</p>
+          <p className="text-muted truncate text-xs">{value.email ?? value.phone ?? value.username ?? ''}</p>
         </div>
         <button
           type="button"
@@ -125,7 +125,7 @@ export function UserPicker({
                           user.id.slice(0, 8)}
                       </span>
                       <span className="text-muted block truncate text-xs">
-                        {user.email ?? user.phone ?? ''}
+                        {user.email ?? user.phone ?? user.username ?? ''}
                       </span>
                     </span>
                     {user.roles.length > 0 && (

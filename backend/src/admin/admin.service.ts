@@ -68,6 +68,10 @@ export class AdminService {
             { lastName: { contains: term, mode: 'insensitive' } },
             { email: { contains: term, mode: 'insensitive' } },
             { phone: { contains: term } },
+            // An admin-created academy manager has no email and may have no
+            // phone — the username is the only handle that account can be
+            // found by, so omitting it makes those accounts unsearchable.
+            { username: { contains: term, mode: 'insensitive' } },
           ],
         }
       : {};
@@ -77,6 +81,7 @@ export class AdminService {
         where,
         select: {
           id: true,
+          username: true,
           firstName: true,
           lastName: true,
           email: true,
@@ -145,6 +150,7 @@ export class AdminService {
         lastName: true,
         email: true,
         phone: true,
+        username: true,
         avatarUrl: true,
         isActive: true,
         createdAt: true,

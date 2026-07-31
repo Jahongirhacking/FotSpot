@@ -63,6 +63,8 @@ export interface PlayerProfile {
   primaryPosition?: string | null;
   secondaryPosition?: string | null;
   playingStyle?: PlayingStyle | null;
+  /** Flattened from the owning User by the API — one account, one picture. */
+  avatarUrl?: string | null;
   region?: string | null;
   district?: string | null;
   matches: number;

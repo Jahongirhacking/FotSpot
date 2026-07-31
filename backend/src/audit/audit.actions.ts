@@ -8,6 +8,8 @@
 export const AuditAction = {
   COACH_VERIFIED: 'coach.verified',
   ACADEMY_VERIFIED: 'academy.verified',
+  ACADEMY_MANAGER_CHANGED: 'academy.manager_changed',
+  MANAGER_PASSWORD_RESET: 'academy.manager_password_reset',
   ADMIN_ASSIGNED: 'admin.assigned',
   ADMIN_REVOKED: 'admin.revoked',
   ROLE_ASSIGNED: 'role.assigned',

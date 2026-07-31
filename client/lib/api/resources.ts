@@ -92,6 +92,10 @@ export interface MeResponse {
   id: string;
   email?: string | null;
   phone?: string | null;
+  /** Set only on accounts an admin created — academy managers (§1.10). */
+  username?: string | null;
+  /** True while the account still holds its admin-generated password. */
+  mustChangePassword?: boolean;
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
@@ -201,6 +205,66 @@ export const academies = {
 
   listStaff: (id: string, opts: Opts = {}) =>
     apiFetch<AcademyProfile['members']>(`/academies/${id}/staff`, opts),
+
+  /** The academy the caller manages, or null. One manager, one academy. */
+  mine: (opts: Opts = {}) => apiFetch<AcademyProfile | null>('/academies/mine', opts),
+};
+
+// ---------- Insights (recruiting-side only — never shown to players) ----------
+
+export interface WeeklyPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  primaryPosition: string | null;
+  playingStyle: string | null;
+  region: string | null;
+  avatarUrl: string | null;
+  /** How many scouts put this player forward — a count of backing, not a rating. */
+  backingCount: number;
+  backingWeight: number;
+}
+
+export interface WeeklyScout {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  acceptedThisWeek: number;
+  level: number;
+  successRate: number;
+}
+
+export interface WeeklyCoach {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  assessmentsThisWeek: number;
+}
+
+export interface WeeklyInsights {
+  since: string;
+  players: WeeklyPlayer[];
+  scouts: WeeklyScout[];
+  coaches: WeeklyCoach[];
+}
+
+export interface AcademySummary {
+  pendingRecommendations: number;
+  newThisWeek: number;
+  endorsedScouts: number;
+  endorsedCoaches: number;
+  openTrials: number;
+  applications: number;
+}
+
+export const insights = {
+  weekly: (opts: Opts = {}) => apiFetch<WeeklyInsights>('/insights/weekly', opts),
+
+  forAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademySummary>(`/insights/academy/${academyId}`, opts),
 };
 
 // ---------- Admin console ----------
@@ -211,6 +275,8 @@ export interface AdminUser {
   lastName: string | null;
   email?: string | null;
   phone?: string | null;
+  /** Present only on admin-created accounts — their only identifier. */
+  username?: string | null;
   avatarUrl: string | null;
   createdAt: string;
   roles: string[];
@@ -242,7 +308,29 @@ export const admin = {
     apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'PATCH', body, ...opts }),
 
   createAcademy: (body: AcademyInput, opts: Opts = {}) =>
-    apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+    apiFetch<AcademyProfile & { credentials: ManagerCredentials | null }>('/academies', {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  /** Assigns or replaces the academy's single manager. */
+  setAcademyManager: (
+    academyId: string,
+    body: { managerUserId?: string; newManager?: NewManagerInput },
+    opts: Opts = {},
+  ) =>
+    apiFetch<{ member: { userId: string }; credentials: ManagerCredentials | null }>(
+      `/academies/${academyId}/manager`,
+      { method: 'PATCH', body, ...opts },
+    ),
+
+  /** The only recovery path for a lost generated password — it cannot be re-read. */
+  resetManagerPassword: (academyId: string, opts: Opts = {}) =>
+    apiFetch<ManagerCredentials>(`/academies/${academyId}/manager/reset-password`, {
+      method: 'POST',
+      ...opts,
+    }),
 
   /** Read-only for any admin. */
   userDetail: (userId: string, opts: Opts = {}) =>
@@ -356,7 +444,25 @@ export interface AcademyInput {
   region?: string;
   district?: string;
   description?: string;
+  /** Attach an existing account. Mutually exclusive with `newManager`. */
   managerUserId?: string;
+  /** Have the platform mint an account and return its one-time credentials. */
+  newManager?: NewManagerInput;
+}
+
+export interface NewManagerInput {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+/**
+ * Returned exactly once, when an account is created or its password is reset.
+ * There is no endpoint that can show these again — only the hash is stored.
+ */
+export interface ManagerCredentials {
+  username: string;
+  password: string;
 }
 
 // ---------- Endorsements (README §1.5.3) ----------
@@ -625,4 +731,13 @@ export const notifications = {
 
 export const auth = {
   sessions: (opts: Opts = {}) => apiFetch<DeviceSession[]>('/auth/sessions', opts),
+
+  /**
+   * `currentPassword` may be omitted only while `mustChangePassword` is set —
+   * the account is still on the password an admin generated for it.
+   */
+  changePassword: (
+    body: { currentPassword?: string; newPassword: string },
+    opts: Opts = {},
+  ) => apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
 };

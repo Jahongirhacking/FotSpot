@@ -6,11 +6,26 @@ import { z } from 'zod';
  * `z.string().email()` chain.
  */
 
+/**
+ * One identifier field accepting an email **or** a username.
+ *
+ * Academy manager accounts are created by an admin (§1.10) and often have no email
+ * at all — a username is the only identifier they can offer. Two separate inputs
+ * would make every other user choose between them before typing, so the form asks
+ * once and `loginBody` decides which field the API gets.
+ */
 export const loginEmailSchema = z.object({
-  email: z.email('Enter a valid email address'),
+  identifier: z.string().trim().min(1, 'Enter your email or username'),
   password: z.string().min(1, 'Enter your password'),
 });
 export type LoginEmailValues = z.infer<typeof loginEmailSchema>;
+
+/** An "@" is the only thing that distinguishes the two, and usernames never contain one. */
+export function loginBody({ identifier, password }: LoginEmailValues) {
+  return identifier.includes('@')
+    ? { email: identifier, password }
+    : { username: identifier, password };
+}
 
 export const registerEmailSchema = z.object({
   firstName: z.string().trim().min(1, 'Enter your first name').max(60),

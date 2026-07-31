@@ -5,6 +5,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.decorator';
 import {
+  ChangePasswordDto,
   LoginEmailDto,
   LogoutDto,
   OAuthLoginDto,
@@ -65,6 +66,18 @@ export class AuthController {
   @Post('logout')
   logout(@CurrentUser() user: AuthUser, @Body() dto: LogoutDto) {
     return this.authService.logout(user.userId, user.sessionId, dto.allDevices);
+  }
+
+  /**
+   * Sets a new password and signs every other device out.
+   *
+   * `currentPassword` may be omitted only while the account still holds the
+   * password an admin generated for it — see AuthService.changePassword.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('password')
+  changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.userId, dto, user.sessionId);
   }
 
   /** "Where am I logged in" - README 1.21 device tracking. */

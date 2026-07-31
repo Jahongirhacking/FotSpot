@@ -65,7 +65,9 @@ export default async function PlayersPage({
         />
       ) : (
         <>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Cards are portrait, so more of them fit per row than the old list
+              rows did — four across on a laptop, two on a phone. */}
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {result.items.map((player) => (
               <li key={player.id}>
                 <PlayerResultCard player={player} />
