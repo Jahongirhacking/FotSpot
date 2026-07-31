@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Camera, Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import { uploadToStorage } from '@/lib/api/upload';
 import type { AvatarUploadUrl } from '@/lib/api/resources';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { initials } from '@/lib/utils';
@@ -93,17 +94,14 @@ export function EditIdentity({
         body: { filename: file.name },
       });
 
-      if (!ticket.storageConfigured) {
-        setAvatarNotice(t.profile.avatarStorageNotConfigured);
-        return;
-      }
-
-      const put = await fetch(ticket.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
+      // No `storageConfigured` check any more: the API refuses with 503 and a
+      // reason when R2 is unset, so there is nothing to guess at here — and the
+      // flag it used to read no longer exists, which silently killed every
+      // avatar upload until this was fixed.
+      await uploadToStorage(ticket.uploadUrl, file, {
+        blocked: t.clips.uploadBlocked,
+        rejected: t.profile.avatarUploadFailed,
       });
-      if (!put.ok) throw new Error(t.profile.avatarUploadFailed);
 
       await browserFetch('/users/me', {
         method: 'PATCH',

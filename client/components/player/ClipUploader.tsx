@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleStop, Trophy, Upload, Video, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import { uploadToStorage } from '@/lib/api/upload';
 import type { Media, MediaCategory } from '@/lib/api/types';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -98,12 +99,10 @@ export function ClipUploader({
         },
       );
 
-      const put = await fetch(ticket.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type || 'video/webm' },
+      await uploadToStorage(ticket.uploadUrl, file, {
+        blocked: t.clips.uploadBlocked,
+        rejected: t.clips.uploadFailed,
       });
-      if (!put.ok) throw new Error(t.clips.uploadFailed);
 
       return browserFetch<Media>('/media/confirm', {
         method: 'POST',

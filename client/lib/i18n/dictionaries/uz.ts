@@ -331,6 +331,7 @@ export const uz = {
   },
 
   clips: {
+    uploadBlocked: 'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
     play: 'Ijro etish',
     notAllowed: 'Bu videoni ko‘rish uchun ruxsat yo‘q',
     privateNote: 'Video lavhalar shaxsiy: havola bir necha daqiqada eskiradi va uni boshqalarga ulashib bo‘lmaydi.',

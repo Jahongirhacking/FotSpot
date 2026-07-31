@@ -59,9 +59,8 @@ sudo docker run --name fotspot-redis \
 
 ## Deliberate stubs / extension points (called out in code comments)
 
-These are the three places where the spec depends on external services
-Claude has no credentials for. Each is implemented as a real interface with
-a clearly marked stub body, not faked as if it worked:
+These are places where the spec depends on external services. Each is a real
+interface with a clearly marked stub body, not faked as if it worked:
 
 1. **OAuth** (`AuthService.oauthLogin`) — accepts a provider token but does
    **not** verify it against Google/Facebook/OneID yet. Wire real
@@ -69,10 +68,41 @@ a clearly marked stub body, not faked as if it worked:
 2. **SMS delivery** (`AuthService.requestOtp`) — OTP is generated, hashed,
    and stored correctly; in non-production it's echoed back in the response
    (`devCode`) so the flow is testable without an SMS gateway (e.g. Eskiz).
-3. **Cloudflare R2 uploads** (`R2StorageService.getUploadUrl`) — returns a
-   deterministic object key and a stub URL. Swap in a real presigned PUT via
-   `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` pointed at the R2
-   S3-compatible endpoint.
+
+**Cloudflare R2 is no longer a stub** — `StorageService` issues genuine
+presigned PUT and GET URLs. Two pieces of setup are required and neither can be
+done from application code:
+
+### 1. The bucket needs a CORS policy
+
+The browser PUTs straight to R2 so video never transits the API (§14), which
+makes the upload cross-origin — and **a new R2 bucket allows no origins at
+all**. Without this the browser blocks the request before sending it and the
+upload fails with `TypeError: Failed to fetch` and no status code to diagnose.
+
+The policy lives in [`r2-cors.json`](./r2-cors.json). Apply it with:
+
+```bash
+pnpm r2:cors          # apply
+pnpm r2:cors:check    # print what the bucket currently has
+```
+
+The app's own R2 token is object-scoped and will get `AccessDenied` — that is
+expected. Use an admin R2 token, or paste `r2-cors.json` into
+**Cloudflare → R2 → your bucket → Settings → CORS Policy**. Add every origin the
+app is served from; a missing one fails exactly like no policy at all.
+
+### 2. Only `public/` may be served publicly
+
+Object keys are split into two tiers (`src/storage/storage.keys.ts`):
+`public/avatars/…` is meant to be cached and linked forever, while
+`private/players/…` must never be reachable without a signature. The API never
+hands out a private path, but **the bucket must also be configured to expose
+`public/` and nothing else** — that half is deployment configuration, not code.
+
+`R2_PUBLIC_BASE_URL` must point at that public origin. Left unset, avatars
+resolve to `null` and the service warns once at startup rather than emitting a
+relative path that would 404.
 
 ## Business logic implemented in full
 

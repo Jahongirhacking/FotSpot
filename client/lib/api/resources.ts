@@ -69,8 +69,7 @@ export interface AvatarUploadUrl {
   uploadUrl: string;
   storageKey: string;
   publicUrl: string;
-  /** False while R2 credentials are unset — the PUT will not persist bytes. */
-  storageConfigured: boolean;
+  expiresIn: number;
 }
 
 export type ContactChannel = 'PHONE' | 'EMAIL';
