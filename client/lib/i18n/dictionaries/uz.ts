@@ -170,6 +170,13 @@ export const uz = {
   },
 
   profile: {
+    cardDetails: 'Karta ma’lumotlari',
+    cardDetailsHint: 'Bo‘y va vazn har mavsum o‘zgaradi — ularni yangilab turing. Ism va tug‘ilgan sana o‘zgartirilmaydi.',
+    detailsSaved: 'Saqlandi.',
+    noPlayerCardHint: 'Futbolchi kartasi sizga akademiyalar oldida ko‘rinish beradi.',
+    becomeScout: 'Skaut ham bo‘lasizmi?',
+    becomeScoutHint: 'Boshqa futbolchilarni akademiyalarga tavsiya qiling. Obro‘ eng quyi darajadan boshlanadi.',
+    becomeScoutCta: 'Skaut bo‘lish',
     title: 'Profil',
     editProfile: 'Profilni tahrirlash',
     identity: 'Shaxsiy ma’lumot',

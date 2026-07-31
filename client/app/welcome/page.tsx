@@ -17,9 +17,14 @@ export default async function WelcomePage() {
   const session = await getSession();
   if (!session) redirect('/login?next=/welcome');
 
-  // Asked once per account, never per device. Someone who already answered lands on
-  // their dashboard instead of being interrogated again on a second phone.
-  if (session.onboarded) redirect('/dashboard');
+  // Asked once per account, never per device. Someone who already answered lands
+  // on their dashboard instead of being interrogated again on a second phone.
+  //
+  // `roles.length` is part of the condition, not decoration: the app layout sends
+  // roleless accounts here, so leaving on the cookie alone would bounce them
+  // straight back and loop. Answering the question and ending up with a role are
+  // now the same event, and both have to be true to leave.
+  if (session.onboarded && session.roles.length > 0) redirect('/dashboard');
 
   const alreadyPlayer = session.roles.includes('player');
 
@@ -32,7 +37,8 @@ export default async function WelcomePage() {
             What brings you to FotSpot?
           </h1>
           <p className="text-muted mx-auto mt-2 max-w-md text-sm">
-            This just sets up your home screen. You can change it any time, and you can be both.
+            Pick the one that fits you today. You can add the other later, and plenty of
+            people are both.
           </p>
         </div>
 

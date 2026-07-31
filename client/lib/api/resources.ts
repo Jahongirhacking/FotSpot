@@ -57,6 +57,16 @@ export const users = {
       '/users/me/contact/verify',
       { method: 'POST', body, ...opts },
     ),
+
+  /**
+   * Become a scout — the one role a user may grant themselves, because it starts
+   * with no authority (§1.5: a new scout's word carries the lowest weight).
+   */
+  becomeScout: (opts: Opts = {}) =>
+    apiFetch<{ roles: string[]; permissions: string[] }>('/users/me/roles/scout', {
+      method: 'POST',
+      ...opts,
+    }),
 };
 
 export interface UpdateProfileBody {
@@ -109,11 +119,13 @@ export interface MyProfileResponse extends MeResponse {
       profileId: string;
       birthDate: string;
       primaryPosition: string | null;
-      playingStyle: PlayingStyle | null;
+      secondaryPosition: string | null;
+      dominantFoot: 'LEFT' | 'RIGHT' | 'BOTH' | null;
+      playingStyle: string | null;
       region: string | null;
-      matches: number;
-      goals: number;
-      assists: number;
+      district: string | null;
+      height: number | null;
+      weight: number | null;
       mediaCount: number;
       trialApplications: number;
       recommendationsReceived: number;

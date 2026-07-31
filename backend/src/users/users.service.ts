@@ -79,11 +79,13 @@ export class UsersService {
             lastName: true,
             birthDate: true,
             primaryPosition: true,
+            secondaryPosition: true,
+            dominantFoot: true,
             playingStyle: true,
             region: true,
-            matches: true,
-            goals: true,
-            assists: true,
+            district: true,
+            height: true,
+            weight: true,
             _count: { select: { media: true, trialApplications: true, recommendations: true } },
           },
         }),
@@ -109,16 +111,28 @@ export class UsersService {
     return {
       ...me,
       stats: {
+        /**
+         * Deliberately no matches / goals / assists.
+         *
+         * They are self-reported counters nobody can check, and putting them on
+         * the profile as "statistics" gives them the authority of a record. The
+         * numbers that belong here are ones the platform can stand behind: clips
+         * the player uploaded, trials they applied to, and scouts who put them
+         * forward. The editable card details ride along so the profile can offer
+         * an edit form without a second request.
+         */
         player: player
           ? {
               profileId: player.id,
               birthDate: player.birthDate,
               primaryPosition: player.primaryPosition,
+              secondaryPosition: player.secondaryPosition,
+              dominantFoot: player.dominantFoot,
               playingStyle: player.playingStyle,
               region: player.region,
-              matches: player.matches,
-              goals: player.goals,
-              assists: player.assists,
+              district: player.district,
+              height: player.height,
+              weight: player.weight,
               mediaCount: player._count.media,
               trialApplications: player._count.trialApplications,
               recommendationsReceived: player._count.recommendations,
@@ -146,6 +160,19 @@ export class UsersService {
         following: followingCount,
       },
     };
+  }
+
+  /**
+   * Grants the caller the `scout` role. Idempotent.
+   *
+   * Returns the refreshed access snapshot so the client can see the new role
+   * without a second call — though it still needs a token refresh before any
+   * @Roles('scout') route will accept it, since claims are a login-time snapshot
+   * (backend/CLAUDE.md §7).
+   */
+  async becomeScout(userId: string) {
+    await this.rbac.assignRole(userId, 'scout');
+    return this.rbac.getEffectiveAccess(userId);
   }
 
   // ---------- Profile editing ----------

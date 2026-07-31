@@ -21,7 +21,6 @@ import {
   VerifyOtpDto,
 } from './dto/auth.dto';
 
-const DEFAULT_ROLE_ON_SIGNUP = 'scout';
 const OTP_TTL_SECONDS = 300;
 const REFRESH_TTL_FALLBACK_DAYS = 30;
 
@@ -31,6 +30,20 @@ interface RefreshClaims {
   sid: string;
 }
 
+/**
+ * ## Signing up grants no role
+ *
+ * The first thing a new account does is answer "do you play, or do you spot
+ * talent?" (§1.2.2), and that answer is what assigns one.
+ *
+ * `scout` used to be handed out automatically, which quietly made the question
+ * decorative: everybody already was a scout, so "become a scout" could never be
+ * offered and the choice only set a cookie. A role the product asks you to pick
+ * has to be a role you do not already hold.
+ *
+ * A roleless account is a real but brief state — the app layout sends it to
+ * /welcome, which needs no role and is the only place it can go.
+ */
 @Injectable()
 export class AuthService {
   constructor(
@@ -48,19 +61,13 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.password);
 
-    // One transaction: a user without their default role is a broken account —
-    // it can't register again (409) and its JWT carries no roles at all.
-    const user = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          email: dto.email,
-          passwordHash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-        },
-      });
-      await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
-      return created;
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      },
     });
 
     return this.issueTokens(user.id, client);
@@ -157,15 +164,7 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
     if (!user) {
-      user = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { phone: dto.phone } });
-        await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
-        return created;
-      });
-    } else {
-      // Self-heal an account created before the role catalogue existed: without
-      // this it keeps signing in with an empty `roles` claim and no working UI.
-      await this.rbac.ensureDefaultRoleFor(user.id, DEFAULT_ROLE_ON_SIGNUP);
+      user = await this.prisma.user.create({ data: { phone: dto.phone } });
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
@@ -180,13 +179,7 @@ export class AuthService {
     // Left as an explicit extension point rather than faked.
     let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
-      user = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { email: dto.email } });
-        await this.rbac.assignRole(created.id, DEFAULT_ROLE_ON_SIGNUP, tx);
-        return created;
-      });
-    } else {
-      await this.rbac.ensureDefaultRoleFor(user.id, DEFAULT_ROLE_ON_SIGNUP);
+      user = await this.prisma.user.create({ data: { email: dto.email } });
     }
     return this.issueTokens(user.id, client);
   }

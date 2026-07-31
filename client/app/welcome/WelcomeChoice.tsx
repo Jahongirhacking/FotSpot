@@ -3,37 +3,66 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Volleyball, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Feedback';
+import { browserFetch } from '@/lib/api/browser';
+import { refreshSession } from '@/lib/api/session-refresh';
 import { cn } from '@/lib/utils';
 
 /**
- * Two big choices and a free skip — README §1.2.2.
+ * Two choices, and the answer is what grants a role — README §1.2.2.
  *
- * "I play" does not replace the scout role, it adds the player one: roles accumulate
- * (§1.2). Skipping is non-terminal — the dashboard keeps a dismissible card, and the
- * question returns just-in-time when the user tries something player-only.
+ * This used to be decorative. Signup handed everyone `scout`, so both buttons led
+ * to the same place and only wrote a cookie; "become a scout" could never be
+ * offered because you already were one. Now a new account holds no role at all
+ * and leaves here holding exactly the one it picked.
+ *
+ * There is no skip. With no role the app has no home screen to send you to, and a
+ * question you cannot avoid is kinder than a dashboard that does not work. Both
+ * roles remain addable later from the profile — roles accumulate (§1.2).
+ *
+ * "I play" grants nothing here: the backend attaches `player` when the profile is
+ * created, because §11.1 requires the age gate to come first.
  */
 export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
   const router = useRouter();
-  const [busy, setBusy] = React.useState<null | 'player' | 'scout' | 'skip'>(null);
+  const [busy, setBusy] = React.useState<null | 'player' | 'scout'>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  async function choose(intent: 'player' | 'scout' | 'skip') {
+  async function choose(intent: 'player' | 'scout') {
     setBusy(intent);
+    setError(null);
 
     if (intent === 'player') {
-      // Mark onboarding answered, but don't set the player role here — the backend
-      // grants it when the profile is created, and §11.1 requires age-gating first.
-      await persist({ role: 'scout', onboarded: true });
-      router.push(alreadyPlayer ? '/dashboard' : '/onboarding/player');
+      if (alreadyPlayer) {
+        await persist({ role: 'player', onboarded: true });
+        router.push('/dashboard');
+        return;
+      }
+      // The role arrives with the profile; the wizard is the next step.
+      markOnboarded();
+      router.push('/onboarding/player');
       return;
     }
 
-    await persist({ role: 'scout', onboarded: true });
-    router.push('/dashboard');
+    try {
+      await browserFetch('/users/me/roles/scout', { method: 'POST' });
+      // The JWT is a login-time snapshot (backend/CLAUDE.md §7), so the new role
+      // is invisible until the session is refreshed — without this the switcher
+      // and every scout-only screen would behave as if nothing happened.
+      await refreshSession();
+      await persist({ role: 'scout', onboarded: true });
+      // Hard navigation: the server layout must re-read the new roles cookie.
+      window.location.assign('/dashboard');
+    } catch (err) {
+      setBusy(null);
+      setError(err instanceof Error ? err.message : 'That did not work. Please try again.');
+    }
   }
 
   return (
     <div className="space-y-4">
+      {error && <Alert tone="danger">{error}</Alert>}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <ChoiceCard
           icon={Volleyball}
@@ -65,16 +94,9 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
         />
       </div>
 
-      <div className="text-center">
-        <Button
-          variant="ghost"
-          onClick={() => choose('skip')}
-          loading={busy === 'skip'}
-          disabled={busy !== null}
-        >
-          I&apos;ll decide later
-        </Button>
-      </div>
+      <p className="text-muted text-center text-xs">
+        You can add the other one later from your profile.
+      </p>
     </div>
   );
 }
@@ -85,6 +107,11 @@ async function persist(body: { role: string; onboarded: boolean }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).catch(() => undefined);
+}
+
+/** Records that the question was answered, without claiming a role yet. */
+function markOnboarded() {
+  void fetch('/api/auth/onboarded', { method: 'POST' }).catch(() => undefined);
 }
 
 function ChoiceCard({

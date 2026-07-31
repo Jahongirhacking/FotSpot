@@ -328,6 +328,26 @@
         ]
       }
     },
+    "/api/v1/users/me/roles/scout": {
+      "post": {
+        "operationId": "users_becomeScout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Become a scout — the one role a user may give themselves.\n\nEverything else is granted by somebody: `player` comes with creating a\nprofile, `coach` from the academy that hires you, `academy_manager` and\n`admin` from an admin. Scouting needs no permission because it starts with\nzero authority: a new scout's recommendations carry the lowest §1.5 weight\nand only earn more by being accepted.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users/me/avatar/upload-url": {
       "post": {
         "operationId": "users_avatarUploadUrl",

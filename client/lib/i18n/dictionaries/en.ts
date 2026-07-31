@@ -165,6 +165,13 @@ export const en: Dictionary = {
   },
 
   profile: {
+    cardDetails: 'Card details',
+    cardDetailsHint: 'Height and weight change every season — keep them current. Name and date of birth are not editable here.',
+    detailsSaved: 'Saved.',
+    noPlayerCardHint: 'A player card is what makes you visible to academies.',
+    becomeScout: 'Are you a scout too?',
+    becomeScoutHint: 'Recommend players to academies. Your reputation starts at the lowest level and is earned.',
+    becomeScoutCta: 'Become a scout',
     title: 'Profile',
     editProfile: 'Edit profile',
     identity: 'Personal details',

@@ -38,6 +38,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/settings/password');
   }
 
+  /*
+   * A brand-new account holds no role until it answers the first-login question
+   * (§1.2.2), and every screen in here is keyed to a role — the dashboard would
+   * render nothing and the nav would be empty. So there is exactly one place to
+   * go, and this sends it there rather than showing an app that does not work.
+   *
+   * /welcome lives outside this layout, so it stays reachable.
+   */
+  if (session && me && me.roles.length === 0) {
+    redirect('/welcome');
+  }
+
   return (
     <>
       <AppHeader
