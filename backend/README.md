@@ -123,10 +123,16 @@ Object keys are split into two tiers (`src/storage/storage.keys.ts`):
 So the bucket needs **public read access on `public/`** — via an r2.dev domain or
 a custom domain on the bucket.
 
-**`R2_PUBLIC_BASE_URL` is mandatory.** Every clip and avatar URL is built from it
-at read time, so with it unset the media endpoints fail with a 503 saying exactly
-that, and the service logs an error at startup. It is not optional the way it was
-when clips were signed.
+**`R2_PUBLIC_BASE_URL` is needed for avatars only.** Clips and their covers are
+served by presigned URL against the S3 endpoint, so they work with nothing but the
+R2 credentials — no public bucket access, no custom domain. Avatars still come
+from the public origin, and without it they resolve to `null` and fall back to
+initials.
+
+Clip URLs carry the seven-day SigV4 maximum and are re-minted on every read, so a
+clip stays reachable for as long as it exists — deletion, not time, ends it. The
+signing timestamp is rounded to the hour so the URL is byte-identical within that
+window and a rewatch comes from the browser cache instead of the network.
 
 ## Business logic implemented in full
 

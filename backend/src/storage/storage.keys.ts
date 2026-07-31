@@ -14,15 +14,22 @@ import * as crypto from 'crypto';
  * So the prefix does not *protect* anything; it *declares* intent, and the bucket
  * is configured to serve only `public/` over the CDN. Two visible tiers:
  *
- * - `public/`  — cacheable, indexable, linkable forever. Avatars and player
- *                clips: a clip stays reachable until its player deletes it, which
- *                is a **product decision**, not an oversight. The cost is real and
- *                worth stating: a URL that has been seen once works for anyone,
- *                forever, until the object is removed.
- * - `private/` — never served directly. Reachable solely through a short-lived
- *                signed URL the API issues after an authorization check. Nothing
- *                uses it yet; it is kept for the age and identity documents of
- *                §12.1, where the calculus is completely different.
+ * - `public/`  — avatars, and player clips.
+ * - `private/` — nothing yet; kept for the age and identity documents of §12.1.
+ *
+ * ## The prefix is a namespace, not a serving policy
+ *
+ * It stopped being one when clips moved to presigned URLs. **Avatars** are served
+ * from the CDN origin and are genuinely public. **Clips** are served by signature
+ * (`StorageService.readUrlOrNull`) — permanently reachable because the signature
+ * is re-minted on every read, but never composed from a public hostname, which is
+ * why they work with no public bucket access configured at all.
+ *
+ * The consequence worth knowing: if public read access is switched on for the
+ * whole bucket, `public/players/…` becomes directly fetchable and the signing
+ * stops being the only way in. That is not harmful — clips are meant to stay
+ * reachable until deleted either way — but if signing should be the *only* route,
+ * scope public access to `public/avatars/` rather than the bucket.
  *
  * Pure and DI-free (backend/CLAUDE.md §2), so the traversal and ownership rules
  * below are unit-testable without a bucket or a Nest container.

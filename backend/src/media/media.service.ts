@@ -45,24 +45,35 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
  * assembling URLs themselves, and then changing CDN or provider stops being a
  * config change. One builder, one place (StorageService).
  */
-export function toMediaResponse<T extends { storageKey: string; posterKey?: string | null }>(
-  media: T,
-  storage: StorageService,
-) {
+/**
+ * A media row on the way out, with playable URLs.
+ *
+ * ## Presigned, not CDN
+ *
+ * Both URLs are signed against the R2 S3 endpoint rather than composed from a
+ * public hostname. That means clips work with nothing but the credentials the API
+ * already holds — no public bucket access, no custom domain, no
+ * `R2_PUBLIC_BASE_URL`. The missing-hostname outage that produced 503s on every
+ * media endpoint simply cannot happen through this path.
+ *
+ * The signature carries an expiry because SigV4 has no way not to. It is set to
+ * the seven-day maximum and re-minted on every read, so the app never hands out a
+ * URL near its deadline and a clip stays reachable for as long as it exists —
+ * deletion, not time, is what ends it. Within any given hour the signature is
+ * identical, so the browser can still serve a rewatch from cache.
+ *
+ * `storageKey` stays out of the response: a caller holding keys starts building
+ * its own URLs, and then changing provider stops being a config change.
+ */
+export async function toMediaResponse<
+  T extends { storageKey: string; posterKey?: string | null },
+>(media: T, storage: StorageService) {
   const { storageKey, posterKey, ...rest } = media;
-  return {
-    // `publicUrlOrNull`, not `buildPublicUrl`: with R2_PUBLIC_BASE_URL unset this
-    // used to throw, which took the whole endpoint down with a 503 — a profile
-    // could not list its clips, delete them, or render its attribute bars, all
-    // because a CDN hostname was missing. Worse on confirm, where the row was
-    // already written and the caller was told the upload had failed.
-    //
-    // A clip with no address degrades to one that cannot be played. Everything
-    // else about it still works, and the UI says why.
-    ...rest,
-    url: storage.publicUrlOrNull(storageKey),
-    posterUrl: storage.publicUrlOrNull(posterKey),
-  };
+  const [url, posterUrl] = await Promise.all([
+    storage.readUrlOrNull(storageKey),
+    storage.readUrlOrNull(posterKey),
+  ]);
+  return { ...rest, url, posterUrl };
 }
 
 @Injectable()
@@ -169,7 +180,9 @@ export class MediaService {
       where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
       orderBy: { createdAt: 'desc' },
     });
-    return items.map((item) => toMediaResponse(item, this.storage));
+    // Signing is local HMAC — no network — so a page of tiles costs microseconds,
+    // not a round trip each.
+    return Promise.all(items.map((item) => toMediaResponse(item, this.storage)));
   }
 
   /**

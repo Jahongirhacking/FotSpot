@@ -7,15 +7,27 @@ import { isPublicKey } from './storage.keys';
 const UPLOAD_URL_TTL_SECONDS = 900;
 
 /**
- * Read URLs live about as long as it takes to click play.
+ * The SigV4 maximum, and deliberately so.
  *
- * Long enough to survive a slow handshake on 3G and a user who paused to read the
- * caption; short enough that a URL pasted into a group chat is dead before it
- * arrives. S3-compatible stores validate the signature when the request *starts*,
- * so an in-flight download is unaffected by expiry — this bounds sharing, not
- * playback.
+ * A clip is meant to stay reachable until its player deletes it. A presigned URL
+ * cannot express "never expires", so the next best thing is the longest life the
+ * signature format allows, combined with minting a fresh one on every read — the
+ * app therefore never hands out a URL that is close to expiring, and nobody
+ * watching or sharing one runs into a deadline.
  */
-const READ_URL_TTL_SECONDS = 300;
+const READ_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Signing time is rounded down to this, so the same object yields the *same* URL
+ * for an hour at a time.
+ *
+ * Without it every response carries a new signature, which means a byte-identical
+ * video is a cache miss on every page load — the browser cannot reuse what it
+ * already downloaded. On the connections these users have (§14) that is the
+ * difference between a clip loading instantly on second view and paying for it
+ * twice. Rounding down never shortens usable life below six days.
+ */
+const SIGNING_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * The one place an object key becomes a URL — Cloudflare R2 (README §1.7).
@@ -154,24 +166,38 @@ export class StorageService {
   }
 
   /**
-   * Short-lived signed GET for a private object.
+   * Signed GET for an object, valid for a week and stable within the hour.
    *
-   * **Call this only after authorizing the caller.** It performs no checks of its
-   * own by design — an authorization decision made inside a URL builder is one
-   * nobody reviewing the endpoint will see.
+   * This performs **no authorization of its own**, by design. Whether the caller
+   * may see the object is a decision for the endpoint, where a reviewer will
+   * notice it; buried in a URL builder it would be invisible.
    */
   async createReadUrl(storageKey: string, ttlSeconds = READ_URL_TTL_SECONDS) {
     const client = this.require();
+    const signingDate = new Date(Math.floor(Date.now() / SIGNING_WINDOW_MS) * SIGNING_WINDOW_MS);
+
     const url = await getSignedUrl(
       client,
       new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
-      { expiresIn: ttlSeconds },
+      { expiresIn: ttlSeconds, signingDate },
     );
     return {
       url,
       expiresIn: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+      expiresAt: new Date(signingDate.getTime() + ttlSeconds * 1000).toISOString(),
     };
+  }
+
+  /**
+   * `createReadUrl`, but null instead of throwing when storage is unconfigured.
+   *
+   * For response builders. A server with no R2 credentials should still be able
+   * to list clips — the rows exist and everything except playback works — and
+   * taking the whole endpoint down over it is the failure this replaces.
+   */
+  async readUrlOrNull(storageKey: string | null | undefined): Promise<string | null> {
+    if (!storageKey || !this.client) return null;
+    return (await this.createReadUrl(storageKey)).url;
   }
 
   private require(): S3Client {
