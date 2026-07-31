@@ -187,6 +187,39 @@ export class AcademiesService {
   }
 
   /**
+   * What the caller is to this academy, if anything.
+   *
+   * A separate endpoint rather than a field on `GET /academies/:id`, because that
+   * response is public and Redis-cached: folding a per-viewer answer into a shared
+   * cache entry would serve one user's relationship to the next visitor. The cost
+   * is a second request on a page that is already authenticated.
+   *
+   * Only one relation is returned — the strongest — since the badge has room for
+   * one and "Manager" already implies belonging.
+   */
+  async relationTo(userId: string, academyId: string) {
+    const [membership, endorsement, acceptedTrial] = await Promise.all([
+      this.prisma.academyMember.findUnique({
+        where: { academyId_userId: { academyId, userId } },
+      }),
+      this.prisma.academyEndorsement.findFirst({
+        where: { academyId, userId, status: 'ACTIVE' },
+      }),
+      // The only player↔academy link the MVP has. Squad membership and academy
+      // history are Phase 2 (README §3–8) and deliberately not built, so a player
+      // "belongs" to the academy that accepted them at a trial and nothing else.
+      this.prisma.trialApplication.findFirst({
+        where: { status: 'ACCEPTED', trial: { academyId }, player: { userId } },
+      }),
+    ]);
+
+    if (membership) return { relation: membership.role };
+    if (endorsement) return { relation: `ENDORSED_${endorsement.role}` };
+    if (acceptedTrial) return { relation: 'TRIALIST' };
+    return { relation: null };
+  }
+
+  /**
    * The academy this user manages, or null.
    *
    * The academy-manager home used to find its academy by scanning the public list

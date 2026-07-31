@@ -312,6 +312,13 @@ export const uz = {
     following: 'Kuzatilmoqda',
   },
 
+  relation: {
+    you: 'Siz',
+    myCoach: 'Mening murabbiyim',
+    myAcademy: 'Mening akademiyam',
+    endorsesMe: 'Meni tasdiqlagan',
+    acceptedMe: 'Meni qabul qilgan',
+  },
   player: {
     onThePitch: 'Maydonda',
     dominantFoot: 'Kuchli oyoq',

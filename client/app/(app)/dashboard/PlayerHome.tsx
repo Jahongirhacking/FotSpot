@@ -6,6 +6,9 @@ import type { CoachAssessment, PlayerProfile, Trial, TrialApplication } from '@/
 import { cardCompletion } from '@/lib/player-card';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import { AttributeBars } from '@/components/player/AttributeBars';
+import { OnThePitchCard } from '@/components/player/OnThePitchCard';
+import { RelationBadge } from '@/components/shared/RelationBadge';
+import type { Dictionary } from '@/lib/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -16,7 +19,7 @@ import { formatDate } from '@/lib/utils';
  * The player's home screen IS their card (README §21.6) — not a subpage, not a feed.
  * A Server Component: all of this is known at request time.
  */
-export async function PlayerHome({ token }: { token: string }) {
+export async function PlayerHome({ token, t }: { token: string; t: Dictionary }) {
   let profile: PlayerProfile | null = null;
   try {
     profile = await players.getMine({ token, cache: 'no-store' });
@@ -52,9 +55,16 @@ export async function PlayerHome({ token }: { token: string }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+        <div>
+          <RelationBadge relation="SELF" t={t} />
+        </div>
+
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <PlayerCard player={profile} assessments={assessments} />
-          <AttributeBars player={profile} assessments={assessments} />
+          <div className="space-y-4">
+            <OnThePitchCard player={profile} t={t} />
+            <AttributeBars player={profile} assessments={assessments} />
+          </div>
         </div>
 
         <Card>

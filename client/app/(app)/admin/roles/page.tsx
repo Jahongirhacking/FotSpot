@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin, type RoleWithPermissions } from '@/lib/api/resources';
 import { RolesManager } from './RolesManager';
@@ -15,12 +16,12 @@ export default async function RolesPage() {
   if (!session) redirect('/login?next=/admin/roles');
 
   const { t } = await getServerT();
-  if (!session.roles.includes('super_admin')) {
+  if (!isSuperAdminActing(session.activeRole)) {
     return <Alert tone="warning">{t.dashboard.adminSubtitle}</Alert>;
   }
 
   const roles = await admin
-    .roles({ token: session.accessToken, cache: 'no-store' })
+    .roles({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
     .catch(() => [] as RoleWithPermissions[]);
 
   return (

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Building2, MapPin } from 'lucide-react';
 import { academies } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
+import { isAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -18,8 +19,9 @@ export default async function AcademiesPage() {
   // Academies are onboarded by the platform team, not self-registered — there are
   // only ~50 in the country. The console is where that happens; there is no
   // public registration form to link to.
-  const isAdmin =
-    session?.roles.includes('admin') || session?.roles.includes('super_admin');
+  // The *acting* role, not every role held: an admin browsing as an academy
+  // manager should see this page the way a manager does (§1.2.1).
+  const isAdmin = isAdminActing(session?.activeRole ?? null);
 
   const list = await academies
     .listPublic(

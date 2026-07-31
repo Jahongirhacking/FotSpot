@@ -27,7 +27,7 @@ import type {
   TrialApplicationStatus,
 } from './types';
 
-type Opts = Pick<RequestOptions, 'token' | 'revalidate' | 'tags' | 'cache'>;
+type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
 
 // ---------- Users ----------
 
@@ -208,7 +208,22 @@ export const academies = {
 
   /** The academy the caller manages, or null. One manager, one academy. */
   mine: (opts: Opts = {}) => apiFetch<AcademyProfile | null>('/academies/mine', opts),
+
+  /**
+   * What the caller is to this academy — manager, staff, endorsed, or a player it
+   * accepted at a trial. A separate call because `getById` is public and cached.
+   */
+  relation: (id: string, opts: Opts = {}) =>
+    apiFetch<{ relation: AcademyRelation | null }>(`/academies/${id}/relation`, opts),
 };
+
+export type AcademyRelation =
+  | 'MANAGER'
+  | 'COACH'
+  | 'SCOUT'
+  | 'ENDORSED_SCOUT'
+  | 'ENDORSED_COACH'
+  | 'TRIALIST';
 
 // ---------- Insights (recruiting-side only — never shown to players) ----------
 

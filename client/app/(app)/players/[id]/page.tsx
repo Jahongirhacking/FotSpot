@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ApiError } from '@/lib/api/client';
-import { coaches, players, recommendations } from '@/lib/api/resources';
+import { coaches, players, recommendations, users } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import { AttributeBars } from '@/components/player/AttributeBars';
-import { DominantFootFigure, PitchMap } from '@/components/player/PitchMap';
+import { OnThePitchCard } from '@/components/player/OnThePitchCard';
+import { RelationBadge } from '@/components/shared/RelationBadge';
 import { RecommendationSummary } from '@/components/player/RecommendationSummary';
 import { PlayerActions } from './PlayerActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -46,6 +47,13 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   const { t } = await getServerT();
 
+  // Marks the viewer's own card. `userId` is on the profile already, so this
+  // costs one extra request only for signed-in visitors.
+  const me = session
+    ? await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+    : null;
+  const isSelf = Boolean(me && me.id === player.userId);
+
   // Public endpoint — a guest browsing a profile sees who vouched too.
   const summary = await recommendations
     .getPlayerSummary(
@@ -63,45 +71,23 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-6">
-        {/* Card beside the shape of the player: where they play and which foot.
-            Both are pictures rather than codes — "AM" and "LEFT" mean nothing to
-            the parent reading this, and the app is read in three languages. */}
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+        {isSelf && (
+          <div>
+            <RelationBadge relation="SELF" t={t} />
+          </div>
+        )}
+
+        {/* `items-start` so the pitch card sizes to its own content instead of
+            stretching to the card's height — which left a dead band under the
+            card whenever the two disagreed. */}
+        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <PlayerCard player={player} assessments={assessments} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.player.onThePitch}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="mx-auto max-w-[220px]">
-                <PitchMap
-                  primary={player.primaryPosition}
-                  secondary={player.secondaryPosition}
-                />
-              </div>
-
-              <div className="border-border border-t pt-4">
-                <p className="text-muted mb-2 text-center text-xs uppercase">
-                  {t.player.dominantFoot}
-                </p>
-                <DominantFootFigure foot={player.dominantFoot} />
-              </div>
-
-              {player.playingStyle && (
-                <div className="flex justify-center">
-                  <Badge variant="accent">{humanizeEnum(player.playingStyle)}</Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <OnThePitchCard player={player} t={t} />
+            <AttributeBars player={player} assessments={assessments} title={t.player.attributes} />
+          </div>
         </div>
-
-        <AttributeBars
-          player={player}
-          assessments={assessments}
-          title={t.player.attributes}
-        />
 
         {summary && <RecommendationSummary summary={summary} t={t} />}
 
@@ -134,8 +120,12 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               <ul className="divide-border divide-y">
                 {assessments.map((assessment) => (
                   <li key={assessment.id} className="py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge variant="success">Coach-verified</Badge>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <Badge variant="success">Coach-verified</Badge>
+                        {/* The coaches who assessed you are, precisely, your coaches. */}
+                        {isSelf && <RelationBadge relation="MY_COACH" t={t} />}
+                      </span>
                       <span className="text-muted text-xs">{formatDate(assessment.createdAt)}</span>
                     </div>
                     {assessment.notes && <p className="mt-2 text-sm">{assessment.notes}</p>}

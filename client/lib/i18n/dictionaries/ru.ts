@@ -306,6 +306,13 @@ export const ru: Dictionary = {
     following: 'Вы подписаны',
   },
 
+  relation: {
+    you: 'Вы',
+    myCoach: 'Мой тренер',
+    myAcademy: 'Моя академия',
+    endorsesMe: 'Подтвердила меня',
+    acceptedMe: 'Приняла меня',
+  },
   player: {
     onThePitch: 'На поле',
     dominantFoot: 'Сильная нога',

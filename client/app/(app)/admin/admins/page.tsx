@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin, type AdminUser } from '@/lib/api/resources';
 import { AdminManager } from './AdminManager';
@@ -18,12 +19,12 @@ export default async function AdminsPage() {
 
   // A plain admin explicitly cannot create admins (§1.2), so this screen is
   // super-admin only. The backend enforces it; this explains it.
-  if (!session.roles.includes('super_admin')) {
+  if (!isSuperAdminActing(session.activeRole)) {
     return <Alert tone="warning">{t.dashboard.adminSubtitle}</Alert>;
   }
 
   const admins = await admin
-    .listAdmins({ token: session.accessToken, cache: 'no-store' })
+    .listAdmins({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
     .catch(() => [] as AdminUser[]);
 
   return (

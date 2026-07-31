@@ -44,7 +44,7 @@ export function PlayerCard({
   const group = positionGroup(player.primaryPosition);
   const theme = CARD_THEME[group];
   const evidence = cardEvidence(player, assessments);
-  const band = ageBand(player.birthDate);
+  const bandLabel = ageBand(player.birthDate).replace('U-', 'U');
   const small = size === 'sm';
 
   const card = (
@@ -53,7 +53,7 @@ export function PlayerCard({
         'group/card relative isolate overflow-hidden rounded-2xl text-white shadow-lg',
         'ring-1 ring-white/10 transition-transform',
         href && 'hover:-translate-y-0.5 hover:shadow-xl',
-        small ? 'aspect-[3/4]' : 'aspect-[3/4] sm:aspect-[4/5]',
+        'aspect-[3/4]',
         className,
       )}
       style={{ backgroundImage: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 68%)` }}
@@ -84,10 +84,11 @@ export function PlayerCard({
             <p
               className={cn(
                 'leading-none font-black tracking-tight tabular-nums',
-                small ? 'text-xl' : 'text-4xl',
+                // "Senior" needs to fit the slot "U16" leaves room for.
+                small ? 'text-lg' : bandLabel.length > 3 ? 'text-2xl' : 'text-4xl',
               )}
             >
-              {band.replace('U-', 'U')}
+              {bandLabel}
             </p>
             <p
               className={cn(
@@ -174,8 +175,8 @@ function PlayerPortrait({ player, small }: { player: PlayerProfile; small: boole
       fill="currentColor"
       aria-hidden
     >
-      <circle cx="50" cy="34" r="21" />
-      <path d="M50 60c-21 0-36 14-38 34-1 9-2 18-2 26h80c0-8-1-17-2-26-2-20-17-34-38-34Z" />
+      <circle cx="50" cy="33" r="21" />
+      <path d="M50 56c-21 0-36 14-38 34-1 9-2 18-2 30h80c0-12-1-21-2-30-2-20-17-34-38-34Z" />
     </svg>
   );
 }

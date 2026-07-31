@@ -1321,6 +1321,42 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/relation": {
+      "get": {
+        "operationId": "academies_relation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the caller is to this academy — manager, staff, endorsed, or a player it\naccepted at a trial. Drives the \"My academy\" badge.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/manager": {
       "patch": {
         "operationId": "academies_setManager",

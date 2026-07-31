@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Building2 } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin } from '@/lib/api/resources';
 import type { AcademyProfile } from '@/lib/api/types';
@@ -16,12 +17,12 @@ export default async function AdminAcademiesPage() {
   if (!session) redirect('/login?next=/admin/academies');
 
   const { t } = await getServerT();
-  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
+  const isAdmin = isAdminActing(session.activeRole);
 
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const academies = await admin
-    .listAllAcademies({ token: session.accessToken, cache: 'no-store' })
+    .listAllAcademies({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
     .catch(() => [] as (AcademyProfile & { members: { userId: string }[] })[]);
 
   return (

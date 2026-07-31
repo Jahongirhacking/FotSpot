@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Flag } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin, type Report } from '@/lib/api/resources';
 import { ModerationQueue } from './ModerationQueue';
@@ -14,11 +15,11 @@ export default async function ModerationPage() {
   if (!session) redirect('/login?next=/admin/moderation');
 
   const { t } = await getServerT();
-  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
+  const isAdmin = isAdminActing(session.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const reports = await admin
-    .pendingReports({ token: session.accessToken, cache: 'no-store' })
+    .pendingReports({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
     .catch(() => [] as Report[]);
 
   return (

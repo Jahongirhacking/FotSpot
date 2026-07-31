@@ -9,6 +9,8 @@ import type { AcademyProfile, Trial } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { getServerT } from '@/lib/i18n/server';
+import { RelationBadge } from '@/components/shared/RelationBadge';
 import { formatDate } from '@/lib/utils';
 import { FollowAcademyButton } from './FollowAcademyButton';
 
@@ -41,6 +43,21 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
     throw error;
   }
 
+  const { t } = await getServerT();
+
+  // Only for signed-in viewers, and failure is silent: the badge is a courtesy,
+  // not information the page is about.
+  const relation = session
+    ? await academies
+        .relation(id, {
+          token: session.accessToken,
+          activeRole: session.activeRole,
+          cache: 'no-store',
+        })
+        .then((result) => result.relation)
+        .catch(() => null)
+    : null;
+
   const academyTrials = await trials
     .listForAcademy(
       id,
@@ -56,7 +73,10 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
             <Building2 className="size-7" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-bold">{academy.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold">{academy.name}</h1>
+              <RelationBadge relation={relation} t={t} />
+            </div>
             <p className="text-muted mt-1 flex items-center gap-1 text-sm">
               <MapPin className="size-3.5" aria-hidden />
               {academy.region ?? 'Uzbekistan'}

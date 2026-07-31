@@ -307,6 +307,13 @@ export const en: Dictionary = {
     following: 'Following',
   },
 
+  relation: {
+    you: 'You',
+    myCoach: 'My coach',
+    myAcademy: 'My academy',
+    endorsesMe: 'Endorses me',
+    acceptedMe: 'Accepted me',
+  },
   player: {
     onThePitch: 'On the pitch',
     dominantFoot: 'Dominant foot',

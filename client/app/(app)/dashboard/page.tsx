@@ -31,7 +31,7 @@ export default async function DashboardPage() {
           dismissibly, instead of being lost forever. */}
       {!onboarded && !roles.includes('player') && <RoleIntentCard />}
 
-      {activeRole === 'player' && <PlayerHome token={session.accessToken} />}
+      {activeRole === 'player' && <PlayerHome token={session.accessToken} t={t} />}
       {activeRole === 'scout' && <ScoutHome token={session.accessToken} />}
       {activeRole === 'coach' && <CoachHome token={session.accessToken} />}
       {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} t={t} />}

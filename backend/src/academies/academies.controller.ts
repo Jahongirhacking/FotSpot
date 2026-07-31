@@ -59,6 +59,15 @@ export class AcademiesController {
   }
 
   /**
+   * What the caller is to this academy — manager, staff, endorsed, or a player it
+   * accepted at a trial. Drives the "My academy" badge.
+   */
+  @Get(':id/relation')
+  relation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.academiesService.relationTo(user.userId, id);
+  }
+
+  /**
    * Assigns or replaces the academy's single manager (admin only). Either names an
    * existing user or mints an account, returning its one-time credentials once.
    */
