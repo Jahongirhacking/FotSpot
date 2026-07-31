@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin } from '@/lib/api/resources';
 import { ApiError } from '@/lib/api/client';
@@ -18,12 +19,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   if (!session) redirect(`/login?next=/admin/users/${id}`);
 
   const { t } = await getServerT();
-  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
+  const isAdmin = isAdminActing(session.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   let user;
   try {
-    user = await admin.userDetail(id, { token: session.accessToken, cache: 'no-store' });
+    user = await admin.userDetail(id, { token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' });
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
@@ -38,7 +39,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
       </Button>
 
       {/* Mutations are gated on super admin here AND on the backend. */}
-      <UserDetailView user={user} canEdit={session.roles.includes('super_admin')} />
+      <UserDetailView user={user} canEdit={isSuperAdminActing(session.activeRole)} />
     </div>
   );
 }

@@ -18,9 +18,13 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "docs:generate": "nest build && node dist/src/openapi.js",
-    "docs:check": "node scripts/check-openapi.mjs"
+    "docs:check": "node scripts/check-openapi.mjs",
+    "r2:cors": "node scripts/apply-r2-cors.mjs",
+    "r2:cors:check": "node scripts/apply-r2-cors.mjs --check"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1100.0",
+    "@aws-sdk/s3-request-presigner": "^3.1100.0",
     "@nestjs/bullmq": "^10.2.0",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^3.2.3",
@@ -32,6 +36,7 @@
     "@nestjs/swagger": "^8.1.1",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^6.19.3",
+    "@sentry/nestjs": "^10.69.0",
     "argon2": "^0.40.3",
     "bullmq": "^5.12.0",
     "class-transformer": "^0.5.1",

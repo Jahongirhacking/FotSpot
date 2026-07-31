@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Award, Building2, Inbox, Search, TrendingUp } from 'lucide-react';
 import { recommendations, follows } from '@/lib/api/resources';
-import type { Recommendation, ScoutStats } from '@/lib/api/types';
+import type { MyRecommendation, ScoutStats } from '@/lib/api/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -12,7 +12,7 @@ import { relativeTime } from '@/lib/utils';
 export async function ScoutHome({ token }: { token: string }) {
   const [stats, mine, followerAcademies] = await Promise.all([
     safe<ScoutStats | null>(() => recommendations.myScoutStats({ token, cache: 'no-store' }), null),
-    safe<Recommendation[]>(() => recommendations.listMine({ token, cache: 'no-store' }), []),
+    safe<MyRecommendation[]>(() => recommendations.listMine({ token, cache: 'no-store' }), []),
     safe(() => follows.academiesFollowingMe({ token, cache: 'no-store' }), []),
   ]);
 
@@ -88,10 +88,10 @@ export async function ScoutHome({ token }: { token: string }) {
                     >
                       <div className="min-w-0">
                         <Link
-                          href={`/players/${recommendation.playerId}`}
+                          href={`/players/${recommendation.player.id}`}
                           className="block truncate text-sm font-medium hover:underline"
                         >
-                          Player {recommendation.playerId.slice(0, 8)}
+                          {recommendation.player.firstName} {recommendation.player.lastName}
                         </Link>
                         <p className="text-muted text-xs">
                           {relativeTime(recommendation.createdAt)}
@@ -112,7 +112,7 @@ export async function ScoutHome({ token }: { token: string }) {
   );
 }
 
-function tone(status: Recommendation['status']) {
+function tone(status: MyRecommendation['status']) {
   if (status === 'ACCEPTED') return 'success' as const;
   if (status === 'REJECTED') return 'danger' as const;
   if (status === 'REVIEWING') return 'info' as const;

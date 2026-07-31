@@ -85,9 +85,11 @@ day should never land in the scout view again after logging back in.
 
 ### 1.2.2. First-login role discovery ("are you a player?")
 
-Registration grants `scout` by default (§1.2), which is wrong for a large share of signups: a
-15-year-old joining to _be seen_ is not a scout. The platform has to ask — and _how_ it asks
-decides whether the primary supply side ever completes a profile.
+Registration grants **no role at all**. It used to grant `scout` by default, which is wrong for a
+large share of signups — a 15-year-old joining to _be seen_ is not a scout — and worse, it made the
+question below decorative: everyone already held the role one of the buttons offered, so the choice
+only recorded a preference. The platform has to ask, the answer has to be what assigns the role,
+and _how_ it asks decides whether the primary supply side ever completes a profile.
 
 **Rule: ask once, on a dedicated welcome route immediately after the first login — never in the
 signup form, never in a modal.**
@@ -98,7 +100,6 @@ first login  →  /welcome  →  "What brings you to FotSpot?"
                               │  ⚽ I play       │  │  🔍 I spot       │
                               │  football        │  │  talent          │
                               └──────────────────┘  └──────────────────┘
-                              [ I'll decide later ]
 ```
 
 Why this shape, having rejected the alternatives:
@@ -112,14 +113,18 @@ Why this shape, having rejected the alternatives:
 
 Rules attached to it:
 
-- **Asked once per account, not per device.** The prompt state lives on the user record
-  (`onboarding_completed_at`), so a second phone doesn't re-ask.
-- **"I play football" adds the `player` role, it does not replace `scout`** (§1.2 — roles
-  accumulate). The user keeps their scouting abilities.
-- **Skipping is free and non-terminal.** A skipped welcome becomes a dismissible card on the
-  dashboard, and the question returns _just-in-time_ the moment the user attempts something
-  player-only ("Uploading a video needs a player profile — create one?"). Behavioural inference is
-  the right fallback precisely because that moment carries its own motivation.
+- **Asked once per account, not per device.** The prompt state lives on the user record, so a
+  second phone doesn't re-ask.
+- **The answer grants the role.** "I spot talent" assigns `scout` immediately; "I play football"
+  assigns `player` when the profile is created, because the age gate below has to come first.
+  Roles still accumulate (§1.2) — picking one here never rules out adding the other.
+- **There is no skip.** With no role there is no home screen to land on: the dashboard renders by
+  role and the navigation is derived from it. A question you cannot avoid is kinder than an app
+  that does not work, and it is one tap. Anyone arriving in the app without a role is returned
+  here.
+- **The other role is offered later, from the one you have.** A scout with no player card sees
+  "set up a player card"; a player with no scout role sees "are you a scout too?". Each is shown
+  only in the role where it makes sense, so nobody is asked to become something they already are.
 - **The player path is age-gated first** (§11.1). Birth date is the _first_ question after choosing
   "I play", and an under-18 answer routes into the guardian-consent flow before anything else is
   collected. Never collect a minor's media, position or stats before consent exists.

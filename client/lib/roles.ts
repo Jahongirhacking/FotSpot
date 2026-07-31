@@ -87,3 +87,20 @@ export function sortRoles(held: string[]): Role[] {
 }
 
 export const ACTIVE_ROLE_COOKIE = 'fs_active_role';
+
+/**
+ * What the user may do **right now**.
+ *
+ * `held` is what they could switch to; `activeRole` is what they are. Every
+ * permission decision keys off the active role, so switching to a lesser role
+ * genuinely takes the greater one's powers away (§1.2.1) rather than only
+ * relabelling the navigation. The backend narrows identically — see
+ * JwtStrategy.validate.
+ */
+export function isAdminActing(activeRole: Role | null): boolean {
+  return activeRole === 'admin' || activeRole === 'super_admin';
+}
+
+export function isSuperAdminActing(activeRole: Role | null): boolean {
+  return activeRole === 'super_admin';
+}

@@ -67,7 +67,7 @@ export function UserDirectory() {
                       {[user.firstName, user.lastName].filter(Boolean).join(' ') ||
                         user.id.slice(0, 8)}
                     </p>
-                    <p className="text-muted truncate text-xs">{user.email ?? user.phone ?? ''}</p>
+                    <p className="text-muted truncate text-xs">{user.email ?? user.phone ?? user.username ?? ''}</p>
                   </div>
                   <div className="hidden shrink-0 gap-1 sm:flex">
                     {user.roles.slice(0, 3).map((role) => (

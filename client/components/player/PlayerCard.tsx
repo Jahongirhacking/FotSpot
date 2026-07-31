@@ -1,168 +1,243 @@
-import { Ruler, Weight, MapPin, Footprints } from 'lucide-react';
+import Link from 'next/link';
 import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
-import { deriveAttributes, PROVENANCE_META } from '@/lib/player-card';
-import { ageBand, cn, humanizeEnum, initials } from '@/lib/utils';
-import { Badge } from '@/components/ui/Badge';
+import { CARD_THEME, cardEvidence, positionGroup } from '@/lib/player-card';
+import { ageBand, cn, humanizeEnum } from '@/lib/utils';
 
 /**
- * The player card — README §21.
+ * The player card — README §21, in the eFootball idiom the players themselves
+ * asked for: a foil-backed collectable with the position code, the photo and a row
+ * of stars.
  *
- * A Server Component: it is pure presentation over data the caller already has, so
- * there is no reason to ship it to the browser. Bars are CSS, not canvas or WebGL
- * (§21.6) — the target device is an entry-level Android phone.
+ * ## What sits where eFootball puts the rating
  *
- * Deliberately absent: any composite "overall" rating. §21.5 forbids printing the
- * Player Index on a public card — a single number rating a child is a playground
- * weapon.
+ * eFootball's card leads with a big number — "105". This one leads with the **age
+ * band**. That is not a cosmetic substitution: §21.5 forbids printing a composite
+ * rating on a child's card, and a card that opened with a single number scoring a
+ * fourteen-year-old would be the exact artefact the rule exists to prevent, however
+ * good it looked.
+ *
+ * The age band earns the slot on its own merits. A youth football number without an
+ * age beside it is meaningless (§21.1) — "scored 30 goals" says nothing until you
+ * know whether it was under-12 or under-18 — so the one figure that must never be
+ * missing from the card is the one given the most prominent position on it.
+ *
+ * The stars are evidence, not ability: see `cardEvidence`.
+ *
+ * A Server Component. Two sizes:
+ * - `lg` — dashboards, profiles, statistics. The full foil.
+ * - `sm` — search results and lists, where a hundred of them scroll past.
  */
 export function PlayerCard({
   player,
   assessments = [],
+  size = 'lg',
+  href,
+  selfLabel,
   className,
 }: {
   player: PlayerProfile;
   assessments?: CoachAssessment[];
+  size?: 'sm' | 'lg';
+  /** Wraps the card in a link. Omit for the player's own card. */
+  href?: string;
+  /**
+   * Marks the card as the viewer's own. Passed as text rather than a boolean
+   * because this is a Server Component and the label is translated (§1.17).
+   */
+  selfLabel?: string;
   className?: string;
 }) {
-  const attributes = deriveAttributes(player, assessments);
-  const band = ageBand(player.birthDate);
+  const group = positionGroup(player.primaryPosition);
+  const theme = CARD_THEME[group];
+  const evidence = cardEvidence(player, assessments);
+  const bandLabel = ageBand(player.birthDate).replace('U-', 'U');
+  const small = size === 'sm';
 
-  return (
+  const card = (
     <article
       className={cn(
-        'bg-surface border-border rounded-card overflow-hidden border shadow-sm',
+        'group/card relative isolate overflow-hidden rounded-2xl text-white shadow-lg',
+        'ring-1 ring-white/10 transition-transform',
+        href && 'hover:-translate-y-0.5 hover:shadow-xl',
+        'aspect-[3/4]',
         className,
       )}
+      style={{ backgroundImage: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 68%)` }}
     >
-      <header className="pitch-gradient border-border relative border-b p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span
-              className="bg-surface/80 text-foreground grid size-14 shrink-0 place-items-center rounded-full text-lg font-bold backdrop-blur"
-              aria-hidden
+      {/* Foil sheen. Two cheap gradients rather than an image asset (§14). */}
+      <span
+        className="pointer-events-none absolute inset-0 opacity-60 mix-blend-overlay"
+        style={{
+          backgroundImage:
+            'radial-gradient(ellipse 120% 60% at 80% -10%, rgba(255,255,255,.55), transparent 60%), radial-gradient(ellipse 90% 50% at 10% 110%, rgba(0,0,0,.5), transparent 60%)',
+        }}
+        aria-hidden
+      />
+
+      <PlayerPortrait player={player} small={small} />
+
+      {/* Legibility floor for the name plate, independent of the photo behind it. */}
+      <span
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5"
+        style={{ backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.82), transparent)' }}
+        aria-hidden
+      />
+
+      <div className={cn('absolute inset-0 flex flex-col', small ? 'p-2.5' : 'p-4')}>
+        {/* Age band over position — the eFootball "105 / LWF" block. */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">
+            <p
+              className={cn(
+                'leading-none font-black tracking-tight tabular-nums',
+                // "Senior" needs to fit the slot "U16" leaves room for.
+                small ? 'text-lg' : bandLabel.length > 3 ? 'text-2xl' : 'text-4xl',
+              )}
             >
-              {initials(player.firstName, player.lastName)}
-            </span>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg leading-tight font-bold">
-                {player.firstName} {player.lastName}
-              </h2>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                {player.primaryPosition && (
-                  <Badge variant="primary" className="font-mono font-bold">
-                    {player.primaryPosition}
-                  </Badge>
-                )}
-                {player.playingStyle && (
-                  <Badge variant="accent">{humanizeEnum(player.playingStyle)}</Badge>
-                )}
-              </div>
-            </div>
+              {bandLabel}
+            </p>
+            <p
+              className={cn(
+                'mt-0.5 leading-none font-bold tracking-widest',
+                small ? 'text-[10px]' : 'text-lg',
+              )}
+              style={{ color: theme.ring }}
+            >
+              {player.primaryPosition ?? '—'}
+            </p>
           </div>
-          {/* Age band is always on the card — a youth football number without an age
-              is meaningless (§21.1). */}
-          <Badge variant="outline" className="bg-surface/70 shrink-0 backdrop-blur">
-            {band}
-          </Badge>
+
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {/* On the card, not above it: the badge belongs to the artefact it
+                marks, and floating it outside read as page furniture. */}
+            {selfLabel && (
+              <span
+                className={cn(
+                  'rounded-full bg-white/90 font-bold tracking-wide text-black uppercase',
+                  small ? 'px-1.5 py-px text-[9px]' : 'px-2 py-0.5 text-[10px]',
+                )}
+              >
+                {selfLabel}
+              </span>
+            )}
+            {player.secondaryPosition && !small && (
+              <span className="rounded-md bg-black/35 px-1.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-sm">
+                {player.secondaryPosition}
+              </span>
+            )}
+          </div>
         </div>
 
-        <dl className="text-muted mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
-          {player.region && (
-            <div className="flex items-center gap-1">
-              <MapPin className="size-3.5" aria-hidden />
-              <dt className="sr-only">Region</dt>
-              <dd>{player.region}</dd>
-            </div>
-          )}
-          {player.dominantFoot && (
-            <div className="flex items-center gap-1">
-              <Footprints className="size-3.5" aria-hidden />
-              <dt className="sr-only">Dominant foot</dt>
-              <dd>{humanizeEnum(player.dominantFoot)} foot</dd>
-            </div>
-          )}
-          {player.height && (
-            <div className="flex items-center gap-1">
-              <Ruler className="size-3.5" aria-hidden />
-              <dt className="sr-only">Height</dt>
-              <dd>{player.height} cm</dd>
-            </div>
-          )}
-          {player.weight && (
-            <div className="flex items-center gap-1">
-              <Weight className="size-3.5" aria-hidden />
-              <dt className="sr-only">Weight</dt>
-              <dd>{player.weight} kg</dd>
-            </div>
-          )}
-        </dl>
-      </header>
+        <div className="flex-1" />
 
-      <div className="divide-border divide-y">
-        {attributes.map((attribute) => (
-          <AttributeRow key={attribute.key} attribute={attribute} />
-        ))}
+        <div className="relative">
+          <h3
+            className={cn(
+              'truncate font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.8)]',
+              small ? 'text-xs' : 'text-lg',
+            )}
+          >
+            {player.firstName} {player.lastName}
+          </h3>
+
+          {!small && (
+            <p className="truncate text-xs text-white/70">
+              {player.playingStyle ? humanizeEnum(player.playingStyle) : (player.region ?? '')}
+            </p>
+          )}
+
+          <EvidenceStars
+            filled={evidence.stars}
+            tier={evidence.tier}
+            small={small}
+            label={`${evidence.verifiedCount} of ${evidence.total} attributes coach-verified`}
+          />
+        </div>
       </div>
-
-      <footer className="text-muted border-border border-t px-5 py-3 text-xs">
-        Bars are compared within {band} only — “fast for {band}”, never across age groups.
-      </footer>
     </article>
+  );
+
+  return href ? (
+    <Link href={href} className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }
 
-function AttributeRow({ attribute }: { attribute: ReturnType<typeof deriveAttributes>[number] }) {
-  const provenance = PROVENANCE_META[attribute.provenance];
-  const hasValue = attribute.value !== null;
+/**
+ * The player's photo, or a neutral silhouette.
+ *
+ * The silhouette is the *expected* state, not a failure: a photo of a minor is
+ * guardian-consented content (§11.1), so most cards will never have one and the
+ * fallback has to look deliberate rather than broken.
+ */
+function PlayerPortrait({ player, small }: { player: PlayerProfile; small: boolean }) {
+  if (player.avatarUrl) {
+    return (
+      <img
+        src={player.avatarUrl}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="absolute inset-x-0 bottom-0 h-[82%] w-full object-cover object-top"
+      />
+    );
+  }
 
   return (
-    <div className="flex items-center gap-3 px-5 py-2.5">
-      <span className="w-20 shrink-0 text-xs font-medium tracking-wide uppercase">
-        {attribute.label}
-      </span>
+    <svg
+      viewBox="0 0 100 120"
+      className={cn(
+        'absolute bottom-0 left-1/2 -translate-x-1/2 text-white/25',
+        small ? 'h-[62%]' : 'h-[70%]',
+      )}
+      fill="currentColor"
+      aria-hidden
+    >
+      <circle cx="50" cy="33" r="21" />
+      <path d="M50 56c-21 0-36 14-38 34-1 9-2 18-2 30h80c0-12-1-21-2-30-2-20-17-34-38-34Z" />
+    </svg>
+  );
+}
 
-      <div
-        className="bg-surface-3 relative h-2 flex-1 overflow-hidden rounded-full"
-        role="meter"
-        aria-valuenow={attribute.value ?? undefined}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${attribute.label}: ${hasValue ? `${attribute.value} out of 100, ${provenance.label}` : 'no data yet'}`}
-      >
-        {hasValue && (
-          <div
-            className={cn(
-              'absolute inset-y-0 left-0 rounded-full',
-              attribute.provenance === 'combine' && 'bg-prov-combine',
-              attribute.provenance === 'coach' && 'bg-prov-coach',
-              // A self-reported bar is visibly weaker than a measured one — that is
-              // what makes verification something a player wants (§21.1).
-              attribute.provenance === 'self' &&
-                'bg-prov-self/50 outline-prov-self/40 outline-1 -outline-offset-1 outline-dashed',
-            )}
-            style={{ width: `${attribute.value}%` }}
-          />
-        )}
-      </div>
+const TIER_COLOR: Record<string, string> = {
+  gold: '#fbbf24',
+  silver: '#e2e8f0',
+  bronze: '#d97706',
+  unrated: 'rgba(255,255,255,.28)',
+};
 
-      <span
-        className={cn(
-          'w-8 shrink-0 text-right font-mono text-sm font-semibold',
-          !hasValue && 'text-muted',
-        )}
-      >
-        {hasValue ? attribute.value : '–'}
-      </span>
-
-      <span
-        className={cn(
-          'hidden w-20 shrink-0 rounded-full px-2 py-0.5 text-center text-[10px] font-medium sm:block',
-          provenance.className,
-        )}
-        title={provenance.label}
-      >
-        {provenance.short}
-      </span>
+/** Five stars, filled by how much of the card a coach has verified. */
+function EvidenceStars({
+  filled,
+  tier,
+  small,
+  label,
+}: {
+  filled: number;
+  tier: string;
+  small: boolean;
+  label: string;
+}) {
+  return (
+    <div
+      className={cn('flex items-center gap-0.5', small ? 'mt-1' : 'mt-1.5')}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <svg
+          key={index}
+          viewBox="0 0 24 24"
+          className={cn(small ? 'size-2.5' : 'size-3.5')}
+          fill={index < filled ? TIER_COLOR[tier] : 'rgba(255,255,255,.22)'}
+          aria-hidden
+        >
+          <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />
+        </svg>
+      ))}
     </div>
   );
 }

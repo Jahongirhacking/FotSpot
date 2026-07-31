@@ -212,6 +212,36 @@
         ]
       }
     },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "auth_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets a new password and signs every other device out.\n\n`currentPassword` may be omitted only while the account still holds the\npassword an admin generated for it — see AuthService.changePassword.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/sessions": {
       "get": {
         "operationId": "auth_listSessions",
@@ -293,6 +323,26 @@
           }
         ],
         "summary": "Identity + roles + per-role counters for the profile screen, in one request.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/me/roles/scout": {
+      "post": {
+        "operationId": "users_becomeScout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Become a scout — the one role a user may give themselves.\n\nEverything else is granted by somebody: `player` comes with creating a\nprofile, `coach` from the academy that hires you, `academy_manager` and\n`admin` from an admin. Scouting needs no permission because it starts with\nzero authority: a new scout's recommendations carry the lowest §1.5 weight\nand only earn more by being accepted.",
         "tags": [
           "users"
         ]
@@ -414,6 +464,26 @@
         ]
       }
     },
+    "/api/v1/media/storage-status": {
+      "get": {
+        "operationId": "media_storageStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether uploads can be accepted, so the UI can say so before recording.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/upload-url": {
       "post": {
         "operationId": "media_requestUpload",
@@ -459,7 +529,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -483,11 +560,29 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MediaCategory"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -495,6 +590,87 @@
             "bearer": []
           }
         ],
+        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nCarries permanent `url` and `posterUrl`: clips are public and stay reachable\nuntil the player deletes them.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}": {
+      "patch": {
+        "operationId": "media_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The uploader corrects their own clip's title, description or rating.",
+        "tags": [
+          "media"
+        ]
+      },
+      "delete": {
+        "operationId": "media_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
         "tags": [
           "media"
         ]
@@ -605,6 +781,7 @@
             "bearer": []
           }
         ],
+        "summary": "Counts, plus `likedByMe` when a token is present — one like per account.",
         "tags": [
           "media"
         ]
@@ -755,7 +932,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1158,6 +1342,33 @@
         ]
       }
     },
+    "/api/v1/academies/mine": {
+      "get": {
+        "operationId": "academies_findMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The academy the caller manages, or null.\n\nDeclared before `:id` — Nest matches routes in declaration order, so putting\nthis after would make `/academies/mine` resolve as an academy whose id is the\nliteral string \"mine\".",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}": {
       "get": {
         "operationId": "academies_getPublicProfile",
@@ -1252,6 +1463,110 @@
           }
         ],
         "summary": "Archives an academy (admin only). Sets status REJECTED rather than deleting —\na hard delete would cascade through trials, applications and recommendation\nhistory. See AcademiesService.archive.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/relation": {
+      "get": {
+        "operationId": "academies_relation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the caller is to this academy — manager, staff, endorsed, or a player it\naccepted at a trial. Drives the \"My academy\" badge.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/manager": {
+      "patch": {
+        "operationId": "academies_setManager",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetManagerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assigns or replaces the academy's single manager (admin only). Either names an\nexisting user or mints an account, returning its one-time credentials once.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/manager/reset-password": {
+      "post": {
+        "operationId": "academies_resetManagerPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issues the manager a fresh one-time password (admin only).",
         "tags": [
           "academies"
         ]
@@ -1410,17 +1725,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -1770,6 +2075,7 @@
             "bearer": []
           }
         ],
+        "summary": "Files a recommendation. **Scouts only** (§1.5).\n\nRecommending is the one action the whole reputation system measures, and it\nis measured per scout: `ScoutStats`, the §1.5 level tiers and the §1.5.1\nharmonic credibility all key off a scout identity. A coach or manager filing\none would accrue a reputation nothing in the product surfaces, and an\nacademy recommending a player to itself is not a signal at all.\n\nEnforced on the acting role, so a scout who is also a coach must be acting\nas a scout — see JwtStrategy.validate.",
         "tags": [
           "recommendations"
         ]
@@ -2766,6 +3072,55 @@
           "admin"
         ]
       }
+    },
+    "/api/v1/insights/weekly": {
+      "get": {
+        "operationId": "insights_weekly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Most-backed players, most-accepted scouts and most-active coaches this week.",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/academy/{academyId}": {
+      "get": {
+        "operationId": "insights_academySummary",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Inbox, endorsement and trial counters for one academy's home screen.",
+        "tags": [
+          "insights"
+        ]
+      }
     }
   },
   "info": {
@@ -2821,7 +3176,11 @@
     },
     {
       "name": "admin",
-      "description": "Verification queues, roles and audit logs."
+      "description": "User directory, roles, permissions and audit logs."
+    },
+    {
+      "name": "insights",
+      "description": "Weekly recruiting activity and per-academy counters. Never exposed to players — see InsightsController."
     }
   ],
   "servers": [
@@ -2870,12 +3229,14 @@
             "type": "string",
             "format": "email"
           },
+          "username": {
+            "type": "string"
+          },
           "password": {
             "type": "string"
           }
         },
         "required": [
-          "email",
           "password"
         ]
       },
@@ -2946,6 +3307,22 @@
           }
         }
       },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "Optional only for an account still on its admin-generated password: it is\nabout to be replaced, and requiring the manager to retype a 14-character\nstring they were sent over Telegram is friction with no security value — they\nalready proved possession by signing in with it."
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
       "UpdateProfileDto": {
         "type": "object",
         "properties": {
@@ -2970,6 +3347,11 @@
           "filename": {
             "type": "string",
             "maxLength": 200
+          },
+          "contentType": {
+            "type": "string",
+            "description": "Sent to R2 so the object is served back with the right type.",
+            "maxLength": 100
           }
         },
         "required": [
@@ -3029,9 +3411,28 @@
           "code"
         ]
       },
+      "MediaCategory": {
+        "type": "string",
+        "enum": [
+          "PACE",
+          "DRIBBLING",
+          "PASSING",
+          "FINISHING",
+          "PHYSICAL",
+          "TECHNIQUE",
+          "MATCH_HIGHLIGHTS"
+        ]
+      },
       "RequestUploadDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          },
           "filename": {
             "type": "string"
           },
@@ -3042,26 +3443,34 @@
               "VIDEO"
             ]
           },
-          "category": {
+          "contentType": {
             "type": "string",
-            "enum": [
-              "DRIBBLING",
-              "PASSING",
-              "SHOOTING",
-              "SPRINT",
-              "MATCH_HIGHLIGHTS"
-            ]
+            "description": "Sent to R2 so the object is served back with the right type.",
+            "maxLength": 100
           }
         },
         "required": [
+          "category",
           "filename",
-          "type",
-          "category"
+          "type"
         ]
       },
       "ConfirmUploadDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          },
+          "selfRating": {
+            "type": "number",
+            "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for the six attribute categories and rejected for\nMATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
+            "minimum": 0,
+            "maximum": 100
+          },
           "storageKey": {
             "type": "string"
           },
@@ -3072,22 +3481,43 @@
               "VIDEO"
             ]
           },
-          "category": {
+          "title": {
             "type": "string",
-            "enum": [
-              "DRIBBLING",
-              "PASSING",
-              "SHOOTING",
-              "SPRINT",
-              "MATCH_HIGHLIGHTS"
-            ]
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "posterKey": {
+            "type": "string",
+            "description": "Key of the cover frame, from the same upload ticket. Optional: capture can\n fail, and a clip without a cover beats a refused upload.",
+            "maxLength": 512
           }
         },
         "required": [
+          "category",
           "storageKey",
-          "type",
-          "category"
+          "type"
         ]
+      },
+      "UpdateMediaDto": {
+        "type": "object",
+        "properties": {
+          "selfRating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
       },
       "CreateMediaCommentDto": {
         "type": "object",
@@ -3340,6 +3770,29 @@
           "discipline"
         ]
       },
+      "NewManagerDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "phone": {
+            "type": "string",
+            "description": "Optional, and only for reaching them later — sign-in is by username."
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ]
+      },
       "CreateAcademyDto": {
         "type": "object",
         "properties": {
@@ -3356,13 +3809,26 @@
             "type": "string"
           },
           "managerUserId": {
-            "type": "string",
-            "description": "The user who will manage this academy. Optional so an admin can create the\nrecord before knowing who runs it; the manager can be attached later."
+            "type": "string"
+          },
+          "newManager": {
+            "$ref": "#/components/schemas/NewManagerDto"
           }
         },
         "required": [
           "name"
         ]
+      },
+      "SetManagerDto": {
+        "type": "object",
+        "properties": {
+          "managerUserId": {
+            "type": "string"
+          },
+          "newManager": {
+            "$ref": "#/components/schemas/NewManagerDto"
+          }
+        }
       },
       "UpdateAcademyDto": {
         "type": "object",

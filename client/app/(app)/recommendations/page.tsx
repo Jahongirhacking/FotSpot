@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Award, Search } from 'lucide-react';
+import { Award, Globe, Search } from 'lucide-react';
 import { recommendations } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
-import type { Recommendation, ScoutStats } from '@/lib/api/types';
+import type { MyRecommendation, ScoutStats } from '@/lib/api/types';
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -21,7 +21,7 @@ export default async function MyRecommendationsPage() {
   const [mine, stats] = await Promise.all([
     recommendations
       .listMine({ token: session.accessToken, cache: 'no-store' })
-      .catch(() => [] as Recommendation[]),
+      .catch(() => [] as MyRecommendation[]),
     recommendations
       .myScoutStats({ token: session.accessToken, cache: 'no-store' })
       .catch(() => null as ScoutStats | null),
@@ -55,33 +55,47 @@ export default async function MyRecommendationsPage() {
           ) : (
             <ul className="divide-border divide-y">
               {mine.map((recommendation) => (
-                <li
-                  key={recommendation.id}
-                  className="flex items-center justify-between gap-3 py-3"
-                >
+                <li key={recommendation.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <Link
-                      href={`/players/${recommendation.playerId}`}
+                      href={`/players/${recommendation.player.id}`}
                       className="block truncate font-medium hover:underline"
                     >
-                      Player {recommendation.playerId.slice(0, 8)}
+                      {recommendation.player.firstName} {recommendation.player.lastName}
                     </Link>
-                    <p className="text-muted text-xs">
-                      to{' '}
-                      <Link
-                        href={`/academies/${recommendation.academyId}`}
-                        className="hover:underline"
-                      >
-                        academy {recommendation.academyId.slice(0, 8)}
-                      </Link>{' '}
+
+                    {/* GLOBAL addresses no academy at all (§1.5.3), which is why
+                        this used to crash: it read `academyId.slice()` on a null. */}
+                    <p className="text-muted mt-0.5 text-xs">
+                      {recommendation.type === 'GLOBAL' ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Globe className="size-3" aria-hidden /> Open to every academy
+                        </span>
+                      ) : recommendation.academies.length > 0 ? (
+                        <span>
+                          to{' '}
+                          {recommendation.academies.map((academy, index) => (
+                            <span key={academy.id}>
+                              {index > 0 && ', '}
+                              <Link href={`/academies/${academy.id}`} className="hover:underline">
+                                {academy.name}
+                              </Link>
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span>no academy</span>
+                      )}{' '}
                       · {relativeTime(recommendation.createdAt)}
                     </p>
+
                     {recommendation.note && (
                       <p className="text-muted mt-1 line-clamp-2 text-xs italic">
                         “{recommendation.note}”
                       </p>
                     )}
                   </div>
+
                   <Badge variant={tone(recommendation.status)}>
                     {recommendation.status.toLowerCase()}
                   </Badge>
@@ -95,7 +109,7 @@ export default async function MyRecommendationsPage() {
   );
 }
 
-function tone(status: Recommendation['status']) {
+function tone(status: MyRecommendation['status']) {
   if (status === 'ACCEPTED') return 'success' as const;
   if (status === 'REJECTED') return 'danger' as const;
   if (status === 'REVIEWING') return 'info' as const;

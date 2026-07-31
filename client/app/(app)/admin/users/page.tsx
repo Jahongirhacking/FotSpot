@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { UserDirectory } from './UserDirectory';
 import { Alert } from '@/components/ui/Feedback';
@@ -21,8 +22,8 @@ export default async function AdminUsersPage() {
   if (!session) redirect('/login?next=/admin/users');
 
   const { t } = await getServerT();
-  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
-  const isSuperAdmin = session.roles.includes('super_admin');
+  const isAdmin = isAdminActing(session.activeRole);
+  const isSuperAdmin = isSuperAdminActing(session.activeRole);
 
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 

@@ -59,9 +59,8 @@ sudo docker run --name fotspot-redis \
 
 ## Deliberate stubs / extension points (called out in code comments)
 
-These are the three places where the spec depends on external services
-Claude has no credentials for. Each is implemented as a real interface with
-a clearly marked stub body, not faked as if it worked:
+These are places where the spec depends on external services. Each is a real
+interface with a clearly marked stub body, not faked as if it worked:
 
 1. **OAuth** (`AuthService.oauthLogin`) — accepts a provider token but does
    **not** verify it against Google/Facebook/OneID yet. Wire real
@@ -69,10 +68,71 @@ a clearly marked stub body, not faked as if it worked:
 2. **SMS delivery** (`AuthService.requestOtp`) — OTP is generated, hashed,
    and stored correctly; in non-production it's echoed back in the response
    (`devCode`) so the flow is testable without an SMS gateway (e.g. Eskiz).
-3. **Cloudflare R2 uploads** (`R2StorageService.getUploadUrl`) — returns a
-   deterministic object key and a stub URL. Swap in a real presigned PUT via
-   `@aws-sdk/client-s3` / `@aws-sdk/s3-request-presigner` pointed at the R2
-   S3-compatible endpoint.
+
+**Cloudflare R2 is no longer a stub** — `StorageService` issues genuine
+presigned PUT and GET URLs. Two pieces of setup are required and neither can be
+done from application code:
+
+### 1. The bucket needs a CORS policy
+
+The browser PUTs straight to R2 so video never transits the API (§14), which
+makes the upload cross-origin — and **a new R2 bucket allows no origins at
+all**. Without this the browser blocks the request before sending it and the
+upload fails with `TypeError: Failed to fetch` and no status code to diagnose.
+
+The policy lives in [`r2-cors.json`](./r2-cors.json). Apply it with:
+
+```bash
+pnpm r2:cors          # apply
+pnpm r2:cors:check    # print what the bucket currently has
+```
+
+The app's own R2 token is object-scoped and will get `AccessDenied` — that is
+expected. Use an admin R2 token, or paste `r2-cors.json` into
+**Cloudflare → R2 → your bucket → Settings → CORS Policy**.
+
+You can confirm the state without a browser:
+
+```bash
+curl -i -X OPTIONS "https://<bucket>.<account>.r2.cloudflarestorage.com/anything" \
+  -H 'Origin: http://localhost:3001' -H 'Access-Control-Request-Method: PUT'
+```
+
+An unconfigured bucket answers `403 Unauthorized — CORS not configured for this
+bucket`; a configured one echoes `Access-Control-Allow-Origin`.
+
+**Every origin the app is served from must be listed, and a missing one fails
+exactly like no policy at all.** Note the port: this backend takes 3000, so
+`next dev` falls back to **3001** — that, not 3000, is the dev origin here. Set
+`R2_CORS_ORIGINS` (comma-separated) to override the list per environment without
+editing the JSON.
+
+### 2. `public/` must be publicly readable
+
+Object keys are split into two tiers (`src/storage/storage.keys.ts`):
+
+- `public/avatars/…` and `public/players/…` — avatars and player clips. Both are
+  meant to be watched, cached and hotlinked, and **a clip stays reachable until
+  its player deletes it**: no signature, no expiry. The consequence is worth
+  stating rather than discovering — a clip URL that has been seen once keeps
+  working for anyone until the object is removed.
+- `private/…` — reachable only through a short-lived signed URL the API issues
+  after an authorization check. Nothing uses it today; it is kept for the §12.1
+  age and identity documents, where a permanent link would be the wrong answer.
+
+So the bucket needs **public read access on `public/`** — via an r2.dev domain or
+a custom domain on the bucket.
+
+**`R2_PUBLIC_BASE_URL` is needed for avatars only.** Clips and their covers are
+served by presigned URL against the S3 endpoint, so they work with nothing but the
+R2 credentials — no public bucket access, no custom domain. Avatars still come
+from the public origin, and without it they resolve to `null` and fall back to
+initials.
+
+Clip URLs carry the seven-day SigV4 maximum and are re-minted on every read, so a
+clip stays reachable for as long as it exists — deletion, not time, ends it. The
+signing timestamp is rounded to the hour so the URL is byte-identical within that
+window and a rewatch comes from the browser cache instead of the network.
 
 ## Business logic implemented in full
 

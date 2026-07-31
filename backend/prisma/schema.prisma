@@ -60,11 +60,25 @@ model User {
   id            String   @id @default(uuid())
   phone         String?  @unique
   email         String?  @unique
+  /// Only set for accounts an admin created on someone else's behalf (academy
+  /// managers, §1.10). Self-registered users sign in with email or phone and
+  /// never get one, hence nullable rather than a required unique handle.
+  username      String?  @unique
   passwordHash  String?
   firstName     String?
   lastName      String?
-  avatarUrl     String?
+  /// R2 object key, never a URL — see src/storage/storage.keys.ts.
+  ///
+  /// A stored URL outlives every decision that produced it: change the CDN, the
+  /// domain or the provider and every row is wrong, with a migration as the only
+  /// fix. The public URL is built at read time instead. Avatars are the one
+  /// public tier (`public/avatars/…`); everything else is private.
+  avatarKey     String?
   isActive      Boolean  @default(true)
+  /// True while the account still has its admin-generated password. The admin who
+  /// created it knows that password, so it must not stay valid indefinitely on an
+  /// account with access to children's profiles.
+  mustChangePassword Boolean @default(false)
 
   roles         UserRole[]
   sessions      Session[]
@@ -292,11 +306,18 @@ enum MediaType {
   VIDEO
 }
 
+/// One value per player-card attribute (§21.1), plus highlights.
+///
+/// Renamed from SPRINT/SHOOTING so a clip's category *is* the bar it evidences.
+/// When the two vocabularies differed, nothing could connect a video to the
+/// attribute it was uploaded to prove.
 enum MediaCategory {
+  PACE
   DRIBBLING
   PASSING
-  SHOOTING
-  SPRINT
+  FINISHING
+  PHYSICAL
+  TECHNIQUE
   MATCH_HIGHLIGHTS
 }
 
@@ -313,9 +334,38 @@ model Media {
 
   type       MediaType
   category   MediaCategory
-  storageKey String   // Cloudflare R2 object key
-  url        String
+
+  /// R2 object key under `private/players/<playerId>/`. There is deliberately no
+  /// `url` column: a clip of a child must never have a permanent public address,
+  /// and a column holding one is an address nobody can revoke. Playback goes
+  /// through `GET /media/:id/url`, which authorizes first and then signs a URL
+  /// that expires in minutes.
+  storageKey String
+
+  /// Object key of a still frame, captured in the browser at upload time.
+  ///
+  /// The grid shows covers, not players: loading a dozen videos to render a dozen
+  /// first frames would cost a player on mobile data more than the rest of the app
+  /// (§14). Private like the video it came from — a frame of a child's clip is the
+  /// same content, so it is signed at read time and never public.
+  ///
+  /// Nullable: capture can fail (an unseekable file, a codec the browser will not
+  /// decode) and a clip without a cover is far better than a refused upload.
+  posterKey  String?
+
   status     MediaStatus @default(ACTIVE)
+
+  title       String?
+  description String?
+
+  /// The player's own 0–100 claim for `category`, evidenced by this clip.
+  ///
+  /// Null for MATCH_HIGHLIGHTS, which evidences no single attribute. The newest
+  /// ACTIVE clip per category is the player's current claim; older rows are kept
+  /// so the bar has a history rather than just a value. Still self-reported —
+  /// attaching a video does not make it verified (§1.6), and the card renders it
+  /// as self-reported until a coach signs it off.
+  selfRating  Int?
 
   likes      MediaLike[]
   views      MediaView[]
@@ -323,6 +373,8 @@ model Media {
   reports    Report[] @relation("ReportedMedia")
 
   createdAt DateTime @default(now())
+
+  @@index([playerId, category, createdAt(sort: Desc)])
 }
 
 model MediaLike {

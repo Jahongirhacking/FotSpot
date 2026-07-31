@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -18,7 +19,9 @@ import {
   ConfirmUploadDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
+  ListPlayerMediaDto,
   RequestUploadDto,
+  UpdateMediaDto,
 } from './dto/media.dto';
 
 @ApiTags('media')
@@ -26,6 +29,12 @@ import {
 @Controller('media')
 export class MediaController {
   constructor(private mediaService: MediaService) {}
+
+  /** Whether uploads can be accepted, so the UI can say so before recording. */
+  @Get('storage-status')
+  storageStatus() {
+    return this.mediaService.storageStatus();
+  }
 
   @Post('upload-url')
   requestUpload(@CurrentUser() user: AuthUser, @Body() dto: RequestUploadDto) {
@@ -37,10 +46,33 @@ export class MediaController {
     return this.mediaService.confirmUpload(user.userId, dto);
   }
 
+  /**
+   * A player's clips, newest first. `category` filters to one attribute's history.
+   *
+   * Carries permanent `url` and `posterUrl`: clips are public and stay reachable
+   * until the player deletes them.
+   */
   @Public()
   @Get('player/:playerId')
-  listForPlayer(@Param('playerId') playerId: string) {
-    return this.mediaService.listForPlayer(playerId);
+  listForPlayer(@Param('playerId') playerId: string, @Query() dto: ListPlayerMediaDto) {
+    return this.mediaService.listForPlayer(playerId, dto);
+  }
+
+  /** The uploader corrects their own clip's title, description or rating. */
+  @Patch(':id')
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateMediaDto,
+  ) {
+    return this.mediaService.update(user.userId, id, dto);
+  }
+
+  /** Removes one of your own clips. The previous one in that category becomes
+   *  the current claim again. */
+  @Delete(':id')
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.mediaService.remove(user.userId, id);
   }
 
   @Post(':id/like')
@@ -63,10 +95,11 @@ export class MediaController {
     return this.mediaService.recordView(id, userId);
   }
 
+  /** Counts, plus `likedByMe` when a token is present — one like per account. */
   @Public()
   @Get(':id/engagement')
-  getEngagement(@Param('id') id: string) {
-    return this.mediaService.getEngagement(id);
+  getEngagement(@Param('id') id: string, @OptionalUser() userId?: string) {
+    return this.mediaService.getEngagement(id, userId);
   }
 
   // ---- Comments (1.14) ----

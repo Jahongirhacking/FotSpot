@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
 import {
@@ -16,13 +17,29 @@ import {
   UpdatePlayerStatsDto,
 } from './dto/player.dto';
 
+/**
+ * The player's photo lives on `User`, not `PlayerProfile` — one account, one
+ * picture, whether it is showing on a player card or in the admin console.
+ *
+ * Every profile response flattens it to a top-level `avatarUrl` so no caller has to
+ * know that, and so the card component takes one shape rather than two. The URL is
+ * built from the stored key at read time — see StorageService.
+ */
+const AVATAR_INCLUDE = { user: { select: { avatarKey: true } } } as const;
+
 @Injectable()
 export class PlayersService {
   constructor(
     private prisma: PrismaService,
     private rbac: RbacService,
     private redis: RedisService,
+    private storage: StorageService,
   ) {}
+
+  private withAvatar<T extends { user?: { avatarKey: string | null } | null }>(profile: T) {
+    const { user, ...rest } = profile;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) };
+  }
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
@@ -41,9 +58,12 @@ export class PlayersService {
   }
 
   async getOwnProfile(userId: string) {
-    const profile = await this.prisma.playerProfile.findUnique({ where: { userId } });
+    const profile = await this.prisma.playerProfile.findUnique({
+      where: { userId },
+      include: AVATAR_INCLUDE,
+    });
     if (!profile) throw new NotFoundException('Player profile not found');
-    return profile;
+    return this.withAvatar(profile);
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
@@ -51,11 +71,13 @@ export class PlayersService {
     const profile = await this.redis.wrap(
       RedisKeys.playerProfile(playerId),
       CacheTtl.playerProfile,
-      () =>
-        this.prisma.playerProfile.findUnique({
+      async () => {
+        const found = await this.prisma.playerProfile.findUnique({
           where: { id: playerId },
-          include: { media: { where: { status: 'ACTIVE' } } },
-        }),
+          include: { media: { where: { status: 'ACTIVE' } }, ...AVATAR_INCLUDE },
+        });
+        return found && this.withAvatar(found);
+      },
     );
     if (!profile) throw new NotFoundException('Player not found');
     return profile;
@@ -102,11 +124,12 @@ export class PlayersService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
+        include: AVATAR_INCLUDE,
       }),
       this.prisma.playerProfile.count({ where }),
     ]);
 
-    return { items, total, page, pageSize };
+    return { items: items.map((item) => this.withAvatar(item)), total, page, pageSize };
   }
 
   private async assertOwner(userId: string) {

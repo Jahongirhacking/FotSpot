@@ -1,19 +1,97 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MediaCategory } from '@prisma/client';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
-const CATEGORIES = ['DRIBBLING', 'PASSING', 'SHOOTING', 'SPRINT', 'MATCH_HIGHLIGHTS'] as const;
+/** The six card attributes a clip can evidence, plus highlights (§21.1). */
+const CATEGORIES = [
+  'PACE',
+  'DRIBBLING',
+  'PASSING',
+  'FINISHING',
+  'PHYSICAL',
+  'TECHNIQUE',
+  'MATCH_HIGHLIGHTS',
+] as const;
 const TYPES = ['IMAGE', 'VIDEO'] as const;
 
 export class RequestUploadDto {
   @IsString() filename: string;
   @IsIn(TYPES) type: (typeof TYPES)[number];
-  @IsIn(CATEGORIES) category: (typeof CATEGORIES)[number];
+  @ApiProperty({ enum: MediaCategory, enumName: 'MediaCategory' })
+  @IsIn(CATEGORIES)
+  category: (typeof CATEGORIES)[number];
+
+  /** Sent to R2 so the object is served back with the right type. */
+  @IsOptional() @IsString() @MaxLength(100) contentType?: string;
 }
 
 export class ConfirmUploadDto {
   @IsString() storageKey: string;
   @IsIn(TYPES) type: (typeof TYPES)[number];
-  @IsIn(CATEGORIES) category: (typeof CATEGORIES)[number];
+  @ApiProperty({ enum: MediaCategory, enumName: 'MediaCategory' })
+  @IsIn(CATEGORIES)
+  category: (typeof CATEGORIES)[number];
+
+  /**
+   * The player's own 0–100 claim for this attribute, evidenced by the clip.
+   *
+   * Required for the six attribute categories and rejected for
+   * MATCH_HIGHLIGHTS — enforced in the service, because "required unless the
+   * value of another field is X" is not something class-validator states
+   * clearly enough to be worth the custom constraint.
+   */
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  selfRating?: number;
+
+  @IsOptional() @IsString() @MaxLength(120) title?: string;
+  @IsOptional() @IsString() @MaxLength(1000) description?: string;
+
+  /** Key of the cover frame, from the same upload ticket. Optional: capture can
+   *  fail, and a clip without a cover beats a refused upload. */
+  @IsOptional() @IsString() @MaxLength(512) posterKey?: string;
+}
+
+/**
+ * Owner edits after the fact.
+ *
+ * The category is deliberately absent. A clip's category is the bar it argues
+ * for, so re-pointing an old clip at a different attribute would rewrite a claim
+ * history the chart has already drawn. Delete and re-upload instead — that leaves
+ * an honest record.
+ */
+export class UpdateMediaDto {
+  @IsOptional() @IsString() @MaxLength(120) title?: string;
+  @IsOptional() @IsString() @MaxLength(1000) description?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  selfRating?: number;
+}
+
+export class ListPlayerMediaDto {
+  @ApiPropertyOptional({ enum: MediaCategory, enumName: 'MediaCategory' })
+  @IsOptional()
+  @IsIn(CATEGORIES)
+  category?: (typeof CATEGORIES)[number];
 }
 
 export class CreateMediaCommentDto {

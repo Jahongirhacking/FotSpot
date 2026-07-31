@@ -19,6 +19,7 @@ import type {
   PlayerProfile,
   PlayingStyle,
   RankedRecommendation,
+  MyRecommendation,
   Recommendation,
   RecommendationStatus,
   ScoutStats,
@@ -27,7 +28,7 @@ import type {
   TrialApplicationStatus,
 } from './types';
 
-type Opts = Pick<RequestOptions, 'token' | 'revalidate' | 'tags' | 'cache'>;
+type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
 
 // ---------- Users ----------
 
@@ -57,6 +58,16 @@ export const users = {
       '/users/me/contact/verify',
       { method: 'POST', body, ...opts },
     ),
+
+  /**
+   * Become a scout — the one role a user may grant themselves, because it starts
+   * with no authority (§1.5: a new scout's word carries the lowest weight).
+   */
+  becomeScout: (opts: Opts = {}) =>
+    apiFetch<{ roles: string[]; permissions: string[] }>('/users/me/roles/scout', {
+      method: 'POST',
+      ...opts,
+    }),
 };
 
 export interface UpdateProfileBody {
@@ -69,8 +80,7 @@ export interface AvatarUploadUrl {
   uploadUrl: string;
   storageKey: string;
   publicUrl: string;
-  /** False while R2 credentials are unset — the PUT will not persist bytes. */
-  storageConfigured: boolean;
+  expiresIn: number;
 }
 
 export type ContactChannel = 'PHONE' | 'EMAIL';
@@ -92,6 +102,10 @@ export interface MeResponse {
   id: string;
   email?: string | null;
   phone?: string | null;
+  /** Set only on accounts an admin created — academy managers (§1.10). */
+  username?: string | null;
+  /** True while the account still holds its admin-generated password. */
+  mustChangePassword?: boolean;
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
@@ -106,11 +120,13 @@ export interface MyProfileResponse extends MeResponse {
       profileId: string;
       birthDate: string;
       primaryPosition: string | null;
-      playingStyle: PlayingStyle | null;
+      secondaryPosition: string | null;
+      dominantFoot: 'LEFT' | 'RIGHT' | 'BOTH' | null;
+      playingStyle: string | null;
       region: string | null;
-      matches: number;
-      goals: number;
-      assists: number;
+      district: string | null;
+      height: number | null;
+      weight: number | null;
       mediaCount: number;
       trialApplications: number;
       recommendationsReceived: number;
@@ -201,6 +217,81 @@ export const academies = {
 
   listStaff: (id: string, opts: Opts = {}) =>
     apiFetch<AcademyProfile['members']>(`/academies/${id}/staff`, opts),
+
+  /** The academy the caller manages, or null. One manager, one academy. */
+  mine: (opts: Opts = {}) => apiFetch<AcademyProfile | null>('/academies/mine', opts),
+
+  /**
+   * What the caller is to this academy — manager, staff, endorsed, or a player it
+   * accepted at a trial. A separate call because `getById` is public and cached.
+   */
+  relation: (id: string, opts: Opts = {}) =>
+    apiFetch<{ relation: AcademyRelation | null }>(`/academies/${id}/relation`, opts),
+};
+
+export type AcademyRelation =
+  | 'MANAGER'
+  | 'COACH'
+  | 'SCOUT'
+  | 'ENDORSED_SCOUT'
+  | 'ENDORSED_COACH'
+  | 'TRIALIST';
+
+// ---------- Insights (recruiting-side only — never shown to players) ----------
+
+export interface WeeklyPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  primaryPosition: string | null;
+  playingStyle: string | null;
+  region: string | null;
+  avatarUrl: string | null;
+  /** How many scouts put this player forward — a count of backing, not a rating. */
+  backingCount: number;
+  backingWeight: number;
+}
+
+export interface WeeklyScout {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  acceptedThisWeek: number;
+  level: number;
+  successRate: number;
+}
+
+export interface WeeklyCoach {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  assessmentsThisWeek: number;
+}
+
+export interface WeeklyInsights {
+  since: string;
+  players: WeeklyPlayer[];
+  scouts: WeeklyScout[];
+  coaches: WeeklyCoach[];
+}
+
+export interface AcademySummary {
+  pendingRecommendations: number;
+  newThisWeek: number;
+  endorsedScouts: number;
+  endorsedCoaches: number;
+  openTrials: number;
+  applications: number;
+}
+
+export const insights = {
+  weekly: (opts: Opts = {}) => apiFetch<WeeklyInsights>('/insights/weekly', opts),
+
+  forAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademySummary>(`/insights/academy/${academyId}`, opts),
 };
 
 // ---------- Admin console ----------
@@ -211,6 +302,8 @@ export interface AdminUser {
   lastName: string | null;
   email?: string | null;
   phone?: string | null;
+  /** Present only on admin-created accounts — their only identifier. */
+  username?: string | null;
   avatarUrl: string | null;
   createdAt: string;
   roles: string[];
@@ -242,7 +335,29 @@ export const admin = {
     apiFetch<AcademyProfile>(`/academies/${academyId}`, { method: 'PATCH', body, ...opts }),
 
   createAcademy: (body: AcademyInput, opts: Opts = {}) =>
-    apiFetch<AcademyProfile>('/academies', { method: 'POST', body, ...opts }),
+    apiFetch<AcademyProfile & { credentials: ManagerCredentials | null }>('/academies', {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  /** Assigns or replaces the academy's single manager. */
+  setAcademyManager: (
+    academyId: string,
+    body: { managerUserId?: string; newManager?: NewManagerInput },
+    opts: Opts = {},
+  ) =>
+    apiFetch<{ member: { userId: string }; credentials: ManagerCredentials | null }>(
+      `/academies/${academyId}/manager`,
+      { method: 'PATCH', body, ...opts },
+    ),
+
+  /** The only recovery path for a lost generated password — it cannot be re-read. */
+  resetManagerPassword: (academyId: string, opts: Opts = {}) =>
+    apiFetch<ManagerCredentials>(`/academies/${academyId}/manager/reset-password`, {
+      method: 'POST',
+      ...opts,
+    }),
 
   /** Read-only for any admin. */
   userDetail: (userId: string, opts: Opts = {}) =>
@@ -356,7 +471,25 @@ export interface AcademyInput {
   region?: string;
   district?: string;
   description?: string;
+  /** Attach an existing account. Mutually exclusive with `newManager`. */
   managerUserId?: string;
+  /** Have the platform mint an account and return its one-time credentials. */
+  newManager?: NewManagerInput;
+}
+
+export interface NewManagerInput {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+/**
+ * Returned exactly once, when an account is created or its password is reset.
+ * There is no endpoint that can show these again — only the hash is stored.
+ */
+export interface ManagerCredentials {
+  username: string;
+  password: string;
 }
 
 // ---------- Endorsements (README §1.5.3) ----------
@@ -471,7 +604,7 @@ export const recommendations = {
       opts,
     ),
 
-  listMine: (opts: Opts = {}) => apiFetch<Recommendation[]>('/recommendations/mine', opts),
+  listMine: (opts: Opts = {}) => apiFetch<MyRecommendation[]>('/recommendations/mine', opts),
 
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
@@ -544,23 +677,55 @@ export interface CreateTrialBody {
 // ---------- Media ----------
 
 export const media = {
-  listForPlayer: (playerId: string, opts: Opts = {}) =>
-    apiFetch<Media[]>(`/media/player/${playerId}`, opts),
+  /** `category` narrows to one attribute's claim history. */
+  listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
+    apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
+
+  /** Whether the server can accept uploads at all — asked before recording. */
+  storageStatus: (opts: Opts = {}) =>
+    apiFetch<{ configured: boolean }>('/media/storage-status', opts),
 
   requestUpload: (
-    body: { filename: string; type: MediaType; category: MediaCategory },
+    body: {
+      filename: string;
+      type: MediaType;
+      category: MediaCategory;
+      contentType?: string;
+    },
     opts: Opts = {},
   ) =>
-    apiFetch<{ storageKey: string; uploadUrl: string }>('/media/upload-url', {
-      method: 'POST',
-      body,
-      ...opts,
-    }),
+    apiFetch<{
+      storageKey: string;
+      uploadUrl: string;
+      expiresIn: number;
+      /** Second ticket for the cover frame, from the same round trip. */
+      posterUploadUrl: string;
+      posterKey: string;
+    }>('/media/upload-url', { method: 'POST', body, ...opts }),
 
   confirmUpload: (
-    body: { storageKey: string; type: MediaType; category: MediaCategory },
+    body: {
+      storageKey: string;
+      type: MediaType;
+      category: MediaCategory;
+      /** Required for the six attribute categories, rejected for highlights. */
+      selfRating?: number;
+      title?: string;
+      description?: string;
+      posterKey?: string;
+    },
     opts: Opts = {},
   ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
+
+  /** The uploader corrects their own clip. Category is deliberately not editable. */
+  update: (
+    id: string,
+    body: { title?: string; description?: string; selfRating?: number },
+    opts: Opts = {},
+  ) => apiFetch<Media>(`/media/${id}`, { method: 'PATCH', body, ...opts }),
+
+  remove: (id: string, opts: Opts = {}) =>
+    apiFetch<Media>(`/media/${id}`, { method: 'DELETE', ...opts }),
 
   like: (id: string, opts: Opts = {}) =>
     apiFetch<unknown>(`/media/${id}/like`, { method: 'POST', ...opts }),
@@ -572,8 +737,14 @@ export const media = {
     apiFetch<unknown>(`/media/${id}/view`, { method: 'POST', ...opts }),
 
   engagement: (id: string, opts: Opts = {}) =>
-    apiFetch<{ mediaId: string; views: number; likes: number; comments: number }>(
-      `/media/${id}/engagement`,
+    apiFetch<{
+      mediaId: string;
+      views: number;
+      likes: number;
+      comments: number;
+      /** One like per account — see MediaService.getEngagement. */
+      likedByMe: boolean;
+    }>(`/media/${id}/engagement`,
       opts,
     ),
 };
@@ -625,4 +796,13 @@ export const notifications = {
 
 export const auth = {
   sessions: (opts: Opts = {}) => apiFetch<DeviceSession[]>('/auth/sessions', opts),
+
+  /**
+   * `currentPassword` may be omitted only while `mustChangePassword` is set —
+   * the account is still on the password an admin generated for it.
+   */
+  changePassword: (
+    body: { currentPassword?: string; newPassword: string },
+    opts: Opts = {},
+  ) => apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
 };

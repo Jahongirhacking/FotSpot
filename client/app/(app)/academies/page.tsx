@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Building2, MapPin } from 'lucide-react';
 import { academies } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
+import { isAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -16,9 +17,11 @@ export default async function AcademiesPage() {
   const { t } = await getServerT();
 
   // Academies are onboarded by the platform team, not self-registered — there are
-  // only ~50 in the country. Admins only (the backend enforces it with @Roles).
-  const canRegisterAcademy =
-    session?.roles.includes('admin') || session?.roles.includes('super_admin');
+  // only ~50 in the country. The console is where that happens; there is no
+  // public registration form to link to.
+  // The *acting* role, not every role held: an admin browsing as an academy
+  // manager should see this page the way a manager does (§1.2.1).
+  const isAdmin = isAdminActing(session?.activeRole ?? null);
 
   const list = await academies
     .listPublic(
@@ -34,9 +37,9 @@ export default async function AcademiesPage() {
           <h1 className="text-xl font-bold">{t.nav.academies}</h1>
           <p className="text-muted text-sm">{t.common.tagline}</p>
         </div>
-        {canRegisterAcademy && (
+        {isAdmin && (
           <Button asChild variant="outline" size="sm">
-            <Link href="/academies/register">{t.academy.register}</Link>
+            <Link href="/admin/academies">{t.academy.manageAcademies}</Link>
           </Button>
         )}
       </header>
@@ -44,12 +47,14 @@ export default async function AcademiesPage() {
       {list.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No academies listed yet"
-          description="Academies appear here once an admin has verified them."
+          title={t.academy.noneListed}
+          description={t.academy.adminOnly}
           action={
-            <Button asChild>
-              <Link href="/academies/register">Register the first one</Link>
-            </Button>
+            isAdmin ? (
+              <Button asChild>
+                <Link href="/admin/academies">{t.admin.newAcademy}</Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (

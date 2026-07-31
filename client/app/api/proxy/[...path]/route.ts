@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { API_BASE } from '@/lib/api/client';
 import { ACCESS_COOKIE } from '@/lib/session';
+import { ACTIVE_ROLE_COOKIE } from '@/lib/roles';
 
 /**
  * Attaches the httpOnly access token to browser-originated API calls.
@@ -16,6 +17,11 @@ import { ACCESS_COOKIE } from '@/lib/session';
 async function forward(request: Request, path: string[]) {
   const store = await cookies();
   const accessToken = store.get(ACCESS_COOKIE)?.value;
+  // The role the user is acting as (§1.2.1). The backend authorizes against this
+  // one role rather than every role the token carries, so an admin browsing as an
+  // academy manager is refused admin actions. Forged values only ever narrow —
+  // the backend ignores any role the token does not already hold.
+  const activeRole = store.get(ACTIVE_ROLE_COOKIE)?.value;
 
   const url = new URL(request.url);
   const target = `${API_BASE}/${path.join('/')}${url.search}`;
@@ -30,6 +36,7 @@ async function forward(request: Request, path: string[]) {
         ? { 'Content-Type': request.headers.get('content-type') ?? 'application/json' }
         : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(activeRole ? { 'x-active-role': activeRole } : {}),
       // Preserve device context for the backend's session tracking (README §1.21).
       ...(request.headers.get('user-agent')
         ? { 'user-agent': request.headers.get('user-agent')! }

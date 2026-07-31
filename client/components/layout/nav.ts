@@ -44,13 +44,16 @@ export function navForRole(role: Role | null): NavItem[] {
     case 'coach':
       return [...COMMON, { href: '/recommendations', label: 'myPicks', icon: Inbox }];
 
+    // No "Academies" entry. A manager runs exactly one academy and it is already
+    // their home screen; the only thing the directory would offer them is a list
+    // of rivals they cannot edit. Browsing to /academies still works — this is a
+    // clarity decision about what the menu is *for*, not a permission gate.
     case 'academy_manager':
       return [
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
         { href: '/players', label: 'findPlayers', icon: Search },
         { href: '/trials', label: 'trials', icon: CalendarDays },
-        { href: '/academies', label: 'academies', icon: Building2 },
       ];
 
     case 'admin':

@@ -52,19 +52,27 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   /** Bearer token. On the server, pass the value read from the session cookie. */
   token?: string;
+  /**
+   * The role the caller is acting as. Sent as `x-active-role`, which narrows the
+   * backend's authorization to that one role — it can only ever remove privilege
+   * (see JwtStrategy.validate). Browser calls get this from the proxy route; a
+   * Server Component read must pass it explicitly.
+   */
+  activeRole?: string | null;
   /** Next.js fetch caching — only meaningful in Server Components. */
   revalidate?: number | false;
   tags?: string[];
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, token, revalidate, tags, headers, ...rest } = options;
+  const { body, token, activeRole, revalidate, tags, headers, ...rest } = options;
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...rest,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeRole ? { 'x-active-role': activeRole } : {}),
       ...headers,
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),

@@ -27,6 +27,21 @@ export class UsersController {
     return this.usersService.findMeWithStats(user.userId);
   }
 
+  /**
+   * Become a scout — the one role a user may give themselves.
+   *
+   * Everything else is granted by somebody: `player` comes with creating a
+   * profile, `coach` from the academy that hires you, `academy_manager` and
+   * `admin` from an admin. Scouting needs no permission because it starts with
+   * zero authority: a new scout's recommendations carry the lowest §1.5 weight
+   * and only earn more by being accepted.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('me/roles/scout')
+  becomeScout(@CurrentUser() user: AuthUser) {
+    return this.usersService.becomeScout(user.userId);
+  }
+
   @Patch('me')
   updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(user.userId, dto);

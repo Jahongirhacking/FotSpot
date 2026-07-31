@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Phone } from 'lucide-react';
 import {
+  loginBody,
   loginEmailSchema,
   requestOtpSchema,
   verifyOtpSchema,
@@ -101,7 +102,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
 
   const form = useForm<LoginEmailValues>({
     resolver: zodResolver(loginEmailSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
 
   async function onSubmit(values: LoginEmailValues) {
@@ -109,7 +110,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'email', ...values }),
+      body: JSON.stringify({ mode: 'email', ...loginBody(values) }),
     });
 
     if (!response.ok) {
@@ -124,13 +125,20 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
       {serverError && <Alert tone="danger">{serverError}</Alert>}
 
-      <Field label="Email" htmlFor="email" required error={form.formState.errors.email?.message}>
+      <Field
+        label="Email or username"
+        htmlFor="identifier"
+        required
+        error={form.formState.errors.identifier?.message}
+      >
         <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          aria-invalid={!!form.formState.errors.email}
-          {...form.register('email')}
+          id="identifier"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          aria-invalid={!!form.formState.errors.identifier}
+          {...form.register('identifier')}
         />
       </Field>
 

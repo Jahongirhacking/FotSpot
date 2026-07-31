@@ -27,14 +27,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Skipping /welcome is non-terminal (§1.2.2): the question comes back here,
-          dismissibly, instead of being lost forever. */}
-      {!onboarded && !roles.includes('player') && <RoleIntentCard />}
+      {/*
+        The same rule as the profile: offer the player card only to someone
+        acting as a scout who has not got one. It used to show for any role that
+        had not answered the welcome question, which put "are you a player?" in
+        front of academy managers and admins.
+      */}
+      {!onboarded && activeRole === 'scout' && !roles.includes('player') && <RoleIntentCard />}
 
-      {activeRole === 'player' && <PlayerHome token={session.accessToken} />}
+      {activeRole === 'player' && <PlayerHome token={session.accessToken} t={t} />}
       {activeRole === 'scout' && <ScoutHome token={session.accessToken} />}
       {activeRole === 'coach' && <CoachHome token={session.accessToken} />}
-      {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} />}
+      {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} t={t} />}
       {(activeRole === 'admin' || activeRole === 'super_admin') && (
         <AdminHome isSuperAdmin={activeRole === 'super_admin'} t={t} />
       )}

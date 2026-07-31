@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ScrollText } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { isAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin, type AuditLogEntry } from '@/lib/api/resources';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
@@ -17,11 +18,11 @@ export default async function AuditLogPage() {
   if (!session) redirect('/login?next=/admin/audit-logs');
 
   const { t } = await getServerT();
-  const isAdmin = session.roles.includes('admin') || session.roles.includes('super_admin');
+  const isAdmin = isAdminActing(session.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const entries = await admin
-    .auditLogs({ token: session.accessToken, cache: 'no-store' })
+    .auditLogs({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
     .catch(() => [] as AuditLogEntry[]);
 
   return (

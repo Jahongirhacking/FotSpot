@@ -1,20 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Building2, Sparkles, Target, Trophy } from 'lucide-react';
+import { Building2, Pencil, Sparkles, Target, Trophy } from 'lucide-react';
 import { getSession } from '@/lib/session';
-import { users, type MyProfileResponse } from '@/lib/api/resources';
+import { players, users, type MyProfileResponse } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
 import { sortRoles } from '@/lib/roles';
 import { ageBand, formatDate, humanizeEnum, initials } from '@/lib/utils';
 import { ProfileRoleList } from './ProfileRoleList';
 import { SyncRoles } from './SyncRoles';
 import { EditProfileButton } from './EditProfileButton';
+import { BecomeScoutCard } from './BecomeScoutCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Alert } from '@/components/ui/Feedback';
+import { PlayerCard } from '@/components/player/PlayerCard';
+import type { PlayerProfile } from '@/lib/api/types';
 
 export const metadata: Metadata = { title: 'Profile' };
 
@@ -22,7 +25,7 @@ export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect('/login?next=/profile');
 
-  const { t, f } = await getServerT();
+  const { t } = await getServerT();
 
   const profile = await users
     .myProfile({ token: session.accessToken, cache: 'no-store' })
@@ -31,6 +34,14 @@ export default async function ProfilePage() {
   if (!profile) {
     return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
   }
+
+  // The card is the player's own, so it is worth a second request — but only when
+  // there is a player role to show one for.
+  const playerCard: PlayerProfile | null = profile.roles.includes('player')
+    ? await players.getMine({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+    : null;
+
+  const activeRole = session.activeRole;
 
   // `profile.roles` comes from the database and is authoritative; the session
   // cookie can lag behind it (see SyncRoles).
@@ -74,27 +85,55 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/*
+        Statistics follow the role you are *acting as*, not every role you hold.
+        A scout reading their own profile does not need their player counters
+        underneath, and stacking all of them made the page a list of everything
+        the account has ever been. Switch role and this section switches with it.
+      */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">{t.profile.statistics}</h2>
-
-        {profile.stats.player ? (
-          <PlayerStats stats={profile.stats.player} t={t} f={f} />
-        ) : (
-          roles.includes('player') === false && (
-            <Card>
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
-                <p className="text-muted text-sm">{t.profile.noPlayerCard}</p>
-                <Button asChild size="sm">
-                  <Link href="/onboarding/player">{t.profile.createPlayerCard}</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )
+        {activeRole === 'player' && profile.stats.player && (
+          <>
+            <h2 className="text-lg font-semibold">{t.profile.playerStats}</h2>
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+              {playerCard && <PlayerCard player={playerCard} selfLabel={t.relation.you} />}
+              <PlayerDetails stats={profile.stats.player} t={t} />
+            </div>
+          </>
         )}
 
-        {profile.stats.scout && <ScoutStats stats={profile.stats.scout} t={t} />}
-        {profile.stats.coach && <CoachStats stats={profile.stats.coach} t={t} />}
-        <AcademyList academies={profile.stats.academies} t={t} />
+        {activeRole === 'scout' && profile.stats.scout && (
+          <>
+            <h2 className="text-lg font-semibold">{t.profile.scoutStats}</h2>
+            <ScoutStats stats={profile.stats.scout} t={t} />
+          </>
+        )}
+
+        {activeRole === 'coach' && profile.stats.coach && (
+          <>
+            <h2 className="text-lg font-semibold">{t.profile.coachStats}</h2>
+            <CoachStats stats={profile.stats.coach} t={t} />
+          </>
+        )}
+
+        {/*
+          The two cross-role invitations, each shown only where it makes sense —
+          you are offered the role you do not have, from the one you do.
+        */}
+        {activeRole === 'scout' && !roles.includes('player') && (
+          <CrossRoleCard
+            title={t.profile.noPlayerCard}
+            body={t.profile.noPlayerCardHint}
+            cta={t.profile.createPlayerCard}
+            href="/onboarding/player"
+          />
+        )}
+
+        {activeRole === 'player' && !roles.includes('scout') && <BecomeScoutCard />}
+
+        {profile.stats.academies.length > 0 && (
+          <AcademyList academies={profile.stats.academies} t={t} />
+        )}
       </section>
     </div>
   );
@@ -103,43 +142,100 @@ export default async function ProfilePage() {
 type T = Awaited<ReturnType<typeof getServerT>>['t'];
 type F = Awaited<ReturnType<typeof getServerT>>['f'];
 
-function PlayerStats({
+/**
+ * The player's own card details, and the counters the platform can stand behind.
+ *
+ * No matches, goals or assists. They are self-reported tallies nobody can check,
+ * and presenting them under "statistics" lends them the authority of a record —
+ * which is the exact confusion §1.6 exists to prevent. What is here instead is
+ * either a fact about the card (position, foot, height) or a count of something
+ * that actually happened on the platform.
+ */
+function PlayerDetails({
   stats,
   t,
-  f,
 }: {
   stats: NonNullable<MyProfileResponse['stats']['player']>;
   t: T;
-  f: F;
 }) {
+  const facts = [
+    { label: t.onboarding.mainPosition, value: stats.primaryPosition },
+    { label: t.onboarding.otherPosition, value: stats.secondaryPosition },
+    { label: t.onboarding.strongFoot, value: stats.dominantFoot && humanizeEnum(stats.dominantFoot) },
+    {
+      label: t.onboarding.playingStyle,
+      value: stats.playingStyle && humanizeEnum(stats.playingStyle),
+    },
+    { label: t.onboarding.heightCm, value: stats.height && `${stats.height}` },
+    { label: t.onboarding.weightKg, value: stats.weight && `${stats.weight}` },
+    { label: t.onboarding.region, value: stats.region },
+  ].filter((fact) => fact.value);
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="text-primary size-4" aria-hidden /> {t.profile.playerStats}
-        </CardTitle>
-        <CardDescription className="flex flex-wrap gap-1.5 pt-1">
-          <Badge variant="outline">{ageBand(stats.birthDate)}</Badge>
-          {stats.primaryPosition && (
-            <Badge variant="primary" className="font-mono">
-              {stats.primaryPosition}
-            </Badge>
-          )}
-          {stats.playingStyle && <Badge variant="accent">{humanizeEnum(stats.playingStyle)}</Badge>}
-        </CardDescription>
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="text-primary size-4" aria-hidden /> {t.profile.cardDetails}
+          </CardTitle>
+          <CardDescription className="flex flex-wrap gap-1.5 pt-1.5">
+            <Badge variant="outline">{ageBand(stats.birthDate)}</Badge>
+            {stats.primaryPosition && (
+              <Badge variant="primary" className="font-mono">
+                {stats.primaryPosition}
+              </Badge>
+            )}
+          </CardDescription>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/profile/player">
+            <Pencil aria-hidden /> {t.common.edit}
+          </Link>
+        </Button>
       </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          <Stat label={t.profile.matches} value={stats.matches} />
-          <Stat label={t.profile.goals} value={stats.goals} />
-          <Stat label={t.profile.assists} value={stats.assists} />
+
+      <CardContent className="space-y-4">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt className="text-muted text-xs">{fact.label}</dt>
+              <dd className="font-medium">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <dl className="border-border grid grid-cols-3 gap-2 border-t pt-4">
           <Stat label={t.profile.clips} value={stats.mediaCount} />
           <Stat label={t.profile.trialApplications} value={stats.trialApplications} />
           <Stat label={t.profile.recommendationsReceived} value={stats.recommendationsReceived} />
         </dl>
-        <p className="text-muted mt-3 text-xs">
-          {f(t.player.comparedWithin, { band: ageBand(stats.birthDate) })}
-        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Offers the role you do not hold, from the one you do. */
+function CrossRoleCard({
+  title,
+  body,
+  cta,
+  href,
+}: {
+  title: string;
+  body: string;
+  cta: string;
+  href: string;
+}) {
+  return (
+    <Card className="border-primary/30">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <p className="font-medium">{title}</p>
+          <p className="text-muted mt-0.5 text-sm">{body}</p>
+        </div>
+        <Button asChild size="sm">
+          <Link href={href}>{cta}</Link>
+        </Button>
       </CardContent>
     </Card>
   );

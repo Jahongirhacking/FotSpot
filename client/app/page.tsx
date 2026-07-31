@@ -290,7 +290,7 @@ async function recentClips(playerList: PlayerProfile[]) {
   const withMedia = await Promise.all(
     playerList.slice(0, 6).map(async (player) => {
       const items = await media
-        .listForPlayer(player.id, { revalidate: 600 })
+        .listForPlayer(player.id, undefined, { revalidate: 600 })
         .catch(() => [] as Media[]);
       return items.slice(0, 2).map((item) => ({ item, player }));
     }),

@@ -26,7 +26,15 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
 export type TrialApplicationStatus =
   'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
-export type MediaCategory = 'DRIBBLING' | 'PASSING' | 'SHOOTING' | 'SPRINT' | 'MATCH_HIGHLIGHTS';
+/** One value per card attribute (§21.1), plus highlights. */
+export type MediaCategory =
+  | 'PACE'
+  | 'DRIBBLING'
+  | 'PASSING'
+  | 'FINISHING'
+  | 'PHYSICAL'
+  | 'TECHNIQUE'
+  | 'MATCH_HIGHLIGHTS';
 export type MediaType = 'IMAGE' | 'VIDEO';
 export type FollowTargetType = 'PLAYER' | 'ACADEMY';
 export type AcademyScoutFollowState = 'FOLLOWING' | 'MUTED';
@@ -39,14 +47,32 @@ export interface AuthSession {
   permissions: string[];
 }
 
+/**
+ * Clip metadata, with permanent URLs.
+ *
+ * Clips are public and stay reachable until the player deletes them, so the URL
+ * is stable, cacheable and safe to hand straight to a `<video>`. The storage key
+ * is still absent — it is an internal address, and callers that hold keys start
+ * building URLs themselves, which is what stops CDN changes being config changes.
+ */
 export interface Media {
   id: string;
   playerId: string;
   type: MediaType;
   category: MediaCategory;
-  url: string;
-  storageKey: string;
   status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
+  title?: string | null;
+  description?: string | null;
+  /** The player's own 0–100 claim this clip evidences. Null for highlights. */
+  selfRating?: number | null;
+  /**
+   * Permanent URL of the video. Null only when the server has no public storage
+   * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
+   * address yet.
+   */
+  url: string | null;
+  /** Permanent URL of the cover frame; null when capture failed at upload. */
+  posterUrl?: string | null;
   createdAt: string;
 }
 
@@ -63,6 +89,8 @@ export interface PlayerProfile {
   primaryPosition?: string | null;
   secondaryPosition?: string | null;
   playingStyle?: PlayingStyle | null;
+  /** Flattened from the owning User by the API — one account, one picture. */
+  avatarUrl?: string | null;
   region?: string | null;
   district?: string | null;
   matches: number;
@@ -116,10 +144,23 @@ export interface Recommendation {
   id: string;
   scoutId: string;
   playerId: string;
-  academyId: string;
+  /** Null for GLOBAL recommendations, which address no single academy (§1.5.3). */
+  academyId: string | null;
   status: RecommendationStatus;
   note?: string | null;
   createdAt: string;
+}
+
+/** GET /recommendations/mine — resolved names, and both addressing modes. */
+export interface MyRecommendation {
+  id: string;
+  type: 'GLOBAL' | 'SPECIFIC';
+  status: RecommendationStatus;
+  note?: string | null;
+  createdAt: string;
+  player: { id: string; firstName: string; lastName: string };
+  /** Empty for GLOBAL — it is offered to every academy rather than addressed. */
+  academies: { id: string; name: string; status: RecommendationStatus }[];
 }
 
 /** GET /recommendations/academy/:id/ranked — README §1.5.1/§1.5.2. */

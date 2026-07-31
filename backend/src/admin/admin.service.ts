@@ -2,10 +2,12 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CoachesService } from '../coaches/coaches.service';
 import { AcademiesService } from '../academies/academies.service';
@@ -15,8 +17,11 @@ import { AuditAction } from '../audit/audit.actions';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private prisma: PrismaService,
+    private storage: StorageService,
     private rbac: RbacService,
     private coachesService: CoachesService,
     private academiesService: AcademiesService,
@@ -68,6 +73,10 @@ export class AdminService {
             { lastName: { contains: term, mode: 'insensitive' } },
             { email: { contains: term, mode: 'insensitive' } },
             { phone: { contains: term } },
+            // An admin-created academy manager has no email and may have no
+            // phone — the username is the only handle that account can be
+            // found by, so omitting it makes those accounts unsearchable.
+            { username: { contains: term, mode: 'insensitive' } },
           ],
         }
       : {};
@@ -77,11 +86,12 @@ export class AdminService {
         where,
         select: {
           id: true,
+          username: true,
           firstName: true,
           lastName: true,
           email: true,
           phone: true,
-          avatarUrl: true,
+          avatarKey: true,
           createdAt: true,
           roles: { select: { role: { select: { name: true } } } },
         },
@@ -94,7 +104,7 @@ export class AdminService {
 
     return {
       items: items.map(({ roles, ...user }) => ({
-        ...user,
+        ...this.storage.withAvatarUrl(user),
         roles: roles.map((entry) => entry.role.name),
       })),
       total,
@@ -112,7 +122,7 @@ export class AdminService {
         firstName: true,
         lastName: true,
         email: true,
-        avatarUrl: true,
+        avatarKey: true,
         createdAt: true,
         roles: { select: { role: { select: { name: true } } } },
       },
@@ -120,7 +130,7 @@ export class AdminService {
     });
 
     return admins.map(({ roles, ...user }) => ({
-      ...user,
+      ...this.storage.withAvatarUrl(user),
       roles: roles.map((entry) => entry.role.name),
       // A super admin cannot be demoted through this screen — the seeded bootstrap
       // account must stay reachable, and locking everyone out is unrecoverable.
@@ -145,7 +155,8 @@ export class AdminService {
         lastName: true,
         email: true,
         phone: true,
-        avatarUrl: true,
+        username: true,
+        avatarKey: true,
         isActive: true,
         createdAt: true,
         roles: { select: { role: { select: { name: true } } } },
@@ -174,7 +185,7 @@ export class AdminService {
     if (!user) throw new NotFoundException('User not found');
 
     const scoutStats = await this.prisma.scoutStats.findUnique({ where: { userId } });
-    const { roles, ...rest } = user;
+    const { roles, ...rest } = this.storage.withAvatarUrl(user);
 
     return {
       ...rest,
@@ -228,7 +239,20 @@ export class AdminService {
       await this.rbac.assignRole(userId, roleName);
       await this.audit.record(actorId, AuditAction.ROLE_ASSIGNED, { userId, roleName });
     } else {
-      await this.rbac.removeRole(userId, roleName).catch(() => undefined);
+      // `removeRole` deletes a row, so revoking a role the user never had throws
+      // P2025. That case is genuinely idempotent and must not fail the request —
+      // but a blanket catch also swallowed real database errors and then wrote an
+      // audit entry saying the role had been removed. An audit trail that records
+      // something that did not happen is worse than no audit trail, so only the
+      // not-found case is absorbed and anything else propagates.
+      try {
+        await this.rbac.removeRole(userId, roleName);
+      } catch (error) {
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025')) {
+          throw error;
+        }
+        this.logger.debug(`Role ${roleName} was already absent from user ${userId}`);
+      }
       await this.audit.record(actorId, AuditAction.ROLE_REMOVED, { userId, roleName });
     }
 
