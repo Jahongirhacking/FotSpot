@@ -51,6 +51,17 @@ export class StorageService {
     this.bucket = config.get<string>('R2_BUCKET') ?? '';
     this.publicBaseUrl = (config.get<string>('R2_PUBLIC_BASE_URL') ?? '').replace(/\/+$/, '');
 
+    // Separate from the credential check on purpose: uploads and signed reads
+    // work perfectly well without a public base, so a missing one must not
+    // disable them — it only breaks avatars, and it does so silently, which is
+    // why it gets its own warning rather than being folded into the one below.
+    if (!this.publicBaseUrl) {
+      this.logger.warn(
+        'R2_PUBLIC_BASE_URL is not set — avatar URLs cannot be built. Uploads and ' +
+          'private playback are unaffected; set it to the public bucket/CDN origin.',
+      );
+    }
+
     if (accountId && accessKeyId && secretAccessKey && this.bucket) {
       this.client = new S3Client({
         region: 'auto',
@@ -85,12 +96,27 @@ export class StorageService {
           'Private objects are reachable only through StorageService.createReadUrl.',
       );
     }
+    if (!this.publicBaseUrl) {
+      throw new ServiceUnavailableException(
+        'R2_PUBLIC_BASE_URL is not configured, so public asset URLs cannot be built.',
+      );
+    }
     return `${this.publicBaseUrl}/${storageKey}`;
   }
 
-  /** Convenience for the many `avatarKey: string | null` columns. */
+  /**
+   * Convenience for the many `avatarKey: string | null` columns.
+   *
+   * Returns null rather than throwing when the public base is unset. An avatar is
+   * decoration: a missing one falls back to initials (see the client's Avatar),
+   * whereas a throw here would take down every endpoint that returns a person —
+   * the user directory, the weekly boards, the whole profile screen — over a
+   * picture. `buildPublicUrl` still throws for callers that asked for a URL
+   * outright and would otherwise be handed a broken relative path.
+   */
   publicUrlOrNull(storageKey: string | null | undefined): string | null {
-    return storageKey ? this.buildPublicUrl(storageKey) : null;
+    if (!storageKey || !this.publicBaseUrl) return null;
+    return this.buildPublicUrl(storageKey);
   }
 
   /**

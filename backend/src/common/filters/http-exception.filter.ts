@@ -42,10 +42,15 @@ import { AuthUser } from '../decorators/current-user.decorator';
  * ## Severity follows the status, because noise is the enemy of logs
  *
  * - **5xx** — `error`, with the stack. Our fault, and unhandled by definition.
- * - **401 / 403** — `warn`. Not bugs, but a run of them is someone probing, and
- *   that is exactly the signal an access-control change needs to be watchable.
- * - **other 4xx** — `debug`. A validation failure or a 404 is the API working;
- *   logging those at `warn` would teach everyone to ignore warnings.
+ * - **403, and 401 with credentials** — `warn`. Somebody authenticated was
+ *   refused, or presented a token that did not hold up. A run of those is worth
+ *   noticing, and it is the signal an access-control change needs to be watchable.
+ * - **401 with no credentials at all** — `debug`. This is the browser's normal
+ *   cycle: the access cookie outlives the 15-minute token, so the client fires a
+ *   request without one, gets a 401, refreshes and retries. Warning about a
+ *   self-healing event trains everyone to ignore warnings, which is how a real
+ *   one gets missed.
+ * - **other 4xx** — `debug`. A validation failure or a 404 is the API working.
  *
  * ## What is never logged
  *
@@ -105,12 +110,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     const reason = this.reason(exception);
-    if (status === 401 || status === 403) {
-      this.logger.warn(`${status} ${where} ${who} — ${reason}`);
+    // Whether anything was *presented*, not whether it was valid — that is the
+    // difference between "the client has not refreshed yet" and "someone is
+    // trying tokens", and the two deserve different attention.
+    const presented = Boolean(request.headers.authorization);
+    const credentials = presented ? 'token=presented' : 'token=none';
+
+    if (status === 403 || (status === 401 && presented)) {
+      this.logger.warn(`${status} ${where} ${who} ${credentials} — ${reason}`);
       return;
     }
 
-    this.logger.debug(`${status} ${where} ${who} — ${reason}`);
+    this.logger.debug(`${status} ${where} ${who} ${credentials} — ${reason}`);
   }
 
   /** The human-readable half of an HttpException body, however it was thrown. */

@@ -10,12 +10,13 @@ import { HttpExceptionFilter } from './http-exception.filter';
 
 /** Minimal stand-ins for the Express request/response the filter reaches for. */
 function hostFor(request: Record<string, unknown> = {}) {
+  const { headers = {}, ...rest } = request as { headers?: Record<string, string> };
   const json = jest.fn();
   const response = { status: jest.fn().mockReturnValue({ json }) };
   const host = {
     switchToHttp: () => ({
       getResponse: () => response,
-      getRequest: () => ({ method: 'POST', originalUrl: '/api/v1/thing', ...request }),
+      getRequest: () => ({ method: 'POST', originalUrl: '/api/v1/thing', headers, ...rest }),
     }),
   } as unknown as ArgumentsHost;
   return { host, json };
@@ -53,14 +54,34 @@ describe('HttpExceptionFilter', () => {
       expect(String(stack)).toContain('database exploded');
     });
 
-    it('logs 401 and 403 as warnings — a run of them is someone probing', () => {
+    it('warns on a 403 — someone authenticated was refused', () => {
       const log = spies();
       new HttpExceptionFilter().catch(new ForbiddenException('nope'), hostFor().host);
+
+      expect(log.warn).toHaveBeenCalledTimes(1);
+      expect(log.warn.mock.calls[0][0]).toContain('403');
+      expect(log.error).not.toHaveBeenCalled();
+    });
+
+    it('warns on a 401 that presented a token — it did not hold up', () => {
+      const log = spies();
+      const { host } = hostFor({ headers: { authorization: 'Bearer stale' } });
+      new HttpExceptionFilter().catch(new UnauthorizedException(), host);
+
+      expect(log.warn).toHaveBeenCalledTimes(1);
+      expect(log.warn.mock.calls[0][0]).toContain('token=presented');
+    });
+
+    it('stays quiet on a 401 with no token — the client is about to refresh', () => {
+      // The access cookie outlives the 15-minute token, so the browser routinely
+      // fires a request without one, 401s, refreshes and retries. Warning about a
+      // self-healing cycle is how real warnings get ignored.
+      const log = spies();
       new HttpExceptionFilter().catch(new UnauthorizedException(), hostFor().host);
 
-      expect(log.warn).toHaveBeenCalledTimes(2);
-      expect(log.error).not.toHaveBeenCalled();
-      expect(log.warn.mock.calls[0][0]).toContain('403');
+      expect(log.warn).not.toHaveBeenCalled();
+      expect(log.debug).toHaveBeenCalledTimes(1);
+      expect(log.debug.mock.calls[0][0]).toContain('token=none');
     });
 
     it('logs ordinary 4xx at debug, so production never drowns in them', () => {
