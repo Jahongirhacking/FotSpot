@@ -82,6 +82,7 @@ export const uz = {
   },
 
   auth: {
+    emailCodeNotice: 'Bu manzilga tasdiqlash kodi yuboriladi.',
     emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
     signOut: 'Chiqish',
@@ -176,6 +177,8 @@ export const uz = {
   },
 
   profile: {
+    username: 'Foydalanuvchi nomi',
+    usernameHint: 'Profilingiz manzili: /players/@nomingiz. Uni o‘zgartirishingiz mumkin, lekin u takrorlanmas bo‘lishi kerak.',
     cardDetails: 'Karta ma’lumotlari',
     cardDetailsHint: 'Bo‘y va vazn har mavsum o‘zgaradi — ularni yangilab turing. Ism va tug‘ilgan sana o‘zgartirilmaydi.',
     detailsSaved: 'Saqlandi.',

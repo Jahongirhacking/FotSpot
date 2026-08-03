@@ -60,10 +60,18 @@ model User {
   id            String   @id @default(uuid())
   phone         String?  @unique
   email         String?  @unique
-  /// Only set for accounts an admin created on someone else's behalf (academy
-  /// managers, §1.10). Self-registered users sign in with email or phone and
-  /// never get one, hence nullable rather than a required unique handle.
+  /// Public handle, `colour-animal-football-number` by default (see
+  /// username.util.ts). Every account gets one — it is how `/players/@handle`
+  /// resolves and how someone signs in without remembering which email they used.
+  ///
+  /// Still nullable because accounts created before handles existed have none
+  /// until `UsersService.findMe` backfills them on first read.
   username      String?  @unique
+
+  /// When the address was proved, not merely typed. Null for accounts created
+  /// before registration required a code, and for phone/OAuth signups that have
+  /// no email at all.
+  emailVerifiedAt DateTime?
   passwordHash  String?
   firstName     String?
   lastName      String?
@@ -163,6 +171,27 @@ model VerificationCode {
   createdAt   DateTime @default(now())
 
   @@index([userId, channel])
+}
+
+/**
+ * A code proving someone controls an email address **before** an account exists
+ * for it.
+ *
+ * Separate from VerificationCode, which requires a `userId` because it confirms a
+ * change to an account that is already there. At registration there is no user to
+ * point at, and widening that relation to nullable would erase the invariant that
+ * makes it readable. Separate from OtpCode too, which authenticates a login by
+ * phone and would mean storing an email in a column called `phone`.
+ */
+model RegistrationCode {
+  id          String   @id @default(uuid())
+  email       String
+  codeHash    String
+  expiresAt   DateTime
+  consumed    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([email, consumed])
 }
 
 // ---------- PLAYER PROFILE (1.6) ----------

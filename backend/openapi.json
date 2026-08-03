@@ -1,6 +1,43 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/auth/register/request-code": {
+      "post": {
+        "operationId": "auth_requestRegistrationCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestRegistrationCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Step 1 of signing up: proves the address before an account exists for it.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/register/email": {
       "post": {
         "operationId": "auth_registerEmail",
@@ -25,6 +62,7 @@
             "bearer": []
           }
         ],
+        "summary": "Step 2: creates the account, only against a code that checks out.",
         "tags": [
           "auth"
         ]
@@ -1105,6 +1143,42 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/by-username/{username}": {
+      "get": {
+        "operationId": "players_getByUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolves `/players/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as a player id.",
         "tags": [
           "players"
         ]
@@ -3238,12 +3312,30 @@
       }
     },
     "schemas": {
+      "RequestRegistrationCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
       "RegisterEmailDto": {
         "type": "object",
         "properties": {
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "description": "The six digits sent to `email`. Registration fails without them.",
+            "minLength": 6,
+            "maxLength": 6
           },
           "password": {
             "type": "string",
@@ -3258,6 +3350,7 @@
         },
         "required": [
           "email",
+          "code",
           "password"
         ]
       },
@@ -3372,6 +3465,11 @@
           "lastName": {
             "type": "string",
             "maxLength": 60
+          },
+          "username": {
+            "type": "string",
+            "description": "The public handle. Accepted with or without a leading `@`; shape and\nreserved-word rules live in username.util.ts, uniqueness in the database.",
+            "maxLength": 40
           },
           "avatarStorageKey": {
             "type": "string",

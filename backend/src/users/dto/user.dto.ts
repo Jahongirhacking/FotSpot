@@ -15,6 +15,12 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() @MaxLength(60) lastName?: string;
 
   /**
+   * The public handle. Accepted with or without a leading `@`; shape and
+   * reserved-word rules live in username.util.ts, uniqueness in the database.
+   */
+  @IsOptional() @IsString() @MaxLength(40) username?: string;
+
+  /**
    * Set only by confirming an upload from `POST /users/me/avatar/upload-url`.
    * Accepting an arbitrary URL here would let a profile embed a remote image and
    * turn every profile view into a request to a third-party server.

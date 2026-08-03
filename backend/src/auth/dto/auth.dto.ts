@@ -4,12 +4,24 @@ import {
   IsOptional,
   IsPhoneNumber,
   IsString,
+  Length,
   MinLength,
 } from 'class-validator';
+
+/** Step 1: prove the address is reachable before an account exists for it. */
+export class RequestRegistrationCodeDto {
+  @IsEmail()
+  email: string;
+}
 
 export class RegisterEmailDto {
   @IsEmail()
   email: string;
+
+  /** The six digits sent to `email`. Registration fails without them. */
+  @IsString()
+  @Length(6, 6)
+  code: string;
 
   @IsString()
   @MinLength(8)

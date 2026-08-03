@@ -91,6 +91,8 @@ export interface PlayerProfile {
   playingStyle?: PlayingStyle | null;
   /** Flattened from the owning User by the API — one account, one picture. */
   avatarUrl?: string | null;
+  /** Public handle, shown and linked as `@handle`. */
+  username?: string | null;
   region?: string | null;
   district?: string | null;
   matches: number;

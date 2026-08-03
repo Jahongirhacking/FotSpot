@@ -20,6 +20,21 @@ import { Alert } from '@/components/ui/Feedback';
 const schema = z.object({
   firstName: z.string().trim().max(60),
   lastName: z.string().trim().max(60),
+  /**
+   * Mirrors `username.util.ts` on the API so the obvious mistakes are caught
+   * before a round trip. Uniqueness is deliberately not mirrored — only the
+   * database can answer that, and only at the moment of writing.
+   */
+  username: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/^@+/, '').toLowerCase())
+    .refine((value) => value.length >= 3, 'At least 3 characters')
+    .refine((value) => value.length <= 30, 'At most 30 characters')
+    .refine(
+      (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
+      'Lowercase letters, numbers and single hyphens only',
+    ),
 });
 type Values = z.infer<typeof schema>;
 
@@ -28,7 +43,7 @@ const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 export function EditIdentity({
   initial,
 }: {
-  initial: { firstName: string; lastName: string; avatarUrl: string | null };
+  initial: { firstName: string; lastName: string; username: string; avatarUrl: string | null };
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -44,7 +59,11 @@ export function EditIdentity({
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: initial.firstName, lastName: initial.lastName },
+    defaultValues: {
+      firstName: initial.firstName,
+      lastName: initial.lastName,
+      username: initial.username,
+    },
   });
 
   const watched = form.watch();
@@ -174,6 +193,27 @@ export function EditIdentity({
               <Input id="lastName" autoComplete="family-name" {...form.register('lastName')} />
             </Field>
           </div>
+
+          {/* The handle is the one field here that is public and addressable:
+              it is what `/players/@handle` resolves and what people type to find
+              this account again. */}
+          <Field
+            label={t.profile.username}
+            htmlFor="username"
+            hint={t.profile.usernameHint}
+            error={form.formState.errors.username?.message}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted font-mono text-sm">@</span>
+              <Input
+                id="username"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                {...form.register('username')}
+              />
+            </div>
+          </Field>
 
           <Button type="submit" loading={form.formState.isSubmitting}>
             {saved ? <Check aria-hidden /> : null}

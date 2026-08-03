@@ -43,6 +43,16 @@ export class PlayersController {
     return this.playersService.search(dto);
   }
 
+  /**
+   * Resolves `/players/@handle`. Declared before `:id` — Nest matches in
+   * declaration order, and `by-username` would otherwise be read as a player id.
+   */
+  @Public()
+  @Get('by-username/:username')
+  getByUsername(@Param('username') username: string) {
+    return this.playersService.getByUsername(username);
+  }
+
   @Public()
   @Get(':id')
   getPublicProfile(@Param('id') id: string) {

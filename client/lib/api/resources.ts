@@ -73,6 +73,8 @@ export const users = {
 export interface UpdateProfileBody {
   firstName?: string;
   lastName?: string;
+  /** Public handle. Sent without the `@`; uniqueness is the API's answer to give. */
+  username?: string;
   avatarStorageKey?: string;
 }
 
@@ -161,6 +163,13 @@ export const players = {
     apiFetch<Page<PlayerProfile>>(`/players/search${toQuery({ ...params })}`, opts),
 
   getById: (id: string, opts: Opts = {}) => apiFetch<PlayerProfile>(`/players/${id}`, opts),
+
+  /** Resolves `/players/@handle`. The `@` is stripped before the request. */
+  getByUsername: (username: string, opts: Opts = {}) =>
+    apiFetch<PlayerProfile>(
+      `/players/by-username/${encodeURIComponent(username.replace(/^@+/, ''))}`,
+      opts,
+    ),
 
   getMine: (opts: Opts = {}) => apiFetch<PlayerProfile>('/players/me', opts),
 

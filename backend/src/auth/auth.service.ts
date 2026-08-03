@@ -11,17 +11,22 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { ClientInfo } from '../common/decorators/client-info.decorator';
+import { generateUsername, normaliseUsername } from '../users/username.util';
 import {
   ChangePasswordDto,
   LoginEmailDto,
   OAuthLoginDto,
   RefreshTokenDto,
   RegisterEmailDto,
+  RequestRegistrationCodeDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
 
 const OTP_TTL_SECONDS = 300;
+/** Longer than the login OTP: this one is typed once, mid-signup, from an inbox
+ *  the user may have to go and open on another device. */
+const REGISTRATION_CODE_TTL_SECONDS = 900;
 const REFRESH_TTL_FALLBACK_DAYS = 30;
 
 /** Refresh-token claims. `sid` scopes the token to one Session row (1.21). */
@@ -55,22 +60,95 @@ export class AuthService {
 
   // ---------- Email + Password ----------
 
-  async registerEmail(dto: RegisterEmailDto, client: ClientInfo = {}) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  /**
+   * Step 1 of signing up: send a code to the address, before any account exists.
+   *
+   * Conflicts are reported here rather than after the user has typed a code —
+   * the address's existence is already discoverable from registration itself, so
+   * withholding it would buy no privacy and cost a wasted round trip.
+   *
+   * Delivery is the documented email stub. In non-production the code comes back
+   * in the response so the flow is testable; in production nothing is sent yet
+   * and the caller is told so instead of being left waiting.
+   */
+  async requestRegistrationCode(dto: RequestRegistrationCodeDto) {
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Email already registered');
 
-    const passwordHash = await argon2.hash(dto.password);
-
-    const user = await this.prisma.user.create({
+    const code = crypto.randomInt(100000, 999999).toString();
+    await this.prisma.registrationCode.create({
       data: {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+        email,
+        codeHash: await argon2.hash(code),
+        expiresAt: new Date(Date.now() + REGISTRATION_CODE_TTL_SECONDS * 1000),
       },
     });
 
+    const isProd = this.config.get('NODE_ENV') === 'production';
+    return {
+      sent: true,
+      expiresInSeconds: REGISTRATION_CODE_TTL_SECONDS,
+      ...(isProd ? { emailNotConfigured: true } : { devCode: code }),
+    };
+  }
+
+  /**
+   * Step 2: create the account, but only against a code that checks out.
+   *
+   * The address is therefore proved before the row exists — there is no such
+   * thing as an unverified account to chase later, and no window in which one can
+   * be used. `emailVerifiedAt` records the moment rather than a boolean, because
+   * "when" is the question asked during a support conversation.
+   */
+  async registerEmail(dto: RegisterEmailDto, client: ClientInfo = {}) {
+    const email = dto.email.trim().toLowerCase();
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) throw new ConflictException('Email already registered');
+
+    const pending = await this.prisma.registrationCode.findFirst({
+      where: { email, consumed: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!pending) throw new BadRequestException('Request a code for this address first');
+    if (pending.expiresAt < new Date()) throw new BadRequestException('That code has expired');
+    if (!(await argon2.verify(pending.codeHash, dto.code))) {
+      throw new BadRequestException('That code is not right');
+    }
+
+    const passwordHash = await argon2.hash(dto.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      await tx.registrationCode.update({ where: { id: pending.id }, data: { consumed: true } });
+      return tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          emailVerifiedAt: new Date(),
+          username: await this.mintUsername(tx),
+        },
+      });
+    });
+
     return this.issueTokens(user.id, client);
+  }
+
+  /**
+   * A free handle. Collisions are a coincidence to retry, not an error to raise:
+   * the space is ~13 million, so a second attempt is already unlikely and a fifth
+   * is negligible.
+   */
+  private async mintUsername(tx: { user: { findUnique: Function } }): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateUsername();
+      const clash = await tx.user.findUnique({ where: { username: candidate } });
+      if (!clash) return candidate;
+    }
+    // Astronomically unlikely; the unique index is the real guarantee anyway.
+    return `${generateUsername()}-${crypto.randomInt(1000, 9999)}`;
   }
 
   /**
@@ -85,8 +163,12 @@ export class AuthService {
       throw new BadRequestException('Enter your email or username');
     }
 
+    // Normalised, so a pasted "@Joxa" signs in the same as "joxa" — the handle is
+    // shown with an @ everywhere, and people type back what they were shown.
     const user = await this.prisma.user.findUnique({
-      where: dto.email ? { email: dto.email } : { username: dto.username },
+      where: dto.email
+        ? { email: dto.email.trim().toLowerCase() }
+        : { username: normaliseUsername(dto.username!) },
     });
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
 
@@ -164,7 +246,9 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
     if (!user) {
-      user = await this.prisma.user.create({ data: { phone: dto.phone } });
+      user = await this.prisma.user.create({
+        data: { phone: dto.phone, username: await this.mintUsername(this.prisma) },
+      });
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
@@ -179,7 +263,9 @@ export class AuthService {
     // Left as an explicit extension point rather than faked.
     let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) {
-      user = await this.prisma.user.create({ data: { email: dto.email } });
+      user = await this.prisma.user.create({
+        data: { email: dto.email, username: await this.mintUsername(this.prisma) },
+      });
     }
     return this.issueTokens(user.id, client);
   }

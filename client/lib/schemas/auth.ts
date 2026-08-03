@@ -35,6 +35,15 @@ export const registerEmailSchema = z.object({
 });
 export type RegisterEmailValues = z.infer<typeof registerEmailSchema>;
 
+/** Step 2 of signing up: the six digits sent to the address from step 1. */
+export const registrationCodeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'The code is 6 digits'),
+});
+export type RegistrationCodeValues = z.infer<typeof registrationCodeSchema>;
+
 /**
  * The backend uses class-validator's @IsPhoneNumber, which accepts E.164.
  * Uzbek mobile numbers are +998 followed by 9 digits; we accept general E.164 so

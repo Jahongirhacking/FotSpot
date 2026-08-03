@@ -142,7 +142,13 @@ export function PlayerCard({
 
           {!small && (
             <p className="truncate text-xs text-white/70">
-              {player.playingStyle ? humanizeEnum(player.playingStyle) : (player.region ?? '')}
+              {/* The handle first: it is what someone types to find this player
+                  again, and the playing style is already a badge elsewhere. */}
+              {player.username
+                ? `@${player.username}`
+                : player.playingStyle
+                  ? humanizeEnum(player.playingStyle)
+                  : (player.region ?? '')}
             </p>
           )}
 

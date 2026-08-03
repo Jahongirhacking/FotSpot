@@ -15,6 +15,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
 
+/**
+ * One segment serves both `/players/<uuid>` and `/players/@handle`.
+ *
+ * The `@` is what decides which lookup runs, rather than sniffing whether the
+ * value parses as a UUID: an explicit marker in the URL cannot be ambiguous, and
+ * a handle that happened to look like an id would otherwise resolve to the wrong
+ * person — or to nobody, which is worse to debug.
+ */
+function fetchPlayer(idOrHandle: string, opts: Parameters<typeof players.getById>[1]) {
+  return idOrHandle.startsWith('@')
+    ? players.getByUsername(idOrHandle, opts)
+    : players.getById(idOrHandle, opts);
+}
+
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
 export async function generateMetadata({
   params,
@@ -23,7 +37,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const player = await players.getById(id, { revalidate: 300 });
+    const player = await fetchPlayer(id, { revalidate: 300 });
     return { title: `${player.firstName} ${player.lastName}` };
   } catch {
     return { title: 'Player' };
@@ -36,7 +50,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   let player: PlayerProfile;
   try {
-    player = await players.getById(
+    player = await fetchPlayer(
       id,
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
     );

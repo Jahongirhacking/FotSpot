@@ -78,6 +78,7 @@ export const ru: Dictionary = {
   },
 
   auth: {
+    emailCodeNotice: 'На этот адрес придёт код подтверждения.',
     emailOrUsername: 'Email или логин',
     signIn: 'Войти',
     signOut: 'Выйти',
@@ -170,6 +171,8 @@ export const ru: Dictionary = {
   },
 
   profile: {
+    username: 'Имя пользователя',
+    usernameHint: 'Адрес вашего профиля: /players/@имя. Его можно изменить, но оно должно быть уникальным.',
     cardDetails: 'Данные карточки',
     cardDetailsHint: 'Рост и вес меняются каждый сезон — держите их актуальными. Имя и дата рождения не редактируются.',
     detailsSaved: 'Сохранено.',

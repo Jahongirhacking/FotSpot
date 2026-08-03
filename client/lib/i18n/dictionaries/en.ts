@@ -78,6 +78,7 @@ export const en: Dictionary = {
   },
 
   auth: {
+    emailCodeNotice: 'We will send a confirmation code to this address.',
     emailOrUsername: 'Email or username',
     signIn: 'Sign in',
     signOut: 'Sign out',
@@ -171,6 +172,8 @@ export const en: Dictionary = {
   },
 
   profile: {
+    username: 'Username',
+    usernameHint: 'Your profile lives at /players/@handle. You can change it, but it has to stay unique.',
     cardDetails: 'Card details',
     cardDetailsHint: 'Height and weight change every season — keep them current. Name and date of birth are not editable here.',
     detailsSaved: 'Saved.',

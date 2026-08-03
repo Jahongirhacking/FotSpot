@@ -10,6 +10,7 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { normaliseUsername } from '../users/username.util';
 import {
   CreatePlayerProfileDto,
   SearchPlayersDto,
@@ -25,7 +26,7 @@ import {
  * know that, and so the card component takes one shape rather than two. The URL is
  * built from the stored key at read time — see StorageService.
  */
-const AVATAR_INCLUDE = { user: { select: { avatarKey: true } } } as const;
+const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
 @Injectable()
 export class PlayersService {
@@ -36,9 +37,34 @@ export class PlayersService {
     private storage: StorageService,
   ) {}
 
-  private withAvatar<T extends { user?: { avatarKey: string | null } | null }>(profile: T) {
+  private withAvatar<
+    T extends { user?: { avatarKey: string | null; username?: string | null } | null },
+  >(profile: T) {
     const { user, ...rest } = profile;
-    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) };
+    return {
+      ...rest,
+      avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey),
+      // The handle rides along so a card can link to /players/@handle without a
+      // second lookup, and so the profile can show it.
+      username: user?.username ?? null,
+    };
+  }
+
+  /**
+   * Resolves `/players/@handle`.
+   *
+   * A separate route rather than letting `:id` accept both: a handle and a UUID
+   * are different keys, and a lookup that guesses which one it was handed is a
+   * lookup that will one day guess wrong.
+   */
+  async getByUsername(rawUsername: string) {
+    const username = normaliseUsername(rawUsername);
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: { playerProfile: { select: { id: true } } },
+    });
+    if (!user?.playerProfile) throw new NotFoundException('Player not found');
+    return this.getPublicProfile(user.playerProfile.id);
   }
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {

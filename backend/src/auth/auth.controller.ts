@@ -11,6 +11,7 @@ import {
   OAuthLoginDto,
   RefreshTokenDto,
   RegisterEmailDto,
+  RequestRegistrationCodeDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -21,6 +22,15 @@ import {
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  /** Step 1 of signing up: proves the address before an account exists for it. */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('register/request-code')
+  requestRegistrationCode(@Body() dto: RequestRegistrationCodeDto) {
+    return this.authService.requestRegistrationCode(dto);
+  }
+
+  /** Step 2: creates the account, only against a code that checks out. */
   @Public()
   @Post('register/email')
   registerEmail(@Body() dto: RegisterEmailDto, @ClientInfoParam() client: ClientInfo) {

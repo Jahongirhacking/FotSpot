@@ -6,13 +6,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { VerificationChannel } from '@prisma/client';
+import { Prisma, VerificationChannel } from '@prisma/client';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
 import { assertKeyUnder, avatarKey, avatarPrefix } from '../storage/storage.keys';
+import {
+  generateUsername,
+  normaliseUsername,
+  validateUsername,
+} from './username.util';
 import {
   AvatarUploadUrlDto,
   RequestContactChangeDto,
@@ -51,11 +56,17 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
+
+    // Accounts created before handles existed have none. Backfilling on first
+    // read means nobody has to run a script and no screen has to cope with a
+    // missing handle — it happens once per account, ever.
+    const username = user.username ?? (await this.backfillUsername(userId));
+
     const access = await this.rbac.getEffectiveAccess(userId);
     // The URL is built here, at read time, so changing CDN or provider is a
     // config change rather than a migration.
     const { avatarKey: key, ...rest } = user;
-    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(key), ...access };
+    return { ...rest, username, avatarUrl: this.storage.publicUrlOrNull(key), ...access };
   }
 
   /**
@@ -177,12 +188,63 @@ export class UsersService {
 
   // ---------- Profile editing ----------
 
+  /** Gives a legacy account the handle everything else now assumes it has. */
+  private async backfillUsername(userId: string): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateUsername();
+      const clash = await this.prisma.user.findUnique({ where: { username: candidate } });
+      if (clash) continue;
+      try {
+        const updated = await this.prisma.user.update({
+          where: { id: userId },
+          data: { username: candidate },
+        });
+        return updated.username!;
+      } catch {
+        // Lost the race to another request for the same account; try again.
+      }
+    }
+    throw new ConflictException('Could not assign a username — please try again');
+  }
+
+  /**
+   * Changes the public handle.
+   *
+   * Uniqueness is enforced by the database, not by a check-then-write: two people
+   * claiming the same handle in the same second is exactly the case a prior
+   * lookup cannot cover, so P2002 is caught and reported rather than prevented.
+   */
+  private async setUsername(userId: string, raw: string) {
+    const username = normaliseUsername(raw);
+    const problem = validateUsername(username);
+    if (problem) {
+      const messages = {
+        'too-short': 'That username is too short',
+        'too-long': 'That username is too long',
+        shape: 'Use lowercase letters, numbers and single hyphens only',
+        reserved: 'That username is reserved',
+      } as const;
+      throw new BadRequestException(messages[problem.reason]);
+    }
+
+    try {
+      await this.prisma.user.update({ where: { id: userId }, data: { username } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('That username is already taken');
+      }
+      throw error;
+    }
+    return username;
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     // The key round-tripped through the browser. Without this a caller could
     // point their avatar at any object in the bucket, including someone else's.
     if (dto.avatarStorageKey !== undefined) {
       assertKeyUnder(dto.avatarStorageKey, avatarPrefix(userId));
     }
+    if (dto.username !== undefined) await this.setUsername(userId, dto.username);
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -192,7 +254,7 @@ export class UsersService {
         // The key is stored; the URL is derived on the way out.
         ...(dto.avatarStorageKey !== undefined ? { avatarKey: dto.avatarStorageKey } : {}),
       },
-      select: { id: true, firstName: true, lastName: true, avatarKey: true },
+      select: { id: true, firstName: true, lastName: true, username: true, avatarKey: true },
     });
 
     const { avatarKey: key, ...rest } = user;
