@@ -74,6 +74,7 @@ export function ModerationQueue({ initial }: { initial: Report[] }) {
             <Field label={t.admin.resolutionNote} htmlFor={`note-${report.id}`}>
               <Input
                 id={`note-${report.id}`}
+                placeholder={t.placeholders.note}
                 value={notes[report.id] ?? ''}
                 onChange={(event) =>
                   setNotes((prev) => ({ ...prev, [report.id]: event.target.value }))

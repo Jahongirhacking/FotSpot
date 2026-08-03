@@ -69,6 +69,7 @@ export function EndorsementManager({
           hint: t.academy.endorseHint,
           userId: t.academy.userId,
           note: t.academy.endorseNote,
+          notePlaceholder: t.placeholders.note,
           submit: t.academy.endorse,
           scout: t.roles.scout,
           coach: t.roles.coach,
@@ -242,6 +243,7 @@ function EndorseForm({
           <Field label={labels.note} htmlFor="endorse-note">
             <Input
               id="endorse-note"
+              placeholder={labels.notePlaceholder}
               value={note}
               onChange={(event) => setNote(event.target.value)}
               maxLength={500}

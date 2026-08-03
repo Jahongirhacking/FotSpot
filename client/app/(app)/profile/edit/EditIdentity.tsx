@@ -183,14 +183,24 @@ export function EditIdentity({
               htmlFor="firstName"
               error={form.formState.errors.firstName?.message}
             >
-              <Input id="firstName" autoComplete="given-name" {...form.register('firstName')} />
+              <Input
+                id="firstName"
+                autoComplete="given-name"
+                {...form.register('firstName')}
+                placeholder={t.placeholders.firstName}
+              />
             </Field>
             <Field
               label={t.auth.lastName}
               htmlFor="lastName"
               error={form.formState.errors.lastName?.message}
             >
-              <Input id="lastName" autoComplete="family-name" {...form.register('lastName')} />
+              <Input
+                id="lastName"
+                autoComplete="family-name"
+                {...form.register('lastName')}
+                placeholder={t.placeholders.lastName}
+              />
             </Field>
           </div>
 
@@ -207,6 +217,7 @@ export function EditIdentity({
               <span className="text-muted font-mono text-sm">@</span>
               <Input
                 id="username"
+                placeholder={t.placeholders.username}
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}

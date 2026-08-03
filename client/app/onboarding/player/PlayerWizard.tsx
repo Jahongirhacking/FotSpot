@@ -54,7 +54,6 @@ export function PlayerWizard({
   const [identity, setIdentity] = React.useState<PlayerIdentityValues | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
-
   return (
     <div className="space-y-4">
       <Steps current={step} />
@@ -71,7 +70,6 @@ export function PlayerWizard({
           }}
         />
       )}
-
 
       {step === 'football' && identity && (
         <FootballStep
@@ -185,7 +183,11 @@ function IdentityStep({
                 required
                 error={form.formState.errors.firstName?.message}
               >
-                <Input id="firstName" {...form.register('firstName')} />
+                <Input
+                  id="firstName"
+                  {...form.register('firstName')}
+                  placeholder={t.placeholders.firstName}
+                />
               </Field>
               <Field
                 label={t.auth.lastName}
@@ -193,7 +195,11 @@ function IdentityStep({
                 required
                 error={form.formState.errors.lastName?.message}
               >
-                <Input id="lastName" {...form.register('lastName')} />
+                <Input
+                  id="lastName"
+                  {...form.register('lastName')}
+                  placeholder={t.placeholders.lastName}
+                />
               </Field>
             </div>
           )}
@@ -354,14 +360,24 @@ function FootballStep({
               htmlFor="height"
               error={form.formState.errors.height?.message}
             >
-              <Input id="height" inputMode="numeric" {...form.register('height')} />
+              <Input
+                id="height"
+                inputMode="numeric"
+                {...form.register('height')}
+                placeholder={t.placeholders.height}
+              />
             </Field>
             <Field
               label={t.onboarding.weightKg}
               htmlFor="weight"
               error={form.formState.errors.weight?.message}
             >
-              <Input id="weight" inputMode="numeric" {...form.register('weight')} />
+              <Input
+                id="weight"
+                inputMode="numeric"
+                {...form.register('weight')}
+                placeholder={t.placeholders.weight}
+              />
             </Field>
           </fieldset>
 

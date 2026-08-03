@@ -10,7 +10,7 @@ import {
   type RegistrationCodeValues,
 } from '@/lib/schemas/auth';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, PasswordInput } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 import { useI18n } from '@/components/layout/I18nProvider';
 
@@ -86,6 +86,7 @@ export function RegisterForm() {
           <Input
             id="firstName"
             autoComplete="given-name"
+            placeholder={t.placeholders.firstName}
             aria-invalid={!!form.formState.errors.firstName}
             {...form.register('firstName')}
           />
@@ -99,6 +100,7 @@ export function RegisterForm() {
           <Input
             id="lastName"
             autoComplete="family-name"
+            placeholder={t.placeholders.lastName}
             aria-invalid={!!form.formState.errors.lastName}
             {...form.register('lastName')}
           />
@@ -116,6 +118,7 @@ export function RegisterForm() {
           id="email"
           type="email"
           autoComplete="email"
+          placeholder={t.placeholders.email}
           aria-invalid={!!form.formState.errors.email}
           {...form.register('email')}
         />
@@ -128,10 +131,10 @@ export function RegisterForm() {
         hint={t.auth.passwordHint}
         error={form.formState.errors.password?.message}
       >
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="new-password"
+          placeholder={t.placeholders.password}
           aria-invalid={!!form.formState.errors.password}
           {...form.register('password')}
         />
@@ -203,6 +206,8 @@ function ConfirmEmailStep({
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
+          placeholder={t.placeholders.code6}
+          className="text-center font-mono text-lg tracking-[0.4em]"
           aria-invalid={!!form.formState.errors.code}
           {...form.register('code')}
         />

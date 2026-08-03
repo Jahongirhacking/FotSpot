@@ -283,7 +283,12 @@ function AcademyForm({
           }}
         >
           <Field label={t.admin.academyName} htmlFor="ac-name" required>
-            <Input id="ac-name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="ac-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.placeholders.academyName}
+            />
           </Field>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -299,6 +304,7 @@ function AcademyForm({
             <Field label={t.academy.district} htmlFor="ac-district">
               <Input
                 id="ac-district"
+                placeholder={t.placeholders.district}
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
               />
@@ -308,6 +314,7 @@ function AcademyForm({
           <Field label={t.academy.about} htmlFor="ac-about" hint={t.academy.aboutHint}>
             <Textarea
               id="ac-about"
+              placeholder={t.placeholders.academyAbout}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

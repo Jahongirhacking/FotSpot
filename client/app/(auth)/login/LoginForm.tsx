@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Phone } from 'lucide-react';
@@ -14,7 +15,7 @@ import {
   type VerifyOtpValues,
 } from '@/lib/schemas/auth';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, PasswordInput } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -118,7 +119,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      setServerError(body.message ?? 'Could not sign you in.');
+      setServerError(body.message ?? t.auth.couldNotSignIn);
       return;
     }
     afterLogin();
@@ -126,7 +127,22 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      {serverError && <Alert tone="danger">{serverError}</Alert>}
+      {serverError && (
+        <Alert tone="danger">
+          <span className="space-y-2">
+            <span className="block">{serverError}</span>
+            {/* Surfaced on failure rather than sitting under the form at all
+                times: a wrong password is the moment the offer is useful, and the
+                identifier they already typed travels with them. */}
+            <Link
+              href={`/forgot-password?identifier=${encodeURIComponent(form.getValues('identifier'))}`}
+              className="font-medium underline underline-offset-2"
+            >
+              {t.auth.forgotPassword}
+            </Link>
+          </span>
+        </Alert>
+      )}
 
       <Field
         label={t.auth.emailOrUsername}
@@ -140,6 +156,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
+          placeholder={t.placeholders.emailOrUsername}
           aria-invalid={!!form.formState.errors.identifier}
           {...form.register('identifier')}
         />
@@ -151,10 +168,10 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
         required
         error={form.formState.errors.password?.message}
       >
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
+          placeholder={t.placeholders.password}
           aria-invalid={!!form.formState.errors.password}
           {...form.register('password')}
         />
@@ -163,12 +180,18 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
         {t.auth.signIn}
       </Button>
+
+      <p className="text-center text-sm">
+        <Link href="/forgot-password" className="text-muted hover:text-foreground hover:underline">
+          {t.auth.forgotPassword}
+        </Link>
+      </p>
     </form>
   );
 }
 
 function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
   const [stage, setStage] = React.useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = React.useState('');
   const [devCode, setDevCode] = React.useState<string | null>(null);
@@ -195,7 +218,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setServerError(body.message ?? 'Could not send the code.');
+      setServerError(body.message ?? t.auth.couldNotSendCode);
       return;
     }
 
@@ -217,7 +240,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      setServerError(body.message ?? "That code didn't work.");
+      setServerError(body.message ?? t.auth.codeDidNotWork);
       return;
     }
     afterLogin();
@@ -247,7 +270,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
         </Field>
 
         <Button type="submit" className="w-full" loading={phoneForm.formState.isSubmitting}>
-          Send code
+          {t.auth.sendCode}
         </Button>
       </form>
     );
@@ -258,7 +281,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       {serverError && <Alert tone="danger">{serverError}</Alert>}
       {devCode && (
         <Alert tone="info" title={t.auth.devMode}>
-          SMS isn&apos;t wired up yet, so here is your code: <strong>{devCode}</strong>
+          {f(t.auth.devCodeNotice, { code: devCode })} <strong>{devCode}</strong>
         </Alert>
       )}
 
@@ -266,7 +289,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
         label={t.auth.enterCode}
         htmlFor="code"
         required
-        hint={`Sent to ${phone}`}
+        hint={f(t.auth.sentTo, { destination: phone })}
         error={codeForm.formState.errors.code?.message}
       >
         <Input
@@ -274,7 +297,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          placeholder="000000"
+          placeholder={t.placeholders.code6}
           className="text-center font-mono text-lg tracking-[0.4em]"
           aria-invalid={!!codeForm.formState.errors.code}
           {...codeForm.register('code')}
@@ -293,7 +316,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
           setDevCode(null);
         }}
       >
-        Use a different number
+        {t.auth.useDifferentNumber}
       </Button>
     </form>
   );

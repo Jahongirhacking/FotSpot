@@ -99,7 +99,7 @@ export const en: Dictionary = {
     passwordHint: 'At least 8 characters.',
     sendCode: 'Send code',
     enterCode: 'Enter the code',
-    sentTo: 'Sent to',
+    sentTo: 'Sent to {destination}',
     useDifferentNumber: 'Use a different number',
     signInMethod: 'Sign-in method',
     devMode: 'Development mode',
@@ -108,6 +108,47 @@ export const en: Dictionary = {
     couldNotCreate: 'Could not create your account.',
     couldNotSendCode: 'Could not send the code.',
     codeDidNotWork: "That code didn't work.",
+    forgotPassword: 'Forgot my password?',
+    forgotTitle: 'Reset your password',
+    forgotSubtitle: "We'll email a code to the address on your account.",
+    sendCodeToEmail: 'Send code to email',
+    resetCodeLabel: 'Reset code',
+    resetCodeHint: "8 letters and numbers. Case doesn't matter.",
+    newPassword: 'New password',
+    confirmPassword: 'Confirm new password',
+    setNewPassword: 'Set new password',
+    resetSent: 'If that account exists, a code is on its way. It expires in 15 minutes.',
+    resetNote: 'Setting a new password signs you out on every device.',
+    resetDone: 'Password changed. Sign in with your new one.',
+    couldNotReset: 'Could not reset your password.',
+    passwordMismatch: 'Those passwords do not match',
+    backToSignIn: 'Back to sign in',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+  },
+
+  /** Input hints — they show the expected shape rather than repeat the label. */
+  placeholders: {
+    firstName: 'e.g. Javohir',
+    lastName: 'e.g. Rustamov',
+    email: 'you@example.com',
+    emailOrUsername: 'you@example.com or qizil-burgut-gol-12',
+    password: 'At least 8 characters',
+    currentPassword: 'Your current password',
+    newPassword: 'New password',
+    confirmPassword: 'Repeat the new password',
+    username: 'qizil-burgut-gol-12',
+    code6: '000000',
+    resetCode: 'K7M2QP4X',
+    birthDate: 'YYYY-MM-DD',
+    height: 'cm, e.g. 172',
+    weight: 'kg, e.g. 64',
+    district: 'e.g. Chilonzor',
+    academyName: 'e.g. Pakhtakor Academy',
+    academyAbout: 'A few lines on the academy, training and results',
+    note: 'Optional note',
+    clipTitle: 'e.g. Left-footed finish from the angle',
+    clipDescription: 'When, and against whom — a line of context',
   },
 
   welcome: {
@@ -173,13 +214,15 @@ export const en: Dictionary = {
 
   profile: {
     username: 'Username',
-    usernameHint: 'Your profile lives at /players/@handle. You can change it, but it has to stay unique.',
+    usernameHint: 'You can change the username, but it has to stay unique.',
     cardDetails: 'Card details',
-    cardDetailsHint: 'Height and weight change every season — keep them current. Name and date of birth are not editable here.',
+    cardDetailsHint:
+      'Height and weight change every season — keep them current. Name and date of birth are not editable here.',
     detailsSaved: 'Saved.',
     noPlayerCardHint: 'A player card is what makes you visible to academies.',
     becomeScout: 'Are you a scout too?',
-    becomeScoutHint: 'Recommend players to academies. Your reputation starts at the lowest level and is earned.',
+    becomeScoutHint:
+      'Recommend players to academies. Your reputation starts at the lowest level and is earned.',
     becomeScoutCta: 'Become a scout',
     title: 'Profile',
     editProfile: 'Edit profile',
@@ -247,7 +290,8 @@ export const en: Dictionary = {
     passwordChanged: 'Password changed.',
     otherSessionsRevoked: 'Changing your password signs you out on every other device.',
     mustChangeTitle: 'Change your password first',
-    mustChangeHint: 'Your account still uses the password an admin generated, which they also know. Set your own before continuing.',
+    mustChangeHint:
+      'Your account still uses the password an admin generated, which they also know. Set your own before continuing.',
     title: 'Settings',
     signedInDevices: "Where you're signed in",
     signedInDevicesHint:
@@ -270,9 +314,11 @@ export const en: Dictionary = {
     yourTrials: 'Your trials',
     noTrials: 'No trials posted yet.',
     openTrials: 'Open trials',
-    noAcademyLinkedHint: 'An academy manager does not exist without an academy. If management was recently handed to another account, this is expected. Otherwise contact the platform team.',
+    noAcademyLinkedHint:
+      'An academy manager does not exist without an academy. If management was recently handed to another account, this is expected. Otherwise contact the platform team.',
     inboxEmpty: 'No open recommendations',
-    inboxEmptyHint: 'When scouts put players forward, they appear here ranked by how credible the scouts backing them are.',
+    inboxEmptyHint:
+      'When scouts put players forward, they appear here ranked by how credible the scouts backing them are.',
     player: 'Player',
     backing: 'backing',
     accepted: 'accepted',
@@ -281,7 +327,8 @@ export const en: Dictionary = {
     newThisWeek: 'New this week',
     applications: 'Applications',
     thisWeek: 'This week',
-    thisWeekHint: 'Activity over the last 7 days. This is not a ranking of children against each other — it shows who scouts put forward.',
+    thisWeekHint:
+      'Activity over the last 7 days. This is not a ranking of children against each other — it shows who scouts put forward.',
     mostBackedPlayers: 'Most-backed players',
     mostBackedPlayersHint: 'By scout attention, not by an ability score.',
     topScouts: 'Top scouts',
@@ -346,12 +393,14 @@ export const en: Dictionary = {
   },
 
   clips: {
-    noStorageOrigin: 'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
+    noStorageOrigin:
+      'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',
-    uploadBlocked: 'Your browser could not reach the storage service. This usually means its CORS policy is not set up yet — retrying will not help; tell an administrator.',
+    uploadBlocked:
+      'Your browser could not reach the storage service. This usually means its CORS policy is not set up yet — retrying will not help; tell an administrator.',
     play: 'Play',
     privateNote: 'This clip stays on your profile until you delete it.',
     yourClips: 'Clips',
@@ -366,7 +415,8 @@ export const en: Dictionary = {
     whatDoesItShow: 'What does this clip show?',
     categoryHint: 'The attribute you pick is the bar this clip is evidence for.',
     yourRating: 'Your rating',
-    ratingHint: 'This is your own claim. Until a coach confirms it the card shows it as self-reported.',
+    ratingHint:
+      'This is your own claim. Until a coach confirms it the card shows it as self-reported.',
     clipTitle: 'Title',
     description: 'Description',
     publish: 'Upload',
@@ -376,7 +426,8 @@ export const en: Dictionary = {
     uploadFailed: 'The upload failed. Please try again.',
     cameraUnavailable: 'The camera is unavailable. You can choose a video file instead.',
     storageOffTitle: 'Video storage is not set up',
-    storageOffHint: 'The server cannot accept video yet, so uploading will fail. It works once R2 is configured.',
+    storageOffHint:
+      'The server cannot accept video yet, so uploading will fail. It works once R2 is configured.',
     currentClaim: 'Current',
     confirmDelete: 'Delete this clip? The bar steps back to your previous rating.',
     seeEvidence: 'see the evidence',
@@ -573,7 +624,8 @@ export const en: Dictionary = {
     managerNewHint: 'Username and password are generated',
     managerPhone: 'Phone (optional)',
     managerPhoneHint: 'For contacting them only — sign-in is by username.',
-    managerGeneratedHint: 'The username and password are shown once after saving. Send them to the manager — they must change the password on first sign-in.',
+    managerGeneratedHint:
+      'The username and password are shown once after saving. Send them to the manager — they must change the password on first sign-in.',
     assignManagerOptional: 'One academy, one manager. Can also be assigned later.',
     replaceManagerHint: 'Assigning a new manager removes the previous one’s access.',
     saveManager: 'Save manager',
@@ -581,7 +633,8 @@ export const en: Dictionary = {
     confirmResetPassword: 'Generate a new password for the manager? The old one stops working.',
     credentialsTitle: 'Sign-in details created',
     credentialsHint: 'Send these to the academy manager.',
-    credentialsWarning: 'The password will not be shown again — only its hash is stored. Copy it now.',
+    credentialsWarning:
+      'The password will not be shown again — only its hash is stored. Copy it now.',
     credentialsSaved: 'I’ve saved these',
     copyBoth: 'Copy both',
     console: 'Admin console',

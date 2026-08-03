@@ -44,6 +44,41 @@ export const registrationCodeSchema = z.object({
 });
 export type RegistrationCodeValues = z.infer<typeof registrationCodeSchema>;
 
+/** "I can't get in" — the same one-field identifier the sign-in form takes. */
+export const forgotPasswordSchema = z.object({
+  identifier: z.string().trim().min(1, 'Enter your email or username'),
+});
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * Step 2 of a reset: the code, and the password it authorises.
+ *
+ * The code is eight characters from an alphabet that drops `0/O` and `1/I/L`
+ * (`backend/src/auth/reset-code.util.ts`), so this only checks the length and the
+ * shape — deciding *here* which letters are legal would mean two definitions of the
+ * alphabet, and the server's is the one that counts.
+ *
+ * `confirmPassword` exists on this form and not on sign-up for a reason: a typo
+ * when signing up is recoverable by this very flow, whereas a typo here locks the
+ * account behind a password nobody knows.
+ */
+export const resetPasswordSchema = z
+  .object({
+    identifier: z.string().trim().min(1, 'Enter your email or username'),
+    code: z
+      .string()
+      .trim()
+      .transform((value) => value.replace(/[\s-]/g, '').toUpperCase())
+      .refine((value) => /^[A-Z0-9]{8}$/.test(value), 'The code is 8 letters and numbers'),
+    newPassword: z.string().min(8, 'Use at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Those passwords do not match',
+  });
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
+
 /**
  * The backend uses class-validator's @IsPhoneNumber, which accepts E.164.
  * Uzbek mobile numbers are +998 followed by 9 digits; we accept general E.164 so

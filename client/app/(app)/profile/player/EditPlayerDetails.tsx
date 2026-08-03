@@ -141,6 +141,7 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
         <Field label={t.onboarding.heightCm} htmlFor="height">
           <Input
             id="height"
+            placeholder={t.placeholders.height}
             type="number"
             inputMode="numeric"
             min={80}
@@ -152,6 +153,7 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
         <Field label={t.onboarding.weightKg} htmlFor="weight">
           <Input
             id="weight"
+            placeholder={t.placeholders.weight}
             type="number"
             inputMode="numeric"
             min={20}
@@ -180,6 +182,7 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
         <Field label={t.academy.district} htmlFor="district">
           <Input
             id="district"
+            placeholder={t.placeholders.district}
             value={form.district}
             onChange={(event) => set('district')(event.target.value)}
           />

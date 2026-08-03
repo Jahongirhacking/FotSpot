@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import * as LabelPrimitive from '@radix-ui/react-label';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { useI18n } from '@/components/layout/I18nProvider';
 import { cn } from '@/lib/utils';
 
 export function Label({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
@@ -16,6 +17,56 @@ const controlClasses =
 
 export function Input({ className, ...props }: React.ComponentProps<'input'>) {
   return <input className={cn(controlClasses, className)} {...props} />;
+}
+
+/**
+ * A password box with an eye to reveal what was typed.
+ *
+ * Hidden input is a defence against someone reading over your shoulder, and it
+ * costs everyone else a typo they cannot see — worst on a phone keyboard, which is
+ * how most of this platform's users sign in. Letting them look is the trade almost
+ * every login screen now makes, and it is theirs to make: it starts hidden and only
+ * this deliberate press reveals it.
+ *
+ * The button is `tabIndex={-1}` so tabbing out of the field lands on submit, not on
+ * a control most people never use; it stays reachable by pointer and by screen
+ * reader, and `aria-pressed` says which state it is in.
+ *
+ * Reverts to hidden on blur, so a revealed password does not sit on screen after
+ * the user has moved on to another tab or window.
+ */
+export function PasswordInput({ className, onBlur, ...props }: React.ComponentProps<'input'>) {
+  const { t } = useI18n();
+  const [revealed, setRevealed] = React.useState(false);
+  const Icon = revealed ? EyeOff : Eye;
+
+  return (
+    <div className="relative">
+      <input
+        type={revealed ? 'text' : 'password'}
+        className={cn(controlClasses, 'pr-11', className)}
+        onBlur={(event) => {
+          setRevealed(false);
+          onBlur?.(event);
+        }}
+        {...props}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-pressed={revealed}
+        aria-label={revealed ? t.auth.hidePassword : t.auth.showPassword}
+        title={revealed ? t.auth.hidePassword : t.auth.showPassword}
+        onClick={() => setRevealed((was) => !was)}
+        // onMouseDown is swallowed so the click does not blur the input first —
+        // which would flip the state straight back and make the eye do nothing.
+        onMouseDown={(event) => event.preventDefault()}
+        className="text-muted hover:text-foreground absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-md transition-colors"
+      >
+        <Icon className="size-4" aria-hidden />
+      </button>
+    </div>
+  );
 }
 
 export function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
