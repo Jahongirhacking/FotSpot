@@ -14,6 +14,7 @@ import {
   RegisterEmailDto,
   RequestRegistrationCodeDto,
   ResetPasswordDto,
+  VerifyResetCodeDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -60,6 +61,20 @@ export class AuthController {
   @Post('password/forgot')
   forgotPassword(@Body() dto: ForgotPasswordDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.forgotPassword(dto, client);
+  }
+
+  /**
+   * Checks a reset code without spending it.
+   *
+   * Lets the form ask for a new password only once the code is known to be good,
+   * so a typo does not discard a password the user has already entered twice. It
+   * grants nothing — `password/reset` re-checks the code regardless.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/verify-code')
+  verifyResetCode(@Body() dto: VerifyResetCodeDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.verifyResetCode(dto, client);
   }
 
   /** Sets a new password against the code, and signs every device out. */

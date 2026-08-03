@@ -23,6 +23,7 @@ import {
   RegisterEmailDto,
   RequestRegistrationCodeDto,
   ResetPasswordDto,
+  VerifyResetCodeDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -320,34 +321,7 @@ export class AuthService {
    * — a second code sitting in an inbox is a second key.
    */
   async resetPassword(dto: ResetPasswordDto, client: ClientInfo = {}) {
-    await this.throttle.assertAllowed('password-reset', client.ipAddress);
-
-    const identifier = dto.identifier.trim();
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ email: identifier.toLowerCase() }, { username: normaliseUsername(identifier) }],
-      },
-    });
-
-    const invalid = new BadRequestException('That code is not right, or it has expired');
-    if (!user) {
-      await this.throttle.recordFailure('password-reset', client.ipAddress);
-      throw invalid;
-    }
-
-    const pending = await this.prisma.passwordResetCode.findFirst({
-      where: { userId: user.id, consumed: false },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!pending || pending.expiresAt < new Date()) {
-      await this.throttle.recordFailure('password-reset', client.ipAddress);
-      throw invalid;
-    }
-
-    if (!(await argon2.verify(pending.codeHash, normaliseResetCode(dto.code)))) {
-      await this.throttle.recordFailure('password-reset', client.ipAddress);
-      throw invalid;
-    }
+    const { user } = await this.checkResetCode(dto.identifier, dto.code, client);
 
     await this.prisma.$transaction([
       this.prisma.passwordResetCode.updateMany({
@@ -373,6 +347,63 @@ export class AuthService {
     // Deliberately no tokens: the user goes back to the sign-in screen and uses
     // the password they just chose, which is what proves they remember it.
     return { reset: true };
+  }
+
+  /**
+   * Checks a code without spending it, so the form can ask for the new password
+   * only once the code is known to be good.
+   *
+   * Asking for both at once means a mistyped code throws away a password the user
+   * has already typed twice, and it tells them nothing about which of the two was
+   * wrong. Splitting the steps costs one extra round trip and removes both.
+   *
+   * This is not a security boundary and is not treated as one: it issues no ticket
+   * and grants nothing, and `resetPassword` re-checks the code from scratch. A
+   * caller who skips this step reaches exactly the same place. What it does add is
+   * a guessing oracle, which is why it is on the same throttle as everything else
+   * here — ten wrong codes from an address and the whole scope closes for half an
+   * hour, against 31^8 possibilities.
+   */
+  async verifyResetCode(dto: VerifyResetCodeDto, client: ClientInfo = {}) {
+    await this.checkResetCode(dto.identifier, dto.code, client);
+    // Not cleared on success: the flow is not finished, and clearing here would let
+    // one good code buy an attacker a fresh ten guesses on the next account.
+    return { valid: true };
+  }
+
+  /**
+   * Resolves the account and its outstanding code, or throws.
+   *
+   * One message for every failure — unknown account, expired code, wrong code —
+   * because the alternative tells whoever is guessing which half they got right.
+   */
+  private async checkResetCode(rawIdentifier: string, rawCode: string, client: ClientInfo) {
+    await this.throttle.assertAllowed('password-reset', client.ipAddress);
+
+    const identifier = rawIdentifier.trim();
+    const invalid = new BadRequestException('That code is not right, or it has expired');
+
+    const fail = async () => {
+      await this.throttle.recordFailure('password-reset', client.ipAddress);
+      return invalid;
+    };
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier.toLowerCase() }, { username: normaliseUsername(identifier) }],
+      },
+    });
+    if (!user) throw await fail();
+
+    const pending = await this.prisma.passwordResetCode.findFirst({
+      where: { userId: user.id, consumed: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!pending || pending.expiresAt < new Date()) throw await fail();
+
+    if (!(await argon2.verify(pending.codeHash, normaliseResetCode(rawCode)))) throw await fail();
+
+    return { user, pending };
   }
 
   // ---------- Phone + OTP ----------

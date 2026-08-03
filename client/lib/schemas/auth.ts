@@ -51,25 +51,34 @@ export const forgotPasswordSchema = z.object({
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 /**
- * Step 2 of a reset: the code, and the password it authorises.
+ * Step 2 of a reset: the code on its own.
  *
  * The code is eight characters from an alphabet that drops `0/O` and `1/I/L`
  * (`backend/src/auth/reset-code.util.ts`), so this only checks the length and the
- * shape — deciding *here* which letters are legal would mean two definitions of the
- * alphabet, and the server's is the one that counts.
- *
- * `confirmPassword` exists on this form and not on sign-up for a reason: a typo
- * when signing up is recoverable by this very flow, whereas a typo here locks the
- * account behind a password nobody knows.
+ * shape — deciding *here* which letters are legal would mean two definitions of
+ * the alphabet, and the server's is the one that counts. Spaces, hyphens and case
+ * are forgiven for the same reason they are on the server: people paste what they
+ * were shown.
  */
-export const resetPasswordSchema = z
+export const resetCodeSchema = z.object({
+  identifier: z.string().trim().min(1, 'Enter your email or username'),
+  code: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/[\s-]/g, '').toUpperCase())
+    .refine((value) => /^[A-Z0-9]{8}$/.test(value), 'The code is 8 letters and numbers'),
+});
+export type ResetCodeValues = z.infer<typeof resetCodeSchema>;
+
+/**
+ * Step 3: the password the verified code authorises.
+ *
+ * `confirmPassword` is here and not on sign-up for a reason: a typo when signing
+ * up is recoverable by this very flow, whereas a typo here locks the account
+ * behind a password nobody knows.
+ */
+export const newPasswordSchema = z
   .object({
-    identifier: z.string().trim().min(1, 'Enter your email or username'),
-    code: z
-      .string()
-      .trim()
-      .transform((value) => value.replace(/[\s-]/g, '').toUpperCase())
-      .refine((value) => /^[A-Z0-9]{8}$/.test(value), 'The code is 8 letters and numbers'),
     newPassword: z.string().min(8, 'Use at least 8 characters'),
     confirmPassword: z.string(),
   })
@@ -77,7 +86,7 @@ export const resetPasswordSchema = z
     path: ['confirmPassword'],
     message: 'Those passwords do not match',
   });
-export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
+export type NewPasswordValues = z.infer<typeof newPasswordSchema>;
 
 /**
  * The backend uses class-validator's @IsPhoneNumber, which accepts E.164.

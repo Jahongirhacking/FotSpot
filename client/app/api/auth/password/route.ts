@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { apiFetch, ApiError } from '@/lib/api/client';
 
+const PATHS = {
+  forgot: '/auth/password/forgot',
+  verify: '/auth/password/verify-code',
+  reset: '/auth/password/reset',
+} as const;
+
 /**
- * The two halves of a password reset: `forgot` sends a code, `reset` spends it.
+ * The three steps of a password reset: send a code, check it, spend it.
  *
- * One handler for both because they are one screen's worth of work, and because
- * neither returns a credential — the reset deliberately issues no tokens, so
+ * One handler for all of them because they are one screen's worth of work, and
+ * because none returns a credential — the reset deliberately issues no tokens, so
  * unlike `/api/auth/login` there is nothing here to put in a cookie. The user is
  * sent back to sign in with the password they just chose.
  *
@@ -15,15 +21,18 @@ import { apiFetch, ApiError } from '@/lib/api/client';
 export async function POST(request: Request) {
   const { step, ...body } = await request.json().catch(() => ({ step: null }));
 
-  if (step !== 'forgot' && step !== 'reset') {
+  const path = PATHS[step as keyof typeof PATHS];
+  if (!path) {
     return NextResponse.json({ message: 'Unknown request.' }, { status: 400 });
   }
 
   try {
-    const result = await apiFetch<{ sent?: boolean; reset?: boolean; devCode?: string }>(
-      step === 'forgot' ? '/auth/password/forgot' : '/auth/password/reset',
-      { method: 'POST', body },
-    );
+    const result = await apiFetch<{
+      sent?: boolean;
+      valid?: boolean;
+      reset?: boolean;
+      devCode?: string;
+    }>(path, { method: 'POST', body });
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof ApiError) {

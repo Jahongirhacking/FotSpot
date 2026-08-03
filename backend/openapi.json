@@ -134,6 +134,36 @@
         ]
       }
     },
+    "/api/v1/auth/password/verify-code": {
+      "post": {
+        "operationId": "auth_verifyResetCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Checks a reset code without spending it.\n\nLets the form ask for a new password only once the code is known to be good,\nso a typo does not discard a password the user has already entered twice. It\ngrants nothing — `password/reset` re-checks the code regardless.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/password/reset": {
       "post": {
         "operationId": "auth_resetPassword",
@@ -3450,6 +3480,25 @@
         },
         "required": [
           "identifier"
+        ]
+      },
+      "VerifyResetCodeDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "identifier",
+          "code"
         ]
       },
       "ResetPasswordDto": {

@@ -68,6 +68,18 @@ export class ForgotPasswordDto {
   identifier: string;
 }
 
+/** Step 2: is this code good? Asked before the user is made to pick a password. */
+export class VerifyResetCodeDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+
+  @IsString()
+  @Length(6, 20)
+  code: string;
+}
+
 export class ResetPasswordDto {
   @IsString()
   @MinLength(3)
