@@ -68,7 +68,7 @@ export default async function AcademiesPage() {
                       <div className="bg-primary/12 text-primary grid size-10 shrink-0 place-items-center rounded-xl">
                         <Building2 className="size-5" aria-hidden />
                       </div>
-                      {academy.status === 'VERIFIED' && <Badge variant="success">Verified</Badge>}
+                      {academy.status === 'VERIFIED' && <Badge variant="success">{t.profile.verified}</Badge>}
                     </div>
                     <p className="mt-3 font-semibold">{academy.name}</p>
                     <p className="text-muted mt-0.5 flex items-center gap-1 text-xs">

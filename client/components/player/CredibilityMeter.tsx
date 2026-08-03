@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Credibility of the scouts backing a player — README §1.5.1.
@@ -12,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
  * Elite Scout or a verified coach, and ~5 is what a hundred fake accounts buy.
  */
 export function CredibilityMeter({ value }: { value: number }) {
+  const { t } = useI18n();
   const tier =
     value >= 100 ? 'exceptional' : value >= 40 ? 'strong' : value >= 15 ? 'notable' : 'thin';
 
@@ -27,7 +29,7 @@ export function CredibilityMeter({ value }: { value: number }) {
       <Badge variant={meta.variant}>{meta.label}</Badge>
       <p
         className={cn('text-muted mt-1 font-mono text-xs')}
-        title="Scout credibility — harmonic sum of the backing scouts' weights"
+        title={t.recommendations.credibilityHint}
       >
         {value.toFixed(1)}
       </p>

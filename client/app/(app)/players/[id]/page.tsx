@@ -106,20 +106,20 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
         <Card>
           <CardHeader>
-            <CardTitle>Self-reported record</CardTitle>
+            <CardTitle>{t.player.selfReportedRecord}</CardTitle>
           </CardHeader>
           <CardContent>
             {/* §1.6: self-reported numbers are labelled as such, always. Mixing them
                 with verified data in one figure would destroy the distinction the
                 platform's credibility rests on. */}
             <div className="mb-3">
-              <Badge variant="neutral">Self-reported — not verified</Badge>
+              <Badge variant="neutral">{t.player.selfReported}</Badge>
             </div>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Matches" value={player.matches} />
-              <Stat label="Goals" value={player.goals} />
-              <Stat label="Assists" value={player.assists} />
-              <Stat label="Clean sheets" value={player.cleanSheets} />
+              <Stat label={t.profile.matches} value={player.matches} />
+              <Stat label={t.profile.goals} value={player.goals} />
+              <Stat label={t.profile.assists} value={player.assists} />
+              <Stat label={t.player.cleanSheets} value={player.cleanSheets} />
             </dl>
           </CardContent>
         </Card>
@@ -127,7 +127,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         {assessments.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Coach assessments</CardTitle>
+              <CardTitle>{t.player.coachAssessments}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="divide-border divide-y">
@@ -135,7 +135,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                   <li key={assessment.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="flex flex-wrap items-center gap-2">
-                        <Badge variant="success">Coach-verified</Badge>
+                        <Badge variant="success">{t.player.coachVerified}</Badge>
                         {/* The coaches who assessed you are, precisely, your coaches. */}
                         {isSelf && <RelationBadge relation="MY_COACH" t={t} />}
                       </span>

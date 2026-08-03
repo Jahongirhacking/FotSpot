@@ -31,11 +31,11 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
     return (
       <EmptyState
         icon={Sparkles}
-        title="You don't have a player card yet"
-        description="Set one up so academies and scouts can find you."
+        title={t.player.noPlayerCardYet}
+        description={t.player.noPlayerCardHint}
         action={
           <Button asChild>
-            <Link href="/onboarding/player">Set up my card</Link>
+            <Link href="/onboarding/player">{t.dashboard.setUpMyCard}</Link>
           </Button>
         }
       />
@@ -121,7 +121,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
           <CardContent className="space-y-3">
             {applications.length === 0 ? (
               <>
-                <p className="text-muted text-sm">You haven&apos;t applied to any trials yet.</p>
+                <p className="text-muted text-sm">{t.trials.noApplications}</p>
                 <Button asChild variant="outline" size="sm" className="w-full">
                   <Link href="/trials">Browse {upcoming.length} open trials</Link>
                 </Button>
@@ -150,7 +150,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
         </Card>
 
         {assessments.length === 0 && (
-          <Alert tone="info" title="Get verified">
+          <Alert tone="info" title={t.player.getVerifiedTitle}>
             Your numbers are self-reported until a verified coach assesses you. A coach-verified bar
             counts for far more with academies.
           </Alert>

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 type Method = 'phone' | 'email';
 
@@ -25,13 +26,14 @@ type Method = 'phone' | 'email';
  * (README §1.3) and the one a teenager on a prepaid SIM can actually complete.
  */
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
+  const { t } = useI18n();
   const [method, setMethod] = React.useState<Method>('phone');
 
   return (
     <div className="space-y-5">
       <div
         role="tablist"
-        aria-label="Sign-in method"
+        aria-label={t.auth.signInMethod}
         className="bg-surface-2 grid grid-cols-2 gap-1 rounded-lg p-1"
       >
         <MethodTab
@@ -97,6 +99,7 @@ function useAfterLogin(redirectTo?: string) {
 }
 
 function EmailLogin({ redirectTo }: { redirectTo?: string }) {
+  const { t } = useI18n();
   const [serverError, setServerError] = React.useState<string | null>(null);
   const afterLogin = useAfterLogin(redirectTo);
 
@@ -126,7 +129,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       {serverError && <Alert tone="danger">{serverError}</Alert>}
 
       <Field
-        label="Email or username"
+        label={t.auth.emailOrUsername}
         htmlFor="identifier"
         required
         error={form.formState.errors.identifier?.message}
@@ -143,7 +146,7 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       </Field>
 
       <Field
-        label="Password"
+        label={t.auth.password}
         htmlFor="password"
         required
         error={form.formState.errors.password?.message}
@@ -158,13 +161,14 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       </Field>
 
       <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
-        Sign in
+        {t.auth.signIn}
       </Button>
     </form>
   );
 }
 
 function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
+  const { t } = useI18n();
   const [stage, setStage] = React.useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = React.useState('');
   const [devCode, setDevCode] = React.useState<string | null>(null);
@@ -225,10 +229,10 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
         {serverError && <Alert tone="danger">{serverError}</Alert>}
 
         <Field
-          label="Phone number"
+          label={t.auth.phoneNumber}
           htmlFor="phone"
           required
-          hint="We'll text you a 6-digit code."
+          hint={t.auth.phoneHint}
           error={phoneForm.formState.errors.phone?.message}
         >
           <Input
@@ -253,13 +257,13 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
     <form onSubmit={codeForm.handleSubmit(verify)} className="space-y-4" noValidate>
       {serverError && <Alert tone="danger">{serverError}</Alert>}
       {devCode && (
-        <Alert tone="info" title="Development mode">
+        <Alert tone="info" title={t.auth.devMode}>
           SMS isn&apos;t wired up yet, so here is your code: <strong>{devCode}</strong>
         </Alert>
       )}
 
       <Field
-        label="Enter the code"
+        label={t.auth.enterCode}
         htmlFor="code"
         required
         hint={`Sent to ${phone}`}
@@ -278,7 +282,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       </Field>
 
       <Button type="submit" className="w-full" loading={codeForm.formState.isSubmitting}>
-        Sign in
+        {t.auth.signIn}
       </Button>
       <Button
         type="button"

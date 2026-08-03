@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from '@/components/layout/Providers';
 import { getSession } from '@/lib/session';
 import { getLocale } from '@/lib/i18n/server';
+import { THEME_SCRIPT } from '@/lib/theme';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,7 +28,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0d1117' },
+    // The floodlit-pitch background, so the phone's status bar joins the page
+    // instead of sitting on it as a grey strip.
+    { media: '(prefers-color-scheme: dark)', color: '#0b1512' },
   ],
 };
 
@@ -44,7 +47,18 @@ export default async function RootLayout({
     <html
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The head script below sets `data-theme` before React sees the document,
+      // so the server-rendered html tag and the hydrated one legitimately differ.
+      suppressHydrationWarning
     >
+      <head>
+        {/*
+          Blocking on purpose, and first. Deferring it means one frame of the
+          wrong theme — a white flash for anyone opening the app at night, which
+          is most of when a teenager looks at their card.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <Providers
           locale={locale}

@@ -7,6 +7,7 @@ import { registerEmailSchema, type RegisterEmailValues } from '@/lib/schemas/aut
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Deliberately does NOT ask for a role.
@@ -17,6 +18,7 @@ import { Alert } from '@/components/ui/Feedback';
  * on /welcome, immediately after this.
  */
 export function RegisterForm() {
+  const { t } = useI18n();
   const [serverError, setServerError] = React.useState<string | null>(null);
 
   const form = useForm<RegisterEmailValues>({
@@ -48,7 +50,7 @@ export function RegisterForm() {
 
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label="First name"
+          label={t.auth.firstName}
           htmlFor="firstName"
           required
           error={form.formState.errors.firstName?.message}
@@ -61,7 +63,7 @@ export function RegisterForm() {
           />
         </Field>
         <Field
-          label="Last name"
+          label={t.auth.lastName}
           htmlFor="lastName"
           required
           error={form.formState.errors.lastName?.message}
@@ -86,10 +88,10 @@ export function RegisterForm() {
       </Field>
 
       <Field
-        label="Password"
+        label={t.auth.password}
         htmlFor="password"
         required
-        hint="At least 8 characters."
+        hint={t.auth.passwordHint}
         error={form.formState.errors.password?.message}
       >
         <Input

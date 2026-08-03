@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/Feedback';
 import { relativeTime } from '@/lib/utils';
+import { getServerT } from '@/lib/i18n/server';
 
 export const metadata: Metadata = { title: 'My recommendations' };
 
 export default async function MyRecommendationsPage() {
   const session = await getSession();
+  const { t } = await getServerT();
   if (!session) redirect('/login?next=/recommendations');
 
   const [mine, stats] = await Promise.all([
@@ -33,10 +35,10 @@ export default async function MyRecommendationsPage() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Every player you&apos;ve put forward</CardTitle>
+          <CardTitle>{t.recommendations.everyPlayer}</CardTitle>
           <Button asChild size="sm" variant="outline">
             <Link href="/players">
-              <Search aria-hidden /> Find a player
+              <Search aria-hidden /> {t.player.findPlayers}
             </Link>
           </Button>
         </CardHeader>
@@ -44,11 +46,11 @@ export default async function MyRecommendationsPage() {
           {mine.length === 0 ? (
             <EmptyState
               icon={Award}
-              title="Nothing yet"
-              description="Recommend a player to an academy. Accepted recommendations are what build your reputation — nothing else does."
+              title={t.recommendations.nothingYet}
+              description={t.recommendations.nothingYetHint}
               action={
                 <Button asChild>
-                  <Link href="/players">Search players</Link>
+                  <Link href="/players">{t.recommendations.searchPlayers}</Link>
                 </Button>
               }
             />

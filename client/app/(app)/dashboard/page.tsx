@@ -36,7 +36,7 @@ export default async function DashboardPage() {
       {!onboarded && activeRole === 'scout' && !roles.includes('player') && <RoleIntentCard />}
 
       {activeRole === 'player' && <PlayerHome token={session.accessToken} t={t} />}
-      {activeRole === 'scout' && <ScoutHome token={session.accessToken} />}
+      {activeRole === 'scout' && <ScoutHome token={session.accessToken} t={t} />}
       {activeRole === 'coach' && <CoachHome token={session.accessToken} />}
       {activeRole === 'academy_manager' && <AcademyHome token={session.accessToken} t={t} />}
       {(activeRole === 'admin' || activeRole === 'super_admin') && (

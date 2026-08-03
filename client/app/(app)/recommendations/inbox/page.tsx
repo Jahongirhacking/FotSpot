@@ -9,6 +9,7 @@ import { CredibilityMeter } from '@/components/player/CredibilityMeter';
 import { InboxActions } from './InboxActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { getServerT } from '@/lib/i18n/server';
 
 export const metadata: Metadata = { title: 'Recommendation inbox' };
 
@@ -20,6 +21,7 @@ export const metadata: Metadata = { title: 'Recommendation inbox' };
  */
 export default async function InboxPage() {
   const session = await getSession();
+  const { t } = await getServerT();
   if (!session) redirect('/login?next=/recommendations/inbox');
 
   const list = await academies
@@ -32,8 +34,8 @@ export default async function InboxPage() {
     return (
       <EmptyState
         icon={Inbox}
-        title="No academy linked to your account"
-        description="Register an academy to start receiving recommendations."
+        title={t.academy.noAcademyLinked}
+        description={t.academy.noAcademyLinkedHint}
       />
     );
   }
@@ -50,11 +52,11 @@ export default async function InboxPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-bold">Recommendation inbox</h1>
+        <h1 className="text-xl font-bold">{t.recommendations.inbox}</h1>
         <p className="text-muted text-sm">{academy.name}</p>
       </header>
 
-      <Alert tone="info" title="How this order works">
+      <Alert tone="info" title={t.recommendations.howOrderWorks}>
         Players are ranked by the combined credibility of the scouts backing them, not by when the
         recommendation arrived. A proven scout counts for far more than volume — a hundred new
         accounts backing one player is worth about five points.
@@ -70,8 +72,8 @@ export default async function InboxPage() {
           {ranked.items.length === 0 ? (
             <EmptyState
               icon={Inbox}
-              title="Nothing open"
-              description="New recommendations appear here as soon as scouts send them."
+              title={t.recommendations.nothingOpen}
+              description={t.recommendations.nothingOpenHint}
             />
           ) : (
             <ul className="divide-border divide-y">
@@ -109,7 +111,7 @@ export default async function InboxPage() {
         </CardHeader>
         <CardContent>
           {raw.length === 0 ? (
-            <p className="text-muted text-sm">None yet.</p>
+            <p className="text-muted text-sm">{t.common.none}</p>
           ) : (
             <ul className="divide-border divide-y text-sm">
               {raw.slice(0, 25).map((recommendation) => (

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Feedback';
 import { relativeTime } from '@/lib/utils';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Device list from README §1.21.
@@ -22,6 +23,7 @@ export function SessionList({
   devices: DeviceSession[];
   currentSessionId: string | null;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = React.useState(false);
 
   async function logoutEverywhere() {
@@ -35,7 +37,7 @@ export function SessionList({
   }
 
   if (devices.length === 0) {
-    return <Alert tone="info">No other active sessions.</Alert>;
+    return <Alert tone="info">{t.settings.noOtherSessions}</Alert>;
   }
 
   return (

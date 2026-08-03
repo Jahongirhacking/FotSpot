@@ -6,6 +6,7 @@ import { ROLE_META, type Role } from '@/lib/roles';
 import { useSession } from './SessionProvider';
 import { Menu, MenuContent, MenuLabel, MenuRadioItem, MenuTrigger } from '@/components/ui/Menu';
 import { Badge } from '@/components/ui/Badge';
+import { useI18n } from './I18nProvider';
 
 /**
  * Role switcher — README §1.2.3.
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/Badge';
  * because the JWT already carries every role at once.
  */
 export function RoleSwitcher() {
+  const { t } = useI18n();
   const { roles, activeRole, setActiveRole } = useSession();
   const router = useRouter();
 
@@ -42,7 +44,7 @@ export function RoleSwitcher() {
       </MenuTrigger>
 
       <MenuContent>
-        <MenuLabel>View FotSpot as</MenuLabel>
+        <MenuLabel>{t.roles.viewAs}</MenuLabel>
         {roles.map((role) => {
           const meta = ROLE_META[role];
           const Icon = meta.icon;

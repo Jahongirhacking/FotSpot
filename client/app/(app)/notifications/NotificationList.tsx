@@ -8,6 +8,7 @@ import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { Card, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { cn, relativeTime } from '@/lib/utils';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 const EVENT_META: Record<
   NotificationEvent,
@@ -33,6 +34,7 @@ const EVENT_META: Record<
 };
 
 export function NotificationList({ initial }: { initial: AppNotification[] }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   useNotificationSocket();
 
@@ -51,8 +53,8 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
     return (
       <EmptyState
         icon={BellOff}
-        title="Nothing yet"
-        description="Recommendation outcomes, trial invitations and verification updates land here."
+        title={t.notifications.nothingYet}
+        description={t.notifications.nothingYetHint}
       />
     );
   }

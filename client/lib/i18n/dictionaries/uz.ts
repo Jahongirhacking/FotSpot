@@ -7,6 +7,10 @@
  */
 export const uz = {
   common: {
+    theme: 'Ko‘rinish',
+    themeLight: 'Yorug‘',
+    themeDark: 'Qorong‘i',
+    themeSystem: 'Tizim bo‘yicha',
     edit: 'Tahrirlash',
     delete: 'O‘chirish',
     copy: 'Nusxalash',
@@ -78,6 +82,7 @@ export const uz = {
   },
 
   auth: {
+    emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
     signOut: 'Chiqish',
     welcomeBack: 'Xush kelibsiz',
@@ -127,6 +132,7 @@ export const uz = {
   },
 
   onboarding: {
+    measurements: 'O‘lchamlar',
     stepYou: 'Siz',
     stepParent: 'Ota-ona',
     stepFootball: 'Futbol',
@@ -256,6 +262,9 @@ export const uz = {
   },
 
   academy: {
+    verifiedAcademy: 'Tasdiqlangan akademiya',
+    awaitingVerification: 'Tasdiqlash kutilmoqda',
+    noTrialsNow: 'Hozircha sinovlar yo‘q.',
     manageAcademies: 'Akademiyalarni boshqarish',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     postTrial: 'Sinov e’lon qilish',
@@ -381,6 +390,8 @@ export const uz = {
   },
 
   player: {
+    searchSubtitle: 'FotSpot’da {count} futbolchi. Faqat pozitsiya emas, o‘yin uslubi bo‘yicha ham qidiring.',
+    cleanSheets: 'Toza himoya',
     comparedWithinPlain: 'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
     onThePitch: 'Maydonda',
     dominantFoot: 'Kuchli oyoq',
@@ -424,6 +435,7 @@ export const uz = {
   },
 
   trials: {
+    location: 'Manzil',
     openTrials: 'Ochiq sinovlar',
     openTrialsHint:
       'To‘g‘ridan-to‘g‘ri ariza bering. Akademiya arizangiz bilan kartangizni ko‘radi.',
@@ -447,6 +459,8 @@ export const uz = {
   },
 
   recommendations: {
+    credibilityHint: 'Skautlar ishonchliligi — qo‘llab-quvvatlagan skautlar vaznining garmonik yig‘indisi',
+    whyPlaceholder: 'Chap oyoqli, qarshi o‘yinchini bir-bir yengadi, boshini ko‘tarib o‘ynaydi…',
     myRecommendations: 'Mening tavsiyalarim',
     everyPlayer: 'Siz taklif qilgan har bir futbolchi',
     nothingYet: 'Hali hech narsa yo‘q',

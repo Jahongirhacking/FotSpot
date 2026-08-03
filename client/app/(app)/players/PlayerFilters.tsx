@@ -8,12 +8,14 @@ import { humanizeEnum } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/Badge';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Filters write to the URL, which is the single source of truth for search state.
  * No duplicate copy in a store to drift out of sync.
  */
 export function PlayerFilters() {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -52,8 +54,8 @@ export function PlayerFilters() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name"
-            aria-label="Search players by name"
+            placeholder={t.player.searchByName}
+            aria-label={t.player.searchByName}
             className="pl-9"
           />
         </div>
@@ -62,12 +64,12 @@ export function PlayerFilters() {
 
       <div className="scroll-x flex gap-2 pb-1">
         <Select
-          aria-label="Region"
+          aria-label={t.onboarding.region}
           value={searchParams.get('region') ?? ''}
           onChange={(event) => apply({ region: event.target.value })}
           className="min-w-36"
         >
-          <option value="">All regions</option>
+          <option value="">{t.player.allRegions}</option>
           {UZBEK_REGIONS.map((region) => (
             <option key={region} value={region}>
               {region}
@@ -76,12 +78,12 @@ export function PlayerFilters() {
         </Select>
 
         <Select
-          aria-label="Position"
+          aria-label={t.onboarding.mainPosition}
           value={searchParams.get('position') ?? ''}
           onChange={(event) => apply({ position: event.target.value })}
           className="min-w-28"
         >
-          <option value="">Any position</option>
+          <option value="">{t.player.anyPosition}</option>
           {POSITIONS.map((position) => (
             <option key={position} value={position}>
               {position}
@@ -91,12 +93,12 @@ export function PlayerFilters() {
 
         {/* The §21.3 filter that positions alone can't express. */}
         <Select
-          aria-label="Playing style"
+          aria-label={t.onboarding.playingStyle}
           value={searchParams.get('playingStyle') ?? ''}
           onChange={(event) => apply({ playingStyle: event.target.value })}
           className="min-w-40"
         >
-          <option value="">Any playing style</option>
+          <option value="">{t.player.anyStyle}</option>
           {Object.entries(PLAYING_STYLES).map(([group, styles]) => (
             <optgroup key={group} label={group}>
               {styles.map((style) => (

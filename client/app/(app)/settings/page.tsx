@@ -9,11 +9,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { getServerT } from '@/lib/i18n/server';
 
 export const metadata: Metadata = { title: 'Settings' };
 
 export default async function SettingsPage() {
   const session = await getSession();
+  const { t } = await getServerT();
   if (!session) redirect('/login?next=/settings');
 
   const devices = await auth
@@ -22,11 +24,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-xl font-bold">Settings</h1>
+      <h1 className="text-xl font-bold">{t.settings.title}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Your roles</CardTitle>
+          <CardTitle>{t.profile.yourRoles}</CardTitle>
           <CardDescription>
             You can hold several at once. Switching between them changes what you see, never what
             you&apos;re allowed to do.
@@ -50,7 +52,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-3">
           <div>
-            <CardTitle>Password</CardTitle>
+            <CardTitle>{t.settings.password}</CardTitle>
             <CardDescription>
               Change your password. Every other device is signed out when you do.
             </CardDescription>
@@ -63,7 +65,7 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Where you&apos;re signed in</CardTitle>
+          <CardTitle>{t.settings.signedInDevices}</CardTitle>
           <CardDescription>
             Each device gets its own session. Signing out of one leaves the others alone.
           </CardDescription>

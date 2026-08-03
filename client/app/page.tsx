@@ -26,6 +26,7 @@ import {
 } from '@/components/shared/FootballArt';
 import { HeroVideo } from '@/components/shared/HeroVideo';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 /**
  * Landing page. Signed-in users keep it — it's the marketing surface, and the
@@ -61,6 +62,7 @@ export default async function LandingPage() {
           <span className="text-lg font-bold tracking-tight">FotSpot</span>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle compact />
           <LanguageSwitcher />
           {session ? (
             <Button asChild size="sm">

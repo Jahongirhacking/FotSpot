@@ -40,6 +40,7 @@ export function PlayerWizard({
 }: {
   knownName: { firstName: string; lastName: string };
 }) {
+  const { t } = useI18n();
   const [step, setStep] = React.useState<Step>('identity');
   const [identity, setIdentity] = React.useState<PlayerIdentityValues | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -84,6 +85,7 @@ export function PlayerWizard({
 }
 
 function Steps({ current, isMinor }: { current: Step; isMinor: boolean }) {
+  const { t } = useI18n();
   const steps: { key: Step; label: string }[] = [
     { key: 'identity', label: 'You' },
     ...(isMinor ? [{ key: 'guardian' as Step, label: 'Parent' }] : []),
@@ -92,7 +94,7 @@ function Steps({ current, isMinor }: { current: Step; isMinor: boolean }) {
   const index = steps.findIndex((step) => step.key === current);
 
   return (
-    <ol className="flex items-center gap-2" aria-label="Progress">
+    <ol className="flex items-center gap-2" aria-label={t.onboarding.progress}>
       {steps.map((step, position) => (
         <li key={step.key} className="flex flex-1 items-center gap-2">
           <span
@@ -149,7 +151,7 @@ function IdentityStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Who&apos;s playing?</CardTitle>
+        <CardTitle>{t.onboarding.whoIsPlaying}</CardTitle>
         <CardDescription>
           Just the basics for now. Your date of birth decides which age group you&apos;re compared
           in — we never compare across age groups.
@@ -198,7 +200,7 @@ function IdentityStep({
           )}
 
           <Field
-            label="Date of birth"
+            label={t.onboarding.dateOfBirth}
             htmlFor="birthDate"
             required
             error={form.formState.errors.birthDate?.message}
@@ -207,7 +209,7 @@ function IdentityStep({
           </Field>
 
           <Field
-            label="Gender"
+            label={t.onboarding.gender}
             htmlFor="gender"
             required
             error={form.formState.errors.gender?.message}
@@ -244,6 +246,7 @@ function GuardianStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const { t } = useI18n();
   const [acknowledged, setAcknowledged] = React.useState(false);
 
   return (
@@ -259,7 +262,7 @@ function GuardianStep({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert tone="warning" title="Guardian consent isn't built yet">
+        <Alert tone="warning" title={t.onboarding.guardianWarningTitle}>
           This is an early build. Guardian accounts, consent and the private-by-default visibility
           rules are still being finished. Until they are, a profile created here stays{' '}
           <strong>visible only to you</strong> — it is not published to academies, and you should
@@ -301,6 +304,7 @@ function FootballStep({
   onBack: () => void;
   onError: (message: string | null) => void;
 }) {
+  const { t } = useI18n();
   // Input/output types differ because of z.coerce — see lib/schemas/player.ts.
   const form = useForm<PlayerFootballInput, unknown, PlayerFootballValues>({
     resolver: zodResolver(playerFootballSchema),
@@ -341,7 +345,7 @@ function FootballStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your game</CardTitle>
+        <CardTitle>{t.onboarding.yourGame}</CardTitle>
         <CardDescription>
           All optional — you can fill these in later. Every one you add makes your card stronger.
         </CardDescription>
@@ -349,9 +353,9 @@ function FootballStep({
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Main position" htmlFor="primaryPosition">
+            <Field label={t.onboarding.mainPosition} htmlFor="primaryPosition">
               <Select id="primaryPosition" {...form.register('primaryPosition')}>
-                <option value="">Not sure yet</option>
+                <option value="">{t.onboarding.notSureYet}</option>
                 {POSITIONS.map((position) => (
                   <option key={position} value={position}>
                     {position}
@@ -359,7 +363,7 @@ function FootballStep({
                 ))}
               </Select>
             </Field>
-            <Field label="Other position" htmlFor="secondaryPosition">
+            <Field label={t.onboarding.otherPosition} htmlFor="secondaryPosition">
               <Select id="secondaryPosition" {...form.register('secondaryPosition')}>
                 <option value="">—</option>
                 {POSITIONS.map((position) => (
@@ -372,12 +376,12 @@ function FootballStep({
           </div>
 
           <Field
-            label="Playing style"
+            label={t.onboarding.playingStyle}
             htmlFor="playingStyle"
-            hint="How you play, not just where. Academies search for this."
+            hint={t.onboarding.playingStyleHint}
           >
             <Select id="playingStyle" {...form.register('playingStyle')}>
-              <option value="">Pick later</option>
+              <option value="">{t.onboarding.pickLater}</option>
               {Object.entries(PLAYING_STYLES).map(([group, styles]) => (
                 <optgroup key={group} label={group}>
                   {styles.map((style) => (
@@ -391,7 +395,7 @@ function FootballStep({
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Strong foot" htmlFor="dominantFoot">
+            <Field label={t.onboarding.strongFoot} htmlFor="dominantFoot">
               <Select id="dominantFoot" {...form.register('dominantFoot')}>
                 <option value="">—</option>
                 <option value="RIGHT">Right</option>
@@ -399,7 +403,7 @@ function FootballStep({
                 <option value="BOTH">Both</option>
               </Select>
             </Field>
-            <Field label="Region" htmlFor="region">
+            <Field label={t.onboarding.region} htmlFor="region">
               <Select id="region" {...form.register('region')}>
                 {UZBEK_REGIONS.map((region) => (
                   <option key={region} value={region}>
@@ -411,16 +415,16 @@ function FootballStep({
           </div>
 
           <fieldset className="grid grid-cols-2 gap-3">
-            <legend className="sr-only">Measurements</legend>
+            <legend className="sr-only">{t.onboarding.measurements}</legend>
             <Field
-              label="Height (cm)"
+              label={t.onboarding.heightCm}
               htmlFor="height"
               error={form.formState.errors.height?.message}
             >
               <Input id="height" inputMode="numeric" {...form.register('height')} />
             </Field>
             <Field
-              label="Weight (kg)"
+              label={t.onboarding.weightKg}
               htmlFor="weight"
               error={form.formState.errors.weight?.message}
             >

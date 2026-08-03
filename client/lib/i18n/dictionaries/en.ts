@@ -3,6 +3,10 @@ import type { Dictionary } from './uz';
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
 export const en: Dictionary = {
   common: {
+    theme: 'Theme',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
     edit: 'Edit',
     delete: 'Delete',
     copy: 'Copy',
@@ -74,6 +78,7 @@ export const en: Dictionary = {
   },
 
   auth: {
+    emailOrUsername: 'Email or username',
     signIn: 'Sign in',
     signOut: 'Sign out',
     welcomeBack: 'Welcome back',
@@ -123,6 +128,7 @@ export const en: Dictionary = {
   },
 
   onboarding: {
+    measurements: 'Measurements',
     stepYou: 'You',
     stepParent: 'Parent',
     stepFootball: 'Football',
@@ -251,6 +257,9 @@ export const en: Dictionary = {
   },
 
   academy: {
+    verifiedAcademy: 'Verified academy',
+    awaitingVerification: 'Awaiting verification',
+    noTrialsNow: 'No trials posted right now.',
     manageAcademies: 'Manage academies',
     noAcademyLinked: 'No academy is linked to your account',
     postTrial: 'Post a trial',
@@ -376,6 +385,8 @@ export const en: Dictionary = {
   },
 
   player: {
+    searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
+    cleanSheets: 'Clean sheets',
     comparedWithinPlain: 'Bars are compared within {band} only — never across age groups.',
     onThePitch: 'On the pitch',
     dominantFoot: 'Dominant foot',
@@ -419,6 +430,7 @@ export const en: Dictionary = {
   },
 
   trials: {
+    location: 'Location',
     openTrials: 'Open trials',
     openTrialsHint: 'Apply directly. Academies see your card alongside your application.',
     noTrials: 'No open trials right now',
@@ -441,6 +453,8 @@ export const en: Dictionary = {
   },
 
   recommendations: {
+    credibilityHint: 'Scout credibility — harmonic sum of the backing scouts’ weights',
+    whyPlaceholder: 'Left-footed, beats his marker one-on-one, plays with his head up…',
     myRecommendations: 'My recommendations',
     everyPlayer: "Every player you've put forward",
     nothingYet: 'Nothing yet',

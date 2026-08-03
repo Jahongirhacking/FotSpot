@@ -5,6 +5,7 @@ import { CalendarDays, ClipboardList, MapPin } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
 import { trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
+import { getServerT } from '@/lib/i18n/server';
 import type { Trial } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -28,6 +29,7 @@ export async function generateMetadata({
 export default async function TrialDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
+  const { t } = await getServerT();
 
   let trial: Trial;
   try {
@@ -61,7 +63,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           </div>
           <div className="flex items-center gap-1.5">
             <MapPin className="size-4" aria-hidden />
-            <dt className="sr-only">Location</dt>
+            <dt className="sr-only">{t.trials.location}</dt>
             <dd>{trial.location}</dd>
           </div>
         </dl>
@@ -89,7 +91,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           </div>
           {trial.requirements && (
             <div>
-              <h2 className="mb-1 text-sm font-medium">What to bring</h2>
+              <h2 className="mb-1 text-sm font-medium">{t.trials.whatToBring}</h2>
               <p className="text-muted text-sm">{trial.requirements}</p>
             </div>
           )}

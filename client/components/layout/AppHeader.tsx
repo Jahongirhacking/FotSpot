@@ -10,6 +10,7 @@ import { useSession } from './SessionProvider';
 import { RoleSwitcher } from './RoleSwitcher';
 import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import { ProfileMenu } from './ProfileMenu';
 import { navForRole } from './nav';
 import { Button } from '@/components/ui/Button';
@@ -67,12 +68,14 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
           {isAuthenticated ? (
             <>
               <RoleSwitcher />
+              <ThemeToggle compact />
               <LanguageSwitcher compact />
               <NotificationBell />
               <ProfileMenu initials={initials} avatarUrl={avatarUrl} />
             </>
           ) : (
             <>
+              <ThemeToggle compact />
               <LanguageSwitcher compact />
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">{t.auth.signIn}</Link>

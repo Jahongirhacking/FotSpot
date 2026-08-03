@@ -49,12 +49,12 @@ export function ApplyToTrialButton({
     return (
       <Card className="border-primary/30">
         <CardContent className="space-y-3 p-5">
-          <p className="font-medium">Applying needs a player card</p>
+          <p className="font-medium">{t.trials.needsCard}</p>
           <p className="text-muted text-sm">
             It takes about a minute, and the academy sees your card with your application.
           </p>
           <Button asChild>
-            <Link href="/onboarding/player">Set up my card</Link>
+            <Link href="/onboarding/player">{t.dashboard.setUpMyCard}</Link>
           </Button>
         </CardContent>
       </Card>
@@ -63,7 +63,7 @@ export function ApplyToTrialButton({
 
   if (existingStatus) {
     return (
-      <Alert tone={existingStatus === 'REJECTED' ? 'warning' : 'success'} title="You've applied">
+      <Alert tone={existingStatus === 'REJECTED' ? 'warning' : 'success'} title={t.trials.applied}>
         Your application is <strong>{existingStatus.toLowerCase()}</strong>. You&apos;ll be notified
         when the academy updates it.
       </Alert>

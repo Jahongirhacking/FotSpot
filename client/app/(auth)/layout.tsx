@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 /** Route group with no app chrome — a signed-out user has no nav to show. */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
         {/* Signed-out users need this most: you can't ask someone to register in a
             language they don't read. */}
+        <ThemeToggle compact />
         <LanguageSwitcher />
       </header>
       <main className="flex flex-1 items-center justify-center p-4 pb-16">

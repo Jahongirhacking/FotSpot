@@ -3,6 +3,10 @@ import type { Dictionary } from './uz';
 /** Russian. Typed against the Uzbek source, so a missing key is a build error. */
 export const ru: Dictionary = {
   common: {
+    theme: 'Тема',
+    themeLight: 'Светлая',
+    themeDark: 'Тёмная',
+    themeSystem: 'Как в системе',
     edit: 'Редактировать',
     delete: 'Удалить',
     copy: 'Копировать',
@@ -74,6 +78,7 @@ export const ru: Dictionary = {
   },
 
   auth: {
+    emailOrUsername: 'Email или логин',
     signIn: 'Войти',
     signOut: 'Выйти',
     welcomeBack: 'С возвращением',
@@ -123,6 +128,7 @@ export const ru: Dictionary = {
   },
 
   onboarding: {
+    measurements: 'Параметры',
     stepYou: 'Вы',
     stepParent: 'Родитель',
     stepFootball: 'Футбол',
@@ -250,6 +256,9 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    verifiedAcademy: 'Проверенная академия',
+    awaitingVerification: 'Ожидает проверки',
+    noTrialsNow: 'Сейчас просмотров нет.',
     manageAcademies: 'Управление академиями',
     noAcademyLinked: 'К вашему аккаунту не привязана академия',
     postTrial: 'Опубликовать просмотр',
@@ -375,6 +384,8 @@ export const ru: Dictionary = {
   },
 
   player: {
+    searchSubtitle: '{count} игроков на FotSpot. Ищите по роли, а не только по позиции.',
+    cleanSheets: 'Сухие матчи',
     comparedWithinPlain: 'Показатели сравниваются только внутри {band}, а не между возрастными группами.',
     onThePitch: 'На поле',
     dominantFoot: 'Сильная нога',
@@ -418,6 +429,7 @@ export const ru: Dictionary = {
   },
 
   trials: {
+    location: 'Место',
     openTrials: 'Открытые просмотры',
     openTrialsHint: 'Подавайте заявку напрямую. Академия увидит вашу карточку вместе с заявкой.',
     noTrials: 'Открытых просмотров нет',
@@ -440,6 +452,8 @@ export const ru: Dictionary = {
   },
 
   recommendations: {
+    credibilityHint: 'Авторитетность скаутов — гармоническая сумма весов поддержавших',
+    whyPlaceholder: 'Левша, обыгрывает защитника один в один, играет с поднятой головой…',
     myRecommendations: 'Мои рекомендации',
     everyPlayer: 'Каждый игрок, которого вы предложили',
     nothingYet: 'Пока ничего',
