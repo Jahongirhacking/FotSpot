@@ -44,6 +44,7 @@ export const uz = {
 
   nav: {
     home: 'Bosh sahifa',
+    feed: 'Lenta',
     myCard: 'Mening kartam',
     players: 'Futbolchilar',
     findPlayers: 'Futbolchi topish',
@@ -452,6 +453,20 @@ export const uz = {
     noneTitle: 'Hali lavha yo‘q',
     noneHint: 'Bu futbolchi hali video joylamagan.',
     noneHintOwn: '60 soniyalik dribling videosi har qanday tavsifdan kuchliroq.',
+  },
+
+  /** Skaut va akademiya menejeri uchun asosiy ekran. */
+  feed: {
+    title: 'Lenta',
+    subtitle: 'Eng munosib klipllar — tavsiya vazni, obunalaringiz va yangiligi bo‘yicha.',
+    suggested: 'Kuzatish uchun',
+    follow: 'Kuzatish',
+    following: 'Kuzatilmoqda',
+    openClip: 'Klipni ochish',
+    mute: 'Ovozni o‘chirish',
+    unmute: 'Ovozni yoqish',
+    emptyTitle: 'Hozircha klip yo‘q',
+    emptyBody: 'O‘yinchilar klip yuklaganda ular shu yerda paydo bo‘ladi.',
   },
 
   player: {

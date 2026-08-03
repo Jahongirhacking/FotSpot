@@ -13,6 +13,7 @@ import type {
   DeviceSession,
   Follow,
   FollowTargetType,
+  FeedPage,
   Media,
   MediaCategory,
   MediaType,
@@ -26,6 +27,7 @@ import type {
   Trial,
   TrialApplication,
   TrialApplicationStatus,
+  SuggestedPlayer,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -251,12 +253,7 @@ export interface RecentClip extends Media {
 }
 
 export type AcademyRelation =
-  | 'MANAGER'
-  | 'COACH'
-  | 'SCOUT'
-  | 'ENDORSED_SCOUT'
-  | 'ENDORSED_COACH'
-  | 'TRIALIST';
+  'MANAGER' | 'COACH' | 'SCOUT' | 'ENDORSED_SCOUT' | 'ENDORSED_COACH' | 'TRIALIST';
 
 // ---------- Insights (recruiting-side only — never shown to players) ----------
 
@@ -462,7 +459,12 @@ export interface AuditLogEntry {
   id: string;
   userId: string | null;
   /** Joined by the API — "who did this" is the question an audit log answers. */
-  user: { id: string; firstName: string | null; lastName: string | null; email: string | null } | null;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+  } | null;
   action: string;
   meta: Record<string, unknown> | null;
   createdAt: string;
@@ -700,6 +702,13 @@ export interface CreateTrialBody {
 // ---------- Media ----------
 
 export const media = {
+  /** One page of the ranked feed. Personalised, so never cached. */
+  feed: (page: number, pageSize: number, opts: Opts = {}) =>
+    apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize })}`, opts),
+
+  suggestedPlayers: (limit: number, opts: Opts = {}) =>
+    apiFetch<SuggestedPlayer[]>(`/media/feed/suggested-players${toQuery({ limit })}`, opts),
+
   /** `category` narrows to one attribute's claim history. */
   listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
     apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
@@ -774,9 +783,7 @@ export const media = {
       comments: number;
       /** One like per account — see MediaService.getEngagement. */
       likedByMe: boolean;
-    }>(`/media/${id}/engagement`,
-      opts,
-    ),
+    }>(`/media/${id}/engagement`, opts),
 };
 
 // ---------- Follows ----------
@@ -831,8 +838,6 @@ export const auth = {
    * `currentPassword` may be omitted only while `mustChangePassword` is set —
    * the account is still on the password an admin generated for it.
    */
-  changePassword: (
-    body: { currentPassword?: string; newPassword: string },
-    opts: Opts = {},
-  ) => apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
+  changePassword: (body: { currentPassword?: string; newPassword: string }, opts: Opts = {}) =>
+    apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
 };

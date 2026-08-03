@@ -40,6 +40,7 @@ export const en: Dictionary = {
 
   nav: {
     home: 'Home',
+    feed: 'Feed',
     myCard: 'My card',
     players: 'Players',
     findPlayers: 'Find players',
@@ -439,6 +440,20 @@ export const en: Dictionary = {
     noneTitle: 'No clips yet',
     noneHint: 'This player has not uploaded any clips yet.',
     noneHintOwn: '60 seconds of you dribbling is worth more than any description.',
+  },
+
+  /** The scout's and the academy manager's home screen. */
+  feed: {
+    title: 'Feed',
+    subtitle: 'The clips worth your next minute — by earned weight, who you follow, and freshness.',
+    suggested: 'Who to follow',
+    follow: 'Follow',
+    following: 'Following',
+    openClip: 'Open clip',
+    mute: 'Mute',
+    unmute: 'Unmute',
+    emptyTitle: 'No clips yet',
+    emptyBody: 'As soon as players upload, their clips show up here.',
   },
 
   player: {

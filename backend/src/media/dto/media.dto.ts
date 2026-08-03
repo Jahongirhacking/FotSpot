@@ -1,16 +1,7 @@
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaCategory } from '@prisma/client';
-import {
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 /** The six card attributes a clip can evidence, plus highlights (§21.1). */
 const CATEGORIES = [
@@ -92,6 +83,23 @@ export class ListPlayerMediaDto {
   @IsOptional()
   @IsIn(CATEGORIES)
   category?: (typeof CATEGORIES)[number];
+}
+
+/** A page of the ranked feed. Offset paging, because the ranking is a score
+ *  rather than a cursorable column — see MediaService.feed. */
+export class FeedDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  pageSize?: number;
 }
 
 export class CreateMediaCommentDto {

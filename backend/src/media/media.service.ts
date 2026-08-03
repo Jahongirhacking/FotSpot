@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MediaCategory } from '@prisma/client';
+import { MediaCategory, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
@@ -18,6 +18,7 @@ import {
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   ConfirmUploadDto,
+  FeedDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
@@ -34,7 +35,6 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
   'PHYSICAL',
   'TECHNIQUE',
 ];
-
 
 /**
  * What a media row looks like on the way out.
@@ -65,15 +65,53 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
  * `storageKey` stays out of the response: a caller holding keys starts building
  * its own URLs, and then changing provider stops being a config change.
  */
-export async function toMediaResponse<
-  T extends { storageKey: string; posterKey?: string | null },
->(media: T, storage: StorageService) {
+export async function toMediaResponse<T extends { storageKey: string; posterKey?: string | null }>(
+  media: T,
+  storage: StorageService,
+) {
   const { storageKey, posterKey, ...rest } = media;
   const [url, posterUrl] = await Promise.all([
     storage.readUrlOrNull(storageKey),
     storage.readUrlOrNull(posterKey),
   ]);
   return { ...rest, url, posterUrl };
+}
+
+/**
+ * Feed scoring weights. Relative size is the whole design: earned weight leads,
+ * a follow is worth roughly what a well-liked clip is worth, and freshness can
+ * lift a brand-new clip above an older one of similar standing but never above a
+ * strongly recommended player.
+ */
+const FEED_WEIGHT_TERM = 3;
+const FEED_FOLLOW_TERM = 2;
+const FEED_LIKES_TERM = 0.8;
+const FEED_FRESHNESS_TERM = 1.5;
+/** One week, in seconds — the half-life of the freshness term. */
+const FEED_HALF_LIFE_SECONDS = 7 * 24 * 60 * 60;
+
+/** One row of the feed query, before URLs are signed onto it. */
+interface FeedRow {
+  id: string;
+  type: string;
+  category: MediaCategory;
+  storageKey: string;
+  posterKey: string | null;
+  selfRating: number | null;
+  title: string | null;
+  description: string | null;
+  createdAt: Date;
+  playerId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: Date;
+  primaryPosition: string | null;
+  region: string | null;
+  avatarKey: string | null;
+  likes: number;
+  views: number;
+  likedByMe: boolean;
+  following: boolean;
 }
 
 @Injectable()
@@ -229,6 +267,164 @@ export class MediaService {
   }
 
   /**
+   * The ranked feed: every player's clips, ordered by who has earned attention.
+   *
+   * ## What "ranked" means here
+   *
+   * A scout opening the app should see the clips most worth their next sixty
+   * seconds, and the platform's own answer to "who is worth watching" already
+   * exists: `PlayerRecommendationWeight.globalWeight`, the decaying sum of what
+   * scouts have staked on that player (§1.5). The feed leans on it rather than
+   * inventing a second, competing notion of merit.
+   *
+   * Four terms, in order of how much they move the result:
+   *
+   * - **Earned weight**, `ln(1 + globalWeight)`. Logarithmic on purpose: the
+   *   weights are geometric (1, 3, 8, 20, 50, 125), so untransformed they would
+   *   let a handful of Legendary Scout picks own the feed outright and bury every
+   *   player nobody has recommended yet — which is precisely the child this
+   *   product exists to surface.
+   * - **Following**, a flat bonus. Asked for directly: a scout who followed a
+   *   player wants that player's new clip near the top, and a flat term does that
+   *   without letting one follow outrank all merit.
+   * - **Likes**, `ln(1 + likes)`, damped for the same reason as weight.
+   * - **Freshness**, an exponential decay with a one-week half-life. Without it a
+   *   good clip from March outranks everything uploaded since, forever.
+   *
+   * ## Why raw SQL, in a codebase that has none
+   *
+   * The ordering *is* the score, and the score is computed from four tables. Doing
+   * it in Prisma means fetching a candidate window and ranking in memory, which
+   * makes page 2 an incoherent question — items would reshuffle between pages and
+   * the same clip could appear twice or never. The database can sort a computed
+   * expression; it is the only thing here that can.
+   *
+   * Interpolations are parameterised by `Prisma.sql`, so the viewer id and paging
+   * numbers cannot be anything but values.
+   */
+  async feed(viewerUserId: string, dto: FeedDto = {}) {
+    const page = Math.max(1, dto.page ?? 1);
+    const pageSize = Math.min(24, Math.max(1, dto.pageSize ?? 6));
+    const skip = (page - 1) * pageSize;
+
+    const rows = await this.prisma.$queryRaw<FeedRow[]>(Prisma.sql`
+      SELECT
+        m.id, m.type, m.category, m."storageKey", m."posterKey", m."selfRating",
+        m.title, m.description, m."createdAt",
+        p.id AS "playerId", p."firstName", p."lastName", p."birthDate",
+        p."primaryPosition", p.region,
+        u."avatarKey",
+        COALESCE(l.likes, 0)::int AS likes,
+        COALESCE(v.views, 0)::int AS views,
+        (ml."userId" IS NOT NULL) AS "likedByMe",
+        (f.id IS NOT NULL) AS following
+      FROM "Media" m
+      JOIN "PlayerProfile" p ON p.id = m."playerId"
+      JOIN "User" u ON u.id = p."userId"
+      LEFT JOIN "PlayerRecommendationWeight" w ON w."playerId" = p.id
+      LEFT JOIN (SELECT "mediaId", COUNT(*) AS likes FROM "MediaLike" GROUP BY "mediaId") l
+        ON l."mediaId" = m.id
+      LEFT JOIN (SELECT "mediaId", COUNT(*) AS views FROM "MediaView" GROUP BY "mediaId") v
+        ON v."mediaId" = m.id
+      LEFT JOIN "MediaLike" ml ON ml."mediaId" = m.id AND ml."userId" = ${viewerUserId}
+      LEFT JOIN "Follow" f
+        ON f."followerId" = ${viewerUserId} AND f."targetType" = 'PLAYER' AND f."targetId" = p.id
+      WHERE m.status = 'ACTIVE' AND m.type = 'VIDEO'
+      ORDER BY
+        ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
+        + ${FEED_FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
+        + ${FEED_LIKES_TERM} * ln(1 + COALESCE(l.likes, 0))
+        + ${FEED_FRESHNESS_TERM}
+          * exp(-EXTRACT(EPOCH FROM (now() - m."createdAt")) / ${FEED_HALF_LIFE_SECONDS})
+        DESC,
+        m."createdAt" DESC
+      LIMIT ${pageSize} OFFSET ${skip}
+    `);
+
+    const total = await this.prisma.media.count({ where: { status: 'ACTIVE', type: 'VIDEO' } });
+
+    const items = await Promise.all(
+      rows.map(
+        async ({
+          playerId,
+          firstName,
+          lastName,
+          birthDate,
+          primaryPosition,
+          region,
+          avatarKey,
+          likes,
+          views,
+          likedByMe,
+          following,
+          ...media
+        }) => ({
+          ...(await toMediaResponse(media, this.storage)),
+          likes,
+          views,
+          likedByMe,
+          following,
+          player: {
+            id: playerId,
+            firstName,
+            lastName,
+            birthDate,
+            primaryPosition,
+            region,
+            avatarUrl: this.storage.publicUrlOrNull(avatarKey),
+          },
+        }),
+      ),
+    );
+
+    return { items, total, page, pageSize };
+  }
+
+  /**
+   * Players worth following, for the panel beside the feed.
+   *
+   * Ranked by the same earned weight, minus anyone the viewer already follows and
+   * the viewer themselves — a suggestion you have already taken is not a
+   * suggestion. Players with no weight yet are included rather than filtered out,
+   * ordered behind those with some, so a new academy's intake is reachable.
+   */
+  async suggestedPlayers(viewerUserId: string, limit = 5) {
+    const take = Math.min(20, Math.max(1, limit));
+
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: viewerUserId, targetType: 'PLAYER' },
+      select: { targetId: true },
+    });
+
+    const players = await this.prisma.playerProfile.findMany({
+      where: {
+        id: { notIn: following.map((row) => row.targetId) },
+        userId: { not: viewerUserId },
+      },
+      // One indexed pass over the weight table rather than a query per player.
+      orderBy: [{ recommendationWeight: { globalWeight: 'desc' } }, { createdAt: 'desc' }],
+      take,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        primaryPosition: true,
+        region: true,
+        user: { select: { avatarKey: true } },
+        recommendationWeight: { select: { globalWeight: true, recommendationCount: true } },
+      },
+    });
+
+    return players.map(({ user, recommendationWeight, ...player }) => ({
+      ...player,
+      avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey),
+      globalWeight: recommendationWeight?.globalWeight ?? 0,
+      recommendationCount: recommendationWeight?.recommendationCount ?? 0,
+    }));
+  }
+
+  /**
    * The uploader corrects their own clip.
    *
    * Category is not editable — see UpdateMediaDto. The rating is, because a
@@ -250,9 +446,7 @@ export class MediaService {
       where: { id: mediaId },
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
-        ...(dto.description !== undefined
-          ? { description: dto.description.trim() || null }
-          : {}),
+        ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
         ...(dto.selfRating !== undefined ? { selfRating: dto.selfRating } : {}),
       },
     });
@@ -339,7 +533,9 @@ export class MediaService {
       this.prisma.mediaView.count({ where: { mediaId } }),
       this.prisma.mediaLike.count({ where: { mediaId } }),
       this.prisma.mediaComment.count({ where: { mediaId, status: 'ACTIVE' } }),
-      this.prisma.mediaLike.count({ where: { mediaId, ...(userId ? { userId } : { userId: '' }) } }),
+      this.prisma.mediaLike.count({
+        where: { mediaId, ...(userId ? { userId } : { userId: '' }) },
+      }),
     ]);
 
     return { mediaId, views, likes, comments, likedByMe: Boolean(userId) && mine > 0 };

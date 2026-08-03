@@ -17,6 +17,7 @@ import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import {
   ConfirmUploadDto,
+  FeedDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
@@ -60,6 +61,25 @@ export class MediaController {
   }
 
   /**
+   * The ranked feed — the scout's and the academy manager's home screen.
+   *
+   * Signed in only: the ranking is personalised by who the caller follows and
+   * marks what they have already liked, neither of which exists for a guest.
+   * Declared before `player/:playerId` and `:id`, since Nest matches in
+   * declaration order.
+   */
+  @Get('feed')
+  feed(@CurrentUser() user: AuthUser, @Query() dto: FeedDto) {
+    return this.mediaService.feed(user.userId, dto);
+  }
+
+  /** Players worth following, for the panel beside the feed. */
+  @Get('feed/suggested-players')
+  suggestedPlayers(@CurrentUser() user: AuthUser, @Query('limit') limit?: string) {
+    return this.mediaService.suggestedPlayers(user.userId, limit ? Number(limit) : undefined);
+  }
+
+  /**
    * A player's clips, newest first. `category` filters to one attribute's history.
    *
    * Carries permanent `url` and `posterUrl`: clips are public and stay reachable
@@ -73,11 +93,7 @@ export class MediaController {
 
   /** The uploader corrects their own clip's title, description or rating. */
   @Patch(':id')
-  update(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateMediaDto,
-  ) {
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateMediaDto) {
     return this.mediaService.update(user.userId, id, dto);
   }
 

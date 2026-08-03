@@ -713,6 +713,75 @@
         ]
       }
     },
+    "/api/v1/media/feed": {
+      "get": {
+        "operationId": "media_feed",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 24,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The ranked feed — the scout's and the academy manager's home screen.\n\nSigned in only: the ranking is personalised by who the caller follows and\nmarks what they have already liked, neither of which exists for a guest.\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/feed/suggested-players": {
+      "get": {
+        "operationId": "media_suggestedPlayers",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players worth following, for the panel beside the feed.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/player/{playerId}": {
       "get": {
         "operationId": "media_listForPlayer",

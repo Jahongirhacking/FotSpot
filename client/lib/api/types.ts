@@ -28,13 +28,7 @@ export type TrialApplicationStatus =
   'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
-  | 'PACE'
-  | 'DRIBBLING'
-  | 'PASSING'
-  | 'FINISHING'
-  | 'PHYSICAL'
-  | 'TECHNIQUE'
-  | 'MATCH_HIGHLIGHTS';
+  'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
 export type MediaType = 'IMAGE' | 'VIDEO';
 export type FollowTargetType = 'PLAYER' | 'ACADEMY';
 export type AcademyScoutFollowState = 'FOLLOWING' | 'MUTED';
@@ -74,6 +68,47 @@ export interface Media {
   /** Permanent URL of the cover frame; null when capture failed at upload. */
   posterUrl?: string | null;
   createdAt: string;
+}
+
+/**
+ * One clip in the ranked feed: the media, who it belongs to, and where the viewer
+ * already stands with it. All three come from one request — a feed that fetched
+ * engagement per tile would be an N+1 in the most-scrolled screen in the product.
+ */
+export interface FeedClip extends Omit<Media, 'playerId' | 'status'> {
+  likes: number;
+  views: number;
+  likedByMe: boolean;
+  /** Whether the viewer follows this player — the feed's extra ranking weight. */
+  following: boolean;
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+    avatarUrl: string | null;
+  };
+}
+
+export interface FeedPage {
+  items: FeedClip[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SuggestedPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  primaryPosition: string | null;
+  region: string | null;
+  avatarUrl: string | null;
+  globalWeight: number;
+  recommendationCount: number;
 }
 
 export interface PlayerProfile {
