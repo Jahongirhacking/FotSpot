@@ -13,13 +13,16 @@ import { RbacService } from '../rbac/rbac.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ClientInfo } from '../common/decorators/client-info.decorator';
 import { generateUsername, normaliseUsername } from '../users/username.util';
+import { generateResetCode, normaliseResetCode } from './reset-code.util';
 import {
   ChangePasswordDto,
   LoginEmailDto,
   OAuthLoginDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
   RegisterEmailDto,
   RequestRegistrationCodeDto,
+  ResetPasswordDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -29,6 +32,8 @@ const OTP_TTL_SECONDS = 300;
  *  the user may have to go and open on another device. */
 const REGISTRATION_CODE_TTL_SECONDS = 900;
 const REFRESH_TTL_FALLBACK_DAYS = 30;
+/** Long enough to go and find the email, short enough that a leaked one ages out. */
+const RESET_CODE_TTL_SECONDS = 900;
 
 /** Refresh-token claims. `sid` scopes the token to one Session row (1.21). */
 interface RefreshClaims {
@@ -235,6 +240,139 @@ export class AuthService {
     });
 
     return { changed: true };
+  }
+
+  // ---------- Forgotten password ----------
+
+  /**
+   * Sends a reset code to the address on the account.
+   *
+   * ## The response is identical whether or not the account exists
+   *
+   * Saying "no such user" here turns the endpoint into a way to test whether an
+   * email or a handle is registered — against a platform whose users are mostly
+   * children, that is a list worth having and worth not producing. So an unknown
+   * identifier takes the same time-ish path and returns the same body.
+   *
+   * The cost is real: someone who mistypes their address gets no feedback and
+   * waits for an email that will not come. The screen therefore says "if that
+   * account exists" rather than "sent", which is the honest phrasing of what just
+   * happened.
+   *
+   * Accepts an email or a username, because the person who has forgotten their
+   * password is exactly the person unsure which they signed up with.
+   */
+  async forgotPassword(dto: ForgotPasswordDto, client: ClientInfo = {}) {
+    await this.throttle.assertAllowed('password-reset', client.ipAddress);
+    // Counted whether or not the address resolves — which is the only option, since
+    // counting only the misses would make the block itself the enumeration oracle
+    // the rest of this method exists to close. It caps this endpoint at ten sends
+    // an hour per IP, and mailing someone a reset code they did not ask for is a
+    // nuisance worth capping.
+    await this.throttle.recordFailure('password-reset', client.ipAddress);
+
+    const identifier = dto.identifier.trim();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier.toLowerCase() }, { username: normaliseUsername(identifier) }],
+      },
+    });
+
+    const isProd = this.config.get('NODE_ENV') === 'production';
+    const nothingToSay = { sent: true, expiresInSeconds: RESET_CODE_TTL_SECONDS };
+
+    // No account, no email on the account, or a disabled one: same answer.
+    if (!user?.email || !user.isActive) return nothingToSay;
+
+    const code = generateResetCode();
+    await this.prisma.passwordResetCode.create({
+      data: {
+        userId: user.id,
+        codeHash: await argon2.hash(code),
+        expiresAt: new Date(Date.now() + RESET_CODE_TTL_SECONDS * 1000),
+      },
+    });
+
+    // In production both branches return the identical object — a field present on
+    // one path and absent on the other would be the very oracle this endpoint is
+    // built to deny. The dev echo is the same affordance registration already has:
+    // no email gateway is wired up (backend README), and without it the flow could
+    // not be exercised at all.
+    return isProd ? nothingToSay : { ...nothingToSay, devCode: code };
+  }
+
+  /**
+   * Sets a new password against a reset code, and signs every device out.
+   *
+   * The revocation is the point rather than a nicety: a password is reset because
+   * the old one may be in someone else's hands, and rotating the credential while
+   * leaving their sessions alive would change the lock without clearing the house.
+   *
+   * It is not instant, and the comment should say so. Access tokens are stateless
+   * — `JwtStrategy` verifies the signature and never reads the `Session` row — so
+   * revoking sessions stops refresh immediately but leaves an already-issued access
+   * token usable until it expires, up to `JWT_ACCESS_TTL` (15 minutes by default).
+   * That is the same bound `logout({ allDevices })` and `changePassword` already
+   * live with; closing it means checking the session on every request, which is a
+   * platform-wide decision and not one to make quietly inside a reset.
+   *
+   * Every unused code for the account is consumed too, not just the one redeemed
+   * — a second code sitting in an inbox is a second key.
+   */
+  async resetPassword(dto: ResetPasswordDto, client: ClientInfo = {}) {
+    await this.throttle.assertAllowed('password-reset', client.ipAddress);
+
+    const identifier = dto.identifier.trim();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier.toLowerCase() }, { username: normaliseUsername(identifier) }],
+      },
+    });
+
+    const invalid = new BadRequestException('That code is not right, or it has expired');
+    if (!user) {
+      await this.throttle.recordFailure('password-reset', client.ipAddress);
+      throw invalid;
+    }
+
+    const pending = await this.prisma.passwordResetCode.findFirst({
+      where: { userId: user.id, consumed: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!pending || pending.expiresAt < new Date()) {
+      await this.throttle.recordFailure('password-reset', client.ipAddress);
+      throw invalid;
+    }
+
+    if (!(await argon2.verify(pending.codeHash, normaliseResetCode(dto.code)))) {
+      await this.throttle.recordFailure('password-reset', client.ipAddress);
+      throw invalid;
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.passwordResetCode.updateMany({
+        where: { userId: user.id, consumed: false },
+        data: { consumed: true },
+      }),
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await argon2.hash(dto.newPassword),
+          // A reset is how an admin-created account escapes its handed-over
+          // password, so the flag has served its purpose.
+          mustChangePassword: false,
+        },
+      }),
+      this.prisma.session.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    await this.throttle.clear('password-reset', client.ipAddress);
+    // Deliberately no tokens: the user goes back to the sign-in screen and uses
+    // the password they just chose, which is what proves they remember it.
+    return { reset: true };
   }
 
   // ---------- Phone + OTP ----------

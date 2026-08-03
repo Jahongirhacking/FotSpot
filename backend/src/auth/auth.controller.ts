@@ -10,8 +10,10 @@ import {
   LogoutDto,
   OAuthLoginDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
   RegisterEmailDto,
   RequestRegistrationCodeDto,
+  ResetPasswordDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -45,6 +47,27 @@ export class AuthController {
   @Post('login/email')
   loginEmail(@Body() dto: LoginEmailDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.loginEmail(dto, client);
+  }
+
+  /**
+   * "I forgot my password" — sends a reset code to the address on the account.
+   *
+   * Answers identically whether or not the account exists, so it cannot be used
+   * to test which emails and handles are registered. See AuthService.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/forgot')
+  forgotPassword(@Body() dto: ForgotPasswordDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.forgotPassword(dto, client);
+  }
+
+  /** Sets a new password against the code, and signs every device out. */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/reset')
+  resetPassword(@Body() dto: ResetPasswordDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.resetPassword(dto, client);
   }
 
   @Public()

@@ -14,7 +14,7 @@ export const BLOCK_SECONDS = 30 * 60;
  */
 const STREAK_SECONDS = 60 * 60;
 
-export type ThrottleScope = 'login' | 'registration';
+export type ThrottleScope = 'login' | 'registration' | 'password-reset';
 
 /**
  * Counts consecutive failures per caller and locks them out after ten.

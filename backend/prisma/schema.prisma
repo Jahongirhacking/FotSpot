@@ -98,6 +98,7 @@ model User {
   notifications Notification[]
   otpCodes      OtpCode[]
   verificationCodes VerificationCode[]
+  passwordResetCodes PasswordResetCode[]
   auditLogs     AuditLog[]
   reportsFiled  Report[] @relation("ReportsFiled")
   follows       Follow[] @relation("UserFollows")
@@ -192,6 +193,27 @@ model RegistrationCode {
   createdAt   DateTime @default(now())
 
   @@index([email, consumed])
+}
+
+/**
+ * A code that lets someone set a new password without knowing the old one.
+ *
+ * Its own table rather than another `VerificationCode` row: that model confirms a
+ * *new* destination the user is moving to, while this authorises a credential
+ * change on an address they already hold. Same shape, opposite meaning — and the
+ * two have different lifecycles, since resetting also revokes every session.
+ */
+model PasswordResetCode {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, consumed])
 }
 
 // ---------- PLAYER PROFILE (1.6) ----------

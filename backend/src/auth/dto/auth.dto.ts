@@ -5,6 +5,7 @@ import {
   IsPhoneNumber,
   IsString,
   Length,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -57,6 +58,30 @@ export class LoginEmailDto {
 
   @IsString()
   password: string;
+}
+
+/** "I can't get in" — takes whatever the user remembers, email or handle. */
+export class ForgotPasswordDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+
+  /** Eight characters; spaces and case are forgiven before comparison. */
+  @IsString()
+  @Length(6, 20)
+  code: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }
 
 export class ChangePasswordDto {
