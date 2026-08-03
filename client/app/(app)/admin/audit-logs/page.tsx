@@ -46,7 +46,11 @@ export default async function AuditLogPage() {
                     {entry.action}
                   </Badge>
                   <span className="text-muted min-w-0 flex-1 truncate font-mono text-xs">
-                    {entry.userId ? entry.userId.slice(0, 8) : 'system'}
+                    {entry.user
+                      ? [entry.user.firstName, entry.user.lastName].filter(Boolean).join(' ') ||
+                        entry.user.email ||
+                        entry.user.id.slice(0, 8)
+                      : 'system'}
                     {entry.meta ? ` · ${JSON.stringify(entry.meta)}` : ''}
                   </span>
                   <span className="text-muted shrink-0 text-xs">

@@ -549,6 +549,35 @@
         ]
       }
     },
+    "/api/v1/media/recent": {
+      "get": {
+        "operationId": "media_listRecent",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The newest clips platform-wide, each with its player. Drives the landing\nstrip in one request instead of one per player — see MediaService.listRecent.\n\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/player/{playerId}": {
       "get": {
         "operationId": "media_listForPlayer",
@@ -2945,7 +2974,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [

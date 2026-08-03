@@ -80,6 +80,12 @@ export class RecommendationsService {
         },
       });
 
+      // A loop of upserts, kept deliberately. `academyIds` is capped at five by
+      // the DTO, so this is bounded at five fast indexed writes inside an
+      // already-open transaction — not an unbounded N. The alternative is a
+      // hand-written multi-row `INSERT … ON CONFLICT`, which buys microseconds
+      // and costs a piece of raw SQL that silently drifts the day someone renames
+      // a column. Revisit only if the cap goes away.
       for (const academyId of targets) {
         await tx.playerAcademyRecommendationWeight.upsert({
           where: { playerId_academyId: { playerId: dto.playerId, academyId } },
@@ -187,11 +193,22 @@ export class RecommendationsService {
     }));
   }
 
+  /**
+   * The academy's raw inbox. Joins the player and the scout, because both are
+   * rendered and neither can be shown from an id alone.
+   */
   async listForAcademy(academyId: string) {
-    return this.prisma.recommendation.findMany({
+    const rows = await this.prisma.recommendation.findMany({
       where: { academyId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        player: {
+          select: { id: true, firstName: true, lastName: true, birthDate: true },
+        },
+        scout: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
+      },
     });
+    return rows.map((row) => ({ ...row, scout: this.storage.withAvatarUrl(row.scout) }));
   }
 
   /**
@@ -242,9 +259,26 @@ export class RecommendationsService {
       byPlayer.set(playerId, entry);
     }
 
+    // One lookup for the whole page, keyed by id. The alternative — letting the
+    // inbox resolve names itself — is a request per row on the screen an academy
+    // manager opens most, and it is why that screen printed `Player 9f96f84d`.
+    const profiles = await this.prisma.playerProfile.findMany({
+      where: { id: { in: [...byPlayer.keys()] } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        primaryPosition: true,
+        region: true,
+      },
+    });
+    const playerOf = new Map(profiles.map((profile) => [profile.id, profile]));
+
     const items = [...byPlayer.entries()]
       .map(([playerId, entry]) => ({
         playerId,
+        player: playerOf.get(playerId) ?? null,
         recommendationIds: entry.recommendationIds,
         recommendationCount: entry.weights.length,
         specificCount: entry.specific,

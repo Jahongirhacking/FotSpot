@@ -44,7 +44,21 @@ export class AuditService {
     }
   }
 
+  /**
+   * The audit trail, with the actor resolved.
+   *
+   * The actor is joined here rather than left as a `userId` for the console to
+   * look up. "Who did this" is the entire question an audit log answers, and a
+   * screen that renders `71c6c2c2` cannot answer it without a request per row —
+   * a hundred of them for the default page.
+   */
   async listRecent(take = 100) {
-    return this.prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take });
+    return this.prisma.auditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take,
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
   }
 }

@@ -155,7 +155,9 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
                         href={`/players/${item.playerId}`}
                         className="block truncate text-sm font-medium hover:underline"
                       >
-                        {t.academy.player} {item.playerId.slice(0, 8)}
+                        {item.player
+                          ? `${item.player.firstName} ${item.player.lastName}`
+                          : `${t.academy.player} —`}
                       </Link>
                       <p className="text-muted text-xs">
                         {item.recommendationCount} · {t.academy.backing}

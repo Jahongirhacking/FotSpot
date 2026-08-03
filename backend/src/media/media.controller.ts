@@ -47,6 +47,19 @@ export class MediaController {
   }
 
   /**
+   * The newest clips platform-wide, each with its player. Drives the landing
+   * strip in one request instead of one per player — see MediaService.listRecent.
+   *
+   * Declared before `player/:playerId` and `:id`, since Nest matches in
+   * declaration order.
+   */
+  @Public()
+  @Get('recent')
+  listRecent(@Query('limit') limit?: string) {
+    return this.mediaService.listRecent(limit ? Number(limit) : undefined);
+  }
+
+  /**
    * A player's clips, newest first. `category` filters to one attribute's history.
    *
    * Carries permanent `url` and `posterUrl`: clips are public and stay reachable

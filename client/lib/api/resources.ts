@@ -229,6 +229,18 @@ export const academies = {
     apiFetch<{ relation: AcademyRelation | null }>(`/academies/${id}/relation`, opts),
 };
 
+/** GET /media/recent — a clip with the player it belongs to. */
+export interface RecentClip extends Media {
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+  };
+}
+
 export type AcademyRelation =
   | 'MANAGER'
   | 'COACH'
@@ -440,6 +452,8 @@ export interface UserDetail extends AdminUser {
 export interface AuditLogEntry {
   id: string;
   userId: string | null;
+  /** Joined by the API — "who did this" is the question an audit log answers. */
+  user: { id: string; firstName: string | null; lastName: string | null; email: string | null } | null;
   action: string;
   meta: Record<string, unknown> | null;
   createdAt: string;
@@ -680,6 +694,13 @@ export const media = {
   /** `category` narrows to one attribute's claim history. */
   listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
     apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
+
+  /**
+   * Newest clips platform-wide, each carrying its player. One request for the
+   * landing strip, which used to make one per player.
+   */
+  listRecent: (limit?: number, opts: Opts = {}) =>
+    apiFetch<RecentClip[]>(`/media/recent${toQuery({ limit })}`, opts),
 
   /** Whether the server can accept uploads at all — asked before recording. */
   storageStatus: (opts: Opts = {}) =>

@@ -83,7 +83,9 @@ export default async function InboxPage() {
                       href={`/players/${item.playerId}`}
                       className="block truncate font-medium hover:underline"
                     >
-                      Player {item.playerId.slice(0, 8)}
+                      {item.player
+                        ? `${item.player.firstName} ${item.player.lastName}`
+                        : 'Player'}
                     </Link>
                     <p className="text-muted text-xs">
                       backed by {item.recommendationCount} scout
@@ -119,7 +121,9 @@ export default async function InboxPage() {
                     href={`/players/${recommendation.playerId}`}
                     className="truncate hover:underline"
                   >
-                    Player {recommendation.playerId.slice(0, 8)}
+                    {recommendation.player
+                      ? `${recommendation.player.firstName} ${recommendation.player.lastName}`
+                      : 'Player'}
                   </Link>
                   <span className="text-muted shrink-0 text-xs">
                     {recommendation.status.toLowerCase()}

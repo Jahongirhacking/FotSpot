@@ -186,6 +186,49 @@ export class MediaService {
   }
 
   /**
+   * The newest clips across the platform, with the player each belongs to.
+   *
+   * ## Why this endpoint exists
+   *
+   * The landing page was fetching a page of players and then one media request
+   * per player — seven round trips to render one strip, on the busiest and most
+   * public page in the product, for visitors who are by definition on the worst
+   * connection they will ever have here. Classic N+1, just spread across HTTP
+   * rather than hidden in a loop over the database.
+   *
+   * It also asked the wrong question. "Clips belonging to the six newest players"
+   * is not what a *recent clips* strip means, and it goes empty the moment those
+   * six happen not to have uploaded anything. This asks for what the strip
+   * actually shows, and gets it in one indexed query ordered by `createdAt`.
+   */
+  async listRecent(limit = 8) {
+    const items = await this.prisma.media.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 24),
+      include: {
+        player: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            birthDate: true,
+            primaryPosition: true,
+            region: true,
+          },
+        },
+      },
+    });
+
+    return Promise.all(
+      items.map(async ({ player, ...media }) => ({
+        ...(await toMediaResponse(media, this.storage)),
+        player,
+      })),
+    );
+  }
+
+  /**
    * The uploader corrects their own clip.
    *
    * Category is not editable — see UpdateMediaDto. The rating is, because a

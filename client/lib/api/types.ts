@@ -144,6 +144,14 @@ export interface Recommendation {
   id: string;
   scoutId: string;
   playerId: string;
+  /** Joined on the academy inbox, so the screen never renders a bare id. */
+  player?: { id: string; firstName: string; lastName: string; birthDate: string } | null;
+  scout?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  } | null;
   /** Null for GLOBAL recommendations, which address no single academy (§1.5.3). */
   academyId: string | null;
   status: RecommendationStatus;
@@ -166,6 +174,15 @@ export interface MyRecommendation {
 /** GET /recommendations/academy/:id/ranked — README §1.5.1/§1.5.2. */
 export interface RankedRecommendation {
   playerId: string;
+  /** Joined by the API so the inbox never has to resolve names itself. */
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+  } | null;
   recommendationIds: string[];
   recommendationCount: number;
   credibility: number;
@@ -243,6 +260,13 @@ export interface Follow {
 }
 
 export interface AcademyScoutFollow {
+  /** Joined on the academy's own network listing, so no row renders a bare id. */
+  scout?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  } | null;
   id: string;
   academyId: string;
   scoutId: string;
