@@ -30,10 +30,11 @@ export function Pagination({
   return (
     <nav className="flex items-center justify-between gap-3" aria-label={t.common.page}>
       <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goTo(page - 1)}>
-        <ChevronLeft aria-hidden /> Previous
+        <ChevronLeft aria-hidden />
+        <span className="hidden sm:inline">{t.common.previous}</span>
       </Button>
       <p className="text-muted text-sm" aria-live="polite">
-        Page {page} of {lastPage}
+        {t.common.page} {page} {t.common.of} {lastPage}
       </p>
       <Button
         variant="outline"
@@ -41,7 +42,8 @@ export function Pagination({
         disabled={page >= lastPage}
         onClick={() => goTo(page + 1)}
       >
-        Next <ChevronRight aria-hidden />
+        <span className="hidden sm:inline">{t.common.next}</span>
+        <ChevronRight aria-hidden />
       </Button>
     </nav>
   );

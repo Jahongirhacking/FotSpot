@@ -78,7 +78,7 @@ export function AttributeBoard({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{t.player.attributes}</CardTitle>
@@ -94,9 +94,7 @@ export function AttributeBoard({
         </CardContent>
       </Card>
 
-      {selectedAttribute && (
-        <AttributeDetail attribute={selectedAttribute} clips={items} />
-      )}
+      {selectedAttribute && <AttributeDetail attribute={selectedAttribute} clips={items} />}
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
@@ -181,7 +179,9 @@ export function AttributeBoard({
           onUpdated={(updated) =>
             setItems((rest) =>
               rest.map((entry) =>
-                entry.id === updated.id ? { ...entry, ...updated, posterUrl: entry.posterUrl } : entry,
+                entry.id === updated.id
+                  ? { ...entry, ...updated, posterUrl: entry.posterUrl }
+                  : entry,
               ),
             )
           }
@@ -235,7 +235,7 @@ function Tab({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+        'inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors sm:min-h-8',
         active
           ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border hover:border-primary/50',

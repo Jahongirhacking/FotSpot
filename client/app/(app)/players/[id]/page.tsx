@@ -85,12 +85,16 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   // Fetched rather than read off `player.media` so the clip list and the bars
   // are built from exactly the same rows.
   const clips = await media
-    .listForPlayer(id, undefined, session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 })
+    .listForPlayer(
+      id,
+      undefined,
+      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
+    )
     .catch(() => [] as Media[]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         {/*
           Card | pitch on one row, the attribute board spanning both beneath —
           the board is wide by nature (six bars plus a clip grid) and reads badly
@@ -98,7 +102,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           `items-start` keeps the pitch card at its own height rather than
           stretching to the card's, which left a dead band under it.
         */}
-        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <PlayerCard
             player={player}
             assessments={assessments}
@@ -106,7 +110,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           />
           <OnThePitchCard player={player} t={t} />
 
-          <div className="sm:col-span-2">
+          {/* min-w-0: a grid item defaults to min-width:auto, which means it
+              refuses to shrink below its content. The clip category strip inside
+              scrolls horizontally, and without this the item grows to the strip's
+              full width instead — taking the whole page sideways with it. */}
+          <div className="min-w-0 sm:col-span-2">
             <AttributeBoard
               player={player}
               assessments={assessments}

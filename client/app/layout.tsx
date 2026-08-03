@@ -26,6 +26,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Draws behind the notch and the home indicator instead of letterboxing the
+  // page; globals.css then pads the shell by the insets, and the bottom sheet
+  // clears the indicator.
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     // The floodlit-pitch background, so the phone's status bar joins the page

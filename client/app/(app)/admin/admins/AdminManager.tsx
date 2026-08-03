@@ -86,7 +86,7 @@ export function AdminManager({ initialAdmins }: { initialAdmins: AdminUser[] }) 
             {(admins ?? []).map((person) => {
               const isSuper = person.roles.includes('super_admin');
               return (
-                <li key={person.id} className="flex items-center gap-3 py-3">
+                <li key={person.id} className="flex flex-wrap items-center gap-3 py-3">
                   <Avatar
                     src={person.avatarUrl}
                     fallback={initials(person.firstName, person.lastName)}
@@ -102,32 +102,37 @@ export function AdminManager({ initialAdmins }: { initialAdmins: AdminUser[] }) 
                     </p>
                   </div>
 
-                  <Badge variant={isSuper ? 'primary' : 'neutral'} className="shrink-0">
-                    {isSuper ? t.roles.super_admin : t.roles.admin}
-                  </Badge>
+                  {/* Role and action share the identity row on a laptop and drop
+                      to their own line on a phone, where the two of them together
+                      are wider than what is left after the name. */}
+                  <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+                    <Badge variant={isSuper ? 'primary' : 'neutral'} className="shrink-0">
+                      {isSuper ? t.roles.super_admin : t.roles.admin}
+                    </Badge>
 
-                  {isSuper ? (
-                    // The bootstrap account must stay reachable — locking every
-                    // super admin out is unrecoverable without database access.
-                    <span
-                      className="text-muted flex shrink-0 items-center gap-1 text-xs"
-                      title={t.admin.superAdminProtected}
-                    >
-                      <Lock className="size-3.5" aria-hidden />
-                    </span>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-danger shrink-0"
-                      disabled={revoke.isPending}
-                      onClick={() => {
-                        if (window.confirm(t.admin.confirmRevoke)) revoke.mutate(person.id);
-                      }}
-                    >
-                      <UserMinus aria-hidden /> {t.admin.revokeAdmin}
-                    </Button>
-                  )}
+                    {isSuper ? (
+                      // The bootstrap account must stay reachable — locking every
+                      // super admin out is unrecoverable without database access.
+                      <span
+                        className="text-muted flex shrink-0 items-center gap-1 text-xs"
+                        title={t.admin.superAdminProtected}
+                      >
+                        <Lock className="size-3.5" aria-hidden />
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-danger shrink-0"
+                        disabled={revoke.isPending}
+                        onClick={() => {
+                          if (window.confirm(t.admin.confirmRevoke)) revoke.mutate(person.id);
+                        }}
+                      >
+                        <UserMinus aria-hidden /> {t.admin.revokeAdmin}
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}

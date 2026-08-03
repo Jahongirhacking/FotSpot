@@ -22,7 +22,7 @@ export function DialogContent({
           // Bottom sheet on phones, centred dialog from sm up — the same component
           // has to work for a parent on an old Android and a manager on a laptop.
           'bg-surface border-border fixed z-50 flex max-h-[90dvh] flex-col overflow-y-auto border shadow-xl',
-          'inset-x-0 bottom-0 rounded-t-2xl',
+          'inset-x-0 bottom-0 rounded-t-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0',
           'sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
           className,
         )}

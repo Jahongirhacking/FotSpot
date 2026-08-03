@@ -160,6 +160,20 @@
     color: var(--foreground);
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* The layout asks for `viewport-fit: cover`, so the page paints under the
+       notch and the home indicator. These keep text out from under them —
+       mostly a landscape concern, where the notch eats a real margin. Zero on
+       every device that has no cutout. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Momentum scrolling that stops at the ends rather than dragging the whole
+     page with it — a phone-only annoyance on the scrollable filter and tab
+     strips. */
+  .scroll-x,
+  [class*='overflow-x-auto'] {
+    overscroll-behavior-x: contain;
   }
 
   /* Honest, visible focus. The audience includes parents on old devices and

@@ -8,14 +8,18 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="pitch-gradient flex min-h-dvh flex-col">
       <header className="flex items-center justify-between p-4">
-        <Link href="/" className="inline-flex items-center gap-2">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-2 pr-1">
           <FotSpotMark className="size-8" />
           <span className="text-lg font-bold tracking-tight">FotSpot</span>
         </Link>
-        {/* Signed-out users need this most: you can't ask someone to register in a
-            language they don't read. */}
-        <ThemeToggle compact />
-        <LanguageSwitcher />
+        {/* Grouped: as three direct children of a `justify-between` row, the theme
+            toggle was pushed into the middle of the header on its own. Signed-out
+            users need the language picker most — you can't ask someone to register
+            in a language they don't read. */}
+        <div className="flex items-center gap-1">
+          <ThemeToggle compact />
+          <LanguageSwitcher />
+        </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-4 pb-16">
         <div className="w-full max-w-md">{children}</div>

@@ -43,10 +43,10 @@ export function PlayerFilters() {
           event.preventDefault();
           apply({ query });
         }}
-        className="flex gap-2"
+        className="flex flex-wrap gap-2"
         role="search"
       >
-        <div className="relative flex-1">
+        <div className="relative min-w-40 flex-1">
           <Search
             className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden
@@ -59,15 +59,19 @@ export function PlayerFilters() {
             className="pl-9"
           />
         </div>
-        <Button type="submit">Search</Button>
+        <Button type="submit">{t.common.search}</Button>
       </form>
 
-      <div className="scroll-x flex gap-2 pb-1">
+      {/* A grid on a phone rather than the horizontal scroller this used to be:
+          with three filters, two of them sat off-screen behind a scroll people had
+          no reason to suspect was there. Region takes the full row because its
+          values are the longest. */}
+      <div className="grid gap-2 sm:flex sm:flex-wrap">
         <Select
           aria-label={t.onboarding.region}
           value={searchParams.get('region') ?? ''}
           onChange={(event) => apply({ region: event.target.value })}
-          className="min-w-36"
+          className="sm:min-w-36"
         >
           <option value="">{t.player.allRegions}</option>
           {UZBEK_REGIONS.map((region) => (
@@ -81,7 +85,7 @@ export function PlayerFilters() {
           aria-label={t.onboarding.mainPosition}
           value={searchParams.get('position') ?? ''}
           onChange={(event) => apply({ position: event.target.value })}
-          className="min-w-28"
+          className="sm:min-w-28"
         >
           <option value="">{t.player.anyPosition}</option>
           {POSITIONS.map((position) => (
@@ -96,7 +100,7 @@ export function PlayerFilters() {
           aria-label={t.onboarding.playingStyle}
           value={searchParams.get('playingStyle') ?? ''}
           onChange={(event) => apply({ playingStyle: event.target.value })}
-          className="min-w-40"
+          className="sm:min-w-40"
         >
           <option value="">{t.player.anyStyle}</option>
           {Object.entries(PLAYING_STYLES).map(([group, styles]) => (

@@ -12,8 +12,13 @@ export function Label({ className, ...props }: React.ComponentProps<typeof Label
   );
 }
 
+/**
+ * `text-base sm:text-sm` is not a typographic choice: Safari on iOS zooms the
+ * viewport in whenever a focused control's text is smaller than 16px, and then
+ * leaves the page zoomed. 16px on phones, back to 14px on pointer-sized screens.
+ */
 const controlClasses =
-  'bg-surface border-border placeholder:text-muted/70 min-h-11 w-full rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 aria-[invalid=true]:border-danger';
+  'bg-surface border-border placeholder:text-muted/70 min-h-11 w-full rounded-lg border px-3 py-2 text-base transition-colors disabled:opacity-50 sm:text-sm aria-[invalid=true]:border-danger';
 
 export function Input({ className, ...props }: React.ComponentProps<'input'>) {
   return <input className={cn(controlClasses, className)} {...props} />;

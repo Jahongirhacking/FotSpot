@@ -53,23 +53,21 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6">
-        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-6">
+        <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <PlayerCard player={profile} assessments={assessments} selfLabel={t.relation.you} />
           <OnThePitchCard player={profile} t={t} />
 
           {/* The clips live with the bars they move, not in a gallery of their
               own — uploading one is how a player raises a bar. */}
-          <div className="sm:col-span-2">
-            <AttributeBoard
-              player={profile}
-              assessments={assessments}
-              clips={clips}
-              canUpload
-            />
+          {/* min-w-0: a grid item defaults to min-width:auto, which means it
+              refuses to shrink below its content. The clip category strip inside
+              scrolls horizontally, and without this the item grows to the strip's
+              full width instead — taking the whole page sideways with it. */}
+          <div className="min-w-0 sm:col-span-2">
+            <AttributeBoard player={profile} assessments={assessments} clips={clips} canUpload />
           </div>
         </div>
-
       </div>
 
       <aside className="space-y-6">

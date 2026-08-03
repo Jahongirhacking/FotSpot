@@ -174,7 +174,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 flex-wrap gap-1">
+                    <div className="flex w-full flex-wrap gap-1 sm:w-auto">
                       <Button size="sm" variant="outline" onClick={() => setEditingId(academy.id)}>
                         <Pencil aria-hidden /> {t.admin.editAcademy}
                       </Button>

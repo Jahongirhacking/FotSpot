@@ -59,9 +59,12 @@ export default async function LandingPage() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
         <div className="flex items-center gap-2">
           <FotSpotMark className="size-8" />
-          <span className="text-lg font-bold tracking-tight">FotSpot</span>
+          {/* The wordmark is the first thing to go on a narrow phone: the mark
+              still says whose site this is, and the two sign-in buttons beside it
+              are what the visitor actually came to press. */}
+          <span className="hidden text-lg font-bold tracking-tight sm:inline">FotSpot</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle compact />
           <LanguageSwitcher />
           {session ? (
@@ -289,7 +292,6 @@ async function resolvePlayerCta(
     return { href: '/onboarding/player', hasCard: false };
   }
 }
-
 
 function Stat({
   icon: Icon,
