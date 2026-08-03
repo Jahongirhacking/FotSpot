@@ -163,7 +163,7 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
                         {item.recommendationCount} · {t.academy.backing}
                       </p>
                     </div>
-                    <CredibilityMeter value={item.credibility} />
+                    <CredibilityMeter value={item.credibility} t={t} />
                   </li>
                 ))}
               </ul>

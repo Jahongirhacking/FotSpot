@@ -5,6 +5,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 
 import { AcademiesModule } from './academies/academies.module';
 import { StorageModule } from './storage/storage.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -34,6 +35,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     PrismaModule,
     RedisModule,
     StorageModule,
+    RateLimitModule,
     AuditModule,
     RbacModule,
     AuthModule,

@@ -94,7 +94,7 @@ export default async function InboxPage() {
                       {item.recommendationCount === 1 ? '' : 's'}
                     </p>
                   </div>
-                  <CredibilityMeter value={item.credibility} />
+                  <CredibilityMeter value={item.credibility} t={t} />
                   <InboxActions recommendationIds={item.recommendationIds} />
                 </li>
               ))}

@@ -26,8 +26,11 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('register/request-code')
-  requestRegistrationCode(@Body() dto: RequestRegistrationCodeDto) {
-    return this.authService.requestRegistrationCode(dto);
+  requestRegistrationCode(
+    @Body() dto: RequestRegistrationCodeDto,
+    @ClientInfoParam() client: ClientInfo,
+  ) {
+    return this.authService.requestRegistrationCode(dto, client);
   }
 
   /** Step 2: creates the account, only against a code that checks out. */

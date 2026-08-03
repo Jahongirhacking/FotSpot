@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
+import type { Dictionary } from '@/lib/i18n';
 
-export async function CoachHome({ token }: { token: string }) {
+export async function CoachHome({ token, t }: { token: string; t: Dictionary }) {
   const [profile, stats] = await Promise.all([
     safe<CoachProfile | null>(() => coaches.getMine({ token, cache: 'no-store' }), null),
     safe<ScoutStats | null>(() => recommendations.myScoutStats({ token, cache: 'no-store' }), null),
@@ -58,7 +59,7 @@ export async function CoachHome({ token }: { token: string }) {
         </Card>
       </div>
 
-      <aside className="space-y-6">{stats && <ScoutLevelCard stats={stats} />}</aside>
+      <aside className="space-y-6">{stats && <ScoutLevelCard stats={stats} t={t} />}</aside>
     </div>
   );
 }

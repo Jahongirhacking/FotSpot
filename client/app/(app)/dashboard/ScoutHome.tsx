@@ -22,7 +22,7 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="space-y-6">
-        {stats && <ScoutLevelCard stats={stats} />}
+        {stats && <ScoutLevelCard stats={stats} t={t} />}
 
         {/* The reward loop from §1.5.2 — a volunteer coach seeing "3 academies follow
             my recommendations" is real status, and it costs nothing to give. */}

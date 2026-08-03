@@ -10,6 +10,7 @@ import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ClientInfo } from '../common/decorators/client-info.decorator';
 import { generateUsername, normaliseUsername } from '../users/username.util';
 import {
@@ -56,6 +57,7 @@ export class AuthService {
     private jwt: JwtService,
     private config: ConfigService,
     private rbac: RbacService,
+    private throttle: RateLimitService,
   ) {}
 
   // ---------- Email + Password ----------
@@ -71,7 +73,11 @@ export class AuthService {
    * in the response so the flow is testable; in production nothing is sent yet
    * and the caller is told so instead of being left waiting.
    */
-  async requestRegistrationCode(dto: RequestRegistrationCodeDto) {
+  async requestRegistrationCode(dto: RequestRegistrationCodeDto, client: ClientInfo = {}) {
+    // Bounded on the same counter as code entry: without it, one caller can make
+    // the server send unlimited mail to addresses they do not own.
+    await this.throttle.assertAllowed('registration', client.ipAddress);
+
     const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Email already registered');
@@ -102,6 +108,8 @@ export class AuthService {
    * "when" is the question asked during a support conversation.
    */
   async registerEmail(dto: RegisterEmailDto, client: ClientInfo = {}) {
+    await this.throttle.assertAllowed('registration', client.ipAddress);
+
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -114,6 +122,7 @@ export class AuthService {
     if (!pending) throw new BadRequestException('Request a code for this address first');
     if (pending.expiresAt < new Date()) throw new BadRequestException('That code has expired');
     if (!(await argon2.verify(pending.codeHash, dto.code))) {
+      await this.throttle.recordFailure('registration', client.ipAddress);
       throw new BadRequestException('That code is not right');
     }
 
@@ -133,6 +142,7 @@ export class AuthService {
       });
     });
 
+    await this.throttle.clear('registration', client.ipAddress);
     return this.issueTokens(user.id, client);
   }
 
@@ -159,6 +169,10 @@ export class AuthService {
    * numbers and academy usernames exist.
    */
   async loginEmail(dto: LoginEmailDto, client: ClientInfo = {}) {
+    // Before the credential is looked at, so a blocked caller cannot use timing
+    // or the error message to learn whether their guess was right.
+    await this.throttle.assertAllowed('login', client.ipAddress);
+
     if (!dto.email && !dto.username) {
       throw new BadRequestException('Enter your email or username');
     }
@@ -170,12 +184,21 @@ export class AuthService {
         ? { email: dto.email.trim().toLowerCase() }
         : { username: normaliseUsername(dto.username!) },
     });
-    if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
+    if (!user || !user.passwordHash) {
+      await this.throttle.recordFailure('login', client.ipAddress);
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const valid = await argon2.verify(user.passwordHash, dto.password);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      await this.throttle.recordFailure('login', client.ipAddress);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    // A disabled account is not a wrong guess, so it does not count against the
+    // streak — the person knows their own password and retrying will not help.
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
+    await this.throttle.clear('login', client.ipAddress);
     return this.issueTokens(user.id, client);
   }
 
@@ -232,6 +255,8 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto, client: ClientInfo = {}) {
+    await this.throttle.assertAllowed('login', client.ipAddress);
+
     const otp = await this.prisma.otpCode.findFirst({
       where: { phone: dto.phone, consumed: false },
       orderBy: { createdAt: 'desc' },
@@ -240,7 +265,12 @@ export class AuthService {
     if (otp.expiresAt < new Date()) throw new BadRequestException('OTP expired');
 
     const valid = await argon2.verify(otp.codeHash, dto.code);
-    if (!valid) throw new BadRequestException('Invalid OTP code');
+    if (!valid) {
+      // A six-digit code is a million guesses; ten tries is what keeps that a
+      // million rather than an afternoon.
+      await this.throttle.recordFailure('login', client.ipAddress);
+      throw new BadRequestException('Invalid OTP code');
+    }
 
     await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
 
@@ -252,6 +282,7 @@ export class AuthService {
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
+    await this.throttle.clear('login', client.ipAddress);
     return this.issueTokens(user.id, client);
   }
 

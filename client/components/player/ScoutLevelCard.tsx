@@ -2,7 +2,7 @@ import { Trophy } from 'lucide-react';
 import type { ScoutStats } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { useI18n } from '@/components/layout/I18nProvider';
+import type { Dictionary } from '@/lib/i18n';
 
 /**
  * Scout reputation — README §1.5.
@@ -19,8 +19,7 @@ const TIERS = [
   { level: 6, name: 'Legendary Scout', minRecommendations: 250, minSuccessRate: 50, weight: 125 },
 ] as const;
 
-export function ScoutLevelCard({ stats }: { stats: ScoutStats }) {
-  const { t } = useI18n();
+export function ScoutLevelCard({ stats, t }: { stats: ScoutStats; t: Dictionary }) {
   const tier = TIERS.find((t) => t.level === stats.level) ?? TIERS[0];
   const next = TIERS.find((t) => t.level === stats.level + 1);
 

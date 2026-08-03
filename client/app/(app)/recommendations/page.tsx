@@ -31,7 +31,7 @@ export default async function MyRecommendationsPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside>{stats && <ScoutLevelCard stats={stats} />}</aside>
+      <aside>{stats && <ScoutLevelCard stats={stats} t={t} />}</aside>
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
