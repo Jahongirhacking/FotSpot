@@ -221,6 +221,7 @@ export const ru: Dictionary = {
     network: 'Связи',
     networkHint: 'На кого вы подписаны и сколько подписано на вас.',
     followers: 'Подписчики',
+    noAffiliations: 'Пока нет привязки к академии или тренеру.',
     following: 'Подписки',
     notFollowingTitle: 'Вы пока ни на кого не подписаны',
     notFollowingBody: 'Подпишитесь на игрока или академию — их новости будут выше в вашей ленте.',

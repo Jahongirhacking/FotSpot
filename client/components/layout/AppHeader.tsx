@@ -1,20 +1,20 @@
 'use client';
 
+import { FotSpotMark } from '@/components/shared/FotSpotMark';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
+import { Menu as MenuIcon, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
-import { Menu as MenuIcon, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useI18n } from './I18nProvider';
-import { useSession } from './SessionProvider';
-import { RoleSwitcher } from './RoleSwitcher';
-import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import { ThemeToggle } from './ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 import { ProfileMenu } from './ProfileMenu';
+import { RoleSwitcher } from './RoleSwitcher';
+import { useSession } from './SessionProvider';
+import { ThemeToggle } from './ThemeToggle';
 import { navForRole } from './nav';
-import { Button } from '@/components/ui/Button';
-import { FotSpotMark } from '@/components/shared/FotSpotMark';
 
 /**
  * The inline nav appears at `lg`, not `md`.
@@ -50,8 +50,8 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
           {mobileOpen ? <X aria-hidden /> : <MenuIcon aria-hidden />}
         </Button>
 
-        <Link href="/dashboard" className="mr-1 flex min-h-11 items-center gap-2 pr-1">
-          <FotSpotMark className="size-7" />
+        <Link href="/dashboard" className="mr-2.5 flex min-h-11 items-center gap-1 pr-1">
+          <FotSpotMark />
           <span className="hidden text-base font-bold tracking-tight sm:inline">
             {t.common.appName}
           </span>

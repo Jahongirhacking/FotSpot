@@ -222,6 +222,7 @@ export const en: Dictionary = {
     network: 'Network',
     networkHint: 'Who you follow, and how many follow you.',
     followers: 'Followers',
+    noAffiliations: 'No academy or coach linked yet.',
     following: 'Following',
     notFollowingTitle: 'You are not following anyone yet',
     notFollowingBody: 'Follow a player or an academy and their clips rank higher in your feed.',

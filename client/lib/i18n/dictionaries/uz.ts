@@ -233,6 +233,7 @@ export const uz = {
     network: 'Tarmoq',
     networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
     followers: 'Obunachilar',
+    noAffiliations: 'Hozircha akademiya yoki murabbiy biriktirilmagan.',
     following: 'Obunalar',
     notFollowingTitle: 'Hozircha hech kimni kuzatmayapsiz',
     notFollowingBody:

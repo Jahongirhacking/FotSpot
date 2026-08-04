@@ -1,3 +1,5 @@
+import type { Dictionary } from '@/lib/i18n';
+import type { Role } from '@/lib/roles';
 import {
   Building2,
   CalendarDays,
@@ -9,8 +11,6 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-import type { Role } from '@/lib/roles';
-import type { Dictionary } from '@/lib/i18n';
 
 export interface NavItem {
   href: string;
@@ -65,6 +65,7 @@ export function navForRole(role: Role | null): NavItem[] {
     // clarity decision about what the menu is *for*, not a permission gate.
     case 'academy_manager':
       return [
+        { href: '/dashboard', label: 'home', icon: Home },
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
         { href: '/players', label: 'findPlayers', icon: Search },
