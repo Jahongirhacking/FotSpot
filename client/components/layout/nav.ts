@@ -36,6 +36,9 @@ export function navForRole(role: Role | null): NavItem[] {
     case 'player':
       return [
         { href: '/dashboard', label: 'myCard', icon: Sparkles },
+        // Players watch the feed too — it is where they see what the standard
+        // looks like at their age, which is the whole argument for uploading.
+        { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/trials', label: 'trials', icon: CalendarDays },
         { href: '/academies', label: 'academies', icon: Building2 },
         { href: '/players', label: 'players', icon: Search },

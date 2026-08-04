@@ -71,6 +71,14 @@ model User {
   /// When the address was proved, not merely typed. Null for accounts created
   /// before registration required a code, and for phone/OAuth signups that have
   /// no email at all.
+  /// When true, the account is hidden from public listings and its profile is
+  /// only readable by the account itself and by admins. Set from Settings.
+  ///
+  /// Default false rather than true: an account nobody can find cannot be
+  /// scouted, and being seen is what the platform is for. The switch exists
+  /// because a fourteen-year-old's guardian may reasonably want it off.
+  isPrivate     Boolean  @default(false)
+
   emailVerifiedAt DateTime?
   passwordHash  String?
   firstName     String?
@@ -332,6 +340,21 @@ enum AcademyMemberRole {
   MANAGER
   COACH
   SCOUT
+  PLAYER
+}
+
+/**
+ * A membership is never deleted, only moved through these.
+ *
+ * `INACTIVE` is a coach who has stopped working with the academy but whose
+ * assessments still have to mean something — deleting the row would orphan every
+ * judgement they ever made. `RELEASED` is the academy saying "we are done, they
+ * are free to join someone else", which is what another academy imports.
+ */
+enum AcademyMemberStatus {
+  ACTIVE
+  INACTIVE
+  RELEASED
 }
 
 model AcademyMember {
@@ -340,6 +363,14 @@ model AcademyMember {
   userId     String
   coachId    String?
   role       AcademyMemberRole
+  status     AcademyMemberStatus @default(ACTIVE)
+
+  /// Set when the academy releases the member for transfer, cleared on import.
+  releasedAt DateTime?
+  /// Where they came from, so a transfer is a fact on the record rather than a
+  /// row that quietly changed academies overnight.
+  previousAcademyId String?
+  joinedAt   DateTime @default(now())
 
   academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   user       User @relation(fields: [userId], references: [id], onDelete: Cascade)

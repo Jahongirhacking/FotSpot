@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -26,6 +27,12 @@ export class UpdateProfileDto {
    * turn every profile view into a request to a third-party server.
    */
   @IsOptional() @IsString() @MaxLength(500) avatarStorageKey?: string;
+
+  /**
+   * Hide the account from public listings and profile reads. Off by default —
+   * an account nobody can find cannot be scouted.
+   */
+  @IsOptional() @IsBoolean() isPrivate?: boolean;
 }
 
 export class AvatarUploadUrlDto {

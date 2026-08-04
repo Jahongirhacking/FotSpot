@@ -143,6 +143,8 @@ export const uz = {
    * qayta ishlatiladi.
    */
   placeholders: {
+    trialTitle: 'Masalan, U14 yozgi tanlov',
+    positions: 'GK, CB, LW',
     firstName: 'Masalan, Javohir',
     lastName: 'Masalan, Rustamov',
     email: 'ism@example.com',
@@ -228,6 +230,19 @@ export const uz = {
   },
 
   profile: {
+    network: 'Tarmoq',
+    networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
+    followers: 'Obunachilar',
+    following: 'Obunalar',
+    notFollowingTitle: 'Hozircha hech kimni kuzatmayapsiz',
+    notFollowingBody:
+      'O‘yinchi yoki akademiyani kuzatsangiz, ularning yangiliklari lentangizda ko‘proq ko‘rinadi.',
+    players: 'O‘yinchilar',
+    coaches: 'Murabbiylar',
+    scouts: 'Skautlar',
+    assessedPlayers: 'Baholangan o‘yinchilar',
+    privateProfile: 'Yopiq profil',
+    privateProfileHint: 'Yoqilsa, profilingiz qidiruvda va ommaviy ro‘yxatlarda ko‘rinmaydi.',
     username: 'Foydalanuvchi nomi',
     usernameHint:
       'Foydalanuvchi nomini o‘zgartirishingiz mumkin, lekin u takrorlanmas bo‘lishi kerak.',
@@ -284,7 +299,6 @@ export const uz = {
     successRate: 'Muvaffaqiyat',
     level: 'Daraja',
     assessments: 'Baholashlar',
-    following: 'Kuzatilmoqda',
     followerAcademies: 'Sizni kuzatuvchi akademiyalar',
     noPlayerCard: 'Sizda hali futbolchi kartasi yo‘q.',
     createPlayerCard: 'Futbolchi kartasi yaratish',
@@ -321,6 +335,23 @@ export const uz = {
   },
 
   academy: {
+    roster: 'Tarkib',
+    rosterHint: 'Murabbiylar, skautlar va o‘yinchilar — reyting bo‘yicha saralangan.',
+    memberActive: 'Faol',
+    memberInactive: 'Nofaol',
+    memberReleased: 'Transferda',
+    makeInactive: 'Nofaol qilish',
+    makeActive: 'Faollashtirish',
+    release: 'Transferga chiqarish',
+    confirmRelease: 'Bu a’zoni transferga chiqarasizmi? Boshqa akademiya uni qabul qilishi mumkin.',
+    transferMarket: 'Transfer ro‘yxati',
+    transferMarketHint: 'Boshqa akademiyalar bo‘shatgan murabbiy va o‘yinchilar.',
+    importMember: 'Qabul qilish',
+    noMembers: 'Bu bo‘limda hech kim yo‘q',
+    rating: 'Reyting',
+    notAssessed: 'Baholanmagan',
+    createTrial: 'Sinov e’lon qilish',
+    myTrials: 'Akademiya sinovlari',
     verifiedAcademy: 'Tasdiqlangan akademiya',
     awaitingVerification: 'Tasdiqlash kutilmoqda',
     noTrialsNow: 'Hozircha sinovlar yo‘q.',
@@ -517,6 +548,15 @@ export const uz = {
   },
 
   trials: {
+    title: 'Sarlavha',
+    date: 'Sana va vaqt',
+    ageMin: 'Eng kichik yosh',
+    ageMax: 'Eng katta yosh',
+    positions: 'Pozitsiyalar',
+    positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
+    requirements: 'Talablar',
+    open: 'Ochiq',
+    closed: 'Yopilgan',
     location: 'Manzil',
     openTrials: 'Ochiq sinovlar',
     openTrialsHint:

@@ -111,6 +111,71 @@ export interface SuggestedPlayer {
   recommendationCount: number;
 }
 
+/** The block behind the avatar menu — see backend UsersService.summary. */
+export interface ProfileSummary {
+  followers: number;
+  following: number;
+  player: { profileId: string; coach: SummaryCoach | null } | null;
+  coach: { profileId: string; status: string; assessedPlayers: number } | null;
+  academy: {
+    id: string;
+    name: string;
+    region: string | null;
+    district: string | null;
+    status: string;
+    myRole: AcademyMemberRole;
+    coaches: number;
+    players: number;
+    scouts: number;
+  } | null;
+}
+
+export interface SummaryCoach {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  lastAssessedAt: string;
+}
+
+export type AcademyMemberRole = 'MANAGER' | 'COACH' | 'SCOUT' | 'PLAYER';
+export type AcademyMemberStatus = 'ACTIVE' | 'INACTIVE' | 'RELEASED';
+
+/** One person on an academy's books. `rating` is the mean assessed attribute. */
+export interface AcademyMember {
+  id: string;
+  role: AcademyMemberRole;
+  status: AcademyMemberStatus;
+  joinedAt: string;
+  releasedAt: string | null;
+  previousAcademyId: string | null;
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  playerId: string | null;
+  primaryPosition: string | null;
+  birthDate: string | null;
+  coachStatus: string | null;
+  rating: number | null;
+}
+
+export interface TransferListing {
+  id: string;
+  role: AcademyMemberRole;
+  releasedAt: string | null;
+  academy: { id: string; name: string; region: string | null };
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  playerId: string | null;
+  primaryPosition: string | null;
+  rating: number | null;
+}
+
 export interface PlayerProfile {
   id: string;
   userId: string;
@@ -147,16 +212,17 @@ export interface AcademyProfile {
   district?: string | null;
   description?: string | null;
   status: VerificationStatus;
-  members?: AcademyMember[];
+  members?: AcademyMemberRef[];
   createdAt: string;
 }
 
-export interface AcademyMember {
+/** The trimmed membership embedded in an academy profile. */
+export interface AcademyMemberRef {
   id: string;
   academyId: string;
   userId: string;
   coachId?: string | null;
-  role: 'MANAGER' | 'COACH' | 'SCOUT';
+  role: AcademyMemberRole;
   createdAt: string;
 }
 

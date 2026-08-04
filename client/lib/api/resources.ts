@@ -13,6 +13,9 @@ import type {
   DeviceSession,
   Follow,
   FollowTargetType,
+  AcademyMember,
+  AcademyMemberRole,
+  AcademyMemberStatus,
   FeedPage,
   Media,
   MediaCategory,
@@ -27,7 +30,9 @@ import type {
   Trial,
   TrialApplication,
   TrialApplicationStatus,
+  ProfileSummary,
   SuggestedPlayer,
+  TransferListing,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -39,6 +44,9 @@ export const users = {
 
   /** Identity + roles + per-role counters for the profile screen, in one request. */
   myProfile: (opts: Opts = {}) => apiFetch<MyProfileResponse>('/users/me/profile', opts),
+
+  /** The short block behind the avatar menu: counts, academy, coach. */
+  summary: (opts: Opts = {}) => apiFetch<ProfileSummary>('/users/me/summary', opts),
 
   updateProfile: (body: UpdateProfileBody, opts: Opts = {}) =>
     apiFetch<{
@@ -78,6 +86,8 @@ export interface UpdateProfileBody {
   /** Public handle. Sent without the `@`; uniqueness is the API's answer to give. */
   username?: string;
   avatarStorageKey?: string;
+  /** Hide the account from search, listings and public profile reads. */
+  isPrivate?: boolean;
 }
 
 export interface AvatarUploadUrl {
@@ -113,6 +123,8 @@ export interface MeResponse {
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
+  /** Hidden from search, listings and public profile reads. */
+  isPrivate?: boolean;
   createdAt: string;
   roles: string[];
   permissions: string[];
@@ -787,6 +799,47 @@ export const media = {
 };
 
 // ---------- Follows ----------
+
+export const academyRoster = {
+  /** Coaches, scouts and the squad; players come back sorted by assessed rating. */
+  list: (
+    academyId: string,
+    params: { role?: AcademyMemberRole; status?: AcademyMemberStatus } = {},
+    opts: Opts = {},
+  ) => apiFetch<AcademyMember[]>(`/academies/${academyId}/members${toQuery(params)}`, opts),
+
+  update: (
+    academyId: string,
+    memberId: string,
+    body: { role?: AcademyMemberRole; status?: 'ACTIVE' | 'INACTIVE' },
+    opts: Opts = {},
+  ) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/${memberId}`, {
+      method: 'PATCH',
+      body,
+      ...opts,
+    }),
+
+  /** Let someone go, so another academy can import them. */
+  release: (academyId: string, memberId: string, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/${memberId}/release`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  transferMarket: (role: AcademyMemberRole | undefined, opts: Opts = {}) =>
+    apiFetch<TransferListing[]>(`/academies/transfers/available${toQuery({ role })}`, opts),
+
+  import: (academyId: string, memberId: string, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/import`, {
+      method: 'POST',
+      body: { memberId },
+      ...opts,
+    }),
+
+  add: (academyId: string, body: { userId: string; role: AcademyMemberRole }, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/staff`, { method: 'POST', body, ...opts }),
+};
 
 export const follows = {
   follow: (body: { targetType: FollowTargetType; targetId: string }, opts: Opts = {}) =>

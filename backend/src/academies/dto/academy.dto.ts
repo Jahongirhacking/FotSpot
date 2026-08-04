@@ -1,3 +1,4 @@
+import { AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsIn,
@@ -61,5 +62,27 @@ export class UpdateAcademyDto {
 
 export class AddStaffMemberDto {
   @IsUUID() userId: string;
-  @IsIn(['COACH', 'SCOUT']) role: 'COACH' | 'SCOUT';
+  /** Players are members too — an academy's squad is a roster, not a search. */
+  @IsIn(['COACH', 'SCOUT', 'PLAYER']) role: 'COACH' | 'SCOUT' | 'PLAYER';
+}
+
+/**
+ * Change what a member is, or whether they are still active.
+ *
+ * There is no delete. A coach who has left keeps every assessment they made, and
+ * a row that vanishes takes the meaning of those judgements with it.
+ */
+export class UpdateMemberDto {
+  @IsOptional() @IsIn(['COACH', 'SCOUT', 'PLAYER']) role?: 'COACH' | 'SCOUT' | 'PLAYER';
+  @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
+}
+
+export class ListMembersDto {
+  @IsOptional() @IsIn(['MANAGER', 'COACH', 'SCOUT', 'PLAYER']) role?: AcademyMemberRole;
+  @IsOptional() @IsIn(['ACTIVE', 'INACTIVE', 'RELEASED']) status?: AcademyMemberStatus;
+}
+
+/** Take on a member another academy has released. */
+export class ImportMemberDto {
+  @IsUUID() memberId: string;
 }

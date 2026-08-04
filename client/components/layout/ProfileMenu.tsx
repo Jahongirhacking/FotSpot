@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/Menu';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
+import { ProfileSummaryBlock } from './ProfileSummaryBlock';
 
 /**
  * Account button: profile, role switching, settings, sign out.
@@ -63,6 +64,10 @@ export function ProfileMenu({
       </MenuTrigger>
 
       <MenuContent className="min-w-64">
+        {/* Who you are here, before what you can do about it. */}
+        <ProfileSummaryBlock />
+        <MenuSeparator />
+
         <MenuItem onSelect={() => router.push('/profile')}>
           <User aria-hidden /> {t.nav.profile}
         </MenuItem>

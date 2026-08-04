@@ -571,6 +571,25 @@
         ]
       }
     },
+    "/api/v1/users/me/summary": {
+      "get": {
+        "operationId": "users_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users/{id}": {
       "get": {
         "operationId": "users_publicProfile",
@@ -1930,6 +1949,214 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members": {
+      "get": {
+        "operationId": "academies_listMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "MANAGER",
+                "COACH",
+                "SCOUT",
+                "PLAYER"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "RELEASED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The roster: coaches, scouts and the squad, players sorted by assessed rating.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/{memberId}": {
+      "patch": {
+        "operationId": "academies_updateMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a membership or stand it down. There is no delete — see the service.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/{memberId}/release": {
+      "post": {
+        "operationId": "academies_releaseMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Let a member go, so another academy can take them on.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/transfers/available": {
+      "get": {
+        "operationId": "academies_listTransferMarket",
+        "parameters": [
+          {
+            "name": "role",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everyone any academy has released — declared before `:id` routes.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/import": {
+      "post": {
+        "operationId": "academies_importMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take on someone another academy released.",
         "tags": [
           "academies"
         ]
@@ -3698,6 +3925,10 @@
             "type": "string",
             "description": "Set only by confirming an upload from `POST /users/me/avatar/upload-url`.\nAccepting an arbitrary URL here would let a profile embed a remote image and\nturn every profile view into a request to a third-party server.",
             "maxLength": 500
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "description": "Hide the account from public listings and profile reads. Off by default —\nan account nobody can find cannot be scouted."
           }
         }
       },
@@ -4215,15 +4446,48 @@
           },
           "role": {
             "type": "string",
+            "description": "Players are members too — an academy's squad is a roster, not a search.",
             "enum": [
               "COACH",
-              "SCOUT"
+              "SCOUT",
+              "PLAYER"
             ]
           }
         },
         "required": [
           "userId",
           "role"
+        ]
+      },
+      "UpdateMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "COACH",
+              "SCOUT",
+              "PLAYER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          }
+        }
+      },
+      "ImportMemberDto": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId"
         ]
       },
       "EndorsementRole": {

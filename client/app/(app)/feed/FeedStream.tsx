@@ -94,7 +94,9 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
       >
         <FeedCard
           clip={clip}
-          playing={index === centerIndex}
+          // Nothing plays behind the full-screen viewer: two soundtracks at once,
+          // and a video decoding for a screen nobody can see.
+          playing={openIndex === null && index === centerIndex}
           // The neighbours keep their element so a scroll into them starts
           // instantly instead of waiting on a fresh decode.
           mounted={Math.abs(index - centerIndex) <= 1}

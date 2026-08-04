@@ -55,7 +55,7 @@ export class PlayersController {
 
   @Public()
   @Get(':id')
-  getPublicProfile(@Param('id') id: string) {
-    return this.playersService.getPublicProfile(id);
+  getPublicProfile(@Param('id') id: string, @CurrentUser() viewer?: AuthUser) {
+    return this.playersService.getPublicProfile(id, viewer);
   }
 }

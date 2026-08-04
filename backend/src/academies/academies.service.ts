@@ -1,20 +1,25 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { Prisma } from '@prisma/client';
+import { AcademyMemberRole, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
   AddStaffMemberDto,
+  ImportMemberDto,
+  ListMembersDto,
+  UpdateMemberDto,
   CreateAcademyDto,
   NewManagerDto,
   SetManagerDto,
@@ -34,6 +39,7 @@ export class AcademiesService {
     private rbac: RbacService,
     private redis: RedisService,
     private audit: AuditService,
+    private storage: StorageService,
   ) {}
 
   /**
@@ -236,9 +242,7 @@ export class AcademiesService {
   /** The two ways to name a manager are alternatives, not a merge. */
   private assertOneManagerSource(managerUserId?: string, newManager?: NewManagerDto) {
     if (managerUserId && newManager) {
-      throw new BadRequestException(
-        'Choose one: an existing user, or a new account — not both',
-      );
+      throw new BadRequestException('Choose one: an existing user, or a new account — not both');
     }
   }
 
@@ -459,6 +463,239 @@ export class AcademiesService {
     // getPublicProfile includes members, so a staff change invalidates it too.
     await this.invalidate(academyId);
     return member;
+  }
+
+  /**
+   * The academy's people: coaches, scouts and the squad.
+   *
+   * Players are sorted by the rating their coaches have given them — the only
+   * ordering a manager asked for, and the only one the platform can defend.
+   * "Rating" here is the mean of the eight attributes across every assessment on
+   * record, so a player nobody has assessed sorts last rather than sorting as
+   * zero-out-of-a-hundred, which would read as a judgement rather than a gap.
+   *
+   * Two queries regardless of squad size: the members, then their assessments
+   * grouped in the database. A rating fetched per member would be an N+1 on the
+   * screen a manager opens most.
+   */
+  async listMembers(academyId: string, dto: ListMembersDto = {}) {
+    const members = await this.prisma.academyMember.findMany({
+      where: {
+        academyId,
+        ...(dto.role ? { role: dto.role } : {}),
+        ...(dto.status ? { status: dto.status } : {}),
+      },
+      orderBy: { joinedAt: 'asc' },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        joinedAt: true,
+        releasedAt: true,
+        previousAcademyId: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            avatarKey: true,
+            playerProfile: { select: { id: true, primaryPosition: true, birthDate: true } },
+            coachProfile: { select: { id: true, status: true } },
+          },
+        },
+      },
+    });
+
+    const playerIds = members
+      .map((member) => member.user.playerProfile?.id)
+      .filter((id): id is string => !!id);
+    const ratings = await this.ratingsFor(playerIds);
+
+    return members
+      .map(({ user, ...member }) => ({
+        ...member,
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        avatarUrl: this.storage.publicUrlOrNull(user.avatarKey),
+        playerId: user.playerProfile?.id ?? null,
+        primaryPosition: user.playerProfile?.primaryPosition ?? null,
+        birthDate: user.playerProfile?.birthDate ?? null,
+        coachStatus: user.coachProfile?.status ?? null,
+        rating: user.playerProfile ? (ratings.get(user.playerProfile.id) ?? null) : null,
+      }))
+      .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+  }
+
+  /** Mean assessed attribute score per player, in one grouped query. */
+  private async ratingsFor(playerIds: string[]) {
+    const ratings = new Map<string, number>();
+    if (playerIds.length === 0) return ratings;
+
+    const rows = await this.prisma.coachAssessment.groupBy({
+      by: ['playerId'],
+      where: { playerId: { in: playerIds } },
+      _avg: {
+        speed: true,
+        passing: true,
+        vision: true,
+        dribbling: true,
+        finishing: true,
+        physical: true,
+        leadership: true,
+        discipline: true,
+      },
+    });
+
+    for (const row of rows) {
+      const values = Object.values(row._avg).filter((value): value is number => value !== null);
+      if (values.length) {
+        ratings.set(row.playerId, values.reduce((sum, value) => sum + value, 0) / values.length);
+      }
+    }
+    return ratings;
+  }
+
+  /**
+   * Edit a membership, or stand it down.
+   *
+   * `INACTIVE` is the closest thing to a delete this offers, deliberately: a
+   * coach's assessments are evidence other people's decisions were built on, and
+   * removing the row would strand them.
+   */
+  async updateMember(userId: string, academyId: string, memberId: string, dto: UpdateMemberDto) {
+    await this.assertManager(userId, academyId);
+    const member = await this.prisma.academyMember.findUnique({ where: { id: memberId } });
+    if (!member || member.academyId !== academyId) throw new NotFoundException('Member not found');
+    // The manager runs the academy; demoting or standing themselves down would
+    // leave it with nobody who can act.
+    if (member.role === 'MANAGER') {
+      throw new BadRequestException('Change the manager from the academy settings');
+    }
+
+    const updated = await this.prisma.academyMember.update({
+      where: { id: memberId },
+      data: {
+        ...(dto.role ? { role: dto.role } : {}),
+        ...(dto.status ? { status: dto.status, releasedAt: null } : {}),
+      },
+    });
+    await this.invalidate(academyId);
+    await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_UPDATED, { memberId, ...dto });
+    return updated;
+  }
+
+  /**
+   * Release a member so another academy can take them on.
+   *
+   * A transfer is two consented halves: this academy lets go, and a receiving
+   * academy imports. Modelling it as one atomic "move to academy B" would let one
+   * manager put people on another academy's books without asking, which is how a
+   * transfer market becomes a way to dump a player on a rival.
+   *
+   * The membership stays on this academy's record as RELEASED until someone
+   * imports it, so the history of who was here is never rewritten.
+   */
+  async releaseMember(userId: string, academyId: string, memberId: string) {
+    await this.assertManager(userId, academyId);
+    const member = await this.prisma.academyMember.findUnique({ where: { id: memberId } });
+    if (!member || member.academyId !== academyId) throw new NotFoundException('Member not found');
+    if (member.role === 'MANAGER') throw new BadRequestException('A manager cannot be released');
+
+    const released = await this.prisma.academyMember.update({
+      where: { id: memberId },
+      data: { status: 'RELEASED', releasedAt: new Date() },
+    });
+    await this.invalidate(academyId);
+    await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, { memberId, academyId });
+    return released;
+  }
+
+  /** Everyone any academy has released — the transfer list. */
+  async listTransferMarket(role?: AcademyMemberRole) {
+    const members = await this.prisma.academyMember.findMany({
+      where: { status: 'RELEASED', ...(role ? { role } : {}) },
+      orderBy: { releasedAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        role: true,
+        releasedAt: true,
+        academy: { select: { id: true, name: true, region: true } },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            avatarKey: true,
+            playerProfile: { select: { id: true, primaryPosition: true, birthDate: true } },
+          },
+        },
+      },
+    });
+
+    const ratings = await this.ratingsFor(
+      members.map((m) => m.user.playerProfile?.id).filter((id): id is string => !!id),
+    );
+
+    return members.map(({ user, ...member }) => ({
+      ...member,
+      userId: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      avatarUrl: this.storage.publicUrlOrNull(user.avatarKey),
+      playerId: user.playerProfile?.id ?? null,
+      primaryPosition: user.playerProfile?.primaryPosition ?? null,
+      rating: user.playerProfile ? (ratings.get(user.playerProfile.id) ?? null) : null,
+    }));
+  }
+
+  /**
+   * Take on someone another academy released.
+   *
+   * The row moves rather than being copied, carrying `previousAcademyId`, so the
+   * question "where did this coach come from" has an answer in the data instead
+   * of only in an audit log.
+   */
+  async importMember(userId: string, academyId: string, dto: ImportMemberDto) {
+    await this.assertManager(userId, academyId);
+
+    const member = await this.prisma.academyMember.findUnique({ where: { id: dto.memberId } });
+    if (!member || member.status !== 'RELEASED') {
+      throw new NotFoundException('That transfer is no longer available');
+    }
+    if (member.academyId === academyId) {
+      throw new BadRequestException('They are already yours — reactivate them instead');
+    }
+
+    const existing = await this.prisma.academyMember.findUnique({
+      where: { academyId_userId: { academyId, userId: member.userId } },
+    });
+    if (existing) throw new ConflictException('They are already on your books');
+
+    const imported = await this.prisma.academyMember.update({
+      where: { id: member.id },
+      data: {
+        academyId,
+        status: 'ACTIVE',
+        releasedAt: null,
+        previousAcademyId: member.academyId,
+        joinedAt: new Date(),
+      },
+    });
+
+    await this.invalidate(academyId);
+    await this.invalidate(member.academyId);
+    await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_IMPORTED, {
+      memberId: member.id,
+      from: member.academyId,
+      to: academyId,
+    });
+    return imported;
   }
 
   async listStaff(academyId: string) {

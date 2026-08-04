@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
-import { auth } from '@/lib/api/resources';
+import { auth, users } from '@/lib/api/resources';
 import type { DeviceSession } from '@/lib/api/types';
 import { ROLE_META, type Role } from '@/lib/roles';
 import { SessionList } from './SessionList';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { PrivacyToggle } from './PrivacyToggle';
 import { Badge } from '@/components/ui/Badge';
 import { getServerT } from '@/lib/i18n/server';
 
@@ -18,9 +19,12 @@ export default async function SettingsPage() {
   const { t } = await getServerT();
   if (!session) redirect('/login?next=/settings');
 
-  const devices = await auth
-    .sessions({ token: session.accessToken, cache: 'no-store' })
-    .catch(() => [] as DeviceSession[]);
+  const [devices, me] = await Promise.all([
+    auth
+      .sessions({ token: session.accessToken, cache: 'no-store' })
+      .catch(() => [] as DeviceSession[]),
+    users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -48,6 +52,8 @@ export default async function SettingsPage() {
           })}
         </CardContent>
       </Card>
+
+      <PrivacyToggle initial={me?.isPrivate ?? false} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-3">

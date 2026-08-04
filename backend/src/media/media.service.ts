@@ -241,7 +241,7 @@ export class MediaService {
    */
   async listRecent(limit = 8) {
     const items = await this.prisma.media.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', player: { user: { isPrivate: false } } },
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 24),
       include: {
@@ -329,7 +329,7 @@ export class MediaService {
       LEFT JOIN "MediaLike" ml ON ml."mediaId" = m.id AND ml."userId" = ${viewerUserId}
       LEFT JOIN "Follow" f
         ON f."followerId" = ${viewerUserId} AND f."targetType" = 'PLAYER' AND f."targetId" = p.id
-      WHERE m.status = 'ACTIVE' AND m.type = 'VIDEO'
+      WHERE m.status = 'ACTIVE' AND m.type = 'VIDEO' AND u."isPrivate" = false
       ORDER BY
         ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
         + ${FEED_FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
@@ -341,7 +341,9 @@ export class MediaService {
       LIMIT ${pageSize} OFFSET ${skip}
     `);
 
-    const total = await this.prisma.media.count({ where: { status: 'ACTIVE', type: 'VIDEO' } });
+    const total = await this.prisma.media.count({
+      where: { status: 'ACTIVE', type: 'VIDEO', player: { user: { isPrivate: false } } },
+    });
 
     const items = await Promise.all(
       rows.map(
@@ -400,6 +402,8 @@ export class MediaService {
       where: {
         id: { notIn: following.map((row) => row.targetId) },
         userId: { not: viewerUserId },
+        // Private accounts are not suggested to anyone.
+        user: { isPrivate: false },
       },
       // One indexed pass over the weight table rather than a query per player.
       orderBy: [{ recommendationWeight: { globalWeight: 'desc' } }, { createdAt: 'desc' }],

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarDays, MapPin } from 'lucide-react';
-import { trials } from '@/lib/api/resources';
+import { academies, trials } from '@/lib/api/resources';
+import { AcademyTrials } from './AcademyTrials';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -19,12 +20,34 @@ export default async function TrialsPage() {
     .listUpcoming(session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 })
     .catch(() => []);
 
+  /*
+   * A manager's own trials come first, above everyone else's. The academy is
+   * resolved from the session rather than a route param: a manager runs exactly
+   * one, and asking them to pick it would be a menu with one item.
+   *
+   * Only while *acting as* a manager — an admin who also manages an academy is
+   * not offered its trial form while wearing the admin hat (§1.2.1).
+   */
+  const managed =
+    session?.activeRole === 'academy_manager'
+      ? await academies.mine({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+      : null;
+  const managedTrials = managed
+    ? await trials
+        .listForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
+        .catch(() => [])
+    : [];
+
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-bold">{t.trials.openTrials}</h1>
         <p className="text-muted text-sm">{t.trials.openTrialsHint}</p>
       </header>
+
+      {managed && (
+        <AcademyTrials academyId={managed.id} academyName={managed.name} initial={managedTrials} />
+      )}
 
       {list.length === 0 ? (
         <EmptyState

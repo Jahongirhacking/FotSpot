@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
@@ -93,7 +94,28 @@ export class PlayersService {
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
-  async getPublicProfile(playerId: string) {
+  /**
+   * A player's public card.
+   *
+   * The privacy check runs outside the cache and against the live row: a cached
+   * copy taken before the switch was flipped must not keep serving a profile its
+   * owner has since hidden. It is one indexed lookup, and the alternative —
+   * invalidating every cached profile on a settings change — is a wider blast
+   * radius for a rarer event.
+   */
+  async getPublicProfile(playerId: string, viewer?: AuthUser) {
+    const owner = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true, user: { select: { isPrivate: true } } },
+    });
+    if (!owner) throw new NotFoundException('Player not found');
+
+    const isSelf = viewer?.userId === owner.userId;
+    const isAdmin = !!viewer?.roles.some((role) => role === 'admin' || role === 'super_admin');
+    // 404 rather than 403: "you may not see this" confirms the player exists.
+    if (owner.user.isPrivate && !isSelf && !isAdmin)
+      throw new NotFoundException('Player not found');
+
     const profile = await this.redis.wrap(
       RedisKeys.playerProfile(playerId),
       CacheTtl.playerProfile,
@@ -127,7 +149,9 @@ export class PlayersService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 20;
 
-    const where: Prisma.PlayerProfileWhereInput = {};
+    // A private account is absent from search, not merely unreadable when opened:
+    // a hit that 404s still tells the searcher the person is here.
+    const where: Prisma.PlayerProfileWhereInput = { user: { isPrivate: false } };
     if (dto.region) where.region = dto.region;
     if (dto.playingStyle) where.playingStyle = dto.playingStyle;
     if (dto.position) {
