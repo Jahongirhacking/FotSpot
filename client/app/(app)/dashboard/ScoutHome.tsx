@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Feedback';
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
 import { relativeTime } from '@/lib/utils';
+import type { Dictionary } from '@/lib/i18n';
 
-export async function ScoutHome({ token }: { token: string }) {
+export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) {
   const [stats, mine, followerAcademies] = await Promise.all([
     safe<ScoutStats | null>(() => recommendations.myScoutStats({ token, cache: 'no-store' }), null),
     safe<MyRecommendation[]>(() => recommendations.listMine({ token, cache: 'no-store' }), []),
@@ -21,7 +22,7 @@ export async function ScoutHome({ token }: { token: string }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="space-y-6">
-        {stats && <ScoutLevelCard stats={stats} />}
+        {stats && <ScoutLevelCard stats={stats} t={t} />}
 
         {/* The reward loop from §1.5.2 — a volunteer coach seeing "3 academies follow
             my recommendations" is real status, and it costs nothing to give. */}
@@ -64,11 +65,11 @@ export async function ScoutHome({ token }: { token: string }) {
             {mine.length === 0 ? (
               <EmptyState
                 icon={Award}
-                title="No recommendations yet"
-                description="Find a player you rate and put them forward to an academy. Your reputation grows when an academy accepts."
+                title={t.recommendations.noRecommendationsYet}
+                description={t.recommendations.nothingYetHint}
                 action={
                   <Button asChild>
-                    <Link href="/players">Search players</Link>
+                    <Link href="/players">{t.recommendations.searchPlayers}</Link>
                   </Button>
                 }
               />

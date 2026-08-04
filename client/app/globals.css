@@ -11,19 +11,23 @@
  */
 
 :root {
-  --background: oklch(99% 0.004 250);
+  /* Daylight at the pitch: a warm off-white rather than a blue-grey UI grey, so
+     the green reads as grass instead of as a brand colour bolted onto a form. */
+  --background: oklch(98.5% 0.006 145);
   --surface: oklch(100% 0 0);
-  --surface-2: oklch(97% 0.005 250);
-  --surface-3: oklch(94% 0.008 250);
-  --foreground: oklch(21% 0.02 255);
-  --muted: oklch(52% 0.018 257);
-  --border: oklch(91% 0.008 255);
+  --surface-2: oklch(97% 0.008 145);
+  --surface-3: oklch(93.5% 0.012 145);
+  --foreground: oklch(20% 0.025 160);
+  --muted: oklch(50% 0.02 160);
+  --border: oklch(90% 0.012 150);
 
-  --primary: oklch(58% 0.15 155);
-  --primary-strong: oklch(50% 0.15 155);
+  /* Turf, not mint. Deep enough to carry white text at the smallest button. */
+  --primary: oklch(52% 0.14 152);
+  --primary-strong: oklch(44% 0.13 152);
   --primary-foreground: oklch(99% 0.01 155);
-  --accent: oklch(78% 0.19 128);
-  --accent-foreground: oklch(24% 0.06 140);
+  /* Pitch-marking lime — the floodlit line, used for emphasis, never for text. */
+  --accent: oklch(80% 0.19 130);
+  --accent-foreground: oklch(24% 0.07 140);
 
   --success: oklch(60% 0.15 152);
   --warning: oklch(72% 0.16 75);
@@ -36,25 +40,35 @@
   --prov-coach: oklch(60% 0.15 152);
   --prov-self: oklch(58% 0.02 257);
 
-  --ring: oklch(58% 0.15 155);
+  --ring: oklch(52% 0.14 152);
   --radius: 0.75rem;
+
+  /* Native controls — scrollbars, date pickers, the video scrubber — follow this
+     rather than staying stubbornly light on a dark page. */
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(17% 0.015 258);
-    --surface: oklch(21% 0.018 258);
-    --surface-2: oklch(25% 0.02 258);
-    --surface-3: oklch(30% 0.022 258);
-    --foreground: oklch(96% 0.006 250);
-    --muted: oklch(70% 0.02 255);
-    --border: oklch(31% 0.02 258);
+    color-scheme: dark;
+    /* A floodlit night pitch: near-black with a green cast, not the blue-grey
+       every dashboard defaults to. The surfaces step up in lightness so cards
+       read as stacked panels under lights rather than as flat boxes. */
+    --background: oklch(15% 0.018 165);
+    --surface: oklch(19% 0.021 165);
+    --surface-2: oklch(23% 0.024 165);
+    --surface-3: oklch(28% 0.026 165);
+    --foreground: oklch(96% 0.008 150);
+    --muted: oklch(70% 0.022 155);
+    --border: oklch(29% 0.024 165);
 
-    --primary: oklch(70% 0.16 155);
-    --primary-strong: oklch(78% 0.17 152);
-    --primary-foreground: oklch(18% 0.04 155);
-    --accent: oklch(85% 0.2 128);
-    --accent-foreground: oklch(20% 0.06 140);
+    /* Brighter than the light theme's: on a dark surface the same green reads
+       muddy, and this one has to survive being a 2px progress bar. */
+    --primary: oklch(72% 0.17 152);
+    --primary-strong: oklch(80% 0.18 150);
+    --primary-foreground: oklch(16% 0.04 155);
+    --accent: oklch(86% 0.2 128);
+    --accent-foreground: oklch(18% 0.06 140);
 
     --success: oklch(72% 0.16 152);
     --warning: oklch(80% 0.15 78);
@@ -71,36 +85,38 @@
 
 /* Explicit theme override must win over the media query in both directions. */
 :root[data-theme='light'] {
-  --background: oklch(99% 0.004 250);
+  color-scheme: light;
+  --background: oklch(98.5% 0.006 145);
   --surface: oklch(100% 0 0);
-  --surface-2: oklch(97% 0.005 250);
-  --surface-3: oklch(94% 0.008 250);
-  --foreground: oklch(21% 0.02 255);
-  --muted: oklch(52% 0.018 257);
-  --border: oklch(91% 0.008 255);
-  --primary: oklch(58% 0.15 155);
-  --primary-strong: oklch(50% 0.15 155);
+  --surface-2: oklch(97% 0.008 145);
+  --surface-3: oklch(93.5% 0.012 145);
+  --foreground: oklch(20% 0.025 160);
+  --muted: oklch(50% 0.02 160);
+  --border: oklch(90% 0.012 150);
+  --primary: oklch(52% 0.14 152);
+  --primary-strong: oklch(44% 0.13 152);
   --primary-foreground: oklch(99% 0.01 155);
-  --accent: oklch(78% 0.19 128);
-  --accent-foreground: oklch(24% 0.06 140);
+  --accent: oklch(80% 0.19 130);
+  --accent-foreground: oklch(24% 0.07 140);
   --prov-combine: oklch(62% 0.14 245);
   --prov-coach: oklch(60% 0.15 152);
   --prov-self: oklch(58% 0.02 257);
 }
 
 :root[data-theme='dark'] {
-  --background: oklch(17% 0.015 258);
-  --surface: oklch(21% 0.018 258);
-  --surface-2: oklch(25% 0.02 258);
-  --surface-3: oklch(30% 0.022 258);
-  --foreground: oklch(96% 0.006 250);
-  --muted: oklch(70% 0.02 255);
-  --border: oklch(31% 0.02 258);
-  --primary: oklch(70% 0.16 155);
-  --primary-strong: oklch(78% 0.17 152);
-  --primary-foreground: oklch(18% 0.04 155);
-  --accent: oklch(85% 0.2 128);
-  --accent-foreground: oklch(20% 0.06 140);
+  color-scheme: dark;
+  --background: oklch(15% 0.018 165);
+  --surface: oklch(19% 0.021 165);
+  --surface-2: oklch(23% 0.024 165);
+  --surface-3: oklch(28% 0.026 165);
+  --foreground: oklch(96% 0.008 150);
+  --muted: oklch(70% 0.022 155);
+  --border: oklch(29% 0.024 165);
+  --primary: oklch(72% 0.17 152);
+  --primary-strong: oklch(80% 0.18 150);
+  --primary-foreground: oklch(16% 0.04 155);
+  --accent: oklch(86% 0.2 128);
+  --accent-foreground: oklch(18% 0.06 140);
   --prov-combine: oklch(72% 0.13 245);
   --prov-coach: oklch(72% 0.16 152);
   --prov-self: oklch(66% 0.02 257);
@@ -144,6 +160,20 @@
     color: var(--foreground);
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* The layout asks for `viewport-fit: cover`, so the page paints under the
+       notch and the home indicator. These keep text out from under them —
+       mostly a landscape concern, where the notch eats a real margin. Zero on
+       every device that has no cutout. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Momentum scrolling that stops at the ends rather than dragging the whole
+     page with it — a phone-only annoyance on the scrollable filter and tab
+     strips. */
+  .scroll-x,
+  [class*='overflow-x-auto'] {
+    overscroll-behavior-x: contain;
   }
 
   /* Honest, visible focus. The audience includes parents on old devices and

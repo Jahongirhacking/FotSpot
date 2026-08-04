@@ -5,11 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { normaliseUsername } from '../users/username.util';
 import {
   CreatePlayerProfileDto,
   SearchPlayersDto,
@@ -25,7 +27,7 @@ import {
  * know that, and so the card component takes one shape rather than two. The URL is
  * built from the stored key at read time — see StorageService.
  */
-const AVATAR_INCLUDE = { user: { select: { avatarKey: true } } } as const;
+const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
 @Injectable()
 export class PlayersService {
@@ -36,9 +38,34 @@ export class PlayersService {
     private storage: StorageService,
   ) {}
 
-  private withAvatar<T extends { user?: { avatarKey: string | null } | null }>(profile: T) {
+  private withAvatar<
+    T extends { user?: { avatarKey: string | null; username?: string | null } | null },
+  >(profile: T) {
     const { user, ...rest } = profile;
-    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) };
+    return {
+      ...rest,
+      avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey),
+      // The handle rides along so a card can link to /players/@handle without a
+      // second lookup, and so the profile can show it.
+      username: user?.username ?? null,
+    };
+  }
+
+  /**
+   * Resolves `/players/@handle`.
+   *
+   * A separate route rather than letting `:id` accept both: a handle and a UUID
+   * are different keys, and a lookup that guesses which one it was handed is a
+   * lookup that will one day guess wrong.
+   */
+  async getByUsername(rawUsername: string) {
+    const username = normaliseUsername(rawUsername);
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: { playerProfile: { select: { id: true } } },
+    });
+    if (!user?.playerProfile) throw new NotFoundException('Player not found');
+    return this.getPublicProfile(user.playerProfile.id);
   }
 
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
@@ -67,7 +94,28 @@ export class PlayersService {
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
-  async getPublicProfile(playerId: string) {
+  /**
+   * A player's public card.
+   *
+   * The privacy check runs outside the cache and against the live row: a cached
+   * copy taken before the switch was flipped must not keep serving a profile its
+   * owner has since hidden. It is one indexed lookup, and the alternative —
+   * invalidating every cached profile on a settings change — is a wider blast
+   * radius for a rarer event.
+   */
+  async getPublicProfile(playerId: string, viewer?: AuthUser) {
+    const owner = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true, user: { select: { isPrivate: true } } },
+    });
+    if (!owner) throw new NotFoundException('Player not found');
+
+    const isSelf = viewer?.userId === owner.userId;
+    const isAdmin = !!viewer?.roles.some((role) => role === 'admin' || role === 'super_admin');
+    // 404 rather than 403: "you may not see this" confirms the player exists.
+    if (owner.user.isPrivate && !isSelf && !isAdmin)
+      throw new NotFoundException('Player not found');
+
     const profile = await this.redis.wrap(
       RedisKeys.playerProfile(playerId),
       CacheTtl.playerProfile,
@@ -101,7 +149,9 @@ export class PlayersService {
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 20;
 
-    const where: Prisma.PlayerProfileWhereInput = {};
+    // A private account is absent from search, not merely unreadable when opened:
+    // a hit that 404s still tells the searcher the person is here.
+    const where: Prisma.PlayerProfileWhereInput = { user: { isPrivate: false } };
     if (dto.region) where.region = dto.region;
     if (dto.playingStyle) where.playingStyle = dto.playingStyle;
     if (dto.position) {

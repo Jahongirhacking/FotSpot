@@ -7,6 +7,10 @@
  */
 export const uz = {
   common: {
+    theme: 'Ko‘rinish',
+    themeLight: 'Yorug‘',
+    themeDark: 'Qorong‘i',
+    themeSystem: 'Tizim bo‘yicha',
     edit: 'Tahrirlash',
     delete: 'O‘chirish',
     copy: 'Nusxalash',
@@ -40,6 +44,7 @@ export const uz = {
 
   nav: {
     home: 'Bosh sahifa',
+    feed: 'Lenta',
     myCard: 'Mening kartam',
     players: 'Futbolchilar',
     findPlayers: 'Futbolchi topish',
@@ -78,6 +83,8 @@ export const uz = {
   },
 
   auth: {
+    emailCodeNotice: 'Bu manzilga tasdiqlash kodi yuboriladi.',
+    emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
     signOut: 'Chiqish',
     welcomeBack: 'Xush kelibsiz',
@@ -97,7 +104,7 @@ export const uz = {
     passwordHint: 'Kamida 8 ta belgi.',
     sendCode: 'Kod yuborish',
     enterCode: 'Kodni kiriting',
-    sentTo: 'Yuborildi:',
+    sentTo: '{destination} manziliga yuborildi',
     useDifferentNumber: 'Boshqa raqamdan foydalanish',
     signInMethod: 'Kirish usuli',
     devMode: 'Dasturchi rejimi',
@@ -106,6 +113,58 @@ export const uz = {
     couldNotCreate: 'Hisob yarata olmadik.',
     couldNotSendCode: 'Kod yuborilmadi.',
     codeDidNotWork: 'Bu kod ishlamadi.',
+    forgotPassword: 'Parolni unutdingizmi?',
+    forgotTitle: 'Parolni tiklash',
+    forgotSubtitle: 'Hisobingizdagi emailga kod yuboramiz.',
+    sendCodeToEmail: 'Emailga kod yuborish',
+    resetCodeLabel: 'Tiklash kodi',
+    resetCodeHint: '8 ta harf va raqam. Katta-kichikligi ahamiyatsiz.',
+    verifyCode: 'Kodni tekshirish',
+    codeVerified: 'Kod tasdiqlandi. Endi yangi parolni tanlang.',
+    useDifferentCode: 'Boshqa kod kiritish',
+    newPassword: 'Yangi parol',
+    confirmPassword: 'Yangi parolni tasdiqlang',
+    setNewPassword: 'Yangi parolni o‘rnatish',
+    resetSent: 'Agar bunday hisob mavjud bo‘lsa, kod yuborildi. Kod 15 daqiqada eskiradi.',
+    resetNote: 'Yangi parol o‘rnatilgach, barcha qurilmalardan chiqasiz.',
+    resetDone: 'Parol yangilandi. Endi yangi parol bilan kiring.',
+    couldNotReset: 'Parolni tiklab bo‘lmadi.',
+    passwordMismatch: 'Parollar mos kelmadi',
+    backToSignIn: 'Kirish sahifasiga qaytish',
+    showPassword: 'Parolni ko‘rsatish',
+    hidePassword: 'Parolni yashirish',
+  },
+
+  /**
+   * Kiritish maydonlari uchun namunalar.
+   *
+   * Namuna — bu yorliqning takrori emas: u kutilayotgan ko‘rinishni ko‘rsatadi
+   * (masalan, bo‘y santimetrdami yoki metrdami), shuning uchun ular umumiy va
+   * qayta ishlatiladi.
+   */
+  placeholders: {
+    trialTitle: 'Masalan, U14 yozgi tanlov',
+    positions: 'GK, CB, LW',
+    firstName: 'Masalan, Javohir',
+    lastName: 'Masalan, Rustamov',
+    email: 'ism@example.com',
+    emailOrUsername: 'ism@example.com yoki qizil-burgut-gol-12',
+    password: 'Kamida 8 ta belgi',
+    currentPassword: 'Hozirgi parolingiz',
+    newPassword: 'Yangi parol',
+    confirmPassword: 'Yangi parolni takrorlang',
+    username: 'qizil-burgut-gol-12',
+    code6: '000000',
+    resetCode: 'K7M2QP4X',
+    birthDate: 'YYYY-MM-DD',
+    height: 'sm, masalan 172',
+    weight: 'kg, masalan 64',
+    district: 'Masalan, Chilonzor',
+    academyName: 'Masalan, Paxtakor akademiyasi',
+    academyAbout: 'Akademiya, mashg‘ulotlar va yutuqlar haqida qisqacha',
+    note: 'Ixtiyoriy izoh',
+    clipTitle: 'Masalan, chap oyoqda burchakdan gol',
+    clipDescription: 'Qachon, kimga qarshi — qisqacha kontekst',
   },
 
   welcome: {
@@ -127,6 +186,7 @@ export const uz = {
   },
 
   onboarding: {
+    measurements: 'O‘lchamlar',
     stepYou: 'Siz',
     stepParent: 'Ota-ona',
     stepFootball: 'Futbol',
@@ -170,12 +230,31 @@ export const uz = {
   },
 
   profile: {
+    network: 'Tarmoq',
+    networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
+    followers: 'Obunachilar',
+    noAffiliations: 'Hozircha akademiya yoki murabbiy biriktirilmagan.',
+    following: 'Obunalar',
+    notFollowingTitle: 'Hozircha hech kimni kuzatmayapsiz',
+    notFollowingBody:
+      'O‘yinchi yoki akademiyani kuzatsangiz, ularning yangiliklari lentangizda ko‘proq ko‘rinadi.',
+    players: 'O‘yinchilar',
+    coaches: 'Murabbiylar',
+    scouts: 'Skautlar',
+    assessedPlayers: 'Baholangan o‘yinchilar',
+    privateProfile: 'Yopiq profil',
+    privateProfileHint: 'Yoqilsa, profilingiz qidiruvda va ommaviy ro‘yxatlarda ko‘rinmaydi.',
+    username: 'Foydalanuvchi nomi',
+    usernameHint:
+      'Foydalanuvchi nomini o‘zgartirishingiz mumkin, lekin u takrorlanmas bo‘lishi kerak.',
     cardDetails: 'Karta ma’lumotlari',
-    cardDetailsHint: 'Bo‘y va vazn har mavsum o‘zgaradi — ularni yangilab turing. Ism va tug‘ilgan sana o‘zgartirilmaydi.',
+    cardDetailsHint:
+      'Bo‘y va vazn har mavsum o‘zgaradi — ularni yangilab turing. Ism va tug‘ilgan sana o‘zgartirilmaydi.',
     detailsSaved: 'Saqlandi.',
     noPlayerCardHint: 'Futbolchi kartasi sizga akademiyalar oldida ko‘rinish beradi.',
     becomeScout: 'Skaut ham bo‘lasizmi?',
-    becomeScoutHint: 'Boshqa futbolchilarni akademiyalarga tavsiya qiling. Obro‘ eng quyi darajadan boshlanadi.',
+    becomeScoutHint:
+      'Boshqa futbolchilarni akademiyalarga tavsiya qiling. Obro‘ eng quyi darajadan boshlanadi.',
     becomeScoutCta: 'Skaut bo‘lish',
     title: 'Profil',
     editProfile: 'Profilni tahrirlash',
@@ -221,7 +300,6 @@ export const uz = {
     successRate: 'Muvaffaqiyat',
     level: 'Daraja',
     assessments: 'Baholashlar',
-    following: 'Kuzatilmoqda',
     followerAcademies: 'Sizni kuzatuvchi akademiyalar',
     noPlayerCard: 'Sizda hali futbolchi kartasi yo‘q.',
     createPlayerCard: 'Futbolchi kartasi yaratish',
@@ -241,9 +319,11 @@ export const uz = {
     passwordMismatch: 'Parollar mos kelmadi',
     setPassword: 'Parolni o‘rnatish',
     passwordChanged: 'Parol almashtirildi.',
-    otherSessionsRevoked: 'Parolni almashtirganingizda boshqa barcha qurilmalardagi seanslar yakunlanadi.',
+    otherSessionsRevoked:
+      'Parolni almashtirganingizda boshqa barcha qurilmalardagi seanslar yakunlanadi.',
     mustChangeTitle: 'Avval parolni almashtiring',
-    mustChangeHint: 'Hisobingiz administrator yaratgan parol bilan ishlamoqda va uni administrator ham biladi. Davom etishdan oldin o‘zingiznikini o‘rnating.',
+    mustChangeHint:
+      'Hisobingiz administrator yaratgan parol bilan ishlamoqda va uni administrator ham biladi. Davom etishdan oldin o‘zingiznikini o‘rnating.',
     title: 'Sozlamalar',
     signedInDevices: 'Qayerda kirgansiz',
     signedInDevicesHint:
@@ -256,6 +336,34 @@ export const uz = {
   },
 
   academy: {
+    addCoach: 'Murabbiy qo‘shish',
+    addCoachHint:
+      'Ro‘yxatdan o‘tgan foydalanuvchini tanlang yoki yangi hisob yarating — login va parol bir marta ko‘rsatiladi.',
+    coachBio: 'Murabbiy haqida',
+    applicants: 'Arizalar',
+    applicantsHint: 'Har bir nomzodning kartasi va yoshi — holatini shu yerdan o‘zgartiring.',
+    noApplicants: 'Hozircha ariza yo‘q',
+    hostedBy: 'Tashkilotchi',
+    roster: 'Tarkib',
+    rosterHint: 'Murabbiylar, skautlar va o‘yinchilar — reyting bo‘yicha saralangan.',
+    memberActive: 'Faol',
+    memberInactive: 'Nofaol',
+    memberReleased: 'Transferda',
+    makeInactive: 'Nofaol qilish',
+    makeActive: 'Faollashtirish',
+    release: 'Transferga chiqarish',
+    confirmRelease: 'Bu a’zoni transferga chiqarasizmi? Boshqa akademiya uni qabul qilishi mumkin.',
+    transferMarket: 'Transfer ro‘yxati',
+    transferMarketHint: 'Boshqa akademiyalar bo‘shatgan murabbiy va o‘yinchilar.',
+    importMember: 'Qabul qilish',
+    noMembers: 'Bu bo‘limda hech kim yo‘q',
+    rating: 'Reyting',
+    notAssessed: 'Baholanmagan',
+    createTrial: 'Sinov e’lon qilish',
+    myTrials: 'Akademiya sinovlari',
+    verifiedAcademy: 'Tasdiqlangan akademiya',
+    awaitingVerification: 'Tasdiqlash kutilmoqda',
+    noTrialsNow: 'Hozircha sinovlar yo‘q.',
     manageAcademies: 'Akademiyalarni boshqarish',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     postTrial: 'Sinov e’lon qilish',
@@ -263,9 +371,11 @@ export const uz = {
     yourTrials: 'Sinovlaringiz',
     noTrials: 'Hali sinov e’lon qilinmagan.',
     openTrials: 'Ochiq sinovlar',
-    noAcademyLinkedHint: 'Akademiya rahbari akademiyasiz mavjud bo‘lmaydi. Agar rahbarlik yaqinda boshqa hisobga o‘tkazilgan bo‘lsa, bu kutilgan holat. Aks holda platforma jamoasiga murojaat qiling.',
+    noAcademyLinkedHint:
+      'Akademiya rahbari akademiyasiz mavjud bo‘lmaydi. Agar rahbarlik yaqinda boshqa hisobga o‘tkazilgan bo‘lsa, bu kutilgan holat. Aks holda platforma jamoasiga murojaat qiling.',
     inboxEmpty: 'Ochiq tavsiyalar yo‘q',
-    inboxEmptyHint: 'Skautlar futbolchi tavsiya qilganda ular shu yerda, tavsiya qilgan skautlarning ishonchliligi bo‘yicha tartiblangan holda ko‘rinadi.',
+    inboxEmptyHint:
+      'Skautlar futbolchi tavsiya qilganda ular shu yerda, tavsiya qilgan skautlarning ishonchliligi bo‘yicha tartiblangan holda ko‘rinadi.',
     player: 'Futbolchi',
     backing: 'qo‘llab-quvvatlash',
     accepted: 'qabul qilingan',
@@ -274,7 +384,8 @@ export const uz = {
     newThisWeek: 'Shu hafta yangi',
     applications: 'Arizalar',
     thisWeek: 'Shu hafta',
-    thisWeekHint: 'So‘nggi 7 kundagi faollik. Bu bolalarni bir-biri bilan taqqoslash emas — skautlar kimni ilgari surganini ko‘rsatadi.',
+    thisWeekHint:
+      'So‘nggi 7 kundagi faollik. Bu bolalarni bir-biri bilan taqqoslash emas — skautlar kimni ilgari surganini ko‘rsatadi.',
     mostBackedPlayers: 'Eng ko‘p tavsiya olganlar',
     mostBackedPlayersHint: 'Skautlar e’tibori bo‘yicha, mahorat bahosi bo‘yicha emas.',
     topScouts: 'Faol skautlar',
@@ -339,12 +450,14 @@ export const uz = {
   },
 
   clips: {
-    noStorageOrigin: 'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
+    noStorageOrigin:
+      'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',
     seek: 'Vaqtni o‘zgartirish',
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
     signInToLike: 'Yoqtirish uchun tizimga kiring',
-    uploadBlocked: 'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
+    uploadBlocked:
+      'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
     play: 'Ijro etish',
     privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',
@@ -359,7 +472,8 @@ export const uz = {
     whatDoesItShow: 'Bu video nimani ko‘rsatadi?',
     categoryHint: 'Tanlangan ko‘rsatkich shu video bilan isbotlanadi.',
     yourRating: 'Sizning bahoyingiz',
-    ratingHint: 'Bu o‘z bahoyingiz. Murabbiy tasdiqlagunicha karta uni "o‘zi bergan baho" sifatida ko‘rsatadi.',
+    ratingHint:
+      'Bu o‘z bahoyingiz. Murabbiy tasdiqlagunicha karta uni "o‘zi bergan baho" sifatida ko‘rsatadi.',
     clipTitle: 'Sarlavha',
     description: 'Tavsif',
     publish: 'Yuklash',
@@ -369,7 +483,8 @@ export const uz = {
     uploadFailed: 'Yuklab bo‘lmadi. Qayta urinib ko‘ring.',
     cameraUnavailable: 'Kameraga ruxsat berilmadi. Video faylni tanlashingiz mumkin.',
     storageOffTitle: 'Video saqlash sozlanmagan',
-    storageOffHint: 'Server hali video qabul qila olmaydi, shuning uchun yuklash xatolik beradi. Bu serverda R2 sozlangach ishlaydi.',
+    storageOffHint:
+      'Server hali video qabul qila olmaydi, shuning uchun yuklash xatolik beradi. Bu serverda R2 sozlangach ishlaydi.',
     currentClaim: 'Joriy',
     confirmDelete: 'Bu lavha o‘chirilsinmi? Ko‘rsatkich oldingi bahoga qaytadi.',
     seeEvidence: 'dalilni ko‘rish',
@@ -380,8 +495,26 @@ export const uz = {
     noneHintOwn: '60 soniyalik dribling videosi har qanday tavsifdan kuchliroq.',
   },
 
+  /** Skaut va akademiya menejeri uchun asosiy ekran. */
+  feed: {
+    title: 'Lenta',
+    subtitle: 'Eng munosib klipllar — tavsiya vazni, obunalaringiz va yangiligi bo‘yicha.',
+    suggested: 'Kuzatish uchun',
+    follow: 'Kuzatish',
+    following: 'Kuzatilmoqda',
+    openClip: 'Klipni ochish',
+    mute: 'Ovozni o‘chirish',
+    unmute: 'Ovozni yoqish',
+    emptyTitle: 'Hozircha klip yo‘q',
+    emptyBody: 'O‘yinchilar klip yuklaganda ular shu yerda paydo bo‘ladi.',
+  },
+
   player: {
-    comparedWithinPlain: 'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
+    searchSubtitle:
+      'FotSpot’da {count} futbolchi. Faqat pozitsiya emas, o‘yin uslubi bo‘yicha ham qidiring.',
+    cleanSheets: 'Toza himoya',
+    comparedWithinPlain:
+      'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
     onThePitch: 'Maydonda',
     dominantFoot: 'Kuchli oyoq',
     attributes: 'Ko‘rsatkichlar',
@@ -424,6 +557,25 @@ export const uz = {
   },
 
   trials: {
+    shortlist: 'Ro‘yxatga olish',
+    invite: 'Taklif qilish',
+    accept: 'Qabul qilish',
+    reject: 'Rad etish',
+    statusApplied: 'Ariza berilgan',
+    statusShortlisted: 'Ro‘yxatda',
+    statusInvited: 'Taklif qilingan',
+    statusAccepted: 'Qabul qilingan',
+    statusRejected: 'Rad etilgan',
+    title: 'Sarlavha',
+    date: 'Sana va vaqt',
+    ageMin: 'Eng kichik yosh',
+    ageMax: 'Eng katta yosh',
+    positions: 'Pozitsiyalar',
+    positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
+    requirements: 'Talablar',
+    open: 'Ochiq',
+    closed: 'Yopilgan',
+    location: 'Manzil',
     openTrials: 'Ochiq sinovlar',
     openTrialsHint:
       'To‘g‘ridan-to‘g‘ri ariza bering. Akademiya arizangiz bilan kartangizni ko‘radi.',
@@ -447,6 +599,9 @@ export const uz = {
   },
 
   recommendations: {
+    credibilityHint:
+      'Skautlar ishonchliligi — qo‘llab-quvvatlagan skautlar vaznining garmonik yig‘indisi',
+    whyPlaceholder: 'Chap oyoqli, qarshi o‘yinchini bir-bir yengadi, boshini ko‘tarib o‘ynaydi…',
     myRecommendations: 'Mening tavsiyalarim',
     everyPlayer: 'Siz taklif qilgan har bir futbolchi',
     nothingYet: 'Hali hech narsa yo‘q',
@@ -563,7 +718,8 @@ export const uz = {
     managerNewHint: 'Login va parol yaratiladi',
     managerPhone: 'Telefon (ixtiyoriy)',
     managerPhoneHint: 'Faqat bog‘lanish uchun — kirish login orqali amalga oshiriladi.',
-    managerGeneratedHint: 'Login va parol saqlangandan so‘ng bir marta ko‘rsatiladi. Ularni rahbarga yuboring — u birinchi kirishda parolni almashtiradi.',
+    managerGeneratedHint:
+      'Login va parol saqlangandan so‘ng bir marta ko‘rsatiladi. Ularni rahbarga yuboring — u birinchi kirishda parolni almashtiradi.',
     assignManagerOptional: 'Bitta akademiya — bitta rahbar. Keyinroq ham biriktirish mumkin.',
     replaceManagerHint: 'Yangi rahbar biriktirilsa, avvalgisi kirish huquqini yo‘qotadi.',
     saveManager: 'Rahbarni saqlash',
@@ -571,7 +727,8 @@ export const uz = {
     confirmResetPassword: 'Rahbarga yangi parol yaratilsinmi? Eski parol ishlamay qoladi.',
     credentialsTitle: 'Kirish ma’lumotlari yaratildi',
     credentialsHint: 'Ularni akademiya rahbariga yuboring.',
-    credentialsWarning: 'Parol boshqa hech qachon ko‘rsatilmaydi — serverda faqat uning shifrlangan nusxasi saqlanadi. Hozir nusxalab oling.',
+    credentialsWarning:
+      'Parol boshqa hech qachon ko‘rsatilmaydi — serverda faqat uning shifrlangan nusxasi saqlanadi. Hozir nusxalab oling.',
     credentialsSaved: 'Saqlab oldim',
     copyBoth: 'Ikkalasini nusxalash',
     console: 'Boshqaruv paneli',

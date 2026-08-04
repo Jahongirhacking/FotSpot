@@ -13,5 +13,8 @@ import { PlayerCard } from '@/components/player/PlayerCard';
  * evidence tier.
  */
 export function PlayerResultCard({ player }: { player: PlayerProfile }) {
-  return <PlayerCard player={player} size="sm" href={`/players/${player.id}`} />;
+  // Prefers the handle: `/players/@amber-falcon-nutmeg-42` is a link somebody can
+  // read out, and it survives even if ids ever change shape.
+  const href = player.username ? `/players/@${player.username}` : `/players/${player.id}`;
+  return <PlayerCard player={player} size="sm" href={href} />;
 }

@@ -1,6 +1,43 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/auth/register/request-code": {
+      "post": {
+        "operationId": "auth_requestRegistrationCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestRegistrationCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Step 1 of signing up: proves the address before an account exists for it.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/register/email": {
       "post": {
         "operationId": "auth_registerEmail",
@@ -25,6 +62,7 @@
             "bearer": []
           }
         ],
+        "summary": "Step 2: creates the account, only against a code that checks out.",
         "tags": [
           "auth"
         ]
@@ -54,6 +92,103 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "auth_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "\"I forgot my password\" — sends a reset code to the address on the account.\n\nAnswers identically whether or not the account exists, so it cannot be used\nto test which emails and handles are registered. See AuthService.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/verify-code": {
+      "post": {
+        "operationId": "auth_verifyResetCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyResetCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Checks a reset code without spending it.\n\nLets the form ask for a new password only once the code is known to be good,\nso a typo does not discard a password the user has already entered twice. It\ngrants nothing — `password/reset` re-checks the code regardless.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "auth_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets a new password against the code, and signs every device out.",
         "tags": [
           "auth"
         ]
@@ -436,6 +571,25 @@
         ]
       }
     },
+    "/api/v1/users/me/summary": {
+      "get": {
+        "operationId": "users_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users/{id}": {
       "get": {
         "operationId": "users_publicProfile",
@@ -544,6 +698,104 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/recent": {
+      "get": {
+        "operationId": "media_listRecent",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The newest clips platform-wide, each with its player. Drives the landing\nstrip in one request instead of one per player — see MediaService.listRecent.\n\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/feed": {
+      "get": {
+        "operationId": "media_feed",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 24,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The ranked feed — the scout's and the academy manager's home screen.\n\nSigned in only: the ranking is personalised by who the caller follows and\nmarks what they have already liked, neither of which exists for a guest.\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/feed/suggested-players": {
+      "get": {
+        "operationId": "media_suggestedPlayers",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players worth following, for the panel beside the feed.",
         "tags": [
           "media"
         ]
@@ -1076,6 +1328,42 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/by-username/{username}": {
+      "get": {
+        "operationId": "players_getByUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolves `/players/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as a player id.",
         "tags": [
           "players"
         ]
@@ -1661,6 +1949,253 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/coaches": {
+      "post": {
+        "operationId": "academies_createCoach",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCoachDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a coach: an existing account, or a new one minted with credentials the\nmanager hands over — the same two paths an admin has for a manager.\n\nCredentials come back exactly once and are never retrievable again.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members": {
+      "get": {
+        "operationId": "academies_listMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "MANAGER",
+                "COACH",
+                "SCOUT",
+                "PLAYER"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "RELEASED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The roster: coaches, scouts and the squad, players sorted by assessed rating.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/{memberId}": {
+      "patch": {
+        "operationId": "academies_updateMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a membership or stand it down. There is no delete — see the service.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/{memberId}/release": {
+      "post": {
+        "operationId": "academies_releaseMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Let a member go, so another academy can take them on.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/transfers/available": {
+      "get": {
+        "operationId": "academies_listTransferMarket",
+        "parameters": [
+          {
+            "name": "role",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everyone any academy has released — declared before `:id` routes.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/members/import": {
+      "post": {
+        "operationId": "academies_importMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take on someone another academy released.",
         "tags": [
           "academies"
         ]
@@ -2945,7 +3480,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3199,12 +3744,30 @@
       }
     },
     "schemas": {
+      "RequestRegistrationCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
       "RegisterEmailDto": {
         "type": "object",
         "properties": {
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "description": "The six digits sent to `email`. Registration fails without them.",
+            "minLength": 6,
+            "maxLength": 6
           },
           "password": {
             "type": "string",
@@ -3219,6 +3782,7 @@
         },
         "required": [
           "email",
+          "code",
           "password"
         ]
       },
@@ -3238,6 +3802,63 @@
         },
         "required": [
           "password"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "identifier"
+        ]
+      },
+      "VerifyResetCodeDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "identifier",
+          "code"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 120
+          },
+          "code": {
+            "type": "string",
+            "description": "Eight characters; spaces and case are forgiven before comparison.",
+            "minLength": 6,
+            "maxLength": 20
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "identifier",
+          "code",
+          "newPassword"
         ]
       },
       "RequestOtpDto": {
@@ -3334,10 +3955,19 @@
             "type": "string",
             "maxLength": 60
           },
+          "username": {
+            "type": "string",
+            "description": "The public handle. Accepted with or without a leading `@`; shape and\nreserved-word rules live in username.util.ts, uniqueness in the database.",
+            "maxLength": 40
+          },
           "avatarStorageKey": {
             "type": "string",
             "description": "Set only by confirming an upload from `POST /users/me/avatar/upload-url`.\nAccepting an arbitrary URL here would let a profile embed a remote image and\nturn every profile view into a request to a third-party server.",
             "maxLength": 500
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "description": "Hide the account from public listings and profile reads. Off by default —\nan account nobody can find cannot be scouted."
           }
         }
       },
@@ -3855,15 +4485,63 @@
           },
           "role": {
             "type": "string",
+            "description": "Players are members too — an academy's squad is a roster, not a search.",
             "enum": [
               "COACH",
-              "SCOUT"
+              "SCOUT",
+              "PLAYER"
             ]
           }
         },
         "required": [
           "userId",
           "role"
+        ]
+      },
+      "CreateCoachDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "newCoach": {
+            "$ref": "#/components/schemas/NewManagerDto"
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "UpdateMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "COACH",
+              "SCOUT",
+              "PLAYER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          }
+        }
+      },
+      "ImportMemberDto": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "memberId"
         ]
       },
       "EndorsementRole": {

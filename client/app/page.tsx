@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
-import { academies, media, players, trials } from '@/lib/api/resources';
+import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
 import type { Media, PlayerProfile } from '@/lib/api/types';
 import { ApiError } from '@/lib/api/client';
 import { ageBand, humanizeEnum, initials } from '@/lib/utils';
@@ -26,6 +26,7 @@ import {
 } from '@/components/shared/FootballArt';
 import { HeroVideo } from '@/components/shared/HeroVideo';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 /**
  * Landing page. Signed-in users keep it — it's the marketing surface, and the
@@ -36,7 +37,7 @@ export default async function LandingPage() {
   const { t } = await getServerT();
 
   // Every fetch is optional: this page must render with the API down.
-  const [recent, academyList, trialList] = await Promise.all([
+  const [recent, academyList, trialList, clips] = await Promise.all([
     players.search({ pageSize: 6 }, { revalidate: 600 }).catch(() => ({
       items: [] as PlayerProfile[],
       total: 0,
@@ -45,19 +46,26 @@ export default async function LandingPage() {
     })),
     academies.listPublic(undefined, { revalidate: 600 }).catch(() => []),
     trials.listUpcoming({ revalidate: 600 }).catch(() => []),
+    // One request for the strip. This used to fetch a page of players and then
+    // one media request per player — seven round trips, on the most-visited page
+    // in the product, for visitors on the worst connections it ever serves.
+    media.listRecent(8, { revalidate: 600 }).catch(() => [] as RecentClip[]),
   ]);
 
   const cta = await resolvePlayerCta(session);
-  const clips = await recentClips(recent.items);
 
   return (
     <>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
         <div className="flex items-center gap-2">
           <FotSpotMark className="size-8" />
-          <span className="text-lg font-bold tracking-tight">FotSpot</span>
+          {/* The wordmark is the first thing to go on a narrow phone: the mark
+              still says whose site this is, and the two sign-in buttons beside it
+              are what the visitor actually came to press. */}
+          <span className="hidden text-lg font-bold tracking-tight sm:inline">FotSpot</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle compact />
           <LanguageSwitcher />
           {session ? (
             <Button asChild size="sm">
@@ -168,10 +176,10 @@ export default async function LandingPage() {
             </Card>
           ) : (
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {clips.map(({ item, player }) => (
+              {clips.map((item) => (
                 <li key={item.id}>
                   <Link
-                    href={`/players/${player.id}`}
+                    href={`/players/${item.player.id}`}
                     className="group border-border bg-surface hover:border-primary/40 rounded-card block overflow-hidden border transition-colors"
                   >
                     <div className="bg-surface-2 relative aspect-video">
@@ -193,13 +201,13 @@ export default async function LandingPage() {
                         className="bg-primary/15 text-primary grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold"
                         aria-hidden
                       >
-                        {initials(player.firstName, player.lastName)}
+                        {initials(item.player.firstName, item.player.lastName)}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                        {player.firstName} {player.lastName}
+                        {item.player.firstName} {item.player.lastName}
                       </span>
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {ageBand(player.birthDate)}
+                        {ageBand(item.player.birthDate)}
                       </Badge>
                     </div>
                   </Link>
@@ -283,19 +291,6 @@ async function resolvePlayerCta(
     }
     return { href: '/onboarding/player', hasCard: false };
   }
-}
-
-/** A few of the newest players' clips, for the media strip. */
-async function recentClips(playerList: PlayerProfile[]) {
-  const withMedia = await Promise.all(
-    playerList.slice(0, 6).map(async (player) => {
-      const items = await media
-        .listForPlayer(player.id, undefined, { revalidate: 600 })
-        .catch(() => [] as Media[]);
-      return items.slice(0, 2).map((item) => ({ item, player }));
-    }),
-  );
-  return withMedia.flat().slice(0, 8);
 }
 
 function Stat({

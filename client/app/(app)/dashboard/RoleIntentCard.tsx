@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Volleyball, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * The fallback for a skipped welcome (README §1.2.2) — the question returns as a
@@ -14,6 +15,7 @@ import { Card } from '@/components/ui/Card';
  * question the product asks.
  */
 export function RoleIntentCard() {
+  const { t } = useI18n();
   const [dismissed, setDismissed] = React.useState(false);
   if (dismissed) return null;
 
@@ -24,19 +26,19 @@ export function RoleIntentCard() {
           <Volleyball className="size-5" aria-hidden />
         </div>
         <div className="flex-1">
-          <p className="font-semibold">Do you play football yourself?</p>
+          <p className="font-semibold">{t.dashboard.doYouPlay}</p>
           <p className="text-muted mt-0.5 text-sm">
             Set up a player card so academies can find you. Takes about a minute.
           </p>
         </div>
         <Button asChild className="shrink-0">
-          <Link href="/onboarding/player">Set up my card</Link>
+          <Link href="/onboarding/player">{t.dashboard.setUpMyCard}</Link>
         </Button>
       </div>
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label={t.dashboard.dismiss}
         className="text-muted hover:bg-surface-2 absolute top-2 right-2 grid size-8 place-items-center rounded-lg"
       >
         <X className="size-4" aria-hidden />

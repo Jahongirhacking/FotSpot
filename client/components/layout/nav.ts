@@ -1,6 +1,9 @@
+import type { Dictionary } from '@/lib/i18n';
+import type { Role } from '@/lib/roles';
 import {
   Building2,
   CalendarDays,
+  Clapperboard,
   Home,
   Inbox,
   Search,
@@ -8,8 +11,6 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-import type { Role } from '@/lib/roles';
-import type { Dictionary } from '@/lib/i18n';
 
 export interface NavItem {
   href: string;
@@ -35,12 +36,26 @@ export function navForRole(role: Role | null): NavItem[] {
     case 'player':
       return [
         { href: '/dashboard', label: 'myCard', icon: Sparkles },
+        // Players watch the feed too — it is where they see what the standard
+        // looks like at their age, which is the whole argument for uploading.
+        { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/trials', label: 'trials', icon: CalendarDays },
         { href: '/academies', label: 'academies', icon: Building2 },
         { href: '/players', label: 'players', icon: Search },
       ];
 
+    // The scout's home *is* the feed: what they open the app to do is watch the
+    // next clip worth watching, not read a dashboard. Their own reputation and
+    // stats still live at /dashboard, which the logo goes to.
     case 'scout':
+      return [
+        { href: '/feed', label: 'feed', icon: Clapperboard },
+        { href: '/players', label: 'players', icon: Search },
+        { href: '/academies', label: 'academies', icon: Building2 },
+        { href: '/trials', label: 'trials', icon: CalendarDays },
+        { href: '/recommendations', label: 'myPicks', icon: Inbox },
+      ];
+
     case 'coach':
       return [...COMMON, { href: '/recommendations', label: 'myPicks', icon: Inbox }];
 
@@ -51,6 +66,7 @@ export function navForRole(role: Role | null): NavItem[] {
     case 'academy_manager':
       return [
         { href: '/dashboard', label: 'home', icon: Home },
+        { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
         { href: '/players', label: 'findPlayers', icon: Search },
         { href: '/trials', label: 'trials', icon: CalendarDays },

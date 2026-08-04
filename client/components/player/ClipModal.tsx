@@ -222,19 +222,19 @@ function ClipPlayer({ src }: { src: string }) {
   return (
     <div className="relative overflow-hidden rounded-lg bg-black">
       <video
-          ref={ref}
-          src={src}
-          playsInline
-          autoPlay
-          onClick={toggle}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
-          onTimeUpdate={(event) => {
-            if (!scrubbing) setTime(event.currentTarget.currentTime);
-          }}
-          className="max-h-[60dvh] w-full cursor-pointer"
-        />
+        ref={ref}
+        src={src}
+        playsInline
+        autoPlay
+        onClick={toggle}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
+        onTimeUpdate={(event) => {
+          if (!scrubbing) setTime(event.currentTarget.currentTime);
+        }}
+        className="max-h-[60dvh] w-full cursor-pointer"
+      />
 
       <div className="flex items-center gap-2 bg-black/70 px-2 py-1.5">
         <button
@@ -243,7 +243,11 @@ function ClipPlayer({ src }: { src: string }) {
           className="grid size-7 shrink-0 place-items-center rounded-full text-white disabled:opacity-40"
           aria-label={playing ? t.clips.pause : t.clips.play}
         >
-          {playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+          {playing ? (
+            <Pause className="size-4" aria-hidden />
+          ) : (
+            <Play className="size-4" aria-hidden />
+          )}
         </button>
 
         <input
@@ -321,6 +325,7 @@ function EditClipForm({
       <Field label={t.clips.clipTitle} htmlFor="edit-title">
         <Input
           id="edit-title"
+          placeholder={t.placeholders.clipTitle}
           value={title}
           maxLength={120}
           onChange={(event) => setTitle(event.target.value)}
@@ -330,6 +335,7 @@ function EditClipForm({
       <Field label={t.clips.description} htmlFor="edit-desc">
         <Textarea
           id="edit-desc"
+          placeholder={t.placeholders.clipDescription}
           value={description}
           maxLength={1000}
           onChange={(event) => setDescription(event.target.value)}

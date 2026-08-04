@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ShieldCheck, ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -19,21 +19,31 @@ import {
   type PlayerIdentityValues,
 } from '@/lib/schemas/player';
 import type { PlayerProfile } from '@/lib/api/types';
-import { ageFrom, cn, humanizeEnum } from '@/lib/utils';
+import { cn, humanizeEnum } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Field, Input, Label, Select } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 
-type Step = 'identity' | 'guardian' | 'football';
+/**
+ * Two steps, not three.
+ *
+ * There used to be a guardian gate between them for under-18s. It collected an
+ * acknowledgement checkbox and nothing else — no guardian account, no consent
+ * record, no change to who could see the profile — so it asked a child to promise
+ * something the product could not act on, and implied a safeguard that did not
+ * exist. README §11 still calls for real guardian consent before launch; removing
+ * this placeholder does not satisfy that, it stops pretending to.
+ */
+type Step = 'identity' | 'football';
 
 /**
  * Player profile wizard.
  *
- * STEP ORDER IS A SAFETY REQUIREMENT, not a UX preference. README §11.1: the flow
- * must branch on age *before* collecting anything else about a minor, so step 1 is
- * name + date of birth only, and an under-18 answer routes into the guardian gate
- * before any position, region, measurement or clip is asked for.
+ * Date of birth comes first and alone, because it decides the age band every
+ * number on the card is compared within (§21.1) — "fast" is meaningless until you
+ * know "fast for what age". Everything optional comes after, so a half-finished
+ * card is still a card.
  */
 export function PlayerWizard({
   knownName,
@@ -44,12 +54,9 @@ export function PlayerWizard({
   const [identity, setIdentity] = React.useState<PlayerIdentityValues | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
-  const age = identity ? ageFrom(identity.birthDate) : null;
-  const isMinor = age !== null && age < 18;
-
   return (
     <div className="space-y-4">
-      <Steps current={step} isMinor={isMinor} />
+      <Steps current={step} />
 
       {serverError && <Alert tone="danger">{serverError}</Alert>}
 
@@ -59,23 +66,15 @@ export function PlayerWizard({
           defaults={identity}
           onDone={(values) => {
             setIdentity(values);
-            setStep(ageFrom(values.birthDate) < 18 ? 'guardian' : 'football');
+            setStep('football');
           }}
-        />
-      )}
-
-      {step === 'guardian' && age !== null && (
-        <GuardianStep
-          age={age}
-          onBack={() => setStep('identity')}
-          onContinue={() => setStep('football')}
         />
       )}
 
       {step === 'football' && identity && (
         <FootballStep
           identity={identity}
-          onBack={() => setStep(isMinor ? 'guardian' : 'identity')}
+          onBack={() => setStep('identity')}
           onError={setServerError}
         />
       )}
@@ -83,16 +82,16 @@ export function PlayerWizard({
   );
 }
 
-function Steps({ current, isMinor }: { current: Step; isMinor: boolean }) {
+function Steps({ current }: { current: Step }) {
+  const { t } = useI18n();
   const steps: { key: Step; label: string }[] = [
     { key: 'identity', label: 'You' },
-    ...(isMinor ? [{ key: 'guardian' as Step, label: 'Parent' }] : []),
     { key: 'football', label: 'Football' },
   ];
   const index = steps.findIndex((step) => step.key === current);
 
   return (
-    <ol className="flex items-center gap-2" aria-label="Progress">
+    <ol className="flex items-center gap-2" aria-label={t.onboarding.progress}>
       {steps.map((step, position) => (
         <li key={step.key} className="flex flex-1 items-center gap-2">
           <span
@@ -149,7 +148,7 @@ function IdentityStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Who&apos;s playing?</CardTitle>
+        <CardTitle>{t.onboarding.whoIsPlaying}</CardTitle>
         <CardDescription>
           Just the basics for now. Your date of birth decides which age group you&apos;re compared
           in — we never compare across age groups.
@@ -184,7 +183,11 @@ function IdentityStep({
                 required
                 error={form.formState.errors.firstName?.message}
               >
-                <Input id="firstName" {...form.register('firstName')} />
+                <Input
+                  id="firstName"
+                  {...form.register('firstName')}
+                  placeholder={t.placeholders.firstName}
+                />
               </Field>
               <Field
                 label={t.auth.lastName}
@@ -192,13 +195,17 @@ function IdentityStep({
                 required
                 error={form.formState.errors.lastName?.message}
               >
-                <Input id="lastName" {...form.register('lastName')} />
+                <Input
+                  id="lastName"
+                  {...form.register('lastName')}
+                  placeholder={t.placeholders.lastName}
+                />
               </Field>
             </div>
           )}
 
           <Field
-            label="Date of birth"
+            label={t.onboarding.dateOfBirth}
             htmlFor="birthDate"
             required
             error={form.formState.errors.birthDate?.message}
@@ -207,7 +214,7 @@ function IdentityStep({
           </Field>
 
           <Field
-            label="Gender"
+            label={t.onboarding.gender}
             htmlFor="gender"
             required
             error={form.formState.errors.gender?.message}
@@ -227,71 +234,6 @@ function IdentityStep({
   );
 }
 
-/**
- * The minor gate.
- *
- * This screen is honest about a limitation rather than faking consent: the backend
- * has no guardian model yet (README §11 is a launch blocker, and backend/README says
- * so). So this collects nothing, promises nothing, and states plainly what is
- * missing. Faking a consent checkbox here would be worse than blocking.
- */
-function GuardianStep({
-  age,
-  onBack,
-  onContinue,
-}: {
-  age: number;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const [acknowledged, setAcknowledged] = React.useState(false);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldCheck className="text-primary size-5" aria-hidden />A parent or guardian needs to
-          be involved
-        </CardTitle>
-        <CardDescription>
-          You&apos;re {age}, so FotSpot needs a parent or guardian linked to this profile before it
-          can be seen by academies.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Alert tone="warning" title="Guardian consent isn't built yet">
-          This is an early build. Guardian accounts, consent and the private-by-default visibility
-          rules are still being finished. Until they are, a profile created here stays{' '}
-          <strong>visible only to you</strong> — it is not published to academies, and you should
-          not upload photos or videos yet.
-        </Alert>
-
-        <label className="border-border hover:bg-surface-2 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
-          <input
-            type="checkbox"
-            className="accent-primary mt-0.5 size-4"
-            checked={acknowledged}
-            onChange={(event) => setAcknowledged(event.target.checked)}
-          />
-          <span>
-            I understand my profile won&apos;t be shown to academies until a parent or guardian has
-            confirmed it, and I&apos;ll come back then.
-          </span>
-        </label>
-
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack} className="flex-1">
-            <ArrowLeft aria-hidden /> Back
-          </Button>
-          <Button onClick={onContinue} disabled={!acknowledged} className="flex-1">
-            Continue
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function FootballStep({
   identity,
   onBack,
@@ -301,6 +243,7 @@ function FootballStep({
   onBack: () => void;
   onError: (message: string | null) => void;
 }) {
+  const { t } = useI18n();
   // Input/output types differ because of z.coerce — see lib/schemas/player.ts.
   const form = useForm<PlayerFootballInput, unknown, PlayerFootballValues>({
     resolver: zodResolver(playerFootballSchema),
@@ -341,7 +284,7 @@ function FootballStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your game</CardTitle>
+        <CardTitle>{t.onboarding.yourGame}</CardTitle>
         <CardDescription>
           All optional — you can fill these in later. Every one you add makes your card stronger.
         </CardDescription>
@@ -349,9 +292,9 @@ function FootballStep({
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Main position" htmlFor="primaryPosition">
+            <Field label={t.onboarding.mainPosition} htmlFor="primaryPosition">
               <Select id="primaryPosition" {...form.register('primaryPosition')}>
-                <option value="">Not sure yet</option>
+                <option value="">{t.onboarding.notSureYet}</option>
                 {POSITIONS.map((position) => (
                   <option key={position} value={position}>
                     {position}
@@ -359,7 +302,7 @@ function FootballStep({
                 ))}
               </Select>
             </Field>
-            <Field label="Other position" htmlFor="secondaryPosition">
+            <Field label={t.onboarding.otherPosition} htmlFor="secondaryPosition">
               <Select id="secondaryPosition" {...form.register('secondaryPosition')}>
                 <option value="">—</option>
                 {POSITIONS.map((position) => (
@@ -372,12 +315,12 @@ function FootballStep({
           </div>
 
           <Field
-            label="Playing style"
+            label={t.onboarding.playingStyle}
             htmlFor="playingStyle"
-            hint="How you play, not just where. Academies search for this."
+            hint={t.onboarding.playingStyleHint}
           >
             <Select id="playingStyle" {...form.register('playingStyle')}>
-              <option value="">Pick later</option>
+              <option value="">{t.onboarding.pickLater}</option>
               {Object.entries(PLAYING_STYLES).map(([group, styles]) => (
                 <optgroup key={group} label={group}>
                   {styles.map((style) => (
@@ -391,7 +334,7 @@ function FootballStep({
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Strong foot" htmlFor="dominantFoot">
+            <Field label={t.onboarding.strongFoot} htmlFor="dominantFoot">
               <Select id="dominantFoot" {...form.register('dominantFoot')}>
                 <option value="">—</option>
                 <option value="RIGHT">Right</option>
@@ -399,7 +342,7 @@ function FootballStep({
                 <option value="BOTH">Both</option>
               </Select>
             </Field>
-            <Field label="Region" htmlFor="region">
+            <Field label={t.onboarding.region} htmlFor="region">
               <Select id="region" {...form.register('region')}>
                 {UZBEK_REGIONS.map((region) => (
                   <option key={region} value={region}>
@@ -411,20 +354,30 @@ function FootballStep({
           </div>
 
           <fieldset className="grid grid-cols-2 gap-3">
-            <legend className="sr-only">Measurements</legend>
+            <legend className="sr-only">{t.onboarding.measurements}</legend>
             <Field
-              label="Height (cm)"
+              label={t.onboarding.heightCm}
               htmlFor="height"
               error={form.formState.errors.height?.message}
             >
-              <Input id="height" inputMode="numeric" {...form.register('height')} />
+              <Input
+                id="height"
+                inputMode="numeric"
+                {...form.register('height')}
+                placeholder={t.placeholders.height}
+              />
             </Field>
             <Field
-              label="Weight (kg)"
+              label={t.onboarding.weightKg}
               htmlFor="weight"
               error={form.formState.errors.weight?.message}
             >
-              <Input id="weight" inputMode="numeric" {...form.register('weight')} />
+              <Input
+                id="weight"
+                inputMode="numeric"
+                {...form.register('weight')}
+                placeholder={t.placeholders.weight}
+              />
             </Field>
           </fieldset>
 

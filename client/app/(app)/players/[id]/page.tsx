@@ -15,6 +15,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils';
 
+/**
+ * One segment serves both `/players/<uuid>` and `/players/@handle`.
+ *
+ * The `@` is what decides which lookup runs, rather than sniffing whether the
+ * value parses as a UUID: an explicit marker in the URL cannot be ambiguous, and
+ * a handle that happened to look like an id would otherwise resolve to the wrong
+ * person — or to nobody, which is worse to debug.
+ */
+function fetchPlayer(idOrHandle: string, opts: Parameters<typeof players.getById>[1]) {
+  return idOrHandle.startsWith('@')
+    ? players.getByUsername(idOrHandle, opts)
+    : players.getById(idOrHandle, opts);
+}
+
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
 export async function generateMetadata({
   params,
@@ -23,7 +37,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const player = await players.getById(id, { revalidate: 300 });
+    const player = await fetchPlayer(id, { revalidate: 300 });
     return { title: `${player.firstName} ${player.lastName}` };
   } catch {
     return { title: 'Player' };
@@ -36,7 +50,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   let player: PlayerProfile;
   try {
-    player = await players.getById(
+    player = await fetchPlayer(
       id,
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
     );
@@ -71,12 +85,16 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   // Fetched rather than read off `player.media` so the clip list and the bars
   // are built from exactly the same rows.
   const clips = await media
-    .listForPlayer(id, undefined, session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 })
+    .listForPlayer(
+      id,
+      undefined,
+      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
+    )
     .catch(() => [] as Media[]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         {/*
           Card | pitch on one row, the attribute board spanning both beneath —
           the board is wide by nature (six bars plus a clip grid) and reads badly
@@ -84,7 +102,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           `items-start` keeps the pitch card at its own height rather than
           stretching to the card's, which left a dead band under it.
         */}
-        <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
           <PlayerCard
             player={player}
             assessments={assessments}
@@ -92,7 +110,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           />
           <OnThePitchCard player={player} t={t} />
 
-          <div className="sm:col-span-2">
+          {/* min-w-0: a grid item defaults to min-width:auto, which means it
+              refuses to shrink below its content. The clip category strip inside
+              scrolls horizontally, and without this the item grows to the strip's
+              full width instead — taking the whole page sideways with it. */}
+          <div className="min-w-0 sm:col-span-2">
             <AttributeBoard
               player={player}
               assessments={assessments}
@@ -106,20 +128,20 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
         <Card>
           <CardHeader>
-            <CardTitle>Self-reported record</CardTitle>
+            <CardTitle>{t.player.selfReportedRecord}</CardTitle>
           </CardHeader>
           <CardContent>
             {/* §1.6: self-reported numbers are labelled as such, always. Mixing them
                 with verified data in one figure would destroy the distinction the
                 platform's credibility rests on. */}
             <div className="mb-3">
-              <Badge variant="neutral">Self-reported — not verified</Badge>
+              <Badge variant="neutral">{t.player.selfReported}</Badge>
             </div>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Matches" value={player.matches} />
-              <Stat label="Goals" value={player.goals} />
-              <Stat label="Assists" value={player.assists} />
-              <Stat label="Clean sheets" value={player.cleanSheets} />
+              <Stat label={t.profile.matches} value={player.matches} />
+              <Stat label={t.profile.goals} value={player.goals} />
+              <Stat label={t.profile.assists} value={player.assists} />
+              <Stat label={t.player.cleanSheets} value={player.cleanSheets} />
             </dl>
           </CardContent>
         </Card>
@@ -127,7 +149,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         {assessments.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Coach assessments</CardTitle>
+              <CardTitle>{t.player.coachAssessments}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="divide-border divide-y">
@@ -135,7 +157,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                   <li key={assessment.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="flex flex-wrap items-center gap-2">
-                        <Badge variant="success">Coach-verified</Badge>
+                        <Badge variant="success">{t.player.coachVerified}</Badge>
                         {/* The coaches who assessed you are, precisely, your coaches. */}
                         {isSelf && <RelationBadge relation="MY_COACH" t={t} />}
                       </span>

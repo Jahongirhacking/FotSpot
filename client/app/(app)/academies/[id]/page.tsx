@@ -84,9 +84,9 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
             </p>
             <div className="mt-2">
               {academy.status === 'VERIFIED' ? (
-                <Badge variant="success">Verified academy</Badge>
+                <Badge variant="success">{t.academy.verifiedAcademy}</Badge>
               ) : (
-                <Badge variant="warning">Awaiting verification</Badge>
+                <Badge variant="warning">{t.academy.awaitingVerification}</Badge>
               )}
             </div>
           </div>
@@ -109,7 +109,7 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
           </CardHeader>
           <CardContent>
             {academyTrials.length === 0 ? (
-              <p className="text-muted text-sm">No trials posted right now.</p>
+              <p className="text-muted text-sm">{t.academy.noTrialsNow}</p>
             ) : (
               <ul className="divide-border divide-y">
                 {academyTrials.map((trial) => (

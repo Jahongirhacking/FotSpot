@@ -2,6 +2,7 @@ import { Trophy } from 'lucide-react';
 import type { ScoutStats } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import type { Dictionary } from '@/lib/i18n';
 
 /**
  * Scout reputation — README §1.5.
@@ -18,7 +19,7 @@ const TIERS = [
   { level: 6, name: 'Legendary Scout', minRecommendations: 250, minSuccessRate: 50, weight: 125 },
 ] as const;
 
-export function ScoutLevelCard({ stats }: { stats: ScoutStats }) {
+export function ScoutLevelCard({ stats, t }: { stats: ScoutStats; t: Dictionary }) {
   const tier = TIERS.find((t) => t.level === stats.level) ?? TIERS[0];
   const next = TIERS.find((t) => t.level === stats.level + 1);
 
@@ -42,8 +43,8 @@ export function ScoutLevelCard({ stats }: { stats: ScoutStats }) {
 
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Stat label="Sent" value={stats.totalRecommendations} />
-          <Stat label="Accepted" value={stats.acceptedRecommendations} />
-          <Stat label="Success" value={`${Math.round(stats.successRate)}%`} />
+          <Stat label={t.profile.accepted} value={stats.acceptedRecommendations} />
+          <Stat label={t.profile.successRate} value={`${Math.round(stats.successRate)}%`} />
         </dl>
 
         {next ? (

@@ -92,18 +92,15 @@ export function ClipUploader({
         storageKey: string;
         posterUploadUrl: string;
         posterKey: string;
-      }>(
-        '/media/upload-url',
-        {
-          method: 'POST',
-          body: {
-            filename: file.name || 'clip.webm',
-            type: 'VIDEO',
-            category,
-            contentType: file.type || 'video/webm',
-          },
+      }>('/media/upload-url', {
+        method: 'POST',
+        body: {
+          filename: file.name || 'clip.webm',
+          type: 'VIDEO',
+          category,
+          contentType: file.type || 'video/webm',
         },
-      );
+      });
 
       await uploadToStorage(ticket.uploadUrl, file, {
         blocked: t.clips.uploadBlocked,
@@ -277,6 +274,7 @@ export function ClipUploader({
             <Field label={t.clips.clipTitle} htmlFor="clip-title" hint={t.common.optional}>
               <Input
                 id="clip-title"
+                placeholder={t.placeholders.clipTitle}
                 value={title}
                 maxLength={120}
                 onChange={(event) => setTitle(event.target.value)}
@@ -286,6 +284,7 @@ export function ClipUploader({
             <Field label={t.clips.description} htmlFor="clip-desc" hint={t.common.optional}>
               <Textarea
                 id="clip-desc"
+                placeholder={t.placeholders.clipDescription}
                 value={description}
                 maxLength={1000}
                 onChange={(event) => setDescription(event.target.value)}

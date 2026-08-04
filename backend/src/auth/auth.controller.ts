@@ -10,7 +10,11 @@ import {
   LogoutDto,
   OAuthLoginDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
   RegisterEmailDto,
+  RequestRegistrationCodeDto,
+  ResetPasswordDto,
+  VerifyResetCodeDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -21,6 +25,18 @@ import {
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  /** Step 1 of signing up: proves the address before an account exists for it. */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('register/request-code')
+  requestRegistrationCode(
+    @Body() dto: RequestRegistrationCodeDto,
+    @ClientInfoParam() client: ClientInfo,
+  ) {
+    return this.authService.requestRegistrationCode(dto, client);
+  }
+
+  /** Step 2: creates the account, only against a code that checks out. */
   @Public()
   @Post('register/email')
   registerEmail(@Body() dto: RegisterEmailDto, @ClientInfoParam() client: ClientInfo) {
@@ -32,6 +48,41 @@ export class AuthController {
   @Post('login/email')
   loginEmail(@Body() dto: LoginEmailDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.loginEmail(dto, client);
+  }
+
+  /**
+   * "I forgot my password" — sends a reset code to the address on the account.
+   *
+   * Answers identically whether or not the account exists, so it cannot be used
+   * to test which emails and handles are registered. See AuthService.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/forgot')
+  forgotPassword(@Body() dto: ForgotPasswordDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.forgotPassword(dto, client);
+  }
+
+  /**
+   * Checks a reset code without spending it.
+   *
+   * Lets the form ask for a new password only once the code is known to be good,
+   * so a typo does not discard a password the user has already entered twice. It
+   * grants nothing — `password/reset` re-checks the code regardless.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/verify-code')
+  verifyResetCode(@Body() dto: VerifyResetCodeDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.verifyResetCode(dto, client);
+  }
+
+  /** Sets a new password against the code, and signs every device out. */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('password/reset')
+  resetPassword(@Body() dto: ResetPasswordDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.resetPassword(dto, client);
   }
 
   @Public()

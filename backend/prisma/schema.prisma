@@ -60,10 +60,26 @@ model User {
   id            String   @id @default(uuid())
   phone         String?  @unique
   email         String?  @unique
-  /// Only set for accounts an admin created on someone else's behalf (academy
-  /// managers, §1.10). Self-registered users sign in with email or phone and
-  /// never get one, hence nullable rather than a required unique handle.
+  /// Public handle, `colour-animal-football-number` by default (see
+  /// username.util.ts). Every account gets one — it is how `/players/@handle`
+  /// resolves and how someone signs in without remembering which email they used.
+  ///
+  /// Still nullable because accounts created before handles existed have none
+  /// until `UsersService.findMe` backfills them on first read.
   username      String?  @unique
+
+  /// When the address was proved, not merely typed. Null for accounts created
+  /// before registration required a code, and for phone/OAuth signups that have
+  /// no email at all.
+  /// When true, the account is hidden from public listings and its profile is
+  /// only readable by the account itself and by admins. Set from Settings.
+  ///
+  /// Default false rather than true: an account nobody can find cannot be
+  /// scouted, and being seen is what the platform is for. The switch exists
+  /// because a fourteen-year-old's guardian may reasonably want it off.
+  isPrivate     Boolean  @default(false)
+
+  emailVerifiedAt DateTime?
   passwordHash  String?
   firstName     String?
   lastName      String?
@@ -90,6 +106,7 @@ model User {
   notifications Notification[]
   otpCodes      OtpCode[]
   verificationCodes VerificationCode[]
+  passwordResetCodes PasswordResetCode[]
   auditLogs     AuditLog[]
   reportsFiled  Report[] @relation("ReportsFiled")
   follows       Follow[] @relation("UserFollows")
@@ -163,6 +180,48 @@ model VerificationCode {
   createdAt   DateTime @default(now())
 
   @@index([userId, channel])
+}
+
+/**
+ * A code proving someone controls an email address **before** an account exists
+ * for it.
+ *
+ * Separate from VerificationCode, which requires a `userId` because it confirms a
+ * change to an account that is already there. At registration there is no user to
+ * point at, and widening that relation to nullable would erase the invariant that
+ * makes it readable. Separate from OtpCode too, which authenticates a login by
+ * phone and would mean storing an email in a column called `phone`.
+ */
+model RegistrationCode {
+  id          String   @id @default(uuid())
+  email       String
+  codeHash    String
+  expiresAt   DateTime
+  consumed    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([email, consumed])
+}
+
+/**
+ * A code that lets someone set a new password without knowing the old one.
+ *
+ * Its own table rather than another `VerificationCode` row: that model confirms a
+ * *new* destination the user is moving to, while this authorises a credential
+ * change on an address they already hold. Same shape, opposite meaning — and the
+ * two have different lifecycles, since resetting also revokes every session.
+ */
+model PasswordResetCode {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, consumed])
 }
 
 // ---------- PLAYER PROFILE (1.6) ----------
@@ -281,6 +340,21 @@ enum AcademyMemberRole {
   MANAGER
   COACH
   SCOUT
+  PLAYER
+}
+
+/**
+ * A membership is never deleted, only moved through these.
+ *
+ * `INACTIVE` is a coach who has stopped working with the academy but whose
+ * assessments still have to mean something — deleting the row would orphan every
+ * judgement they ever made. `RELEASED` is the academy saying "we are done, they
+ * are free to join someone else", which is what another academy imports.
+ */
+enum AcademyMemberStatus {
+  ACTIVE
+  INACTIVE
+  RELEASED
 }
 
 model AcademyMember {
@@ -289,6 +363,14 @@ model AcademyMember {
   userId     String
   coachId    String?
   role       AcademyMemberRole
+  status     AcademyMemberStatus @default(ACTIVE)
+
+  /// Set when the academy releases the member for transfer, cleared on import.
+  releasedAt DateTime?
+  /// Where they came from, so a transfer is a fact on the record rather than a
+  /// row that quietly changed academies overnight.
+  previousAcademyId String?
+  joinedAt   DateTime @default(now())
 
   academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   user       User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -14,8 +14,8 @@ import {
   managerBody,
   ManagerFields,
   type ManagerChoice,
-} from './ManagerFields';
-import { CredentialsPanel } from './CredentialsPanel';
+} from '@/components/shared/ManagerFields';
+import { CredentialsPanel } from '@/components/shared/CredentialsPanel';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -174,7 +174,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                       </p>
                     </div>
 
-                    <div className="flex shrink-0 flex-wrap gap-1">
+                    <div className="flex w-full flex-wrap gap-1 sm:w-auto">
                       <Button size="sm" variant="outline" onClick={() => setEditingId(academy.id)}>
                         <Pencil aria-hidden /> {t.admin.editAcademy}
                       </Button>
@@ -283,7 +283,12 @@ function AcademyForm({
           }}
         >
           <Field label={t.admin.academyName} htmlFor="ac-name" required>
-            <Input id="ac-name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="ac-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.placeholders.academyName}
+            />
           </Field>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -299,6 +304,7 @@ function AcademyForm({
             <Field label={t.academy.district} htmlFor="ac-district">
               <Input
                 id="ac-district"
+                placeholder={t.placeholders.district}
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
               />
@@ -308,6 +314,7 @@ function AcademyForm({
           <Field label={t.academy.about} htmlFor="ac-about" hint={t.academy.aboutHint}>
             <Textarea
               id="ac-about"
+              placeholder={t.placeholders.academyAbout}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

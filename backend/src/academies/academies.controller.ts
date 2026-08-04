@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
 import { EndorseDto, ListEndorsementsDto } from './dto/endorsement.dto';
@@ -8,6 +9,10 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   AddStaffMemberDto,
+  CreateCoachDto,
+  ImportMemberDto,
+  ListMembersDto,
+  UpdateMemberDto,
   CreateAcademyDto,
   SetManagerDto,
   UpdateAcademyDto,
@@ -112,6 +117,65 @@ export class AcademiesController {
   @Post(':id/staff')
   addStaff(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddStaffMemberDto) {
     return this.academiesService.addStaff(user.userId, id, dto);
+  }
+
+  /**
+   * Add a coach: an existing account, or a new one minted with credentials the
+   * manager hands over — the same two paths an admin has for a manager.
+   *
+   * Credentials come back exactly once and are never retrievable again.
+   */
+  @Post(':id/coaches')
+  createCoach(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: CreateCoachDto,
+  ) {
+    return this.academiesService.createCoach(user.userId, id, dto);
+  }
+
+  /** The roster: coaches, scouts and the squad, players sorted by assessed rating. */
+  @Public()
+  @Get(':id/members')
+  listMembers(@Param('id') id: string, @Query() dto: ListMembersDto) {
+    return this.academiesService.listMembers(id, dto);
+  }
+
+  /** Edit a membership or stand it down. There is no delete — see the service. */
+  @Patch(':id/members/:memberId')
+  updateMember(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: UpdateMemberDto,
+  ) {
+    return this.academiesService.updateMember(user.userId, id, memberId, dto);
+  }
+
+  /** Let a member go, so another academy can take them on. */
+  @Post(':id/members/:memberId/release')
+  releaseMember(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.academiesService.releaseMember(user.userId, id, memberId);
+  }
+
+  /** Everyone any academy has released — declared before `:id` routes. */
+  @Get('transfers/available')
+  listTransferMarket(@Query('role') role?: AcademyMemberRole) {
+    return this.academiesService.listTransferMarket(role);
+  }
+
+  /** Take on someone another academy released. */
+  @Post(':id/members/import')
+  importMember(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ImportMemberDto,
+  ) {
+    return this.academiesService.importMember(user.userId, id, dto);
   }
 
   @Get(':id/staff')

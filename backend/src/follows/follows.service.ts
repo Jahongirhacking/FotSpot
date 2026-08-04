@@ -1,11 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { AcademyScoutFollowState, FollowTargetType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateFollowDto, ListFollowsDto, SetScoutFollowStateDto } from './dto/follow.dto';
 
 @Injectable()
 export class FollowsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private storage: StorageService,
+  ) {}
 
   // ---------- Scout -> player / academy (1.2 Scout permissions) ----------
 
@@ -96,13 +100,24 @@ export class FollowsService {
     return { cleared: true };
   }
 
-  /** The academy's own scout network. Includes MUTED rows - it is their list to manage. */
+  /**
+   * The academy's own scout network. Includes MUTED rows - it is their list to
+   * manage.
+   *
+   * Joins the scout in the same query. Returning bare `scoutId`s left the screen
+   * printing eight characters of a UUID at a manager who is trying to recognise
+   * people — and the only way to render a name from that is a request per row.
+   */
   async listScoutNetwork(userId: string, academyId: string) {
     await this.assertAcademyManager(userId, academyId);
-    return this.prisma.academyScoutFollow.findMany({
+    const rows = await this.prisma.academyScoutFollow.findMany({
       where: { academyId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        scout: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
+      },
     });
+    return rows.map((row) => ({ ...row, scout: this.storage.withAvatarUrl(row.scout) }));
   }
 
   /**

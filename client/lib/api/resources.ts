@@ -13,6 +13,10 @@ import type {
   DeviceSession,
   Follow,
   FollowTargetType,
+  AcademyMember,
+  AcademyMemberRole,
+  AcademyMemberStatus,
+  FeedPage,
   Media,
   MediaCategory,
   MediaType,
@@ -26,6 +30,9 @@ import type {
   Trial,
   TrialApplication,
   TrialApplicationStatus,
+  ProfileSummary,
+  SuggestedPlayer,
+  TransferListing,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -37,6 +44,9 @@ export const users = {
 
   /** Identity + roles + per-role counters for the profile screen, in one request. */
   myProfile: (opts: Opts = {}) => apiFetch<MyProfileResponse>('/users/me/profile', opts),
+
+  /** The short block behind the avatar menu: counts, academy, coach. */
+  summary: (opts: Opts = {}) => apiFetch<ProfileSummary>('/users/me/summary', opts),
 
   updateProfile: (body: UpdateProfileBody, opts: Opts = {}) =>
     apiFetch<{
@@ -73,7 +83,11 @@ export const users = {
 export interface UpdateProfileBody {
   firstName?: string;
   lastName?: string;
+  /** Public handle. Sent without the `@`; uniqueness is the API's answer to give. */
+  username?: string;
   avatarStorageKey?: string;
+  /** Hide the account from search, listings and public profile reads. */
+  isPrivate?: boolean;
 }
 
 export interface AvatarUploadUrl {
@@ -109,6 +123,8 @@ export interface MeResponse {
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
+  /** Hidden from search, listings and public profile reads. */
+  isPrivate?: boolean;
   createdAt: string;
   roles: string[];
   permissions: string[];
@@ -161,6 +177,13 @@ export const players = {
     apiFetch<Page<PlayerProfile>>(`/players/search${toQuery({ ...params })}`, opts),
 
   getById: (id: string, opts: Opts = {}) => apiFetch<PlayerProfile>(`/players/${id}`, opts),
+
+  /** Resolves `/players/@handle`. The `@` is stripped before the request. */
+  getByUsername: (username: string, opts: Opts = {}) =>
+    apiFetch<PlayerProfile>(
+      `/players/by-username/${encodeURIComponent(username.replace(/^@+/, ''))}`,
+      opts,
+    ),
 
   getMine: (opts: Opts = {}) => apiFetch<PlayerProfile>('/players/me', opts),
 
@@ -229,13 +252,20 @@ export const academies = {
     apiFetch<{ relation: AcademyRelation | null }>(`/academies/${id}/relation`, opts),
 };
 
+/** GET /media/recent — a clip with the player it belongs to. */
+export interface RecentClip extends Media {
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+  };
+}
+
 export type AcademyRelation =
-  | 'MANAGER'
-  | 'COACH'
-  | 'SCOUT'
-  | 'ENDORSED_SCOUT'
-  | 'ENDORSED_COACH'
-  | 'TRIALIST';
+  'MANAGER' | 'COACH' | 'SCOUT' | 'ENDORSED_SCOUT' | 'ENDORSED_COACH' | 'TRIALIST';
 
 // ---------- Insights (recruiting-side only — never shown to players) ----------
 
@@ -440,6 +470,13 @@ export interface UserDetail extends AdminUser {
 export interface AuditLogEntry {
   id: string;
   userId: string | null;
+  /** Joined by the API — "who did this" is the question an audit log answers. */
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+  } | null;
   action: string;
   meta: Record<string, unknown> | null;
   createdAt: string;
@@ -677,9 +714,23 @@ export interface CreateTrialBody {
 // ---------- Media ----------
 
 export const media = {
+  /** One page of the ranked feed. Personalised, so never cached. */
+  feed: (page: number, pageSize: number, opts: Opts = {}) =>
+    apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize })}`, opts),
+
+  suggestedPlayers: (limit: number, opts: Opts = {}) =>
+    apiFetch<SuggestedPlayer[]>(`/media/feed/suggested-players${toQuery({ limit })}`, opts),
+
   /** `category` narrows to one attribute's claim history. */
   listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
     apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
+
+  /**
+   * Newest clips platform-wide, each carrying its player. One request for the
+   * landing strip, which used to make one per player.
+   */
+  listRecent: (limit?: number, opts: Opts = {}) =>
+    apiFetch<RecentClip[]>(`/media/recent${toQuery({ limit })}`, opts),
 
   /** Whether the server can accept uploads at all — asked before recording. */
   storageStatus: (opts: Opts = {}) =>
@@ -744,12 +795,65 @@ export const media = {
       comments: number;
       /** One like per account — see MediaService.getEngagement. */
       likedByMe: boolean;
-    }>(`/media/${id}/engagement`,
-      opts,
-    ),
+    }>(`/media/${id}/engagement`, opts),
 };
 
 // ---------- Follows ----------
+
+export const academyRoster = {
+  /**
+   * Add a coach: an existing account, or a new one minted for them. Credentials
+   * for a minted account come back once and are never retrievable again.
+   */
+  createCoach: (
+    academyId: string,
+    body: { userId?: string; newCoach?: NewManagerInput; bio?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<{ member: AcademyMember; coachId: string; credentials?: ManagerCredentials }>(
+      `/academies/${academyId}/coaches`,
+      { method: 'POST', body, ...opts },
+    ),
+
+  /** Coaches, scouts and the squad; players come back sorted by assessed rating. */
+  list: (
+    academyId: string,
+    params: { role?: AcademyMemberRole; status?: AcademyMemberStatus } = {},
+    opts: Opts = {},
+  ) => apiFetch<AcademyMember[]>(`/academies/${academyId}/members${toQuery(params)}`, opts),
+
+  update: (
+    academyId: string,
+    memberId: string,
+    body: { role?: AcademyMemberRole; status?: 'ACTIVE' | 'INACTIVE' },
+    opts: Opts = {},
+  ) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/${memberId}`, {
+      method: 'PATCH',
+      body,
+      ...opts,
+    }),
+
+  /** Let someone go, so another academy can import them. */
+  release: (academyId: string, memberId: string, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/${memberId}/release`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  transferMarket: (role: AcademyMemberRole | undefined, opts: Opts = {}) =>
+    apiFetch<TransferListing[]>(`/academies/transfers/available${toQuery({ role })}`, opts),
+
+  import: (academyId: string, memberId: string, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/members/import`, {
+      method: 'POST',
+      body: { memberId },
+      ...opts,
+    }),
+
+  add: (academyId: string, body: { userId: string; role: AcademyMemberRole }, opts: Opts = {}) =>
+    apiFetch<AcademyMember>(`/academies/${academyId}/staff`, { method: 'POST', body, ...opts }),
+};
 
 export const follows = {
   follow: (body: { targetType: FollowTargetType; targetId: string }, opts: Opts = {}) =>
@@ -801,8 +905,6 @@ export const auth = {
    * `currentPassword` may be omitted only while `mustChangePassword` is set —
    * the account is still on the password an admin generated for it.
    */
-  changePassword: (
-    body: { currentPassword?: string; newPassword: string },
-    opts: Opts = {},
-  ) => apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
+  changePassword: (body: { currentPassword?: string; newPassword: string }, opts: Opts = {}) =>
+    apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
 };

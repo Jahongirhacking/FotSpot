@@ -60,6 +60,10 @@ export function PlayerCard({
         'ring-1 ring-white/10 transition-transform',
         href && 'hover:-translate-y-0.5 hover:shadow-xl',
         'aspect-[3/4]',
+        // A 3:4 card at full phone width is nearly 500px tall — the whole first
+        // screen, before a single attribute. Capped and centred below `sm`, where
+        // it sits in a 220px column anyway.
+        !small && 'mx-auto w-full max-w-64 sm:max-w-none',
         className,
       )}
       style={{ backgroundImage: `linear-gradient(160deg, ${theme.from} 0%, ${theme.to} 68%)` }}
@@ -142,7 +146,13 @@ export function PlayerCard({
 
           {!small && (
             <p className="truncate text-xs text-white/70">
-              {player.playingStyle ? humanizeEnum(player.playingStyle) : (player.region ?? '')}
+              {/* The handle first: it is what someone types to find this player
+                  again, and the playing style is already a badge elsewhere. */}
+              {player.username
+                ? `@${player.username}`
+                : player.playingStyle
+                  ? humanizeEnum(player.playingStyle)
+                  : (player.region ?? '')}
             </p>
           )}
 

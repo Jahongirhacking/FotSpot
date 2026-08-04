@@ -36,6 +36,7 @@ export default async function EditProfilePage() {
         initial={{
           firstName: me.firstName ?? '',
           lastName: me.lastName ?? '',
+          username: me.username ?? '',
           avatarUrl: me.avatarUrl ?? null,
         }}
       />

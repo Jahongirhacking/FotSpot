@@ -1,20 +1,28 @@
 'use client';
 
+import { FotSpotMark } from '@/components/shared/FotSpotMark';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
+import { Menu as MenuIcon, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
-import { Menu as MenuIcon, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useI18n } from './I18nProvider';
-import { useSession } from './SessionProvider';
-import { RoleSwitcher } from './RoleSwitcher';
-import { NotificationBell } from './NotificationBell';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { NotificationBell } from './NotificationBell';
 import { ProfileMenu } from './ProfileMenu';
+import { RoleSwitcher } from './RoleSwitcher';
+import { useSession } from './SessionProvider';
+import { ThemeToggle } from './ThemeToggle';
 import { navForRole } from './nav';
-import { Button } from '@/components/ui/Button';
-import { FotSpotMark } from '@/components/shared/FotSpotMark';
 
+/**
+ * The inline nav appears at `lg`, not `md`.
+ *
+ * At exactly 768px the six nav links plus the five account controls needed 880px
+ * and pushed every page sideways — and that is measuring English, the shortest of
+ * the three languages. The drawer holds them until there is genuinely room.
+ */
 export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl: string | null }) {
   const { t } = useI18n();
   const { activeRole, isAuthenticated } = useSession();
@@ -30,11 +38,11 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
 
   return (
     <header className="bg-surface/85 border-border sticky top-0 z-40 border-b backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5">
+      <div className="mx-auto flex max-w-6xl items-center gap-1 px-2 py-2.5 sm:gap-2 sm:px-4">
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className="lg:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
           aria-expanded={mobileOpen}
@@ -42,14 +50,14 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
           {mobileOpen ? <X aria-hidden /> : <MenuIcon aria-hidden />}
         </Button>
 
-        <Link href="/dashboard" className="mr-1 flex items-center gap-2">
-          <FotSpotMark className="size-7" />
+        <Link href="/dashboard" className="mr-2.5 flex min-h-11 items-center gap-1 pr-1">
+          <FotSpotMark />
           <span className="hidden text-base font-bold tracking-tight sm:inline">
             {t.common.appName}
           </span>
         </Link>
 
-        <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 md:flex">
+        <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
           {nav.map((item) => (
             <NavLink
               key={item.href}
@@ -61,18 +69,20 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1 md:ml-0">
+        <div className="ml-auto flex items-center gap-1 lg:ml-0">
           {/* Guests browse the same pages, so they get the same shell minus the
               signed-in controls — and a way in, rather than a forced redirect. */}
           {isAuthenticated ? (
             <>
               <RoleSwitcher />
+              <ThemeToggle compact />
               <LanguageSwitcher compact />
               <NotificationBell />
               <ProfileMenu initials={initials} avatarUrl={avatarUrl} />
             </>
           ) : (
             <>
+              <ThemeToggle compact />
               <LanguageSwitcher compact />
               <Button asChild variant="ghost" size="sm">
                 <Link href="/login">{t.auth.signIn}</Link>
@@ -88,7 +98,7 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
       {mobileOpen && (
         <nav
           aria-label="Main"
-          className="border-border bg-surface flex flex-col gap-0.5 border-t p-2 md:hidden"
+          className="border-border bg-surface flex flex-col gap-0.5 border-t p-2 lg:hidden"
         >
           {nav.map((item) => (
             <NavLink

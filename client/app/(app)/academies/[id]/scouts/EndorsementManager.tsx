@@ -69,6 +69,7 @@ export function EndorsementManager({
           hint: t.academy.endorseHint,
           userId: t.academy.userId,
           note: t.academy.endorseNote,
+          notePlaceholder: t.placeholders.note,
           submit: t.academy.endorse,
           scout: t.roles.scout,
           coach: t.roles.coach,
@@ -139,7 +140,8 @@ export function EndorsementManager({
               {followed.map((follow) => (
                 <li key={follow.id} className="flex items-center gap-3 py-2.5">
                   <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                    {follow.scoutId.slice(0, 8)}
+                    {[follow.scout?.firstName, follow.scout?.lastName].filter(Boolean).join(' ') ||
+                      follow.scoutId.slice(0, 8)}
                   </span>
                   <Badge variant={follow.state === 'MUTED' ? 'warning' : 'neutral'}>
                     {follow.state.toLowerCase()}
@@ -241,6 +243,7 @@ function EndorseForm({
           <Field label={labels.note} htmlFor="endorse-note">
             <Input
               id="endorse-note"
+              placeholder={labels.notePlaceholder}
               value={note}
               onChange={(event) => setNote(event.target.value)}
               maxLength={500}

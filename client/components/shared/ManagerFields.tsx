@@ -9,8 +9,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { cn } from '@/lib/utils';
 
 export type ManagerChoice =
-  | { mode: 'existing'; user: AdminUser | null }
-  | { mode: 'new'; draft: NewManagerInput };
+  { mode: 'existing'; user: AdminUser | null } | { mode: 'new'; draft: NewManagerInput };
 
 export const EMPTY_MANAGER: ManagerChoice = { mode: 'existing', user: null };
 
@@ -88,6 +87,7 @@ export function ManagerFields({
             <Field label={t.admin.firstName} htmlFor="mgr-first" required>
               <Input
                 id="mgr-first"
+                placeholder={t.placeholders.firstName}
                 value={value.draft.firstName}
                 onChange={(event) =>
                   onChange({
@@ -100,6 +100,7 @@ export function ManagerFields({
             <Field label={t.admin.lastName} htmlFor="mgr-last" required>
               <Input
                 id="mgr-last"
+                placeholder={t.placeholders.lastName}
                 value={value.draft.lastName}
                 onChange={(event) =>
                   onChange({ mode: 'new', draft: { ...value.draft, lastName: event.target.value } })

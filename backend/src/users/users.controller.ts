@@ -66,8 +66,14 @@ export class UsersController {
   }
 
   @Public()
+  /** The "who am I here" block behind the avatar menu — see UsersService.summary. */
+  @Get('me/summary')
+  summary(@CurrentUser() user: AuthUser) {
+    return this.usersService.summary(user.userId);
+  }
+
   @Get(':id')
-  publicProfile(@Param('id') id: string) {
-    return this.usersService.findPublicProfile(id);
+  publicProfile(@Param('id') id: string, @CurrentUser() viewer?: AuthUser) {
+    return this.usersService.findPublicProfile(id, viewer);
   }
 }

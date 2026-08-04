@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Users } from 'lucide-react';
 import { players } from '@/lib/api/resources';
+import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
 import type { PlayingStyle } from '@/lib/api/types';
 import { PlayerFilters } from './PlayerFilters';
@@ -28,6 +29,7 @@ export default async function PlayersPage({
   }>;
 }) {
   const params = await searchParams;
+  const { t, f } = await getServerT();
   const session = await getSession();
   const page = Number(params.page ?? 1) || 1;
 
@@ -48,11 +50,8 @@ export default async function PlayersPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-bold">Find players</h1>
-        <p className="text-muted text-sm">
-          {result.total} player{result.total === 1 ? '' : 's'} on FotSpot. Search by role, not just
-          position.
-        </p>
+        <h1 className="text-xl font-bold">{t.player.findPlayers}</h1>
+        <p className="text-muted text-sm">{f(t.player.searchSubtitle, { count: result.total })}</p>
       </header>
 
       <PlayerFilters />
@@ -60,8 +59,8 @@ export default async function PlayersPage({
       {result.items.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No players match that"
-          description="Try widening the filters — the platform is still growing region by region."
+          title={t.player.noMatches}
+          description={t.player.noMatchesHint}
         />
       ) : (
         <>

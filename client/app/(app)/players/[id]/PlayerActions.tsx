@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
+import { useI18n } from '@/components/layout/I18nProvider';
 import {
   Dialog,
   DialogBody,
@@ -29,6 +30,7 @@ import {
  * recommendation from a user without the role regardless of what this renders.
  */
 export function PlayerActions({ playerId, playerName }: { playerId: string; playerName: string }) {
+  const { t } = useI18n();
   const { activeRole, isAuthenticated } = useSession();
   const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
@@ -104,7 +106,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
       </Card>
 
       {activeRole === 'coach' && (
-        <Alert tone="info" title="You can assess this player">
+        <Alert tone="info" title={t.dashboard.assessPlayer}>
           A coach-verified rating replaces self-reported bars on their card with verified ones.
         </Alert>
       )}
@@ -113,6 +115,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 }
 
 function RecommendDialog({ playerId, playerName }: { playerId: string; playerName: string }) {
+  const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
   const [academyId, setAcademyId] = React.useState('');
   const [note, setNote] = React.useState('');
@@ -165,13 +168,13 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
         <DialogBody className="space-y-4">
           {recommend.isError && <Alert tone="danger">{(recommend.error as Error).message}</Alert>}
 
-          <Field label="Academy" htmlFor="academyId" required>
+          <Field label={t.recommendations.chooseAcademy} htmlFor="academyId" required>
             <Select
               id="academyId"
               value={academyId}
               onChange={(event) => setAcademyId(event.target.value)}
             >
-              <option value="">Everyone (global recommendation)</option>
+              <option value="">{t.recommendations.globalType}</option>
               {endorsing?.map(({ academy }) => (
                 <option key={academy.id} value={academy.id}>
                   {academy.name}
@@ -181,16 +184,16 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
           </Field>
 
           <Field
-            label="Why this player?"
+            label={t.recommendations.whyThisPlayer}
             htmlFor="note"
-            hint="Optional, but a specific note gets read. What did you actually see?"
+            hint={t.recommendations.whyHint}
           >
             <Textarea
               id="note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
               maxLength={1000}
-              placeholder="Left-footed, beats his marker one-on-one, plays with his head up…"
+              placeholder={t.recommendations.whyPlaceholder}
             />
           </Field>
         </DialogBody>

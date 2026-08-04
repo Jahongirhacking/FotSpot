@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
 import { refreshSession } from '@/lib/api/session-refresh';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Two choices, and the answer is what grants a role — README §1.2.2.
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
  * created, because §11.1 requires the age gate to come first.
  */
 export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [busy, setBusy] = React.useState<null | 'player' | 'scout'>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -66,13 +68,13 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <ChoiceCard
           icon={Volleyball}
-          title="I play football"
+          title={t.welcome.playerTitle}
           points={[
-            'Build your player card',
-            'Add clips of what you can do',
-            'Apply for academy trials',
+            t.welcome.playerPoint1,
+            t.welcome.playerPoint2,
+            t.welcome.playerPoint3,
           ]}
-          cta="Set up my card"
+          cta={t.welcome.playerCta}
           loading={busy === 'player'}
           disabled={busy !== null}
           onClick={() => choose('player')}
@@ -81,13 +83,13 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
 
         <ChoiceCard
           icon={Search}
-          title="I spot talent"
+          title={t.welcome.scoutTitle}
           points={[
-            'Recommend players to academies',
-            'Build a scouting reputation',
-            'Follow players and academies',
+            t.welcome.scoutPoint1,
+            t.welcome.scoutPoint2,
+            t.welcome.scoutPoint3,
           ]}
-          cta="Start scouting"
+          cta={t.welcome.scoutCta}
           loading={busy === 'scout'}
           disabled={busy !== null}
           onClick={() => choose('scout')}
@@ -95,7 +97,7 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
       </div>
 
       <p className="text-muted text-center text-xs">
-        You can add the other one later from your profile.
+        {t.welcome.settingUp}
       </p>
     </div>
   );

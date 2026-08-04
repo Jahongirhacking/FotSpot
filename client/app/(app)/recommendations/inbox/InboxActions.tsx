@@ -6,6 +6,7 @@ import { Check, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { RecommendationStatus } from '@/lib/api/types';
 import { Button } from '@/components/ui/Button';
+import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
  * Accept or reject every open recommendation backing one player.
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/Button';
  * success rate would stay wrong.
  */
 export function InboxActions({ recommendationIds }: { recommendationIds: string[] }) {
+  const { t } = useI18n();
   const router = useRouter();
 
   const decide = useMutation({
@@ -38,8 +40,8 @@ export function InboxActions({ recommendationIds }: { recommendationIds: string[
       <Button
         size="icon"
         variant="ghost"
-        aria-label="Accept"
-        title="Accept"
+        aria-label={t.recommendations.accept}
+        title={t.recommendations.accept}
         loading={decide.isPending}
         onClick={() => decide.mutate('ACCEPTED')}
       >
@@ -48,8 +50,8 @@ export function InboxActions({ recommendationIds }: { recommendationIds: string[
       <Button
         size="icon"
         variant="ghost"
-        aria-label="Reject"
-        title="Reject"
+        aria-label={t.recommendations.reject}
+        title={t.recommendations.reject}
         disabled={decide.isPending}
         onClick={() => decide.mutate('REJECTED')}
       >

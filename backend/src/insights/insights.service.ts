@@ -70,7 +70,8 @@ export class InsightsService {
     if (grouped.length === 0) return [];
 
     const profiles = await this.prisma.playerProfile.findMany({
-      where: { id: { in: grouped.map((row) => row.playerId) } },
+      // Private accounts stay out of the public leaderboards.
+      where: { id: { in: grouped.map((row) => row.playerId) }, user: { isPrivate: false } },
       select: {
         id: true,
         firstName: true,
@@ -179,26 +180,32 @@ export class InsightsService {
   async academySummary(academyId: string) {
     const since = new Date(Date.now() - WEEK_MS);
 
-    const [pendingRecommendations, newThisWeek, endorsedScouts, endorsedCoaches, openTrials, applications] =
-      await Promise.all([
-        this.prisma.recommendation.count({
-          where: { status: 'PENDING', OR: [{ academyId }, { targets: { some: { academyId } } }] },
-        }),
-        this.prisma.recommendation.count({
-          where: {
-            createdAt: { gte: since },
-            OR: [{ academyId }, { targets: { some: { academyId } } }],
-          },
-        }),
-        this.prisma.academyEndorsement.count({
-          where: { academyId, role: 'SCOUT', status: 'ACTIVE' },
-        }),
-        this.prisma.academyEndorsement.count({
-          where: { academyId, role: 'COACH', status: 'ACTIVE' },
-        }),
-        this.prisma.trial.count({ where: { academyId, date: { gte: new Date() } } }),
-        this.prisma.trialApplication.count({ where: { trial: { academyId } } }),
-      ]);
+    const [
+      pendingRecommendations,
+      newThisWeek,
+      endorsedScouts,
+      endorsedCoaches,
+      openTrials,
+      applications,
+    ] = await Promise.all([
+      this.prisma.recommendation.count({
+        where: { status: 'PENDING', OR: [{ academyId }, { targets: { some: { academyId } } }] },
+      }),
+      this.prisma.recommendation.count({
+        where: {
+          createdAt: { gte: since },
+          OR: [{ academyId }, { targets: { some: { academyId } } }],
+        },
+      }),
+      this.prisma.academyEndorsement.count({
+        where: { academyId, role: 'SCOUT', status: 'ACTIVE' },
+      }),
+      this.prisma.academyEndorsement.count({
+        where: { academyId, role: 'COACH', status: 'ACTIVE' },
+      }),
+      this.prisma.trial.count({ where: { academyId, date: { gte: new Date() } } }),
+      this.prisma.trialApplication.count({ where: { trial: { academyId } } }),
+    ]);
 
     return {
       pendingRecommendations,

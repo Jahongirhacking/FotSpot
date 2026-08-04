@@ -8,6 +8,7 @@ import { getServerT } from '@/lib/i18n/server';
 import { sortRoles } from '@/lib/roles';
 import { ageBand, formatDate, humanizeEnum, initials } from '@/lib/utils';
 import { ProfileRoleList } from './ProfileRoleList';
+import { ProfileSummaryCard } from './ProfileSummaryCard';
 import { SyncRoles } from './SyncRoles';
 import { EditProfileButton } from './EditProfileButton';
 import { BecomeScoutCard } from './BecomeScoutCard';
@@ -67,6 +68,10 @@ export default async function ProfilePage() {
         </div>
         <EditProfileButton label={t.profile.editProfile} />
       </header>
+
+      {/* Counts and affiliations before roles: "who am I here" is the question
+          the page opens with, and every number on it opens a list. */}
+      <ProfileSummaryCard />
 
       <Card>
         <CardHeader>
@@ -161,7 +166,10 @@ function PlayerDetails({
   const facts = [
     { label: t.onboarding.mainPosition, value: stats.primaryPosition },
     { label: t.onboarding.otherPosition, value: stats.secondaryPosition },
-    { label: t.onboarding.strongFoot, value: stats.dominantFoot && humanizeEnum(stats.dominantFoot) },
+    {
+      label: t.onboarding.strongFoot,
+      value: stats.dominantFoot && humanizeEnum(stats.dominantFoot),
+    },
     {
       label: t.onboarding.playingStyle,
       value: stats.playingStyle && humanizeEnum(stats.playingStyle),

@@ -28,13 +28,7 @@ export type TrialApplicationStatus =
   'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
-  | 'PACE'
-  | 'DRIBBLING'
-  | 'PASSING'
-  | 'FINISHING'
-  | 'PHYSICAL'
-  | 'TECHNIQUE'
-  | 'MATCH_HIGHLIGHTS';
+  'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
 export type MediaType = 'IMAGE' | 'VIDEO';
 export type FollowTargetType = 'PLAYER' | 'ACADEMY';
 export type AcademyScoutFollowState = 'FOLLOWING' | 'MUTED';
@@ -76,6 +70,112 @@ export interface Media {
   createdAt: string;
 }
 
+/**
+ * One clip in the ranked feed: the media, who it belongs to, and where the viewer
+ * already stands with it. All three come from one request — a feed that fetched
+ * engagement per tile would be an N+1 in the most-scrolled screen in the product.
+ */
+export interface FeedClip extends Omit<Media, 'playerId' | 'status'> {
+  likes: number;
+  views: number;
+  likedByMe: boolean;
+  /** Whether the viewer follows this player — the feed's extra ranking weight. */
+  following: boolean;
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+    avatarUrl: string | null;
+  };
+}
+
+export interface FeedPage {
+  items: FeedClip[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SuggestedPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  primaryPosition: string | null;
+  region: string | null;
+  avatarUrl: string | null;
+  globalWeight: number;
+  recommendationCount: number;
+}
+
+/** The block behind the avatar menu — see backend UsersService.summary. */
+export interface ProfileSummary {
+  followers: number;
+  following: number;
+  player: { profileId: string; coach: SummaryCoach | null } | null;
+  coach: { profileId: string; status: string; assessedPlayers: number } | null;
+  academy: {
+    id: string;
+    name: string;
+    region: string | null;
+    district: string | null;
+    status: string;
+    myRole: AcademyMemberRole;
+    coaches: number;
+    players: number;
+    scouts: number;
+  } | null;
+}
+
+export interface SummaryCoach {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  lastAssessedAt: string;
+}
+
+export type AcademyMemberRole = 'MANAGER' | 'COACH' | 'SCOUT' | 'PLAYER';
+export type AcademyMemberStatus = 'ACTIVE' | 'INACTIVE' | 'RELEASED';
+
+/** One person on an academy's books. `rating` is the mean assessed attribute. */
+export interface AcademyMember {
+  id: string;
+  role: AcademyMemberRole;
+  status: AcademyMemberStatus;
+  joinedAt: string;
+  releasedAt: string | null;
+  previousAcademyId: string | null;
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  playerId: string | null;
+  primaryPosition: string | null;
+  birthDate: string | null;
+  coachStatus: string | null;
+  rating: number | null;
+}
+
+export interface TransferListing {
+  id: string;
+  role: AcademyMemberRole;
+  releasedAt: string | null;
+  academy: { id: string; name: string; region: string | null };
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  playerId: string | null;
+  primaryPosition: string | null;
+  rating: number | null;
+}
+
 export interface PlayerProfile {
   id: string;
   userId: string;
@@ -91,6 +191,8 @@ export interface PlayerProfile {
   playingStyle?: PlayingStyle | null;
   /** Flattened from the owning User by the API — one account, one picture. */
   avatarUrl?: string | null;
+  /** Public handle, shown and linked as `@handle`. */
+  username?: string | null;
   region?: string | null;
   district?: string | null;
   matches: number;
@@ -110,16 +212,17 @@ export interface AcademyProfile {
   district?: string | null;
   description?: string | null;
   status: VerificationStatus;
-  members?: AcademyMember[];
+  members?: AcademyMemberRef[];
   createdAt: string;
 }
 
-export interface AcademyMember {
+/** The trimmed membership embedded in an academy profile. */
+export interface AcademyMemberRef {
   id: string;
   academyId: string;
   userId: string;
   coachId?: string | null;
-  role: 'MANAGER' | 'COACH' | 'SCOUT';
+  role: AcademyMemberRole;
   createdAt: string;
 }
 
@@ -144,6 +247,14 @@ export interface Recommendation {
   id: string;
   scoutId: string;
   playerId: string;
+  /** Joined on the academy inbox, so the screen never renders a bare id. */
+  player?: { id: string; firstName: string; lastName: string; birthDate: string } | null;
+  scout?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  } | null;
   /** Null for GLOBAL recommendations, which address no single academy (§1.5.3). */
   academyId: string | null;
   status: RecommendationStatus;
@@ -166,6 +277,15 @@ export interface MyRecommendation {
 /** GET /recommendations/academy/:id/ranked — README §1.5.1/§1.5.2. */
 export interface RankedRecommendation {
   playerId: string;
+  /** Joined by the API so the inbox never has to resolve names itself. */
+  player: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+  } | null;
   recommendationIds: string[];
   recommendationCount: number;
   credibility: number;
@@ -243,6 +363,13 @@ export interface Follow {
 }
 
 export interface AcademyScoutFollow {
+  /** Joined on the academy's own network listing, so no row renders a bare id. */
+  scout?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  } | null;
   id: string;
   academyId: string;
   scoutId: string;

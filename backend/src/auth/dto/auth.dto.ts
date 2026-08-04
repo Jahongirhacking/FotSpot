@@ -4,12 +4,25 @@ import {
   IsOptional,
   IsPhoneNumber,
   IsString,
+  Length,
+  MaxLength,
   MinLength,
 } from 'class-validator';
+
+/** Step 1: prove the address is reachable before an account exists for it. */
+export class RequestRegistrationCodeDto {
+  @IsEmail()
+  email: string;
+}
 
 export class RegisterEmailDto {
   @IsEmail()
   email: string;
+
+  /** The six digits sent to `email`. Registration fails without them. */
+  @IsString()
+  @Length(6, 6)
+  code: string;
 
   @IsString()
   @MinLength(8)
@@ -45,6 +58,42 @@ export class LoginEmailDto {
 
   @IsString()
   password: string;
+}
+
+/** "I can't get in" — takes whatever the user remembers, email or handle. */
+export class ForgotPasswordDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+}
+
+/** Step 2: is this code good? Asked before the user is made to pick a password. */
+export class VerifyResetCodeDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+
+  @IsString()
+  @Length(6, 20)
+  code: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(120)
+  identifier: string;
+
+  /** Eight characters; spaces and case are forgiven before comparison. */
+  @IsString()
+  @Length(6, 20)
+  code: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }
 
 export class ChangePasswordDto {

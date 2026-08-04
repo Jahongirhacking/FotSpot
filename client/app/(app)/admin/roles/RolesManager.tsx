@@ -117,7 +117,7 @@ export function RolesManager({ initial }: { initial: RoleWithPermissions[] }) {
                   ))}
                 </Select>
               </Field>
-              <Field label="Permission" htmlFor="grant-permission">
+              <Field label={t.admin.newPermission} htmlFor="grant-permission">
                 <Select
                   id="grant-permission"
                   value={permissionId}

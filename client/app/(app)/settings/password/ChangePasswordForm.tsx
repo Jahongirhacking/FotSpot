@@ -7,7 +7,7 @@ import { KeyRound } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, PasswordInput } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 
 const MIN_LENGTH = 8;
@@ -72,10 +72,10 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
 
       {!forced && (
         <Field label={t.settings.currentPassword} htmlFor="pw-current" required>
-          <Input
+          <PasswordInput
             id="pw-current"
-            type="password"
             autoComplete="current-password"
+            placeholder={t.placeholders.currentPassword}
             value={current}
             onChange={(event) => setCurrent(event.target.value)}
           />
@@ -89,10 +89,10 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         hint={t.settings.passwordHint}
         error={tooShort ? t.settings.passwordTooShort : undefined}
       >
-        <Input
+        <PasswordInput
           id="pw-new"
-          type="password"
           autoComplete="new-password"
+          placeholder={t.placeholders.newPassword}
           value={next}
           onChange={(event) => setNext(event.target.value)}
         />
@@ -104,10 +104,10 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
         required
         error={mismatch ? t.settings.passwordMismatch : undefined}
       >
-        <Input
+        <PasswordInput
           id="pw-confirm"
-          type="password"
           autoComplete="new-password"
+          placeholder={t.placeholders.confirmPassword}
           value={confirm}
           onChange={(event) => setConfirm(event.target.value)}
         />
