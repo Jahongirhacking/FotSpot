@@ -320,6 +320,14 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    addCoach: 'Добавить тренера',
+    addCoachHint:
+      'Выберите существующего пользователя или создайте аккаунт — логин и пароль показываются один раз.',
+    coachBio: 'О тренере',
+    applicants: 'Заявки',
+    applicantsHint: 'Карточка и возраст каждого кандидата — статус меняется здесь.',
+    noApplicants: 'Заявок пока нет',
+    hostedBy: 'Организатор',
     roster: 'Состав',
     rosterHint: 'Тренеры, скауты и игроки — по рейтингу.',
     memberActive: 'Активен',
@@ -532,6 +540,15 @@ export const ru: Dictionary = {
   },
 
   trials: {
+    shortlist: 'В шорт-лист',
+    invite: 'Пригласить',
+    accept: 'Принять',
+    reject: 'Отклонить',
+    statusApplied: 'Заявка подана',
+    statusShortlisted: 'В шорт-листе',
+    statusInvited: 'Приглашён',
+    statusAccepted: 'Принят',
+    statusRejected: 'Отклонён',
     title: 'Название',
     date: 'Дата и время',
     ageMin: 'Мин. возраст',

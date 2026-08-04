@@ -322,6 +322,14 @@ export const en: Dictionary = {
   },
 
   academy: {
+    addCoach: 'Add a coach',
+    addCoachHint:
+      'Pick an existing user, or create an account — the username and password are shown once.',
+    coachBio: 'About the coach',
+    applicants: 'Applicants',
+    applicantsHint: "Each candidate's card and age — set their status here.",
+    noApplicants: 'No applications yet',
+    hostedBy: 'Hosted by',
     roster: 'Roster',
     rosterHint: 'Coaches, scouts and the squad — players sorted by assessed rating.',
     memberActive: 'Active',
@@ -533,6 +541,15 @@ export const en: Dictionary = {
   },
 
   trials: {
+    shortlist: 'Shortlist',
+    invite: 'Invite',
+    accept: 'Accept',
+    reject: 'Reject',
+    statusApplied: 'Applied',
+    statusShortlisted: 'Shortlisted',
+    statusInvited: 'Invited',
+    statusAccepted: 'Accepted',
+    statusRejected: 'Rejected',
     title: 'Title',
     date: 'Date and time',
     ageMin: 'Youngest age',

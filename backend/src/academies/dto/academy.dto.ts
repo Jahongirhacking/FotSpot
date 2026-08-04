@@ -82,6 +82,20 @@ export class ListMembersDto {
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE', 'RELEASED']) status?: AcademyMemberStatus;
 }
 
+/**
+ * A coach the academy is adding: either an existing account, or a new one it
+ * wants minted with generated credentials — the same two paths an admin has when
+ * appointing a manager, for the same reason. Most Uzbek youth coaches have no
+ * account until someone makes them one.
+ */
+export class CreateCoachDto {
+  @IsOptional() @IsUUID() userId?: string;
+
+  @IsOptional() @ValidateNested() @Type(() => NewManagerDto) newCoach?: NewManagerDto;
+
+  @IsOptional() @IsString() @MaxLength(500) bio?: string;
+}
+
 /** Take on a member another academy has released. */
 export class ImportMemberDto {
   @IsUUID() memberId: string;

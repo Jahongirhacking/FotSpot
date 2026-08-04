@@ -336,6 +336,14 @@ export const uz = {
   },
 
   academy: {
+    addCoach: 'Murabbiy qo‘shish',
+    addCoachHint:
+      'Ro‘yxatdan o‘tgan foydalanuvchini tanlang yoki yangi hisob yarating — login va parol bir marta ko‘rsatiladi.',
+    coachBio: 'Murabbiy haqida',
+    applicants: 'Arizalar',
+    applicantsHint: 'Har bir nomzodning kartasi va yoshi — holatini shu yerdan o‘zgartiring.',
+    noApplicants: 'Hozircha ariza yo‘q',
+    hostedBy: 'Tashkilotchi',
     roster: 'Tarkib',
     rosterHint: 'Murabbiylar, skautlar va o‘yinchilar — reyting bo‘yicha saralangan.',
     memberActive: 'Faol',
@@ -549,6 +557,15 @@ export const uz = {
   },
 
   trials: {
+    shortlist: 'Ro‘yxatga olish',
+    invite: 'Taklif qilish',
+    accept: 'Qabul qilish',
+    reject: 'Rad etish',
+    statusApplied: 'Ariza berilgan',
+    statusShortlisted: 'Ro‘yxatda',
+    statusInvited: 'Taklif qilingan',
+    statusAccepted: 'Qabul qilingan',
+    statusRejected: 'Rad etilgan',
     title: 'Sarlavha',
     date: 'Sana va vaqt',
     ageMin: 'Eng kichik yosh',

@@ -3,13 +3,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { CalendarDays, ClipboardList, MapPin } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
-import { trials } from '@/lib/api/resources';
+import { academies, trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { Trial } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ApplyToTrialButton } from './ApplyToTrialButton';
+import { Applicants } from './Applicants';
 import { formatDate } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -48,17 +49,33 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
 
   const existing = applications.find((application) => application.trialId === id);
 
+  /*
+   * The hosting academy sees who applied; everyone else sees the apply button.
+   * Resolved from the caller's relation to *this* academy rather than from their
+   * role, so an academy manager reading another academy's trial is a candidate's
+   * view, not a manager's.
+   */
+  const [academy, relation] = await Promise.all([
+    academies.getById(trial.academyId, { revalidate: 300 }).catch(() => null),
+    session
+      ? academies
+          .relation(trial.academyId, { token: session.accessToken, cache: 'no-store' })
+          .catch(() => null)
+      : null,
+  ]);
+  const hosts = relation?.relation === 'MANAGER';
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
         <Badge variant="primary">
-          Ages {trial.ageRangeMin}–{trial.ageRangeMax}
+          {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
         </Badge>
         <h1 className="mt-2 text-2xl font-bold">{trial.title}</h1>
         <dl className="text-muted mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <div className="flex items-center gap-1.5">
             <CalendarDays className="size-4" aria-hidden />
-            <dt className="sr-only">Date</dt>
+            <dt className="sr-only">{t.trials.date}</dt>
             <dd>{formatDate(trial.date)}</dd>
           </div>
           <div className="flex items-center gap-1.5">
@@ -68,9 +85,9 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           </div>
         </dl>
         <p className="text-muted mt-2 text-sm">
-          Hosted by{' '}
+          {t.academy.hostedBy}{' '}
           <Link href={`/academies/${trial.academyId}`} className="text-primary hover:underline">
-            this academy
+            {academy?.name ?? t.nav.academies}
           </Link>
         </p>
       </header>
@@ -78,7 +95,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="text-primary size-4" aria-hidden /> Positions wanted
+            <ClipboardList className="text-primary size-4" aria-hidden /> {t.trials.positionsWanted}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -98,11 +115,15 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         </CardContent>
       </Card>
 
-      <ApplyToTrialButton
-        trialId={trial.id}
-        existingStatus={existing?.status ?? null}
-        ageRange={{ min: trial.ageRangeMin, max: trial.ageRangeMax }}
-      />
+      {hosts ? (
+        <Applicants trialId={trial.id} />
+      ) : (
+        <ApplyToTrialButton
+          trialId={trial.id}
+          existingStatus={existing?.status ?? null}
+          ageRange={{ min: trial.ageRangeMin, max: trial.ageRangeMax }}
+        />
+      )}
     </div>
   );
 }

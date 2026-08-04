@@ -1954,6 +1954,45 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/coaches": {
+      "post": {
+        "operationId": "academies_createCoach",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCoachDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a coach: an existing account, or a new one minted with credentials the\nmanager hands over — the same two paths an admin has for a manager.\n\nCredentials come back exactly once and are never retrievable again.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/members": {
       "get": {
         "operationId": "academies_listMembers",
@@ -4458,6 +4497,21 @@
           "userId",
           "role"
         ]
+      },
+      "CreateCoachDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "newCoach": {
+            "$ref": "#/components/schemas/NewManagerDto"
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
       },
       "UpdateMemberDto": {
         "type": "object",

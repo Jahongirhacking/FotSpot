@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { AddCoach } from './AddCoach';
 import { cn, initials } from '@/lib/utils';
 
 const ROLES: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
@@ -109,6 +110,10 @@ export function RosterManager({
           </button>
         ))}
       </div>
+
+      {/* Hiring belongs on the coaches tab and nowhere else — a manager looking
+          at the squad is not looking to add staff. */}
+      {canManage && role === 'COACH' && <AddCoach academyId={academyId} />}
 
       <Card>
         <CardHeader className="pb-2">

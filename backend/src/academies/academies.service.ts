@@ -17,6 +17,7 @@ import { AuditAction } from '../audit/audit.actions';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
   AddStaffMemberDto,
+  CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
   UpdateMemberDto,
@@ -322,7 +323,7 @@ export class AcademiesService {
   /** A manager must exist, be usable, and not be a child's account. */
   private async assertAssignable(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new BadRequestException('That manager account does not exist');
+    if (!user) throw new BadRequestException('That account does not exist');
     if (!user.isActive) throw new BadRequestException('That account is disabled');
     await this.assertNotPlayer(userId);
   }
@@ -342,7 +343,7 @@ export class AcademiesService {
 
     if (playerRole) {
       throw new ForbiddenException(
-        'A player account cannot manage an academy. Use a separate account for academy staff.',
+        'A player account cannot be academy staff. Use a separate account for staff roles.',
       );
     }
   }
@@ -478,6 +479,95 @@ export class AcademiesService {
    * grouped in the database. A rating fetched per member would be an N+1 on the
    * screen a manager opens most.
    */
+
+  /**
+   * Add a coach — an existing account, or a new one minted for them.
+   *
+   * The two paths mirror appointing a manager (§1.10) and exist for the same
+   * reason: most youth coaches in Uzbekistan have no FotSpot account until an
+   * academy makes them one, and telling a manager "ask them to register first,
+   * then come back and search for them" is how a feature goes unused.
+   *
+   * ## The academy's word is the verification
+   *
+   * A coach added this way is VERIFIED on arrival rather than PENDING. The
+   * platform's question about a coach is "does an academy stand behind them",
+   * and an academy putting them on its own books *is* that answer — leaving them
+   * pending would mean an admin re-confirming a fact the academy already
+   * asserted, while the coach cannot assess anyone in the meantime.
+   *
+   * A coach who already has a profile keeps whatever status they had: an academy
+   * hiring someone does not get to upgrade a judgement made elsewhere.
+   *
+   * Credentials for a minted account are returned exactly once, like a manager's.
+   */
+  async createCoach(actorId: string, academyId: string, dto: CreateCoachDto) {
+    await this.assertManager(actorId, academyId);
+
+    if (!dto.userId === !dto.newCoach) {
+      throw new BadRequestException('Give either an existing user or the details for a new one');
+    }
+
+    const academy = await this.prisma.academyProfile.findUnique({ where: { id: academyId } });
+    if (!academy) throw new NotFoundException('Academy not found');
+
+    if (dto.userId) await this.assertAssignable(dto.userId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      let credentials: ManagerCredentials | undefined;
+      let userId = dto.userId;
+
+      if (!userId) {
+        const created = await this.createManagerAccount(tx, dto.newCoach!, academy.name);
+        userId = created.userId;
+        credentials = created.credentials;
+      }
+
+      const existingMember = await tx.academyMember.findUnique({
+        where: { academyId_userId: { academyId, userId } },
+      });
+      if (existingMember && existingMember.status !== 'RELEASED') {
+        throw new ConflictException('They are already on your books');
+      }
+
+      const coach = await tx.coachProfile.upsert({
+        where: { userId },
+        // An existing coach keeps their status; a new one is verified by the act
+        // of an academy adding them.
+        update: { ...(dto.bio !== undefined ? { bio: dto.bio } : {}) },
+        create: { userId, bio: dto.bio ?? null, status: 'VERIFIED' },
+      });
+
+      await tx.userRole.createMany({
+        data: [{ userId, roleId: await this.roleId(tx, 'coach') }],
+        skipDuplicates: true,
+      });
+
+      const member = await tx.academyMember.upsert({
+        where: { academyId_userId: { academyId, userId } },
+        update: { role: 'COACH', status: 'ACTIVE', coachId: coach.id, releasedAt: null },
+        create: { academyId, userId, role: 'COACH', coachId: coach.id },
+      });
+
+      return { member, coachId: coach.id, credentials };
+    });
+
+    await this.invalidate(academyId);
+    await this.audit.record(actorId, AuditAction.ACADEMY_COACH_ADDED, {
+      academyId,
+      coachId: result.coachId,
+      minted: !!result.credentials,
+    });
+    return result;
+  }
+
+  /** Role rows are seeded, so a missing one is a broken deployment, not input. */
+  private async roleId(tx: Prisma.TransactionClient, name: string) {
+    const role = await tx.role.findUnique({ where: { name } });
+    if (!role) throw new BadRequestException(`Role ${name} is missing from this deployment`);
+    return role.id;
+  }
+
   async listMembers(academyId: string, dto: ListMembersDto = {}) {
     const members = await this.prisma.academyMember.findMany({
       where: {

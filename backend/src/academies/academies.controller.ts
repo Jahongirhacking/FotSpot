@@ -9,6 +9,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   AddStaffMemberDto,
+  CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
   UpdateMemberDto,
@@ -116,6 +117,21 @@ export class AcademiesController {
   @Post(':id/staff')
   addStaff(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddStaffMemberDto) {
     return this.academiesService.addStaff(user.userId, id, dto);
+  }
+
+  /**
+   * Add a coach: an existing account, or a new one minted with credentials the
+   * manager hands over — the same two paths an admin has for a manager.
+   *
+   * Credentials come back exactly once and are never retrievable again.
+   */
+  @Post(':id/coaches')
+  createCoach(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: CreateCoachDto,
+  ) {
+    return this.academiesService.createCoach(user.userId, id, dto);
   }
 
   /** The roster: coaches, scouts and the squad, players sorted by assessed rating. */

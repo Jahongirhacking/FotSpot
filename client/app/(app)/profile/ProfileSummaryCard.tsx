@@ -1,14 +1,13 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { Building2, GraduationCap, Users } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { AcademyMemberRole, ProfileSummary } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Feedback';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyMemberRole, ProfileSummary } from '@/lib/api/types';
+import { useQuery } from '@tanstack/react-query';
+import { Building2, GraduationCap, Users } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * "Who am I here": the counts, and whatever the role makes real.
@@ -43,7 +42,7 @@ export function ProfileSummaryCard() {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           <CountLink
             href="/profile/network?tab=followers"
             value={data.followers}
@@ -54,30 +53,31 @@ export function ProfileSummaryCard() {
             value={data.following}
             label={t.profile.following}
           />
-
-          {/* A manager runs the place, so the squad is theirs to open. A coach or
+        </div>
+        {/* A manager runs the place, so the squad is theirs to open. A coach or
               a scout sees the same academy without its staff lists. */}
-          {isManager && academy && (
-            <>
-              <CountLink
-                href={`/academies/${academy.id}/roster?role=PLAYER`}
-                value={academy.players}
-                label={t.profile.players}
-              />
-              <CountLink
-                href={`/academies/${academy.id}/roster?role=COACH`}
-                value={academy.coaches}
-                label={t.profile.coaches}
-              />
-              <CountLink
-                href={`/academies/${academy.id}/roster?role=SCOUT`}
-                value={academy.scouts}
-                label={t.profile.scouts}
-                className="sm:col-start-3"
-              />
-            </>
-          )}
+        {isManager && academy && (
+          <div className="grid grid-cols-3 gap-2">
+            <CountLink
+              href={`/academies/${academy.id}/roster?role=PLAYER`}
+              value={academy.players}
+              label={t.profile.players}
+            />
+            <CountLink
+              href={`/academies/${academy.id}/roster?role=COACH`}
+              value={academy.coaches}
+              label={t.profile.coaches}
+            />
+            <CountLink
+              href={`/academies/${academy.id}/roster?role=SCOUT`}
+              value={academy.scouts}
+              label={t.profile.scouts}
+              className="sm:col-start-3"
+            />
+          </div>
+        )}
 
+        <div className="grid grid-cols-1">
           {data.coach && (
             <CountLink
               href={academy ? `/academies/${academy.id}/roster?role=PLAYER` : '/players'}

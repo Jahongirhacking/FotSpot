@@ -14,8 +14,8 @@ import {
   managerBody,
   ManagerFields,
   type ManagerChoice,
-} from './ManagerFields';
-import { CredentialsPanel } from './CredentialsPanel';
+} from '@/components/shared/ManagerFields';
+import { CredentialsPanel } from '@/components/shared/CredentialsPanel';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';

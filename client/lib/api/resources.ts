@@ -801,6 +801,20 @@ export const media = {
 // ---------- Follows ----------
 
 export const academyRoster = {
+  /**
+   * Add a coach: an existing account, or a new one minted for them. Credentials
+   * for a minted account come back once and are never retrievable again.
+   */
+  createCoach: (
+    academyId: string,
+    body: { userId?: string; newCoach?: NewManagerInput; bio?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<{ member: AcademyMember; coachId: string; credentials?: ManagerCredentials }>(
+      `/academies/${academyId}/coaches`,
+      { method: 'POST', body, ...opts },
+    ),
+
   /** Coaches, scouts and the squad; players come back sorted by assessed rating. */
   list: (
     academyId: string,
