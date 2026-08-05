@@ -1,6 +1,7 @@
 import type { PlayerProfile } from '@/lib/api/types';
 import { CARD_THEME, positionGroup, starTier } from '@/lib/player-card';
 import { ageBand, cn, humanizeEnum } from '@/lib/utils';
+import Image from 'next/image';
 import Link from 'next/link';
 
 /**
@@ -181,9 +182,9 @@ export function PlayerCard({
 function PlayerPortrait({ player, small }: { player: PlayerProfile; small: boolean }) {
   if (player.avatarUrl) {
     return (
-      <img
+      <Image
         src={player.avatarUrl}
-        alt=""
+        alt={player?.username || 'player'}
         referrerPolicy="no-referrer"
         className="absolute inset-x-0 bottom-0 h-[82%] w-full object-cover object-top"
       />

@@ -1,7 +1,14 @@
 'use client';
 
-import * as React from 'react';
-import { Plus, Trophy, Video } from 'lucide-react';
+import { useI18n } from '@/components/layout/I18nProvider';
+import { AttributeBars } from '@/components/player/AttributeBars';
+import { ClipModal } from '@/components/player/ClipModal';
+import { ClipTile } from '@/components/player/ClipTile';
+import { ClipUploader } from '@/components/player/ClipUploader';
+import { RatingHistoryChart } from '@/components/player/RatingHistoryChart';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
 import type { CoachAssessment, Media, MediaCategory, PlayerProfile } from '@/lib/api/types';
 import {
   ATTRIBUTE_CATEGORY,
@@ -9,16 +16,9 @@ import {
   attributeHistory,
   type AttributeKey,
 } from '@/lib/player-card';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { AttributeBars } from '@/components/player/AttributeBars';
-import { ClipTile } from '@/components/player/ClipTile';
-import { ClipModal } from '@/components/player/ClipModal';
-import { ClipUploader } from '@/components/player/ClipUploader';
-import { RatingHistoryChart } from '@/components/player/RatingHistoryChart';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
 import { cn } from '@/lib/utils';
+import { Plus, Trophy, Video } from 'lucide-react';
+import * as React from 'react';
 
 type Filter = 'ALL' | MediaCategory;
 
@@ -94,8 +94,6 @@ export function AttributeBoard({
         </CardContent>
       </Card>
 
-      {selectedAttribute && <AttributeDetail attribute={selectedAttribute} clips={items} />}
-
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -167,6 +165,8 @@ export function AttributeBoard({
         </CardContent>
       </Card>
 
+      {selectedAttribute && <AttributeDetail attribute={selectedAttribute} clips={items} />}
+
       {/* One modal, driven by which tile was pressed — twelve mounted dialogs
           would each hold their own queries and video element. */}
       {openClip && (
@@ -207,7 +207,7 @@ function AttributeDetail({ attribute, clips }: { attribute: AttributeKey; clips:
         {history.length === 0 ? (
           <p className="text-muted text-sm">{t.clips.noHistory}</p>
         ) : (
-          <div className="max-w-sm">
+          <div className="max-w-full">
             <RatingHistoryChart history={history} />
           </div>
         )}

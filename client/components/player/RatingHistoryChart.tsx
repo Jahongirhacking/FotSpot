@@ -17,15 +17,13 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
   const points = history.filter((clip) => clip.rating != null);
   if (points.length === 0) return null;
 
-  const width = 320;
-  const height = 96;
+  const width = 450;
+  const height = 196;
   const padX = 8;
-  const padY = 10;
+  const padY = 25;
 
   const x = (index: number) =>
-    points.length === 1
-      ? width / 2
-      : padX + (index / (points.length - 1)) * (width - padX * 2);
+    points.length === 1 ? width / 2 : padX + (index / (points.length - 1)) * (width - padX * 2);
   const y = (rating: number) => height - padY - (rating / 100) * (height - padY * 2);
 
   const line = points.map((clip, index) => `${x(index)},${y(clip.rating!)}`).join(' ');
@@ -69,12 +67,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
 
         {points.map((clip, index) => (
           <g key={clip.id}>
-            <circle
-              cx={x(index)}
-              cy={y(clip.rating!)}
-              r="4"
-              className="fill-prov-self"
-            />
+            <circle cx={x(index)} cy={y(clip.rating!)} r="4" className="fill-prov-self" />
             <text
               x={x(index)}
               y={y(clip.rating!) - 8}

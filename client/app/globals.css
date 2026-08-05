@@ -217,8 +217,9 @@
   .hero-banner {
     background-image: url('/bg-banner-light.jpg');
     background-size: cover;
+    background-repeat: no-repeat;
     /* Holds the pitch, right of centre, whatever the crop. */
-    background-position: 70% 38%;
+    background-position: 60% 38%;
   }
 
   @media (min-width: 1024px) {

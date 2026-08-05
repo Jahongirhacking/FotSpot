@@ -51,7 +51,7 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         </Button>
 
         <Link href="/dashboard" className="mr-2.5 flex min-h-11 items-center gap-1 pr-1">
-          <FotSpotMark />
+          <FotSpotMark className="size-11" />
           <span className="hidden text-base font-bold tracking-tight sm:inline">
             {t.common.appName}
           </span>
