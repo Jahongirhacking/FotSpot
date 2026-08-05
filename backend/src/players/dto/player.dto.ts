@@ -34,6 +34,17 @@ export class CreatePlayerProfileDto {
 }
 
 export class UpdatePlayerProfileDto {
+  /**
+   * Editable, at the product's request.
+   *
+   * It is the one field here that is also an age gate (§11.1): the age band on the
+   * card, the trial age checks and what counts as an under-18 account all read it,
+   * so a player who edits it changes which trials they can apply to. It is
+   * therefore bounded to a plausible playing age rather than accepted as any date,
+   * and every change is written to the audit log.
+   */
+  @IsOptional() @IsDateString() birthDate?: string;
+
   @IsOptional() @IsNumber() height?: number;
   @IsOptional() @IsNumber() weight?: number;
   @IsOptional() @IsIn(['LEFT', 'RIGHT', 'BOTH']) dominantFoot?: 'LEFT' | 'RIGHT' | 'BOTH';

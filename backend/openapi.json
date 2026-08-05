@@ -4465,6 +4465,10 @@
               }
             ]
           },
+          "birthDate": {
+            "type": "string",
+            "description": "Editable, at the product's request.\n\nIt is the one field here that is also an age gate (§11.1): the age band on the\ncard, the trial age checks and what counts as an under-18 account all read it,\nso a player who edits it changes which trials they can apply to. It is\ntherefore bounded to a plausible playing age rather than accepted as any date,\nand every change is written to the audit log."
+          },
           "height": {
             "type": "number"
           },

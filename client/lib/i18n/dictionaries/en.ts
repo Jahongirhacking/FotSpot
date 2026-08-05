@@ -222,6 +222,7 @@ export const en: Dictionary = {
   },
 
   profile: {
+    birthDateHint: 'Your age band and which trials will accept you both follow from this.',
     network: 'Network',
     networkHint: 'Who you follow, and how many follow you.',
     followers: 'Followers',

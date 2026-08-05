@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -11,6 +12,8 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
 import {
   CreatePlayerProfileDto,
@@ -29,6 +32,18 @@ import {
  */
 const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
+/** Bounds on an editable date of birth — a plausible playing age, not any date. */
+const MIN_PLAYER_AGE = 5;
+const MAX_PLAYER_AGE = 45;
+
+/** Whole years, counting the birthday itself. */
+function ageOn(birthDate: Date, now = new Date()): number {
+  let age = now.getFullYear() - birthDate.getFullYear();
+  const month = now.getMonth() - birthDate.getMonth();
+  if (month < 0 || (month === 0 && now.getDate() < birthDate.getDate())) age -= 1;
+  return age;
+}
+
 @Injectable()
 export class PlayersService {
   constructor(
@@ -36,6 +51,7 @@ export class PlayersService {
     private rbac: RbacService,
     private redis: RedisService,
     private storage: StorageService,
+    private audit: AuditService,
   ) {}
 
   private withAvatar<
@@ -131,9 +147,40 @@ export class PlayersService {
     return profile;
   }
 
+  /**
+   * The player edits their own card.
+   *
+   * `birthDate` is bounded here rather than trusted from the DTO. It is an age
+   * gate as much as a detail — the card's age band, the trial age checks and what
+   * counts as an under-18 account all read it — so a date that would make somebody
+   * three years old or fifty is refused, and every change to it lands in the audit
+   * log with the value it replaced. Neither stops a determined player editing it;
+   * both mean nobody can later claim the platform did not notice.
+   */
   async updateProfile(userId: string, dto: UpdatePlayerProfileDto) {
-    await this.assertOwner(userId);
-    const updated = await this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    const profile = await this.assertOwner(userId);
+
+    if (dto.birthDate !== undefined) {
+      const next = new Date(dto.birthDate);
+      const age = ageOn(next);
+      if (Number.isNaN(next.getTime()) || age < MIN_PLAYER_AGE || age > MAX_PLAYER_AGE) {
+        throw new BadRequestException(
+          `Enter a date of birth between ${MIN_PLAYER_AGE} and ${MAX_PLAYER_AGE} years ago`,
+        );
+      }
+      if (next.getTime() !== profile.birthDate.getTime()) {
+        await this.audit.record(userId, AuditAction.PLAYER_BIRTHDATE_CHANGED, {
+          playerId: profile.id,
+          from: profile.birthDate.toISOString().slice(0, 10),
+          to: next.toISOString().slice(0, 10),
+        });
+      }
+    }
+
+    const updated = await this.prisma.playerProfile.update({
+      where: { userId },
+      data: { ...dto, ...(dto.birthDate ? { birthDate: new Date(dto.birthDate) } : {}) },
+    });
     await this.redis.del(RedisKeys.playerProfile(updated.id));
     return updated;
   }

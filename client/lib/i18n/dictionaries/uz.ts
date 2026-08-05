@@ -233,6 +233,7 @@ export const uz = {
   },
 
   profile: {
+    birthDateHint: 'Yosh toifangiz va qaysi sinovlarga ariza bera olishingiz shu sanaga bog‘liq.',
     network: 'Tarmoq',
     networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
     followers: 'Obunachilar',
@@ -852,7 +853,7 @@ export const uz = {
       'Yosh, viloyat, pozitsiya va o‘yin uslubi bo‘yicha qidiring. Uch yuz notanish odam uchun ochiq sinov o‘tkazish shart emas.',
     recentlyJoined: 'Yaqinda qo‘shilganlar',
     viewMyCard: 'Kartamni ko‘rish',
-    watchHighlights: 'Videolarni ko‘rish',
+    watchHighlights: 'Videoni ko‘rish',
     latestClips: 'Yangi videolar',
     latestClipsBody: 'Futbolchilar o‘z mahoratini ko‘rsatadi — 60 soniyada.',
     noClipsYet: 'Hali video yuklanmagan. Birinchi bo‘ling.',

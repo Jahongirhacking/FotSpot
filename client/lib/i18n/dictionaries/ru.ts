@@ -221,6 +221,7 @@ export const ru: Dictionary = {
   },
 
   profile: {
+    birthDateHint: 'От этой даты зависит ваша возрастная группа и доступные просмотры.',
     network: 'Связи',
     networkHint: 'На кого вы подписаны и сколько подписано на вас.',
     followers: 'Подписчики',
