@@ -39,6 +39,7 @@ interface Engagement {
 export function ClipModal({
   clip,
   canEdit,
+  canRate = false,
   open,
   onOpenChange,
   onDeleted,
@@ -46,6 +47,12 @@ export function ClipModal({
 }: {
   clip: Media;
   canEdit: boolean;
+  /**
+   * The viewer is a verified coach, so they may replace the rating on this clip.
+   * Distinct from `canEdit`: the owner edits their own claim, a coach overrules
+   * it, and the two are different acts by different people.
+   */
+  canRate?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleted: (id: string) => void;
@@ -117,10 +124,8 @@ export function ClipModal({
             ) : (
               <>
                 <Badge variant="primary">{label}</Badge>
-                {clip.selfRating != null && (
-                  <span className="text-prov-self font-mono text-lg font-bold">
-                    {clip.selfRating}
-                  </span>
+                {clip.rating != null && (
+                  <span className="text-prov-self font-mono text-lg font-bold">{clip.rating}</span>
                 )}
               </>
             )}
@@ -169,6 +174,10 @@ export function ClipModal({
               </div>
             )}
           </div>
+
+          {canRate && clip.category !== 'MATCH_HIGHLIGHTS' && (
+            <CoachRating clip={clip} onRated={onUpdated} />
+          )}
 
           {editing && canEdit ? (
             <EditClipForm
@@ -297,7 +306,7 @@ function EditClipForm({
   const { t } = useI18n();
   const [title, setTitle] = React.useState(clip.title ?? '');
   const [description, setDescription] = React.useState(clip.description ?? '');
-  const [rating, setRating] = React.useState(clip.selfRating ?? 70);
+  const [rating, setRating] = React.useState(clip.rating ?? 70);
   const isHighlight = clip.category === 'MATCH_HIGHLIGHTS';
 
   const save = useMutation({
@@ -307,7 +316,7 @@ function EditClipForm({
         body: {
           title: title.trim(),
           description: description.trim(),
-          ...(isHighlight ? {} : { selfRating: rating }),
+          ...(isHighlight ? {} : { rating: rating }),
         },
       }),
     onSuccess: onSaved,
@@ -369,5 +378,54 @@ function EditClipForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * A coach replaces the number on the clip they are watching.
+ *
+ * One rating per clip, not two side by side: a card that showed "player says 90,
+ * coach says 60" leaves the reader to decide which is true, and the whole point
+ * of a coach's judgement is that it settles that. The previous value is not lost
+ * — the server keeps it in the clip's rating history.
+ */
+function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) => void }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const [rating, setRating] = React.useState(clip.rating ?? 70);
+
+  const save = useMutation({
+    mutationFn: () =>
+      browserFetch<Media>(`/media/${clip.id}/rating`, { method: 'PATCH', body: { rating } }),
+    onSuccess: (media) => {
+      onRated(media);
+      void queryClient.invalidateQueries({ queryKey: ['player-clips', clip.playerId] });
+    },
+  });
+
+  return (
+    <div className="border-border space-y-2 rounded-lg border p-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="font-medium">{t.clips.coachRating}</span>
+        <span className="font-mono text-lg font-bold tabular-nums">{rating}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={rating}
+        onChange={(event) => setRating(Number(event.target.value))}
+        aria-label={t.clips.coachRating}
+        className="accent-primary h-9 w-full"
+      />
+      <p className="text-muted text-xs">
+        {clip.reportedBy === 'COACH' ? t.clips.ratedByCoach : t.clips.ratedBySelf}
+      </p>
+      <div className="flex justify-end">
+        <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>
+          {t.clips.saveRating}
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
-import Link from 'next/link';
-import type { CoachAssessment, PlayerProfile } from '@/lib/api/types';
-import { CARD_THEME, cardEvidence, positionGroup } from '@/lib/player-card';
+import type { PlayerProfile } from '@/lib/api/types';
+import { CARD_THEME, positionGroup, starTier } from '@/lib/player-card';
 import { ageBand, cn, humanizeEnum } from '@/lib/utils';
+import Image from 'next/image';
+import Link from 'next/link';
 
 /**
  * The player card — README §21, in the eFootball idiom the players themselves
@@ -21,7 +22,9 @@ import { ageBand, cn, humanizeEnum } from '@/lib/utils';
  * know whether it was under-12 or under-18 — so the one figure that must never be
  * missing from the card is the one given the most prominent position on it.
  *
- * The stars are evidence, not ability: see `cardEvidence`.
+ * The stars are evidence, not ability, and they arrive on the player: the server
+ * computes them (`card-stars.util.ts`) so a list of twenty cards costs no extra
+ * request. The card draws what it is given.
  *
  * A Server Component. Two sizes:
  * - `lg` — dashboards, profiles, statistics. The full foil.
@@ -29,14 +32,12 @@ import { ageBand, cn, humanizeEnum } from '@/lib/utils';
  */
 export function PlayerCard({
   player,
-  assessments = [],
   size = 'lg',
   href,
   selfLabel,
   className,
 }: {
   player: PlayerProfile;
-  assessments?: CoachAssessment[];
   size?: 'sm' | 'lg';
   /** Wraps the card in a link. Omit for the player's own card. */
   href?: string;
@@ -49,7 +50,7 @@ export function PlayerCard({
 }) {
   const group = positionGroup(player.primaryPosition);
   const theme = CARD_THEME[group];
-  const evidence = cardEvidence(player, assessments);
+  const stars = player.stars ?? 0;
   const bandLabel = ageBand(player.birthDate).replace('U-', 'U');
   const small = size === 'sm';
 
@@ -156,12 +157,7 @@ export function PlayerCard({
             </p>
           )}
 
-          <EvidenceStars
-            filled={evidence.stars}
-            tier={evidence.tier}
-            small={small}
-            label={`${evidence.verifiedCount} of ${evidence.total} attributes coach-verified`}
-          />
+          <EvidenceStars filled={stars} tier={starTier(stars)} small={small} />
         </div>
       </div>
     </article>
@@ -186,9 +182,9 @@ export function PlayerCard({
 function PlayerPortrait({ player, small }: { player: PlayerProfile; small: boolean }) {
   if (player.avatarUrl) {
     return (
-      <img
+      <Image
         src={player.avatarUrl}
-        alt=""
+        alt={player?.username || 'player'}
         referrerPolicy="no-referrer"
         className="absolute inset-x-0 bottom-0 h-[82%] w-full object-cover object-top"
       />
@@ -218,18 +214,9 @@ const TIER_COLOR: Record<string, string> = {
   unrated: 'rgba(255,255,255,.28)',
 };
 
-/** Five stars, filled by how much of the card a coach has verified. */
-function EvidenceStars({
-  filled,
-  tier,
-  small,
-  label,
-}: {
-  filled: number;
-  tier: string;
-  small: boolean;
-  label: string;
-}) {
+/** Five stars, filled by the rating evidence behind the card. */
+function EvidenceStars({ filled, tier, small }: { filled: number; tier: string; small: boolean }) {
+  const label = `${filled} of 5 stars`;
   return (
     <div
       className={cn('flex items-center gap-0.5', small ? 'mt-1' : 'mt-1.5')}

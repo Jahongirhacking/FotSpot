@@ -1,4 +1,23 @@
-import Link from 'next/link';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import {
+  BootAndBall,
+  FootballBall,
+  PitchBackdrop,
+  TrophyArt,
+} from '@/components/shared/FootballArt';
+import { FotSpotMark } from '@/components/shared/FotSpotMark';
+import { HeroBanner } from '@/components/shared/HeroBanner';
+import { HeroVideo } from '@/components/shared/HeroVideo';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { ApiError } from '@/lib/api/client';
+import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
+import type { PlayerProfile } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { getSession } from '@/lib/session';
+import { ageBand, humanizeEnum, initials } from '@/lib/utils';
 import {
   ArrowRight,
   Building2,
@@ -8,25 +27,7 @@ import {
   Users,
   Video,
 } from 'lucide-react';
-import { getSession } from '@/lib/session';
-import { getServerT } from '@/lib/i18n/server';
-import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
-import type { Media, PlayerProfile } from '@/lib/api/types';
-import { ApiError } from '@/lib/api/client';
-import { ageBand, humanizeEnum, initials } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { FotSpotMark } from '@/components/shared/FotSpotMark';
-import {
-  BootAndBall,
-  FootballBall,
-  PitchBackdrop,
-  TrophyArt,
-} from '@/components/shared/FootballArt';
-import { HeroVideo } from '@/components/shared/HeroVideo';
-import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import Link from 'next/link';
 
 /**
  * Landing page. Signed-in users keep it — it's the marketing surface, and the
@@ -58,14 +59,16 @@ export default async function LandingPage() {
     <>
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
         <div className="flex items-center gap-2">
-          <FotSpotMark className="size-8" />
+          <FotSpotMark className="size-11" />
           {/* The wordmark is the first thing to go on a narrow phone: the mark
               still says whose site this is, and the two sign-in buttons beside it
               are what the visitor actually came to press. */}
           <span className="hidden text-lg font-bold tracking-tight sm:inline">FotSpot</span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
-          <ThemeToggle compact />
+          <div className="hidden gap-2 [@media(min-width:360px)]:flex">
+            <ThemeToggle compact />
+          </div>
           <LanguageSwitcher />
           {session ? (
             <Button asChild size="sm">
@@ -86,8 +89,8 @@ export default async function LandingPage() {
 
       <main className="flex-1">
         {/* Hero: pitch markings behind the copy, ball or video beside it. */}
-        <section className="relative overflow-hidden px-4 py-14 sm:py-20">
-          <PitchBackdrop className="opacity-60" />
+        <section className="relative isolate overflow-hidden px-4 py-14 sm:py-24 lg:py-28">
+          <HeroBanner />
           <div className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
             <div>
               <Badge variant="primary" className="mb-4">

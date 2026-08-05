@@ -42,6 +42,8 @@ export const ru: Dictionary = {
     home: 'Главная',
     feed: 'Лента',
     myCard: 'Моя карточка',
+    myAcademy: 'Моя академия',
+    recommendedPlayers: 'Рекомендованные игроки',
     players: 'Игроки',
     findPlayers: 'Найти игроков',
     academies: 'Академии',
@@ -133,6 +135,7 @@ export const ru: Dictionary = {
 
   /** Подсказки в полях ввода — показывают ожидаемый формат, а не повторяют ярлык. */
   placeholders: {
+    inviteNote: 'Напишите, когда и куда прийти',
     trialTitle: 'Например, летний просмотр U14',
     positions: 'GK, CB, LW',
     firstName: 'Например, Жавохир',
@@ -218,6 +221,7 @@ export const ru: Dictionary = {
   },
 
   profile: {
+    birthDateHint: 'От этой даты зависит ваша возрастная группа и доступные просмотры.',
     network: 'Связи',
     networkHint: 'На кого вы подписаны и сколько подписано на вас.',
     followers: 'Подписчики',
@@ -320,6 +324,10 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    choosePerson: 'Выберите человека',
+    noCandidates: 'Подходящих аккаунтов не найдено',
+    noAcademyTitle: 'Вы пока не в академии',
+    noAcademyBody: 'Как только менеджер добавит вас в состав, академия появится здесь.',
     addCoach: 'Добавить тренера',
     addCoachHint:
       'Выберите существующего пользователя или создайте аккаунт — логин и пароль показываются один раз.',
@@ -424,6 +432,9 @@ export const ru: Dictionary = {
     acceptedMe: 'Приняла меня',
   },
   attributes: {
+    vision: 'Видение поля',
+    leadership: 'Лидерство',
+    discipline: 'Дисциплина',
     pace: 'Скорость',
     dribbling: 'Дриблинг',
     passing: 'Пас',
@@ -434,6 +445,10 @@ export const ru: Dictionary = {
   },
 
   clips: {
+    coachRating: 'Оценка тренера',
+    ratedBySelf: 'Сейчас это оценка самого игрока.',
+    ratedByCoach: 'Эту оценку поставил тренер.',
+    saveRating: 'Сохранить оценку',
     noStorageOrigin:
       'На сервере не настроено хранилище медиа, поэтому клип пока не воспроизводится. Сам клип сохранён.',
     pause: 'Пауза',
@@ -581,6 +596,34 @@ export const ru: Dictionary = {
   },
 
   recommendations: {
+    noReviews: 'Игроков на просмотр нет',
+    noReviewsHint: 'Как только менеджер отправит игрока, он появится здесь.',
+    reviewed: 'Просмотренные',
+    approved: 'Одобрен',
+    noClips: 'У игрока пока нет клипов',
+    coachNote: 'Комментарий тренера',
+    approvePlayer: 'Одобрить',
+    rejectPlayer: 'Отклонить',
+    reviewQueueHint: 'Посмотрите клипы и выставьте оценки — ваши оценки считаются подтверждёнными.',
+    fromEndorsedScouts: 'Рекомендации доверенных скаутов',
+    reviewFlowHint: 'Каждого игрока смотрит тренер. После одобрения вы отправляете приглашение.',
+    inboxEmpty: 'Новых рекомендаций нет',
+    history: 'История рекомендаций',
+    historyHint: 'Приглашённые и отклонённые игроки.',
+    historyEmpty: 'История пока пуста',
+    sendToCoach: 'Отправить тренеру',
+    anyCoach: 'Любой тренер',
+    sendForReview: 'На просмотр',
+    inReview: 'На просмотре',
+    notReviewed: 'Не просмотрен',
+    coachApproved: 'Тренер одобрил',
+    coachRejected: 'Тренер отклонил',
+    awaitingCoach: 'Ждём ответа тренера',
+    rejectedByCoach: 'Отклонён тренером — в истории',
+    inviteNote: 'Текст приглашения',
+    sendInvite: 'Отправить приглашение',
+    invited: 'Приглашён',
+    rejected: 'Отклонён',
     credibilityHint: 'Авторитетность скаутов — гармоническая сумма весов поддержавших',
     whyPlaceholder: 'Левша, обыгрывает защитника один в один, играет с поднятой головой…',
     myRecommendations: 'Мои рекомендации',

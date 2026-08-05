@@ -232,12 +232,30 @@ export class AcademiesService {
    * The academy-manager home used to find its academy by scanning the public list
    * and taking the first entry, which showed managers somebody else's academy.
    */
+  /**
+   * "My academy" — the one this account belongs to, whatever their part in it.
+   *
+   * A manager's academy first, since a manager runs exactly one and that is
+   * unambiguously theirs; otherwise the active membership they hold as coach,
+   * scout or player. A coach asking for "my academy" means the one they work at,
+   * and answering `null` because they do not manage it is a distinction only the
+   * database cares about.
+   */
   async findMine(userId: string) {
     const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      // MANAGER before COACH before PLAYER before SCOUT, alphabetically by luck
+      // rather than design — so the ordering is spelled out instead.
+      orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+      include: { academy: true },
+    });
+
+    const manager = await this.prisma.academyMember.findFirst({
       where: { userId, role: 'MANAGER' },
       include: { academy: true },
     });
-    return membership?.academy ?? null;
+
+    return (manager ?? membership)?.academy ?? null;
   }
 
   /** The two ways to name a manager are alternatives, not a merge. */

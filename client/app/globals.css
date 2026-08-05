@@ -190,6 +190,83 @@
 }
 
 @layer utilities {
+  /*
+   * A pair of elements where exactly one is shown per theme.
+   *
+   * For anything CSS cannot recolour — a photograph shot light and shot dark.
+   * Both are in the markup and the stylesheet picks; doing it in JavaScript would
+   * mean the wrong one painting first, which on a banner is a full-width flash.
+   *
+   * The order matches globals.css's colour blocks: the media query is the default
+   * signal, and an explicit `data-theme` from the toggle overrides it in both
+   * directions.
+   */
+  /*
+   * The landing hero's photograph, one per theme.
+   *
+   * A CSS background rather than two <Image fill> layers. Both layers had to be
+   * in the DOM for CSS to choose between them, which meant the browser fetched
+   * 1.6MB to show 800KB of it, and Next measured the hidden one as not being
+   * full-viewport-width and warned about `sizes` — correctly, since a
+   * `display:none` element has no width at all.
+   *
+   * The trade is losing next/image's automatic resizing: a phone downloads the
+   * same 1774px file a laptop does. That is worth fixing at the source by
+   * exporting a smaller variant, not by putting both files back in the document.
+   */
+  .hero-banner {
+    background-image: url('/bg-banner-light.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    /* Holds the pitch, right of centre, whatever the crop. */
+    background-position: 60% 38%;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-banner {
+      background-position: 65% center;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero-banner {
+      background-image: url('/bg-banner-dark.jpg');
+    }
+  }
+
+  :root[data-theme='light'] .hero-banner {
+    background-image: url('/bg-banner-light.jpg');
+  }
+  :root[data-theme='dark'] .hero-banner {
+    background-image: url('/bg-banner-dark.jpg');
+  }
+
+  .theme-dark-only {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .theme-light-only {
+      display: none;
+    }
+    .theme-dark-only {
+      display: block;
+    }
+  }
+
+  :root[data-theme='light'] .theme-light-only {
+    display: block;
+  }
+  :root[data-theme='light'] .theme-dark-only {
+    display: none;
+  }
+  :root[data-theme='dark'] .theme-light-only {
+    display: none;
+  }
+  :root[data-theme='dark'] .theme-dark-only {
+    display: block;
+  }
+
   /* Wide content (tables, filter rows) scrolls inside its own container so the
      page body never scrolls horizontally on a phone. */
   .scroll-x {

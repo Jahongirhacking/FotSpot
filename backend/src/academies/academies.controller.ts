@@ -126,11 +126,7 @@ export class AcademiesController {
    * Credentials come back exactly once and are never retrievable again.
    */
   @Post(':id/coaches')
-  createCoach(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: CreateCoachDto,
-  ) {
+  createCoach(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CreateCoachDto) {
     return this.academiesService.createCoach(user.userId, id, dto);
   }
 
@@ -189,6 +185,17 @@ export class AcademiesController {
    * Endorse (hire) a scout or coach. Unlike following, this has consequences: it
    * is what lets a scout address a recommendation to this academy.
    */
+  /** Who this academy could endorse — real accounts holding the role, not ids. */
+  @Get(':id/endorsements/candidates')
+  endorsementCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('role') role: 'SCOUT' | 'COACH' = 'SCOUT',
+    @Query('query') query?: string,
+  ) {
+    return this.endorsements.listCandidates(user.userId, id, role as never, query);
+  }
+
   @Post(':id/endorsements')
   endorse(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: EndorseDto) {
     return this.endorsements.endorse(user.userId, id, dto);

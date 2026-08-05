@@ -19,6 +19,7 @@ import { AuthUser } from '../common/decorators/current-user.decorator';
 import {
   ConfirmUploadDto,
   FeedDto,
+  RateMediaDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
@@ -97,7 +98,8 @@ interface FeedRow {
   category: MediaCategory;
   storageKey: string;
   posterKey: string | null;
-  selfRating: number | null;
+  rating: number | null;
+  reportedBy: 'SELF' | 'COACH';
   title: string | null;
   description: string | null;
   createdAt: Date;
@@ -174,10 +176,10 @@ export class MediaService {
     const profile = await this.ownPlayerProfile(userId);
     const isAttribute = ATTRIBUTE_CATEGORIES.includes(dto.category as MediaCategory);
 
-    if (isAttribute && dto.selfRating === undefined) {
+    if (isAttribute && dto.rating === undefined) {
       throw new BadRequestException('Rate the attribute this clip is evidence for');
     }
-    if (!isAttribute && dto.selfRating !== undefined) {
+    if (!isAttribute && dto.rating !== undefined) {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
 
@@ -196,7 +198,7 @@ export class MediaService {
         posterKey: dto.posterKey ?? null,
         // Server-side, always: a timestamp a player can set is a timestamp that
         // proves nothing about when the clip was actually taken.
-        selfRating: isAttribute ? dto.selfRating : null,
+        rating: isAttribute ? dto.rating : null,
         title: dto.title ?? null,
         description: dto.description ?? null,
       },
@@ -309,7 +311,7 @@ export class MediaService {
 
     const rows = await this.prisma.$queryRaw<FeedRow[]>(Prisma.sql`
       SELECT
-        m.id, m.type, m.category, m."storageKey", m."posterKey", m."selfRating",
+        m.id, m.type, m.category, m."storageKey", m."posterKey", m.rating, m."reportedBy",
         m.title, m.description, m."createdAt",
         p.id AS "playerId", p."firstName", p."lastName", p."birthDate",
         p."primaryPosition", p.region,
@@ -442,7 +444,7 @@ export class MediaService {
     if (media.playerId !== profile.id) {
       throw new ForbiddenException('You can only edit your own clips');
     }
-    if (dto.selfRating !== undefined && media.category === 'MATCH_HIGHLIGHTS') {
+    if (dto.rating !== undefined && media.category === 'MATCH_HIGHLIGHTS') {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
 
@@ -451,11 +453,74 @@ export class MediaService {
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
-        ...(dto.selfRating !== undefined ? { selfRating: dto.selfRating } : {}),
+        // A player editing their own clip is making a claim again, even if a
+        // coach had corrected it — so the source goes back to SELF and the
+        // coach's number is kept in the revision trail rather than silently lost.
+        ...(dto.rating !== undefined ? { rating: dto.rating, reportedBy: 'SELF' as const } : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
     return toMediaResponse(updated, this.storage);
+  }
+
+  /**
+   * A coach replaces the rating on a clip.
+   *
+   * The clip carries one current rating and a note of who put it there, so a
+   * coach correcting a player's 90 to a 60 does not leave two numbers on screen
+   * for the reader to choose between — it leaves one, marked as a coach's.
+   *
+   * Only a verified coach, for the same reason only a verified coach can file an
+   * assessment: the whole value of the distinction is that it cannot be
+   * self-awarded (§1.6).
+   *
+   * The previous value is written to `RatingRevision` first. A coach lowering a
+   * fourteen-year-old's own number is exactly the edit somebody may ask about
+   * later, and "who changed it, from what, when" should not depend on anyone
+   * having thought to take a screenshot.
+   */
+  async rate(userId: string, mediaId: string, dto: RateMediaDto) {
+    const coach = await this.prisma.coachProfile.findUnique({ where: { userId } });
+    if (!coach || coach.status !== 'VERIFIED') {
+      throw new ForbiddenException('Only a verified coach can rate a clip');
+    }
+
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.category === 'MATCH_HIGHLIGHTS') {
+      throw new BadRequestException('Highlights are not evidence for a single attribute');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.ratingRevision.create({
+        data: {
+          mediaId,
+          previousRating: media.rating,
+          previousReportedBy: media.reportedBy,
+          rating: dto.rating,
+          reportedBy: 'COACH',
+          actorUserId: userId,
+        },
+      });
+
+      return tx.media.update({
+        where: { id: mediaId },
+        data: { rating: dto.rating, reportedBy: 'COACH' },
+      });
+    });
+
+    // The card and the bars are drawn from this player's cached profile.
+    await this.redis.del(RedisKeys.playerProfile(media.playerId));
+    return toMediaResponse(updated, this.storage);
+  }
+
+  /** What a clip's rating was before each change, newest first. */
+  async ratingHistory(mediaId: string) {
+    return this.prisma.ratingRevision.findMany({
+      where: { mediaId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
   }
 
   /**

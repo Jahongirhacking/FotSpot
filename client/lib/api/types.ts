@@ -57,8 +57,13 @@ export interface Media {
   status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
   title?: string | null;
   description?: string | null;
-  /** The player's own 0–100 claim this clip evidences. Null for highlights. */
-  selfRating?: number | null;
+  /** The 0–100 rating this clip evidences. Null for highlights. */
+  rating?: number | null;
+  /**
+   * Who put `rating` there. A player's number is a claim; a coach watching the
+   * same clip can replace it, and then it is evidence (§1.6).
+   */
+  reportedBy?: 'SELF' | 'COACH';
   /**
    * Permanent URL of the video. Null only when the server has no public storage
    * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
@@ -176,8 +181,29 @@ export interface TransferListing {
   rating: number | null;
 }
 
+/** What a clip's rating was before someone changed it. */
+export interface RatingRevision {
+  id: string;
+  mediaId: string;
+  previousRating: number | null;
+  previousReportedBy: 'SELF' | 'COACH';
+  rating: number;
+  reportedBy: 'SELF' | 'COACH';
+  actorUserId: string;
+  createdAt: string;
+}
+
 export interface PlayerProfile {
   id: string;
+  /**
+   * 0–5 for the card's star row, computed by the server
+   * (`backend/src/players/card-stars.util.ts`).
+   *
+   * On the player rather than derived per card: every screen that draws one was
+   * otherwise fetching that player's assessments to recompute the same five
+   * stars, which is a request per card on a screen that shows twenty.
+   */
+  stars?: number;
   userId: string;
   firstName: string;
   lastName: string;
@@ -289,6 +315,65 @@ export interface RankedRecommendation {
   recommendationIds: string[];
   recommendationCount: number;
   credibility: number;
+  /** Where this player stands in the coach review — null before anyone is asked. */
+  review: InboxReview | null;
+}
+
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface InboxReview {
+  id: string;
+  recommendationId: string;
+  status: ReviewStatus;
+  note: string | null;
+  decidedAt: string | null;
+  coach: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  };
+}
+
+/** A settled recommendation: invited, or turned down. */
+export interface AcademyHistoryRow {
+  recommendationId: string;
+  status: 'ACCEPTED' | 'REJECTED';
+  decidedAt: string;
+  player: RankedRecommendation['player'];
+  scout: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  };
+  note: string | null;
+  review: {
+    status: ReviewStatus;
+    note: string | null;
+    coach: { id: string; firstName: string | null; lastName: string | null };
+  } | null;
+}
+
+/** One player waiting on this coach's verdict. */
+export interface CoachReview {
+  id: string;
+  status: ReviewStatus;
+  note: string | null;
+  assignedAt: string;
+  decidedAt: string | null;
+  academy: { id: string; name: string };
+  recommendation: {
+    id: string;
+    note: string | null;
+    scout: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    };
+    player: NonNullable<RankedRecommendation['player']>;
+  };
 }
 
 export interface Trial {

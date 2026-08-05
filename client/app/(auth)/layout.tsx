@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { FotSpotMark } from '@/components/shared/FotSpotMark';
+import Link from 'next/link';
 
 /** Route group with no app chrome — a signed-out user has no nav to show. */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="pitch-gradient flex min-h-dvh flex-col">
       <header className="flex items-center justify-between p-4">
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 pr-1">
-          <FotSpotMark className="size-8" />
+          <FotSpotMark className="size-11" />
           <span className="text-lg font-bold tracking-tight">FotSpot</span>
         </Link>
         {/* Grouped: as three direct children of a `justify-between` row, the theme

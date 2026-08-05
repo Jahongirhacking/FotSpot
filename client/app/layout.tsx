@@ -60,8 +60,20 @@ export default async function RootLayout({
           Blocking on purpose, and first. Deferring it means one frame of the
           wrong theme — a white flash for anyone opening the app at night, which
           is most of when a teenager looks at their card.
+
+          `dangerouslySetInnerHTML` is the only way to emit an inline script from
+          JSX, and it is safe *here* for a reason worth stating: THEME_SCRIPT is a
+          module-level constant with no interpolation and no input of any kind —
+          see lib/theme.ts, which documents that invariant. Sanitising it would be
+          worse than pointless: an HTML sanitiser strips script bodies, so the
+          theme would stop applying and the white flash would come back.
+
+          `suppressHydrationWarning` because this node is a favourite target for
+          browser extensions, which rewrite its `src` or empty its contents before
+          React hydrates. That mismatch is the extension's, not ours, and React
+          cannot tell the difference.
         */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
         <Providers

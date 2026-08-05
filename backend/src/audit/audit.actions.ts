@@ -9,6 +9,7 @@ export const AuditAction = {
   COACH_VERIFIED: 'coach.verified',
   ACADEMY_VERIFIED: 'academy.verified',
   ACADEMY_MANAGER_CHANGED: 'academy.manager_changed',
+  PLAYER_BIRTHDATE_CHANGED: 'player.birthdate_changed',
   ACADEMY_COACH_ADDED: 'academy.coach_added',
   ACADEMY_MEMBER_UPDATED: 'academy.member_updated',
   ACADEMY_MEMBER_RELEASED: 'academy.member_released',

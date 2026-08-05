@@ -16,10 +16,15 @@ import { humanizeEnum } from '@/lib/utils';
 /**
  * The card details a player can change afterwards.
  *
- * Name and date of birth are deliberately absent. Height and weight change every
- * season and are meant to be kept current; a birth date that can be edited is an
- * age gate that can be walked around (§11.1), and the name on a player card is
- * what a scout recognises them by. Those go through support, not a form.
+ * The name is deliberately absent — it is what a scout recognises the player by,
+ * so it goes through support rather than a form.
+ *
+ * Date of birth is editable, on the product's decision. It is worth naming what
+ * that costs: it is an age gate as well as a detail (§11.1) — the card's age band,
+ * the trial age checks and what counts as an under-18 account all read it — so a
+ * player who edits it changes which trials will accept them. The server bounds it
+ * to a plausible playing age and writes every change to the audit log, which does
+ * not prevent the walk-around so much as make sure it left a trace.
  *
  * Every field is optional. A thin card still beats no card, and the completion
  * meter on the dashboard is what nudges the rest in.
@@ -29,6 +34,8 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
   const router = useRouter();
 
   const [form, setForm] = React.useState({
+    // `<input type="date">` wants exactly YYYY-MM-DD; the API sends an ISO stamp.
+    birthDate: player.birthDate ? player.birthDate.slice(0, 10) : '',
     primaryPosition: player.primaryPosition ?? '',
     secondaryPosition: player.secondaryPosition ?? '',
     dominantFoot: player.dominantFoot ?? '',
@@ -74,6 +81,15 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
     >
       {error && <Alert tone="danger">{error}</Alert>}
       {saved && <Alert tone="success">{t.profile.detailsSaved}</Alert>}
+
+      <Field label={t.onboarding.dateOfBirth} htmlFor="birth-date" hint={t.profile.birthDateHint}>
+        <Input
+          id="birth-date"
+          type="date"
+          value={form.birthDate}
+          onChange={(event) => set('birthDate')(event.target.value)}
+        />
+      </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t.onboarding.mainPosition} htmlFor="pos-1">

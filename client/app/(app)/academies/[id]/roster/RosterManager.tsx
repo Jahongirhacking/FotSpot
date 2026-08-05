@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { EmptyState } from '@/components/ui/Feedback';
 import { AddCoach } from './AddCoach';
 import { cn, initials } from '@/lib/utils';
 
@@ -42,7 +42,6 @@ export function RosterManager({
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [role, setRole] = React.useState<AcademyMemberRole>(initialRole);
-  const [error, setError] = React.useState<string | null>(null);
 
   const members = useQuery({
     queryKey: ['roster', academyId, role],
@@ -65,14 +64,12 @@ export function RosterManager({
     mutationFn: ({ id, status }: { id: string; status: 'ACTIVE' | 'INACTIVE' }) =>
       browserFetch(`/academies/${academyId}/members/${id}`, { method: 'PATCH', body: { status } }),
     onSuccess: refresh,
-    onError: (err: Error) => setError(err.message),
   });
 
   const release = useMutation({
     mutationFn: (id: string) =>
       browserFetch(`/academies/${academyId}/members/${id}/release`, { method: 'POST' }),
     onSuccess: refresh,
-    onError: (err: Error) => setError(err.message),
   });
 
   const take = useMutation({
@@ -82,13 +79,10 @@ export function RosterManager({
         body: { memberId },
       }),
     onSuccess: refresh,
-    onError: (err: Error) => setError(err.message),
   });
 
   return (
     <div className="space-y-6">
-      {error && <Alert tone="danger">{error}</Alert>}
-
       <div role="tablist" className="bg-surface-2 grid grid-cols-3 gap-1 rounded-lg p-1">
         {ROLES.map((value) => (
           <button

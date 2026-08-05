@@ -15,6 +15,15 @@ export type ThemeChoice = 'light' | 'dark' | 'system';
  *
  * Wrapped in try/catch because `localStorage` throws outright in Safari's private
  * mode, and a theme preference is not worth a blank page.
+ *
+ * ## This string must stay a constant
+ *
+ * It is injected with `dangerouslySetInnerHTML` in app/layout.tsx, which is safe
+ * only because nothing here comes from a request, a user or the database. Do not
+ * interpolate into it — not a locale, not a cookie value, not a "small" flag.
+ * The moment it takes input it becomes script injection on every page of the
+ * site, and no sanitiser can help: sanitisers strip script bodies, so running one
+ * over this would simply delete the theme.
  */
 export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t}}catch(e){}})()`;
 

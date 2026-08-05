@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   Clapperboard,
+  ClipboardCheck,
   Home,
   Inbox,
   Search,
@@ -47,17 +48,29 @@ export function navForRole(role: Role | null): NavItem[] {
     // The scout's home *is* the feed: what they open the app to do is watch the
     // next clip worth watching, not read a dashboard. Their own reputation and
     // stats still live at /dashboard, which the logo goes to.
+    // No Trials: a scout does not host them and does not apply to them. Their
+    // work is watching clips and recommending, which is the rest of this list.
     case 'scout':
       return [
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/players', label: 'players', icon: Search },
         { href: '/academies', label: 'academies', icon: Building2 },
-        { href: '/trials', label: 'trials', icon: CalendarDays },
         { href: '/recommendations', label: 'myPicks', icon: Inbox },
       ];
 
+    /*
+     * A coach works inside one academy and judges the players put in front of
+     * them. Browsing other academies, hosting trials and keeping a pick list are
+     * a scout's and a manager's jobs — leaving them here made the menu a list of
+     * things a coach cannot do.
+     */
     case 'coach':
-      return [...COMMON, { href: '/recommendations', label: 'myPicks', icon: Inbox }];
+      return [
+        { href: '/dashboard', label: 'home', icon: Home },
+        { href: '/academies/mine', label: 'myAcademy', icon: Building2 },
+        { href: '/recommendations/review', label: 'recommendedPlayers', icon: ClipboardCheck },
+        { href: '/players', label: 'players', icon: Search },
+      ];
 
     // No "Academies" entry. A manager runs exactly one academy and it is already
     // their home screen; the only thing the directory would offer them is a list

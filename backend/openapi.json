@@ -922,7 +922,81 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/rating": {
+      "patch": {
+        "operationId": "media_rate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RateMediaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/rating/history": {
+      "get": {
+        "operationId": "media_ratingHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What that rating was before each change.",
         "tags": [
           "media"
         ]
@@ -1184,14 +1258,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -1348,14 +1415,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -1384,14 +1444,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -2201,6 +2254,50 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/endorsements/candidates": {
+      "get": {
+        "operationId": "academies_endorsementCandidates",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/endorsements": {
       "post": {
         "operationId": "academies_endorse",
@@ -2687,6 +2784,180 @@
           }
         ],
         "summary": "Manager-only: same inbox ranked by per-academy credibility (1.5.1/1.5.2).",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/academy/{academyId}/history": {
+      "get": {
+        "operationId": "recommendations_listHistoryForAcademy",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What this academy already settled — invited or turned down.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/{id}/review": {
+      "post": {
+        "operationId": "recommendations_assignReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/reviews/mine": {
+      "get": {
+        "operationId": "recommendations_listMyReviews",
+        "parameters": [
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A coach's own queue. Declared before `:id` — Nest matches in order.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/reviews/{reviewId}/decision": {
+      "post": {
+        "operationId": "recommendations_decideReview",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The coach's verdict, and the ratings that become the player's credible ones.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/{id}/invite": {
+      "post": {
+        "operationId": "recommendations_invitePlayer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitePlayerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The manager invites an approved player, with a note they will read.",
         "tags": [
           "recommendations"
         ]
@@ -4095,7 +4366,7 @@
               }
             ]
           },
-          "selfRating": {
+          "rating": {
             "type": "number",
             "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for the six attribute categories and rejected for\nMATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
             "minimum": 0,
@@ -4134,7 +4405,7 @@
       "UpdateMediaDto": {
         "type": "object",
         "properties": {
-          "selfRating": {
+          "rating": {
             "type": "number",
             "minimum": 0,
             "maximum": 100
@@ -4146,6 +4417,16 @@
           "description": {
             "type": "string",
             "maxLength": 1000
+          }
+        }
+      },
+      "RateMediaDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
           }
         }
       },
@@ -4246,6 +4527,10 @@
                 "$ref": "#/components/schemas/PlayingStyle"
               }
             ]
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "Editable, at the product's request.\n\nIt is the one field here that is also an age gate (§11.1): the age band on the\ncard, the trial age checks and what counts as an under-18 account all read it,\nso a player who edits it changes which trials they can apply to. It is\ntherefore bounded to a plausible playing age rather than accepted as any date,\nand every change is written to the audit log."
           },
           "height": {
             "type": "number"
@@ -4663,6 +4948,85 @@
         "required": [
           "type",
           "playerId"
+        ]
+      },
+      "AssignReviewDto": {
+        "type": "object",
+        "properties": {
+          "coachUserId": {
+            "type": "string"
+          }
+        }
+      },
+      "ReviewDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "vision": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "dribbling": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "finishing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "physical": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "leadership": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "discipline": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "InvitePlayerDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "note"
         ]
       },
       "UpdateRecommendationStatusDto": {

@@ -10,7 +10,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
+import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { ageBand, formatDate } from '@/lib/utils';
 
 interface Applicant {
@@ -36,7 +36,6 @@ interface Applicant {
 export function Applicants({ trialId }: { trialId: string }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [error, setError] = React.useState<string | null>(null);
 
   const applicants = useQuery({
     queryKey: ['trial-applications', trialId],
@@ -47,7 +46,6 @@ export function Applicants({ trialId }: { trialId: string }) {
     mutationFn: ({ id, status }: { id: string; status: TrialApplicationStatus }) =>
       browserFetch(`/trials/applications/${id}/status`, { method: 'PATCH', body: { status } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial-applications', trialId] }),
-    onError: (err: Error) => setError(err.message),
   });
 
   const rows = applicants.data ?? [];
@@ -63,8 +61,6 @@ export function Applicants({ trialId }: { trialId: string }) {
       </CardHeader>
 
       <CardContent className="p-2">
-        {error && <Alert tone="danger">{error}</Alert>}
-
         {applicants.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : rows.length === 0 ? (

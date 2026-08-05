@@ -15,12 +15,7 @@ import type { CoachAssessment, Media, MediaCategory, PlayerProfile } from '@/lib
 export type Provenance = 'combine' | 'coach' | 'self' | 'none';
 
 export type AttributeKey =
-  | 'pace'
-  | 'dribbling'
-  | 'passing'
-  | 'finishing'
-  | 'physical'
-  | 'technique';
+  'pace' | 'dribbling' | 'passing' | 'finishing' | 'physical' | 'technique';
 
 /**
  * An attribute and the clip category that evidences it.
@@ -65,10 +60,7 @@ export interface Attribute {
 export function attributeHistory(clips: Media[], key: AttributeKey) {
   const category = ATTRIBUTE_CATEGORY[key];
   return clips
-    .filter(
-      (clip) =>
-        clip.category === category && clip.status === 'ACTIVE' && clip.selfRating != null,
-    )
+    .filter((clip) => clip.category === category && clip.status === 'ACTIVE' && clip.rating != null)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 }
 
@@ -152,7 +144,11 @@ const SOURCES: Record<
   passing: { label: 'Passing', coach: ['passing', 'vision'] },
   finishing: { label: 'Finishing', coach: ['finishing'] },
   physical: { label: 'Physical', coach: ['physical'] },
-  technique: { label: 'Technique', coach: ['dribbling'], legacy: (p) => jugglingScore(p.jugglingRecord) },
+  technique: {
+    label: 'Technique',
+    coach: ['dribbling'],
+    legacy: (p) => jugglingScore(p.jugglingRecord),
+  },
 };
 
 /**
@@ -182,12 +178,14 @@ export function deriveAttributes(
     }
 
     const claim = currentClaim(clips, key);
-    if (claim?.selfRating != null) {
+    if (claim?.rating != null) {
       return {
         key,
         label: source.label,
-        value: claim.selfRating,
-        provenance: 'self' as const,
+        // A clip carries who rated it: the player claimed a number, or a coach
+        // watched the same clip and replaced it. The bar says which.
+        value: claim.rating,
+        provenance: claim.reportedBy === 'COACH' ? ('coach' as const) : ('self' as const),
         evidence: claim,
       };
     }
@@ -276,25 +274,89 @@ export interface CardEvidence {
   total: number;
 }
 
+/**
+ * The denominator: six attributes at 100 each.
+ *
+ * A player carrying only coach ratings can reach it. One carrying only their own
+ * claims cannot — those are halved, so a perfect self-assessment reaches half of
+ * it and three stars. That gap is the point: the star row is meant to pull towards
+ * "get a coach to assess me", not towards typing 100 six times.
+ */
+const EVIDENCE_MAX = Object.keys(ATTRIBUTE_CATEGORY).length * 100;
+
+/** The most recent value a coach put on this attribute, or null. */
+function latestCoachRating(
+  assessments: CoachAssessment[],
+  keys: (keyof CoachAssessment)[],
+): number | null {
+  const newest = [...assessments].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  for (const assessment of newest) {
+    const values = keys
+      .map((key) => assessment[key])
+      .filter((value): value is number => typeof value === 'number');
+    // Averaged only across the keys of one assessment — a card attribute can map
+    // to two of a coach's, and those two were written in the same sitting.
+    if (values.length) return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+  return null;
+}
+
+/** Colour band for a star count. Presentation, so it stays on the client. */
+export function starTier(stars: number): EvidenceTier {
+  return stars === 0 ? 'unrated' : stars >= 5 ? 'gold' : stars >= 3 ? 'silver' : 'bronze';
+}
+
 export function cardEvidence(
   player: PlayerProfile,
   assessments: CoachAssessment[] = [],
+  clips: Media[] = player.media ?? [],
 ): CardEvidence {
-  const attributes = deriveAttributes(player, assessments);
+  const attributes = deriveAttributes(player, assessments, clips);
   const total = attributes.length;
   const verifiedCount = attributes.filter(
     (attribute) => attribute.provenance === 'coach' || attribute.provenance === 'combine',
   ).length;
 
-  const stars = Math.round((verifiedCount / total) * 5);
+  /*
+   * Both kinds of rating count, at different weights: a coach's number at face
+   * value, the player's own halved. The latest of each is what counts — a clip
+   * uploaded today replaces the claim made last season, and so does the newest
+   * assessment, because a rating that never expires stops describing the player.
+   *
+   * A clip's rating lands on whichever side `reportedBy` says: once a coach has
+   * corrected the number on that clip, it stops being a claim and counts in full.
+   * That is the whole point of letting them change it — a coach's 60 should not
+   * be quietly halved as though the player had written it.
+   *
+   * The two are added rather than one replacing the other, so a player with no
+   * coach yet still has a filling star row and something to raise.
+   */
+  let selfSum = 0;
+  let coachSum = 0;
+  for (const key of ATTRIBUTE_KEYS) {
+    const claim = currentClaim(clips, key);
+    if (claim?.rating != null) {
+      if (claim.reportedBy === 'COACH') coachSum += claim.rating;
+      else selfSum += claim.rating;
+    }
+
+    // A formal assessment still counts, and wins the attribute when both exist:
+    // it is a judgement of the player, not of one clip.
+    const coach = latestCoachRating(assessments, SOURCES[key].coach);
+    if (coach !== null && claim?.reportedBy !== 'COACH') coachSum += coach;
+  }
+
+  // Clamped because the two halves can exceed the denominator together — a fully
+  // self-rated *and* fully coach-rated card scores 900 — and a card cannot show
+  // seven stars.
+  const score = selfSum / 2 + coachSum;
+  const stars = Math.max(0, Math.min(5, Math.round((score / EVIDENCE_MAX) * 5)));
+
   const tier: EvidenceTier =
-    verifiedCount === 0
-      ? 'unrated'
-      : stars >= 5
-        ? 'gold'
-        : stars >= 3
-          ? 'silver'
-          : 'bronze';
+    stars === 0 ? 'unrated' : stars >= 5 ? 'gold' : stars >= 3 ? 'silver' : 'bronze';
 
   return { tier, stars, verifiedCount, total };
 }

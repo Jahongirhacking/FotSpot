@@ -243,9 +243,9 @@ function FeedCard({
           )}
         </button>
 
-        {clip.selfRating != null && (
+        {clip.rating != null && (
           <span className="absolute bottom-3 left-3 rounded-lg bg-black/55 px-2 py-1 font-mono text-lg font-black text-white backdrop-blur-sm">
-            {clip.selfRating}
+            {clip.rating}
           </span>
         )}
       </div>

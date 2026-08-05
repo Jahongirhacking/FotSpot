@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -11,7 +12,10 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
+import { computeCardStars } from './card-stars.util';
 import {
   CreatePlayerProfileDto,
   SearchPlayersDto,
@@ -29,6 +33,18 @@ import {
  */
 const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
+/** Bounds on an editable date of birth — a plausible playing age, not any date. */
+const MIN_PLAYER_AGE = 5;
+const MAX_PLAYER_AGE = 45;
+
+/** Whole years, counting the birthday itself. */
+function ageOn(birthDate: Date, now = new Date()): number {
+  let age = now.getFullYear() - birthDate.getFullYear();
+  const month = now.getMonth() - birthDate.getMonth();
+  if (month < 0 || (month === 0 && now.getDate() < birthDate.getDate())) age -= 1;
+  return age;
+}
+
 @Injectable()
 export class PlayersService {
   constructor(
@@ -36,7 +52,56 @@ export class PlayersService {
     private rbac: RbacService,
     private redis: RedisService,
     private storage: StorageService,
+    private audit: AuditService,
   ) {}
+
+  /**
+   * The star row for a set of players, in two queries however many there are.
+   *
+   * Computed here rather than in the client because every surface that draws a
+   * card was otherwise fetching each player's assessments to recompute the same
+   * five stars — a request per card on a screen that shows twenty.
+   */
+  private async starsFor(playerIds: string[]): Promise<Map<string, number>> {
+    const stars = new Map<string, number>();
+    if (playerIds.length === 0) return stars;
+
+    const [clips, assessments] = await Promise.all([
+      this.prisma.media.findMany({
+        where: { playerId: { in: playerIds }, status: 'ACTIVE', rating: { not: null } },
+        select: { playerId: true, category: true, rating: true, reportedBy: true, createdAt: true },
+      }),
+      this.prisma.coachAssessment.findMany({
+        where: { playerId: { in: playerIds } },
+        orderBy: { createdAt: 'desc' },
+        // The util only reads the newest per attribute; a player with years of
+        // history does not need all of it shipped into memory.
+        take: playerIds.length * 20,
+      }),
+    ]);
+
+    const clipsBy = new Map<string, typeof clips>();
+    for (const clip of clips) {
+      const list = clipsBy.get(clip.playerId) ?? [];
+      list.push(clip);
+      clipsBy.set(clip.playerId, list);
+    }
+
+    const assessedBy = new Map<string, typeof assessments>();
+    for (const assessment of assessments) {
+      const list = assessedBy.get(assessment.playerId) ?? [];
+      list.push(assessment);
+      assessedBy.set(assessment.playerId, list);
+    }
+
+    for (const playerId of playerIds) {
+      stars.set(
+        playerId,
+        computeCardStars(clipsBy.get(playerId) ?? [], assessedBy.get(playerId) ?? []),
+      );
+    }
+    return stars;
+  }
 
   private withAvatar<
     T extends { user?: { avatarKey: string | null; username?: string | null } | null },
@@ -90,7 +155,8 @@ export class PlayersService {
       include: AVATAR_INCLUDE,
     });
     if (!profile) throw new NotFoundException('Player profile not found');
-    return this.withAvatar(profile);
+    const stars = await this.starsFor([profile.id]);
+    return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0 };
   }
 
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
@@ -124,16 +190,49 @@ export class PlayersService {
           where: { id: playerId },
           include: { media: { where: { status: 'ACTIVE' } }, ...AVATAR_INCLUDE },
         });
-        return found && this.withAvatar(found);
+        if (!found) return found;
+        const stars = await this.starsFor([found.id]);
+        return { ...this.withAvatar(found), stars: stars.get(found.id) ?? 0 };
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
     return profile;
   }
 
+  /**
+   * The player edits their own card.
+   *
+   * `birthDate` is bounded here rather than trusted from the DTO. It is an age
+   * gate as much as a detail — the card's age band, the trial age checks and what
+   * counts as an under-18 account all read it — so a date that would make somebody
+   * three years old or fifty is refused, and every change to it lands in the audit
+   * log with the value it replaced. Neither stops a determined player editing it;
+   * both mean nobody can later claim the platform did not notice.
+   */
   async updateProfile(userId: string, dto: UpdatePlayerProfileDto) {
-    await this.assertOwner(userId);
-    const updated = await this.prisma.playerProfile.update({ where: { userId }, data: dto });
+    const profile = await this.assertOwner(userId);
+
+    if (dto.birthDate !== undefined) {
+      const next = new Date(dto.birthDate);
+      const age = ageOn(next);
+      if (Number.isNaN(next.getTime()) || age < MIN_PLAYER_AGE || age > MAX_PLAYER_AGE) {
+        throw new BadRequestException(
+          `Enter a date of birth between ${MIN_PLAYER_AGE} and ${MAX_PLAYER_AGE} years ago`,
+        );
+      }
+      if (next.getTime() !== profile.birthDate.getTime()) {
+        await this.audit.record(userId, AuditAction.PLAYER_BIRTHDATE_CHANGED, {
+          playerId: profile.id,
+          from: profile.birthDate.toISOString().slice(0, 10),
+          to: next.toISOString().slice(0, 10),
+        });
+      }
+    }
+
+    const updated = await this.prisma.playerProfile.update({
+      where: { userId },
+      data: { ...dto, ...(dto.birthDate ? { birthDate: new Date(dto.birthDate) } : {}) },
+    });
     await this.redis.del(RedisKeys.playerProfile(updated.id));
     return updated;
   }
@@ -179,7 +278,18 @@ export class PlayersService {
       this.prisma.playerProfile.count({ where }),
     ]);
 
-    return { items: items.map((item) => this.withAvatar(item)), total, page, pageSize };
+    // Two queries for the whole page's stars, not one per card.
+    const stars = await this.starsFor(items.map((item) => item.id));
+
+    return {
+      items: items.map((item) => ({
+        ...this.withAvatar(item),
+        stars: stars.get(item.id) ?? 0,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   private async assertOwner(userId: string) {

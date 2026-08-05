@@ -8,10 +8,21 @@
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
-/** Shape produced by the backend's global HttpExceptionFilter. */
+/**
+ * What a rejected request can look like.
+ *
+ * The global HttpExceptionFilter nests the real message under `error.message`,
+ * but the same text also arrives flat — Nest's own exceptions before the filter
+ * runs, and this app's Next route handlers, both answer `{ message, error,
+ * statusCode }`. Reading only one shape is how "Player age (20) is outside the
+ * trial's age range (13-16)" became "That didn't work. Please try again."
+ *
+ * `message` is an array when class-validator rejects a DTO — one entry per field.
+ */
 interface BackendError {
   statusCode?: number;
-  error?: { message?: string | string[]; error?: string };
+  message?: string | string[];
+  error?: { message?: string | string[]; error?: string } | string;
 }
 
 export class ApiError extends Error {
@@ -33,12 +44,25 @@ export class ApiError extends Error {
   }
 }
 
-function extractMessage(status: number, body: unknown): string {
+/**
+ * The server's own words, wherever it put them.
+ *
+ * Exported because the browser boundary needs the identical answer: two copies of
+ * this drifted apart once already, and the client-side one only ever read the flat
+ * shape, so every message the API wrote for a user was replaced by a shrug.
+ */
+export function extractMessage(status: number, body: unknown): string {
   const parsed = body as BackendError | undefined;
-  const raw = parsed?.error?.message;
-  if (Array.isArray(raw)) return raw.join(', ');
-  if (typeof raw === 'string') return raw;
-  if (parsed?.error?.error) return parsed.error.error;
+  const nested = typeof parsed?.error === 'object' ? parsed.error : undefined;
+
+  for (const candidate of [nested?.message, parsed?.message]) {
+    if (Array.isArray(candidate) && candidate.length) return candidate.join(', ');
+    if (typeof candidate === 'string' && candidate) return candidate;
+  }
+
+  // `error` is the HTTP reason phrase ("Bad Request") — worse than nothing on its
+  // own, but better than a generic when it is all the server sent.
+  if (typeof nested?.error === 'string' && nested.error) return nested.error;
 
   // Deliberately generic fallbacks — never surface a raw status code to a 13-year-old.
   if (status === 401) return 'Your session has expired. Please sign in again.';
