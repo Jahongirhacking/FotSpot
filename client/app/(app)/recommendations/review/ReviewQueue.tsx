@@ -111,8 +111,7 @@ export function ReviewQueue({
                     href={`/players/${review.recommendation.player.id}`}
                     className="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
                   >
-                    {review.recommendation.player.firstName}{' '}
-                    {review.recommendation.player.lastName}
+                    {review.recommendation.player.firstName} {review.recommendation.player.lastName}
                   </Link>
                   <span className="text-muted text-xs">
                     {review.decidedAt && formatDate(review.decidedAt)}
@@ -265,6 +264,9 @@ function ReviewCard({
         <ClipModal
           clip={openClip}
           canEdit={false}
+          // This screen is only reachable by the coach the review was assigned
+          // to; the server checks the coach profile again before writing.
+          canRate
           open
           onOpenChange={(next) => !next && setOpenClipId(null)}
           onDeleted={() => setOpenClipId(null)}

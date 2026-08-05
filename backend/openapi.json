@@ -922,7 +922,81 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/rating": {
+      "patch": {
+        "operationId": "media_rate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RateMediaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{id}/rating/history": {
+      "get": {
+        "operationId": "media_ratingHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What that rating was before each change.",
         "tags": [
           "media"
         ]
@@ -4313,7 +4387,7 @@
               }
             ]
           },
-          "selfRating": {
+          "rating": {
             "type": "number",
             "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for the six attribute categories and rejected for\nMATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
             "minimum": 0,
@@ -4352,7 +4426,7 @@
       "UpdateMediaDto": {
         "type": "object",
         "properties": {
-          "selfRating": {
+          "rating": {
             "type": "number",
             "minimum": 0,
             "maximum": 100
@@ -4364,6 +4438,16 @@
           "description": {
             "type": "string",
             "maxLength": 1000
+          }
+        }
+      },
+      "RateMediaDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
           }
         }
       },

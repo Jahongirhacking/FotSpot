@@ -31,6 +31,7 @@ import type {
   TrialApplication,
   TrialApplicationStatus,
   ProfileSummary,
+  RatingRevision,
   AcademyHistoryRow,
   CoachReview,
   SuggestedPlayer,
@@ -810,7 +811,7 @@ export const media = {
       type: MediaType;
       category: MediaCategory;
       /** Required for the six attribute categories, rejected for highlights. */
-      selfRating?: number;
+      rating?: number;
       title?: string;
       description?: string;
       posterKey?: string;
@@ -821,7 +822,7 @@ export const media = {
   /** The uploader corrects their own clip. Category is deliberately not editable. */
   update: (
     id: string,
-    body: { title?: string; description?: string; selfRating?: number },
+    body: { title?: string; description?: string; rating?: number },
     opts: Opts = {},
   ) => apiFetch<Media>(`/media/${id}`, { method: 'PATCH', body, ...opts }),
 
@@ -903,6 +904,16 @@ export const academyRoster = {
 
   add: (academyId: string, body: { userId: string; role: AcademyMemberRole }, opts: Opts = {}) =>
     apiFetch<AcademyMember>(`/academies/${academyId}/staff`, { method: 'POST', body, ...opts }),
+};
+
+export const clipRatings = {
+  /** A verified coach replaces the rating on a clip they have watched. */
+  set: (mediaId: string, rating: number, opts: Opts = {}) =>
+    apiFetch<Media>(`/media/${mediaId}/rating`, { method: 'PATCH', body: { rating }, ...opts }),
+
+  /** What that rating was before each change, newest first. */
+  history: (mediaId: string, opts: Opts = {}) =>
+    apiFetch<RatingRevision[]>(`/media/${mediaId}/rating/history`, opts),
 };
 
 export const follows = {

@@ -14,7 +14,7 @@ import { formatDate } from '@/lib/utils';
  * the last person who should be shown a flattering scale.
  */
 export function RatingHistoryChart({ history }: { history: Media[] }) {
-  const points = history.filter((clip) => clip.selfRating != null);
+  const points = history.filter((clip) => clip.rating != null);
   if (points.length === 0) return null;
 
   const width = 320;
@@ -28,9 +28,9 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
       : padX + (index / (points.length - 1)) * (width - padX * 2);
   const y = (rating: number) => height - padY - (rating / 100) * (height - padY * 2);
 
-  const line = points.map((clip, index) => `${x(index)},${y(clip.selfRating!)}`).join(' ');
-  const first = points[0].selfRating!;
-  const last = points[points.length - 1].selfRating!;
+  const line = points.map((clip, index) => `${x(index)},${y(clip.rating!)}`).join(' ');
+  const first = points[0].rating!;
+  const last = points[points.length - 1].rating!;
   const change = last - first;
 
   return (
@@ -40,7 +40,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
         className="w-full"
         role="img"
         aria-label={points
-          .map((clip) => `${formatDate(clip.createdAt)}: ${clip.selfRating}`)
+          .map((clip) => `${formatDate(clip.createdAt)}: ${clip.rating}`)
           .join('; ')}
       >
         {[0, 50, 100].map((tick) => (
@@ -71,17 +71,17 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
           <g key={clip.id}>
             <circle
               cx={x(index)}
-              cy={y(clip.selfRating!)}
+              cy={y(clip.rating!)}
               r="4"
               className="fill-prov-self"
             />
             <text
               x={x(index)}
-              y={y(clip.selfRating!) - 8}
+              y={y(clip.rating!) - 8}
               textAnchor="middle"
               className="fill-foreground text-[10px] font-semibold"
             >
-              {clip.selfRating}
+              {clip.rating}
             </text>
           </g>
         ))}

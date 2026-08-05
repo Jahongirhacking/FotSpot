@@ -18,6 +18,7 @@ import { Public } from '../common/decorators/public.decorator';
 import {
   ConfirmUploadDto,
   FeedDto,
+  RateMediaDto,
   CreateMediaCommentDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
@@ -99,6 +100,18 @@ export class MediaController {
 
   /** Removes one of your own clips. The previous one in that category becomes
    *  the current claim again. */
+  /** A verified coach replaces the rating on a clip they have watched. */
+  @Patch(':id/rating')
+  rate(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: RateMediaDto) {
+    return this.mediaService.rate(user.userId, id, dto);
+  }
+
+  /** What that rating was before each change. */
+  @Get(':id/rating/history')
+  ratingHistory(@Param('id') id: string) {
+    return this.mediaService.ratingHistory(id);
+  }
+
   @Delete(':id')
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.mediaService.remove(user.userId, id);

@@ -1,20 +1,20 @@
 'use client';
 
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleStop, Trophy, Upload, Video, X } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import { uploadToStorage } from '@/lib/api/upload';
-import { capturePoster } from '@/lib/poster';
-import type { Media, MediaCategory } from '@/lib/api/types';
-import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Field, Input, Textarea } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
+import { Field, Input, Textarea } from '@/components/ui/Field';
+import { browserFetch } from '@/lib/api/browser';
+import type { Media, MediaCategory } from '@/lib/api/types';
+import { uploadToStorage } from '@/lib/api/upload';
+import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
+import { capturePoster } from '@/lib/poster';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { CircleStop, Plus, Trophy, Upload, Video, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 /** §21.6 — a clip is a proof, not a highlight reel. One minute is the cap. */
 const MAX_SECONDS = 60;
@@ -128,7 +128,7 @@ export function ClipUploader({
           storageKey: ticket.storageKey,
           type: 'VIDEO',
           category,
-          ...(category === 'MATCH_HIGHLIGHTS' ? {} : { selfRating: rating }),
+          ...(category === 'MATCH_HIGHLIGHTS' ? {} : { rating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
           ...(posterKey ? { posterKey } : {}),
@@ -149,7 +149,7 @@ export function ClipUploader({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Video className="text-primary size-4" aria-hidden /> {t.clips.addClip}
+          <Plus className="text-primary size-4" aria-hidden /> {t.clips.addClip}
         </CardTitle>
         <Button variant="ghost" size="sm" onClick={onCancel} aria-label={t.common.cancel}>
           <X aria-hidden />

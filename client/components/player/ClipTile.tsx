@@ -40,7 +40,7 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`${label}${clip.selfRating != null ? ` ${clip.selfRating}` : ''} — ${t.clips.play}`}
+      aria-label={`${label}${clip.rating != null ? ` ${clip.rating}` : ''} — ${t.clips.play}`}
       className="group focus-visible:ring-ring relative block aspect-square w-full overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:outline-none"
     >
       {clip.posterUrl ? (
@@ -72,9 +72,9 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
             <span className="text-[11px] font-semibold tracking-wide uppercase opacity-90 drop-shadow">
               {label}
             </span>
-            {clip.selfRating != null && (
+            {clip.rating != null && (
               <span className="font-mono text-3xl leading-none font-black drop-shadow-[0_2px_6px_rgba(0,0,0,.7)]">
-                {clip.selfRating}
+                {clip.rating}
               </span>
             )}
           </>

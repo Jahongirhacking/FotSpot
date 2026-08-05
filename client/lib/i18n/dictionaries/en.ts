@@ -447,6 +447,10 @@ export const en: Dictionary = {
   },
 
   clips: {
+    coachRating: "Coach's rating",
+    ratedBySelf: 'Right now this is the player’s own number.',
+    ratedByCoach: 'A coach set this rating.',
+    saveRating: 'Save rating',
     noStorageOrigin:
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',

@@ -461,6 +461,10 @@ export const uz = {
   },
 
   clips: {
+    coachRating: 'Murabbiy bahosi',
+    ratedBySelf: 'Hozircha o‘yinchining o‘z bahosi.',
+    ratedByCoach: 'Bu bahoni murabbiy qo‘ygan.',
+    saveRating: 'Bahoni saqlash',
     noStorageOrigin:
       'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',

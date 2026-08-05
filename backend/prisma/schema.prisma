@@ -405,6 +405,37 @@ enum MediaCategory {
   MATCH_HIGHLIGHTS
 }
 
+/** Whether a rating on a clip is the player's claim or a coach's judgement. */
+enum RatingSource {
+  SELF
+  COACH
+}
+
+/**
+ * What a rating was before someone changed it.
+ *
+ * A coach overwriting a fourteen-year-old's own number is exactly the kind of
+ * edit that has to stay answerable later — "who lowered this, and from what" is a
+ * question the player's guardian may reasonably ask.
+ */
+model RatingRevision {
+  id        String @id @default(uuid())
+  mediaId   String
+  media     Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  previousRating     Int?
+  previousReportedBy RatingSource
+  rating             Int
+  reportedBy         RatingSource
+
+  /// Who made the change.
+  actorUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([mediaId, createdAt])
+}
+
 enum MediaStatus {
   ACTIVE
   FLAGGED
@@ -442,14 +473,26 @@ model Media {
   title       String?
   description String?
 
-  /// The player's own 0–100 claim for `category`, evidenced by this clip.
+  /// The 0–100 rating for `category` that this clip evidences.
   ///
   /// Null for MATCH_HIGHLIGHTS, which evidences no single attribute. The newest
-  /// ACTIVE clip per category is the player's current claim; older rows are kept
-  /// so the bar has a history rather than just a value. Still self-reported —
-  /// attaching a video does not make it verified (§1.6), and the card renders it
-  /// as self-reported until a coach signs it off.
-  selfRating  Int?
+  /// ACTIVE clip per category carries the current rating; older rows are kept so
+  /// the bar has a history rather than just a value.
+  rating      Int?
+
+  /// Who put `rating` there.
+  ///
+  /// A player's number is a claim; a coach watching the same clip can replace it,
+  /// and then it is evidence (§1.6). One column rather than two nullable ones
+  /// because a clip has exactly one current rating — storing both invites a UI
+  /// that shows a stale claim beside the coach's correction and leaves the reader
+  /// to guess which is live.
+  ///
+  /// The previous value is not overwritten silently: `RatingRevision` keeps what
+  /// it was, who changed it and when.
+  reportedBy  RatingSource @default(SELF)
+
+  revisions  RatingRevision[]
 
   likes      MediaLike[]
   views      MediaView[]

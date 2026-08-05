@@ -57,8 +57,13 @@ export interface Media {
   status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
   title?: string | null;
   description?: string | null;
-  /** The player's own 0–100 claim this clip evidences. Null for highlights. */
-  selfRating?: number | null;
+  /** The 0–100 rating this clip evidences. Null for highlights. */
+  rating?: number | null;
+  /**
+   * Who put `rating` there. A player's number is a claim; a coach watching the
+   * same clip can replace it, and then it is evidence (§1.6).
+   */
+  reportedBy?: 'SELF' | 'COACH';
   /**
    * Permanent URL of the video. Null only when the server has no public storage
    * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
@@ -174,6 +179,18 @@ export interface TransferListing {
   playerId: string | null;
   primaryPosition: string | null;
   rating: number | null;
+}
+
+/** What a clip's rating was before someone changed it. */
+export interface RatingRevision {
+  id: string;
+  mediaId: string;
+  previousRating: number | null;
+  previousReportedBy: 'SELF' | 'COACH';
+  rating: number;
+  reportedBy: 'SELF' | 'COACH';
+  actorUserId: string;
+  createdAt: string;
 }
 
 export interface PlayerProfile {

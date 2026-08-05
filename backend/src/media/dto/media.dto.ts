@@ -47,7 +47,7 @@ export class ConfirmUploadDto {
   @IsInt()
   @Min(0)
   @Max(100)
-  selfRating?: number;
+  rating?: number;
 
   @IsOptional() @IsString() @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(1000) description?: string;
@@ -75,7 +75,23 @@ export class UpdateMediaDto {
   @IsInt()
   @Min(0)
   @Max(100)
-  selfRating?: number;
+  rating?: number;
+}
+
+/**
+ * A coach replacing the rating on a clip they have watched.
+ *
+ * Separate from UpdateMediaDto because it is a different act by a different
+ * person: the player edits their own claim, a coach overrules it. One endpoint
+ * taking both would need the caller's role to decide what the same field means.
+ */
+export class RateMediaDto {
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  rating: number;
 }
 
 export class ListPlayerMediaDto {

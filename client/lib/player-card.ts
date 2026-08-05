@@ -60,9 +60,7 @@ export interface Attribute {
 export function attributeHistory(clips: Media[], key: AttributeKey) {
   const category = ATTRIBUTE_CATEGORY[key];
   return clips
-    .filter(
-      (clip) => clip.category === category && clip.status === 'ACTIVE' && clip.selfRating != null,
-    )
+    .filter((clip) => clip.category === category && clip.status === 'ACTIVE' && clip.rating != null)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 }
 
@@ -180,12 +178,14 @@ export function deriveAttributes(
     }
 
     const claim = currentClaim(clips, key);
-    if (claim?.selfRating != null) {
+    if (claim?.rating != null) {
       return {
         key,
         label: source.label,
-        value: claim.selfRating,
-        provenance: 'self' as const,
+        // A clip carries who rated it: the player claimed a number, or a coach
+        // watched the same clip and replaced it. The bar says which.
+        value: claim.rating,
+        provenance: claim.reportedBy === 'COACH' ? ('coach' as const) : ('self' as const),
         evidence: claim,
       };
     }
@@ -282,7 +282,7 @@ export interface CardEvidence {
  * it and three stars. That gap is the point: the star row is meant to pull towards
  * "get a coach to assess me", not towards typing 100 six times.
  */
-const EVIDENCE_MAX = 600;
+const EVIDENCE_MAX = Object.keys(ATTRIBUTE_CATEGORY).length * 100;
 
 /** The most recent value a coach put on this attribute, or null. */
 function latestCoachRating(
@@ -321,6 +321,11 @@ export function cardEvidence(
    * uploaded today replaces the claim made last season, and so does the newest
    * assessment, because a rating that never expires stops describing the player.
    *
+   * A clip's rating lands on whichever side `reportedBy` says: once a coach has
+   * corrected the number on that clip, it stops being a claim and counts in full.
+   * That is the whole point of letting them change it — a coach's 60 should not
+   * be quietly halved as though the player had written it.
+   *
    * The two are added rather than one replacing the other, so a player with no
    * coach yet still has a filling star row and something to raise.
    */
@@ -328,10 +333,15 @@ export function cardEvidence(
   let coachSum = 0;
   for (const key of ATTRIBUTE_KEYS) {
     const claim = currentClaim(clips, key);
-    if (claim?.selfRating != null) selfSum += claim.selfRating;
+    if (claim?.rating != null) {
+      if (claim.reportedBy === 'COACH') coachSum += claim.rating;
+      else selfSum += claim.rating;
+    }
 
+    // A formal assessment still counts, and wins the attribute when both exist:
+    // it is a judgement of the player, not of one clip.
     const coach = latestCoachRating(assessments, SOURCES[key].coach);
-    if (coach !== null) coachSum += coach;
+    if (coach !== null && claim?.reportedBy !== 'COACH') coachSum += coach;
   }
 
   // Clamped because the two halves can exceed the denominator together — a fully
