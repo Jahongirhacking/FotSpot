@@ -39,6 +39,9 @@ export const en: Dictionary = {
   },
 
   nav: {
+    groups: 'Groups',
+    myGroup: 'My group',
+    reserve: 'Reserve',
     home: 'Home',
     feed: 'Feed',
     myCard: 'My card',
@@ -135,6 +138,7 @@ export const en: Dictionary = {
 
   /** Input hints — they show the expected shape rather than repeat the label. */
   placeholders: {
+    groupName: 'e.g. U14',
     inviteNote: 'Say when and where to come, and who to ask for',
     trialTitle: 'e.g. U14 summer selection',
     positions: 'GK, CB, LW',
@@ -326,6 +330,18 @@ export const en: Dictionary = {
   },
 
   academy: {
+    groupsHint: 'Groups are named squads of your players. Everyone new starts in the reserve.',
+    newGroup: 'New group',
+    groupName: 'Group name',
+    groupDescription: 'Description',
+    confirmDeleteGroup: 'Delete this group? Its members return to the reserve.',
+    assignMembers: 'Assign members',
+    assignMembersHint: 'Tick several and move them to a group, or back to the reserve.',
+    selected: 'selected',
+    moveTo: 'Move to',
+    noGroupTitle: 'You have not been given a group yet',
+    noGroupBody: 'Once a manager adds you to one, it shows up here.',
+    groupEmpty: 'Nobody in this group yet',
     choosePerson: 'Choose someone',
     noCandidates: 'No eligible accounts to endorse',
     noAcademyTitle: 'You are not part of an academy yet',

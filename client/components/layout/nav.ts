@@ -68,6 +68,7 @@ export function navForRole(role: Role | null): NavItem[] {
       return [
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/academies/mine', label: 'myAcademy', icon: Building2 },
+        { href: '/groups/mine', label: 'myGroup', icon: Users },
         { href: '/recommendations/review', label: 'recommendedPlayers', icon: ClipboardCheck },
         { href: '/players', label: 'players', icon: Search },
       ];
@@ -81,6 +82,7 @@ export function navForRole(role: Role | null): NavItem[] {
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
+        { href: '/academies/mine/groups', label: 'groups', icon: Users },
         { href: '/players', label: 'findPlayers', icon: Search },
         { href: '/trials', label: 'trials', icon: CalendarDays },
       ];

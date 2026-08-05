@@ -39,6 +39,9 @@ export const ru: Dictionary = {
   },
 
   nav: {
+    groups: 'Группы',
+    myGroup: 'Моя группа',
+    reserve: 'Резерв',
     home: 'Главная',
     feed: 'Лента',
     myCard: 'Моя карточка',
@@ -135,6 +138,7 @@ export const ru: Dictionary = {
 
   /** Подсказки в полях ввода — показывают ожидаемый формат, а не повторяют ярлык. */
   placeholders: {
+    groupName: 'Например, U14',
     inviteNote: 'Напишите, когда и куда прийти',
     trialTitle: 'Например, летний просмотр U14',
     positions: 'GK, CB, LW',
@@ -324,6 +328,18 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    groupsHint: 'Группы — именованные составы игроков академии. Все новые попадают в резерв.',
+    newGroup: 'Новая группа',
+    groupName: 'Название группы',
+    groupDescription: 'Описание',
+    confirmDeleteGroup: 'Удалить группу? Участники вернутся в резерв.',
+    assignMembers: 'Распределение',
+    assignMembersHint: 'Отметьте несколько и переведите в группу или в резерв.',
+    selected: 'выбрано',
+    moveTo: 'Перевести',
+    noGroupTitle: 'Вам пока не назначена группа',
+    noGroupBody: 'Как только менеджер добавит вас в группу, она появится здесь.',
+    groupEmpty: 'В этой группе пока никого нет',
     choosePerson: 'Выберите человека',
     noCandidates: 'Подходящих аккаунтов не найдено',
     noAcademyTitle: 'Вы пока не в академии',

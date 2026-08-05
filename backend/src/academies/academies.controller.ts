@@ -2,7 +2,14 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
+import { GroupsService } from './groups.service';
 import { EndorseDto, ListEndorsementsDto } from './dto/endorsement.dto';
+import {
+  CreateGroupDto,
+  MoveMembersDto,
+  RequestTransferDto,
+  UpdateGroupDto,
+} from './dto/group.dto';
 import { EndorsementRole } from '@prisma/client';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -26,6 +33,7 @@ export class AcademiesController {
   constructor(
     private academiesService: AcademiesService,
     private endorsements: EndorsementsService,
+    private groups: GroupsService,
   ) {}
 
   /**
@@ -128,6 +136,92 @@ export class AcademiesController {
   @Post(':id/coaches')
   createCoach(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CreateCoachDto) {
     return this.academiesService.createCoach(user.userId, id, dto);
+  }
+
+  // ---------- Groups (§1.10) ----------
+
+  /** The academy's squads, plus how many are in the reserve. */
+  @Public()
+  @Get(':id/groups')
+  listGroups(@Param('id') id: string) {
+    return this.groups.list(id);
+  }
+
+  /** A coach's own groups — declared before `:id/groups/:groupId`. */
+  @Get('groups/mine')
+  myGroups(@CurrentUser() user: AuthUser) {
+    return this.groups.listForCoach(user.userId);
+  }
+
+  @Public()
+  @Get('groups/:groupId')
+  getGroup(@Param('groupId') groupId: string) {
+    return this.groups.getById(groupId);
+  }
+
+  @Post(':id/groups')
+  createGroup(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CreateGroupDto) {
+    return this.groups.create(user.userId, id, dto);
+  }
+
+  @Patch('groups/:groupId')
+  updateGroup(
+    @CurrentUser() user: AuthUser,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateGroupDto,
+  ) {
+    return this.groups.update(user.userId, groupId, dto);
+  }
+
+  /** Deleting a group returns its people to the reserve; it removes nobody. */
+  @Delete('groups/:groupId')
+  deleteGroup(@CurrentUser() user: AuthUser, @Param('groupId') groupId: string) {
+    return this.groups.remove(user.userId, groupId);
+  }
+
+  /** Move members into a group, or back to the reserve by omitting `groupId`. */
+  @Post(':id/groups/move')
+  moveMembers(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: MoveMembersDto) {
+    return this.groups.moveMembers(user.userId, id, dto);
+  }
+
+  // ---------- Transfers between academies ----------
+
+  /** Offer a member to another academy. Nothing moves until they answer. */
+  @Post(':id/transfers')
+  requestTransfer(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: RequestTransferDto,
+  ) {
+    return this.groups.requestTransfer(user.userId, id, dto);
+  }
+
+  /** Offers made, or offers waiting on this academy's answer. */
+  @Get(':id/transfers')
+  listTransfers(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('direction') direction: 'incoming' | 'outgoing' = 'incoming',
+  ) {
+    return this.groups.listTransfers(user.userId, id, direction);
+  }
+
+  /** The receiving academy accepts — the member lands in their reserve. */
+  @Post('transfers/:transferId/approve')
+  approveTransfer(@CurrentUser() user: AuthUser, @Param('transferId') transferId: string) {
+    return this.groups.decideTransfer(user.userId, transferId, true);
+  }
+
+  @Post('transfers/:transferId/reject')
+  rejectTransfer(@CurrentUser() user: AuthUser, @Param('transferId') transferId: string) {
+    return this.groups.decideTransfer(user.userId, transferId, false);
+  }
+
+  /** The offering academy withdraws before the other side answers. */
+  @Post('transfers/:transferId/cancel')
+  cancelTransfer(@CurrentUser() user: AuthUser, @Param('transferId') transferId: string) {
+    return this.groups.cancelTransfer(user.userId, transferId);
   }
 
   /** The roster: coaches, scouts and the squad, players sorted by assessed rating. */

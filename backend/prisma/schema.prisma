@@ -326,6 +326,9 @@ model AcademyProfile {
   status   VerificationStatus @default(PENDING)
 
   members  AcademyMember[]
+  groups   AcademyGroup[]
+  transfersOut MemberTransfer[] @relation("TransfersOut")
+  transfersIn  MemberTransfer[] @relation("TransfersIn")
   trials   Trial[]
   recommendations Recommendation[]
   scoutFollows AcademyScoutFollow[]
@@ -353,6 +356,76 @@ enum AcademyMemberRole {
  * judgement they ever made. `RELEASED` is the academy saying "we are done, they
  * are free to join someone else", which is what another academy imports.
  */
+/**
+ * A named squad inside one academy — "U14", "First team", "Goalkeepers".
+ *
+ * Only the manager shapes these (§1.10): a coach works with the group they are
+ * given, and letting them rename or re-cut squads would make "who is in my group"
+ * a moving answer.
+ *
+ * There is no `Reserve` row. Reserve is the absence of a group, so a player who
+ * joins an academy is in it by construction rather than by a job that has to
+ * remember to put them there — see AcademyMember.groupId.
+ */
+model AcademyGroup {
+  id          String @id @default(uuid())
+  academyId   String
+  academy     AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  /// R2 object key for the group photo, never a URL — see storage.keys.ts.
+  imageKey    String?
+
+  members     AcademyMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Two squads called "U14" in one academy is a mistake, not a plan.
+  @@unique([academyId, name])
+  @@index([academyId])
+}
+
+/**
+ * One academy offering a member to another, and the other answering.
+ *
+ * Two-sided on purpose: a transfer that took effect the moment one manager
+ * pressed a button would let any academy put a player on a rival's books without
+ * asking. The receiving academy approves, and only then does the member move —
+ * into that academy's reserve, because a new academy has not decided which squad
+ * they belong in yet.
+ */
+model MemberTransfer {
+  id            String @id @default(uuid())
+  memberId      String
+  member        AcademyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  fromAcademyId String
+  fromAcademy   AcademyProfile @relation("TransfersOut", fields: [fromAcademyId], references: [id], onDelete: Cascade)
+  toAcademyId   String
+  toAcademy     AcademyProfile @relation("TransfersIn", fields: [toAcademyId], references: [id], onDelete: Cascade)
+
+  status        TransferStatus @default(PENDING)
+  note          String?
+
+  requestedByUserId String
+  decidedByUserId   String?
+
+  createdAt DateTime @default(now())
+  decidedAt DateTime?
+
+  @@index([toAcademyId, status])
+  @@index([fromAcademyId, status])
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum AcademyMemberStatus {
   ACTIVE
   INACTIVE
@@ -372,6 +445,17 @@ model AcademyMember {
   /// Where they came from, so a transfer is a fact on the record rather than a
   /// row that quietly changed academies overnight.
   previousAcademyId String?
+
+  /// The squad they are in, or null for the academy's reserve.
+  ///
+  /// Null rather than a `Reserve` group row: everybody who joins starts there, so
+  /// making it the default state means no code has to remember to put them in it,
+  /// and moving somebody to reserve is clearing a field rather than looking up a
+  /// magic group by name.
+  groupId    String?
+  group      AcademyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  transfers  MemberTransfer[]
   joinedAt   DateTime @default(now())
 
   academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)

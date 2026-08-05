@@ -43,6 +43,9 @@ export const uz = {
   },
 
   nav: {
+    groups: 'Guruhlar',
+    myGroup: 'Mening guruhim',
+    reserve: 'Zaxira',
     home: 'Bosh sahifa',
     feed: 'Lenta',
     myCard: 'Mening kartam',
@@ -145,6 +148,7 @@ export const uz = {
    * qayta ishlatiladi.
    */
   placeholders: {
+    groupName: 'Masalan, U14',
     inviteNote: 'Qachon va qayerga kelishini yozing',
     trialTitle: 'Masalan, U14 yozgi tanlov',
     positions: 'GK, CB, LW',
@@ -340,6 +344,19 @@ export const uz = {
   },
 
   academy: {
+    groupsHint:
+      'Guruhlar — akademiya o‘yinchilarining nomlangan tarkiblari. Yangi qo‘shilgan har kim zaxirada bo‘ladi.',
+    newGroup: 'Yangi guruh',
+    groupName: 'Guruh nomi',
+    groupDescription: 'Tavsif',
+    confirmDeleteGroup: 'Guruh o‘chirilsinmi? A’zolar zaxiraga qaytadi.',
+    assignMembers: 'A’zolarni taqsimlash',
+    assignMembersHint: 'Bir nechtasini belgilang va guruhga yoki zaxiraga o‘tkazing.',
+    selected: 'ta tanlandi',
+    moveTo: 'O‘tkazish',
+    noGroupTitle: 'Sizga hali guruh biriktirilmagan',
+    noGroupBody: 'Akademiya menejeri sizni guruhga qo‘shgach, u shu yerda ko‘rinadi.',
+    groupEmpty: 'Bu guruhda hali hech kim yo‘q',
     choosePerson: 'Odamni tanlang',
     noCandidates: 'Tanlash uchun mos hisob topilmadi',
     noAcademyTitle: 'Siz hali akademiyaga biriktirilmagansiz',
