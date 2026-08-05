@@ -190,6 +190,43 @@
 }
 
 @layer utilities {
+  /*
+   * A pair of elements where exactly one is shown per theme.
+   *
+   * For anything CSS cannot recolour — a photograph shot light and shot dark.
+   * Both are in the markup and the stylesheet picks; doing it in JavaScript would
+   * mean the wrong one painting first, which on a banner is a full-width flash.
+   *
+   * The order matches globals.css's colour blocks: the media query is the default
+   * signal, and an explicit `data-theme` from the toggle overrides it in both
+   * directions.
+   */
+  .theme-dark-only {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .theme-light-only {
+      display: none;
+    }
+    .theme-dark-only {
+      display: block;
+    }
+  }
+
+  :root[data-theme='light'] .theme-light-only {
+    display: block;
+  }
+  :root[data-theme='light'] .theme-dark-only {
+    display: none;
+  }
+  :root[data-theme='dark'] .theme-light-only {
+    display: none;
+  }
+  :root[data-theme='dark'] .theme-dark-only {
+    display: block;
+  }
+
   /* Wide content (tables, filter rows) scrolls inside its own container so the
      page body never scrolls horizontally on a phone. */
   .scroll-x {
