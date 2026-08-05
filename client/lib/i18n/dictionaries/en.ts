@@ -427,6 +427,7 @@ export const en: Dictionary = {
   },
 
   relation: {
+    following: 'Following',
     you: 'You',
     myCoach: 'My coach',
     myAcademy: 'My academy',
@@ -511,6 +512,13 @@ export const en: Dictionary = {
   },
 
   player: {
+    actions: 'Actions',
+    followPlayer: 'Follow this player',
+    coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',
+    alreadyRecommended: 'You already recommended this player',
+    recommendationResult: 'Result: {status}',
+    noRecommendationYet: 'Nobody has recommended this player to your academy yet.',
+    alreadyInvited: 'This player has already been invited.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',
     comparedWithinPlain: 'Bars are compared within {band} only — never across age groups.',
@@ -537,7 +545,6 @@ export const en: Dictionary = {
     follow: 'Follow',
     following: 'Following',
     recommendToAcademy: 'Recommend to an academy',
-    actions: 'Actions',
     yourClips: 'Your clips',
     noClips: 'No clips yet. 60 seconds of you dribbling is worth more than any description.',
     makeCardStronger: 'Make your card stronger',
@@ -597,6 +604,9 @@ export const en: Dictionary = {
   },
 
   recommendations: {
+    statusAccepted: 'accepted',
+    statusRejected: 'rejected',
+    statusPending: 'still pending',
     noReviews: 'Nothing to review',
     noReviewsHint: 'When a manager sends you a player, they show up here.',
     reviewed: 'Already reviewed',
@@ -821,20 +831,20 @@ export const en: Dictionary = {
   landing: {
     heroTitle: "The best young player in your mahalla shouldn't go unseen.",
     heroBody:
-      'FotSpot gives players in Uzbekistan a real football profile, and gives academies a way to find them without burning another wasted trial day.',
+      'Professional football profiles for players. Smarter scouting for academies. FotSpot connects talent with opportunity.',
     createCard: 'Create your player card',
     browsePlayers: 'Browse players',
     freeForever: 'Free for players, parents and scouts — permanently.',
     getStarted: 'Get started',
-    pillar1Title: 'A card, not a CV',
+    pillar1Title: 'More than a CV. A verified football profile',
     pillar1Body:
-      'Position, playing style, attribute bars and 60-second clips. Every number shows where it came from.',
-    pillar2Title: 'Scouts who are accountable',
+      'Position, playing style, performance metrics, and short highlight videos—all in one place. Every stat is backed by a trusted source, giving academies the confidence to evaluate talent',
+    pillar2Title: 'A Trusted Scout Network',
     pillar2Body:
-      'Anyone can recommend a player, but reputation is earned only when academies actually accept.',
-    pillar3Title: 'Academies save trial days',
+      'Anyone can recommend talent, but credibility is earned through academy-approved recommendations. FotSpot builds reputation based on real results',
+    pillar3Title: 'Smarter Talent Discovery',
     pillar3Body:
-      'Search by age band, region, position and playing style. Review credible recommendations instead of running an open trial for three hundred strangers.',
+      'Find players by age, position, location, and playing style in seconds. FotSpot helps academies identify the right talent faster, without relying on large open tryouts',
     recentlyJoined: 'Recently joined',
     viewMyCard: 'View my card',
     watchHighlights: 'Watch highlights',

@@ -2818,6 +2818,78 @@
         ]
       }
     },
+    "/api/v1/recommendations/player/{playerId}/mine": {
+      "get": {
+        "operationId": "recommendations_myRecommendationFor",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "This scout's own recommendation for a player — one per player (§1.5).",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/player/{playerId}/academy-state": {
+      "get": {
+        "operationId": "recommendations_academyStateFor",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Where a player stands with the academy this manager runs.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/{id}/review": {
       "post": {
         "operationId": "recommendations_assignReview",
