@@ -13,10 +13,13 @@ import type {
   DeviceSession,
   Follow,
   FollowTargetType,
+  AcademyGroup,
   AcademyMember,
   AcademyMemberRole,
   AcademyMemberStatus,
   FeedPage,
+  GroupDetail,
+  MemberTransfer,
   Media,
   MediaCategory,
   MediaType,
@@ -850,6 +853,71 @@ export const media = {
 };
 
 // ---------- Follows ----------
+
+export const groups = {
+  /** An academy's squads, plus how many sit in the reserve. */
+  list: (academyId: string, opts: Opts = {}) =>
+    apiFetch<{ groups: AcademyGroup[]; reserveCount: number }>(
+      `/academies/${academyId}/groups`,
+      opts,
+    ),
+
+  getById: (groupId: string, opts: Opts = {}) =>
+    apiFetch<GroupDetail>(`/academies/groups/${groupId}`, opts),
+
+  /** A coach's own groups. */
+  mine: (opts: Opts = {}) => apiFetch<GroupDetail[]>('/academies/groups/mine', opts),
+
+  create: (
+    academyId: string,
+    body: { name: string; description?: string; imageKey?: string },
+    opts: Opts = {},
+  ) => apiFetch<AcademyGroup>(`/academies/${academyId}/groups`, { method: 'POST', body, ...opts }),
+
+  update: (
+    groupId: string,
+    body: { name?: string; description?: string; imageKey?: string },
+    opts: Opts = {},
+  ) => apiFetch<AcademyGroup>(`/academies/groups/${groupId}`, { method: 'PATCH', body, ...opts }),
+
+  /** Removes the squad, not the people in it — they return to the reserve. */
+  remove: (groupId: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: boolean }>(`/academies/groups/${groupId}`, { method: 'DELETE', ...opts }),
+
+  /** Omit `groupId` to send them back to the reserve. */
+  move: (academyId: string, memberIds: string[], groupId?: string, opts: Opts = {}) =>
+    apiFetch<{ moved: number }>(`/academies/${academyId}/groups/move`, {
+      method: 'POST',
+      body: { memberIds, ...(groupId ? { groupId } : {}) },
+      ...opts,
+    }),
+};
+
+export const transfers = {
+  /** Offer a member to another academy. Nothing moves until they answer. */
+  request: (
+    academyId: string,
+    body: { memberId: string; toAcademyId: string; note?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<MemberTransfer>(`/academies/${academyId}/transfers`, {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  list: (academyId: string, direction: 'incoming' | 'outgoing', opts: Opts = {}) =>
+    apiFetch<MemberTransfer[]>(`/academies/${academyId}/transfers${toQuery({ direction })}`, opts),
+
+  approve: (transferId: string, opts: Opts = {}) =>
+    apiFetch(`/academies/transfers/${transferId}/approve`, { method: 'POST', ...opts }),
+
+  reject: (transferId: string, opts: Opts = {}) =>
+    apiFetch(`/academies/transfers/${transferId}/reject`, { method: 'POST', ...opts }),
+
+  cancel: (transferId: string, opts: Opts = {}) =>
+    apiFetch(`/academies/transfers/${transferId}/cancel`, { method: 'POST', ...opts }),
+};
 
 export const academyRoster = {
   /**

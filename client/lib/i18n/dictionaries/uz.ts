@@ -43,6 +43,9 @@ export const uz = {
   },
 
   nav: {
+    groups: 'Guruhlar',
+    myGroup: 'Mening guruhim',
+    reserve: 'Zaxira',
     home: 'Bosh sahifa',
     feed: 'Lenta',
     myCard: 'Mening kartam',
@@ -145,6 +148,7 @@ export const uz = {
    * qayta ishlatiladi.
    */
   placeholders: {
+    groupName: 'Masalan, U14',
     inviteNote: 'Qachon va qayerga kelishini yozing',
     trialTitle: 'Masalan, U14 yozgi tanlov',
     positions: 'GK, CB, LW',
@@ -340,6 +344,19 @@ export const uz = {
   },
 
   academy: {
+    groupsHint:
+      'Guruhlar — akademiya o‘yinchilarining nomlangan tarkiblari. Yangi qo‘shilgan har kim zaxirada bo‘ladi.',
+    newGroup: 'Yangi guruh',
+    groupName: 'Guruh nomi',
+    groupDescription: 'Tavsif',
+    confirmDeleteGroup: 'Guruh o‘chirilsinmi? A’zolar zaxiraga qaytadi.',
+    assignMembers: 'A’zolarni taqsimlash',
+    assignMembersHint: 'Bir nechtasini belgilang va guruhga yoki zaxiraga o‘tkazing.',
+    selected: 'ta tanlandi',
+    moveTo: 'O‘tkazish',
+    noGroupTitle: 'Sizga hali guruh biriktirilmagan',
+    noGroupBody: 'Akademiya menejeri sizni guruhga qo‘shgach, u shu yerda ko‘rinadi.',
+    groupEmpty: 'Bu guruhda hali hech kim yo‘q',
     choosePerson: 'Odamni tanlang',
     noCandidates: 'Tanlash uchun mos hisob topilmadi',
     noAcademyTitle: 'Siz hali akademiyaga biriktirilmagansiz',
@@ -441,6 +458,7 @@ export const uz = {
   },
 
   relation: {
+    following: 'Kuzatilmoqda',
     you: 'Siz',
     myCoach: 'Mening murabbiyim',
     myAcademy: 'Mening akademiyam',
@@ -525,6 +543,14 @@ export const uz = {
   },
 
   player: {
+    actions: 'Amallar',
+    followPlayer: 'Kuzatish',
+    coachAssessHint:
+      'Murabbiy bahosi kartadagi o‘z-o‘zini baholashni tasdiqlangan bahoga almashtiradi.',
+    alreadyRecommended: 'Siz allaqachon tavsiya qilgansiz',
+    recommendationResult: 'Natija: {status}',
+    noRecommendationYet: 'Bu o‘yinchini hali hech kim akademiyangizga tavsiya qilmagan.',
+    alreadyInvited: 'O‘yinchi allaqachon taklif qilingan.',
     searchSubtitle:
       'FotSpot’da {count} futbolchi. Faqat pozitsiya emas, o‘yin uslubi bo‘yicha ham qidiring.',
     cleanSheets: 'Toza himoya',
@@ -553,7 +579,6 @@ export const uz = {
     follow: 'Kuzatish',
     following: 'Kuzatilmoqda',
     recommendToAcademy: 'Akademiyaga tavsiya qilish',
-    actions: 'Amallar',
     yourClips: 'Sizning videolaringiz',
     noClips: 'Hali video yo‘q. 60 soniyalik video har qanday tavsifdan qimmatliroq.',
     makeCardStronger: 'Kartangizni kuchaytiring',
@@ -614,6 +639,9 @@ export const uz = {
   },
 
   recommendations: {
+    statusAccepted: 'qabul qilindi',
+    statusRejected: 'rad etildi',
+    statusPending: 'ko‘rib chiqilmoqda',
     noReviews: 'Ko‘rik uchun o‘yinchi yo‘q',
     noReviewsHint: 'Akademiya menejeri o‘yinchini yuborsa, u shu yerda paydo bo‘ladi.',
     reviewed: 'Ko‘rib chiqilganlar',
@@ -839,22 +867,22 @@ export const uz = {
   },
 
   landing: {
-    heroTitle: 'Mahallangizdagi eng yaxshi yosh futbolchi e’tibordan chetda qolmasligi kerak.',
+    heroTitle: 'Mahallangizdagi eng yaxshi yosh futbolchi e’tibordan chetda qolmasligi shart.',
     heroBody:
-      'FotSpot O‘zbekistondagi futbolchilarga haqiqiy futbol profilini beradi, akademiyalarga esa yana bir behuda sinov kunini sarflamasdan iste’dod topish imkonini beradi.',
+      "Futbolchilar uchun professional profil. Akademiyalar uchun aqlli skauting. FotSpot iste'dod va imkoniyatni bir joyda uchrashtiradi",
     createCard: 'Futbolchi kartangizni yarating',
     browsePlayers: 'Futbolchilarni ko‘rish',
     freeForever: 'Futbolchilar, ota-onalar va skautlar uchun — doim bepul.',
     getStarted: 'Boshlash',
-    pillar1Title: 'CV emas, karta',
+    pillar1Title: 'CV emas, tasdiqlangan futbol profili',
     pillar1Body:
-      'Pozitsiya, o‘yin uslubi, ko‘rsatkichlar va 60 soniyalik videolar. Har bir raqam qayerdan kelgani ko‘rinadi.',
-    pillar2Title: 'Javobgar skautlar',
+      "Pozitsiya, o'yin uslubi, statistikalar va qisqa videolar — barchasi bitta joyda. Har bir ko'rsatkich ishonchli manba bilan tasdiqlanadi, shunda akademiyalar iste'dodni ishonch bilan baholay oladi",
+    pillar2Title: "Ishonchli skautlar tarmog'i",
     pillar2Body:
-      'Har kim futbolchi tavsiya qila oladi, lekin obro‘ faqat akademiyalar qabul qilganda o‘sadi.',
-    pillar3Title: 'Akademiyalar vaqt tejaydi',
+      "Har kim iste'dodni tavsiya qilishi mumkin. Ammo skautning ishonchliligi faqat akademiyalar tasdiqlagan tavsiyalar asosida shakllanadi. FotSpot obro'ni natija bilan o'lchaydi",
+    pillar3Title: 'Akademiyalar uchun aqlli saralash',
     pillar3Body:
-      'Yosh, viloyat, pozitsiya va o‘yin uslubi bo‘yicha qidiring. Uch yuz notanish odam uchun ochiq sinov o‘tkazish shart emas.',
+      "Yosh, pozitsiya, hudud va o'yin uslubi bo'yicha iste'dodlarni bir necha soniyada toping. FotSpot akademiyalarga vaqtni tejash va eng munosib futbolchilarni tezroq aniqlash imkonini beradi",
     recentlyJoined: 'Yaqinda qo‘shilganlar',
     viewMyCard: 'Kartamni ko‘rish',
     watchHighlights: 'Videoni ko‘rish',

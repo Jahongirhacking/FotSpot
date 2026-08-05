@@ -3,17 +3,16 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardCheck, Mail, Send, ShieldCheck, X } from 'lucide-react';
+import { ClipboardCheck, Mail, Send, ShieldCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyHistoryRow, RankedRecommendation } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
-import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
-import { Field, Select, Textarea } from '@/components/ui/Field';
-import { ageBand, formatDate, initials } from '@/lib/utils';
+import { Select, Textarea } from '@/components/ui/Field';
+import { ageBand, formatDate } from '@/lib/utils';
 
 interface Coach {
   id: string;
@@ -34,6 +33,11 @@ interface Coach {
  *
  * Rejected and invited players leave the queue for the history below: an inbox
  * you cannot empty stops being a queue.
+ *
+ * Pending state is tracked per row, not per mutation. One `isPending` shared by
+ * the list meant pressing "send for review" on one player put every other row's
+ * button into a spinner — the screen said it was doing five things when it was
+ * doing one.
  */
 export function ReviewFlow({
   academyId,
@@ -115,7 +119,11 @@ export function ReviewFlow({
                   key={item.playerId}
                   item={item}
                   coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
-                  pending={assign.isPending || invite.isPending}
+                  // Only the row actually being sent, not the whole list.
+                  pending={
+                    (assign.isPending && assign.variables?.id === item.recommendationIds[0]) ||
+                    (invite.isPending && invite.variables?.id === item.recommendationIds[0])
+                  }
                   onAssign={(coachUserId) =>
                     assign.mutate({ id: item.recommendationIds[0], coachUserId })
                   }
@@ -147,7 +155,10 @@ export function ReviewFlow({
                       {row.player?.firstName} {row.player?.lastName}
                     </Link>
                     <p className="text-muted truncate text-xs">
-                      {[row.player?.primaryPosition, row.player?.birthDate && ageBand(row.player.birthDate)]
+                      {[
+                        row.player?.primaryPosition,
+                        row.player?.birthDate && ageBand(row.player.birthDate),
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                       {row.review?.coach &&
@@ -197,7 +208,11 @@ function InboxRow({
             {item.player ? `${item.player.firstName} ${item.player.lastName}` : item.playerId}
           </span>
           <span className="text-muted block truncate text-xs">
-            {[item.player?.primaryPosition, item.player && ageBand(item.player.birthDate), item.player?.region]
+            {[
+              item.player?.primaryPosition,
+              item.player && ageBand(item.player.birthDate),
+              item.player?.region,
+            ]
               .filter(Boolean)
               .join(' · ')}
             {' · '}
@@ -227,40 +242,36 @@ function InboxRow({
       </div>
 
       {review && (
-        <p className="text-muted flex items-center gap-1.5 text-xs">
-          <Avatar
-            src={review.coach.avatarUrl}
-            fallback={initials(review.coach.firstName ?? '', review.coach.lastName ?? '')}
-            className="size-5"
-          />
-          {review.coach.firstName} {review.coach.lastName}
-          {review.note && ` — ${review.note}`}
+        <p className="text-muted truncate text-xs">
+          {[review.coach.firstName, review.coach.lastName].filter(Boolean).join(' ')}
+          {review.note ? ` — ${review.note}` : ''}
         </p>
       )}
 
       {/* Not yet with a coach: pick one, or let the server take the one carrying
           the fewest open reviews. */}
+      {/* One line, no field label: the placeholder option already says what the
+          select is for, and a label per row turned the list into a form. */}
       {!review && (
-        <div className="flex flex-wrap items-end gap-2">
-          <Field label={t.recommendations.sendToCoach} htmlFor={`coach-${item.playerId}`} className="min-w-44 flex-1">
-            <Select
-              id={`coach-${item.playerId}`}
-              value={coachUserId}
-              onChange={(event) => setCoachUserId(event.target.value)}
-            >
-              <option value="">{t.recommendations.anyCoach}</option>
-              {coaches.map((coach) => (
-                <option key={coach.id} value={coach.id}>
-                  {[coach.firstName, coach.lastName].filter(Boolean).join(' ') ||
-                    coach.username ||
-                    coach.id.slice(0, 8)}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            aria-label={t.recommendations.sendToCoach}
+            value={coachUserId}
+            onChange={(event) => setCoachUserId(event.target.value)}
+            className="min-w-40 flex-1"
+          >
+            <option value="">{t.recommendations.anyCoach}</option>
+            {coaches.map((coach) => (
+              <option key={coach.id} value={coach.id}>
+                {[coach.firstName, coach.lastName].filter(Boolean).join(' ') ||
+                  coach.username ||
+                  coach.id.slice(0, 8)}
+              </option>
+            ))}
+          </Select>
           <Button
             size="sm"
-            disabled={pending}
+            loading={pending}
             onClick={() => onAssign(coachUserId || undefined)}
             className="min-h-11"
           >
@@ -272,33 +283,25 @@ function InboxRow({
       {/* Approved: the manager's own decision, and the note the player reads. */}
       {review?.status === 'APPROVED' && (
         <div className="space-y-2">
-          <Field label={t.recommendations.inviteNote} htmlFor={`note-${item.playerId}`}>
-            <Textarea
-              id={`note-${item.playerId}`}
-              value={note}
-              maxLength={1000}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={t.placeholders.inviteNote}
-            />
-          </Field>
+          <Textarea
+            aria-label={t.recommendations.inviteNote}
+            value={note}
+            maxLength={1000}
+            rows={2}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={t.placeholders.inviteNote}
+          />
           <div className="flex justify-end">
-            <Button size="sm" disabled={pending || !note.trim()} onClick={() => onInvite(note.trim())}>
+            <Button
+              size="sm"
+              loading={pending}
+              disabled={!note.trim()}
+              onClick={() => onInvite(note.trim())}
+            >
               <Mail aria-hidden /> {t.recommendations.sendInvite}
             </Button>
           </div>
         </div>
-      )}
-
-      {review?.status === 'REJECTED' && (
-        <p className="text-muted flex items-center gap-1.5 text-xs">
-          <X className="size-3.5" aria-hidden /> {t.recommendations.rejectedByCoach}
-        </p>
-      )}
-
-      {review?.status === 'PENDING' && (
-        <p className="text-muted flex items-center gap-1.5 text-xs">
-          <Check className="size-3.5" aria-hidden /> {t.recommendations.awaitingCoach}
-        </p>
       )}
     </li>
   );

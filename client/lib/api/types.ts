@@ -193,6 +193,59 @@ export interface RatingRevision {
   createdAt: string;
 }
 
+/** A named squad inside an academy. Reserve is the absence of one. */
+export interface AcademyGroup {
+  id: string;
+  academyId: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GroupDetail extends Omit<AcademyGroup, 'memberCount'> {
+  academy: { id: string; name: string };
+  members: {
+    id: string;
+    role: AcademyMemberRole;
+    status: AcademyMemberStatus;
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string | null;
+    avatarUrl: string | null;
+    playerId: string | null;
+    primaryPosition: string | null;
+    birthDate: string | null;
+  }[];
+}
+
+export type TransferStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+/** One academy offering a member to another, and the other's answer. */
+export interface MemberTransfer {
+  id: string;
+  status: TransferStatus;
+  note: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  fromAcademy: { id: string; name: string };
+  toAcademy: { id: string; name: string };
+  member: {
+    id: string;
+    role: AcademyMemberRole;
+    user: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+      playerProfile: { id: string; primaryPosition: string | null } | null;
+    };
+  };
+}
+
 export interface PlayerProfile {
   id: string;
   /**

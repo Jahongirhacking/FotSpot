@@ -54,6 +54,18 @@ export class RecommendationsController {
     return this.recommendationsService.listHistoryForAcademy(user.userId, academyId);
   }
 
+  /** This scout's own recommendation for a player — one per player (§1.5). */
+  @Get('player/:playerId/mine')
+  myRecommendationFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
+    return this.recommendationsService.myRecommendationFor(user.userId, playerId);
+  }
+
+  /** Where a player stands with the academy this manager runs. */
+  @Get('player/:playerId/academy-state')
+  academyStateFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
+    return this.recommendationsService.academyStateFor(user.userId, playerId);
+  }
+
   // ---------- Coach review (§1.9) ----------
 
   /**

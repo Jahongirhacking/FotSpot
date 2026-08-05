@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -56,6 +57,23 @@ export class RecommendationsService {
   async create(scoutId: string, dto: CreateRecommendationDto) {
     const player = await this.prisma.playerProfile.findUnique({ where: { id: dto.playerId } });
     if (!player) throw new BadRequestException('Player not found');
+
+    /*
+     * One recommendation per scout per player.
+     *
+     * The reputation formula counts accepted over sent (§1.5), so a scout who
+     * could file the same player five times would either multiply one good call
+     * into five successes or bury one bad call among four duplicates. Either way
+     * the success rate stops describing their judgement, which is the only thing
+     * it exists to describe.
+     */
+    const already = await this.prisma.recommendation.findFirst({
+      where: { scoutId, playerId: dto.playerId },
+      select: { id: true, status: true },
+    });
+    if (already) {
+      throw new ConflictException('You have already recommended this player');
+    }
 
     const targets = await this.resolveTargets(scoutId, dto);
 
@@ -207,6 +225,112 @@ export class RecommendationsService {
             ? [{ ...row.academy, status: row.status }]
             : [],
     }));
+  }
+
+  /**
+   * This scout's own recommendation for a player, if they have filed one.
+   *
+   * Drives the button on the player's profile: a scout gets one shot per player
+   * (see `create`), so after the first the profile has to say what became of it
+   * rather than offering the same button again.
+   */
+  async myRecommendationFor(scoutId: string, playerId: string) {
+    const recommendation = await this.prisma.recommendation.findFirst({
+      where: { scoutId, playerId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        note: true,
+        createdAt: true,
+        targets: { select: { academyId: true, status: true } },
+      },
+    });
+    if (!recommendation) return null;
+
+    /*
+     * The status a scout cares about is "did anybody take it", not the legacy
+     * column: a recommendation addressed to three academies is accepted the
+     * moment one of them invites the player.
+     */
+    const statuses = recommendation.targets.map((target) => target.status);
+    const status = statuses.includes('ACCEPTED')
+      ? 'ACCEPTED'
+      : statuses.length && statuses.every((value) => value === 'REJECTED')
+        ? 'REJECTED'
+        : recommendation.status === 'ACCEPTED'
+          ? 'ACCEPTED'
+          : 'PENDING';
+
+    return {
+      id: recommendation.id,
+      status,
+      note: recommendation.note,
+      createdAt: recommendation.createdAt,
+    };
+  }
+
+  /**
+   * Where a player stands with the academy this manager runs.
+   *
+   * The player's own profile is where a manager decides about them, so it needs
+   * the same three states the inbox has — nobody has looked yet, a coach has it,
+   * a coach has answered — resolved for *their* academy without asking them which
+   * one they mean.
+   *
+   * Null when nobody has recommended this player to that academy: there is no
+   * recommendation to send for review, and offering the button anyway would be a
+   * button that always fails.
+   */
+  async academyStateFor(userId: string, playerId: string) {
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER' },
+      select: { academyId: true, academy: { select: { id: true, name: true } } },
+    });
+    if (!membership) return null;
+
+    const target = await this.prisma.recommendationTarget.findFirst({
+      where: { academyId: membership.academyId, recommendation: { playerId } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        status: true,
+        recommendationId: true,
+        recommendation: {
+          select: {
+            note: true,
+            scout: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    if (!target) return { academy: membership.academy, recommendation: null, review: null };
+
+    const review = await this.prisma.recommendationReview.findUnique({
+      where: {
+        recommendationId_academyId: {
+          recommendationId: target.recommendationId,
+          academyId: membership.academyId,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        note: true,
+        decidedAt: true,
+        coachUser: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    return {
+      academy: membership.academy,
+      recommendation: {
+        id: target.recommendationId,
+        status: target.status,
+        note: target.recommendation.note,
+        scout: target.recommendation.scout,
+      },
+      review,
+    };
   }
 
   // ---------- Coach review (§1.9) ----------
