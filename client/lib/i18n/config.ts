@@ -27,27 +27,3 @@ export const LOCALE_COOKIE = 'fs_locale';
 export function isLocale(value: string | undefined | null): value is Locale {
   return !!value && (LOCALES as readonly string[]).includes(value);
 }
-
-/**
- * Best locale for a first-time visitor with no cookie yet.
- *
- * Falls back to Uzbek rather than to the browser's first choice: an Uzbek user
- * whose phone is set to Russian is still better served by Uzbek than by English,
- * and only an explicit ru/en preference should move them off the default.
- */
-export function negotiateLocale(acceptLanguage?: string | null): Locale {
-  if (!acceptLanguage) return DEFAULT_LOCALE;
-
-  const ranked = acceptLanguage
-    .split(',')
-    .map((part) => {
-      const [tag, q] = part.trim().split(';q=');
-      return { tag: tag.toLowerCase().split('-')[0], q: q ? Number(q) : 1 };
-    })
-    .sort((a, b) => b.q - a.q);
-
-  for (const { tag } of ranked) {
-    if (isLocale(tag)) return tag;
-  }
-  return DEFAULT_LOCALE;
-}
