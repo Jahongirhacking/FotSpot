@@ -1,17 +1,17 @@
-import Link from 'next/link';
-import { CalendarDays, Sparkles, TrendingUp } from 'lucide-react';
-import { players, coaches, media, trials } from '@/lib/api/resources';
-import { ApiError } from '@/lib/api/client';
-import type { CoachAssessment, PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
-import { cardCompletion } from '@/lib/player-card';
-import { PlayerCard } from '@/components/player/PlayerCard';
 import { AttributeBoard } from '@/components/player/AttributeBoard';
 import { OnThePitchCard } from '@/components/player/OnThePitchCard';
-import type { Dictionary } from '@/lib/i18n';
+import { PlayerCard } from '@/components/player/PlayerCard';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { ApiError } from '@/lib/api/client';
+import { coaches, media, players, trials } from '@/lib/api/resources';
+import type { CoachAssessment, PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
+import type { Dictionary } from '@/lib/i18n';
+import { cardCompletion } from '@/lib/player-card';
+import { CalendarDays, Sparkles, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * The player's home screen IS their card (README §21.6) — not a subpage, not a feed.
@@ -55,8 +55,8 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-6">
         <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PlayerCard player={profile} assessments={assessments} selfLabel={t.relation.you} />
-          <OnThePitchCard player={profile} t={t} />
+          <PlayerCard player={profile} selfLabel={t.relation.you} />
+          <OnThePitchCard player={profile} t={t} className="!h-full" />
 
           {/* The clips live with the bars they move, not in a gallery of their
               own — uploading one is how a player raises a bar. */}

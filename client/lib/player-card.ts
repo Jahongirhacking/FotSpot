@@ -304,6 +304,11 @@ function latestCoachRating(
   return null;
 }
 
+/** Colour band for a star count. Presentation, so it stays on the client. */
+export function starTier(stars: number): EvidenceTier {
+  return stars === 0 ? 'unrated' : stars >= 5 ? 'gold' : stars >= 3 ? 'silver' : 'bronze';
+}
+
 export function cardEvidence(
   player: PlayerProfile,
   assessments: CoachAssessment[] = [],

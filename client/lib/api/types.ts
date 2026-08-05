@@ -195,6 +195,15 @@ export interface RatingRevision {
 
 export interface PlayerProfile {
   id: string;
+  /**
+   * 0–5 for the card's star row, computed by the server
+   * (`backend/src/players/card-stars.util.ts`).
+   *
+   * On the player rather than derived per card: every screen that draws one was
+   * otherwise fetching that player's assessments to recompute the same five
+   * stars, which is a request per card on a screen that shows twenty.
+   */
+  stars?: number;
   userId: string;
   firstName: string;
   lastName: string;

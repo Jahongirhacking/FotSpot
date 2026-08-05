@@ -125,12 +125,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           stretching to the card's, which left a dead band under it.
         */}
         <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PlayerCard
-            player={player}
-            assessments={assessments}
-            selfLabel={isSelf ? t.relation.you : undefined}
-          />
-          <OnThePitchCard player={player} t={t} />
+          <PlayerCard player={player} selfLabel={isSelf ? t.relation.you : undefined} />
+          <OnThePitchCard player={player} t={t} className="h-full" />
 
           {/* min-w-0: a grid item defaults to min-width:auto, which means it
               refuses to shrink below its content. The clip category strip inside
