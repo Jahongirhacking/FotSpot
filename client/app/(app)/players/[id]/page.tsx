@@ -1,19 +1,19 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { ApiError } from '@/lib/api/client';
-import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
-import { getSession } from '@/lib/session';
-import { getServerT } from '@/lib/i18n/server';
-import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
-import { PlayerCard } from '@/components/player/PlayerCard';
 import { AttributeBoard } from '@/components/player/AttributeBoard';
 import { OnThePitchCard } from '@/components/player/OnThePitchCard';
-import { RelationBadge } from '@/components/shared/RelationBadge';
+import { PlayerCard } from '@/components/player/PlayerCard';
 import { RecommendationSummary } from '@/components/player/RecommendationSummary';
-import { PlayerActions } from './PlayerActions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { RelationBadge } from '@/components/shared/RelationBadge';
 import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ApiError } from '@/lib/api/client';
+import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
+import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { getSession } from '@/lib/session';
 import { formatDate } from '@/lib/utils';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { PlayerActions } from './PlayerActions';
 
 /**
  * One segment serves both `/players/<uuid>` and `/players/@handle`.
@@ -22,11 +22,25 @@ import { formatDate } from '@/lib/utils';
  * value parses as a UUID: an explicit marker in the URL cannot be ambiguous, and
  * a handle that happened to look like an id would otherwise resolve to the wrong
  * person — or to nobody, which is worse to debug.
+ *
+ * The param is decoded first. A browser sends `/players/@joxa` as
+ * `/players/%40joxa`, and the segment reaches here still percent-encoded — so the
+ * `@` test failed, the handle was looked up as a player id, and every
+ * `/players/@handle` link in the product answered "player not found". It is only
+ * visible in a real browser: curl leaves the `@` alone and the bug hides.
  */
 function fetchPlayer(idOrHandle: string, opts: Parameters<typeof players.getById>[1]) {
-  return idOrHandle.startsWith('@')
-    ? players.getByUsername(idOrHandle, opts)
-    : players.getById(idOrHandle, opts);
+  const value = safeDecode(idOrHandle);
+  return value.startsWith('@') ? players.getByUsername(value, opts) : players.getById(value, opts);
+}
+
+/** A stray `%` in a URL throws rather than decoding; the raw value is the answer. */
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
@@ -61,6 +75,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   const { t } = await getServerT();
 
+  /*
+   * From here on, `player.id` — never the route param. `/players/@handle` puts a
+   * handle in `id`, and every request below takes a *profile id*: passing the
+   * handle made the summary, the assessments and the clips all fail quietly, so
+   * the page rendered a player with no bars, no clips and nobody vouching.
+   */
+  const playerId = player.id;
+
   // Marks the viewer's own card. `userId` is on the profile already, so this
   // costs one extra request only for signed-in visitors.
   const me = session
@@ -71,14 +93,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   // Public endpoint — a guest browsing a profile sees who vouched too.
   const summary = await recommendations
     .getPlayerSummary(
-      id,
+      playerId,
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 },
     )
     .catch(() => null);
 
   const assessments = session
     ? await coaches
-        .assessmentsForPlayer(id, { token: session.accessToken, cache: 'no-store' })
+        .assessmentsForPlayer(playerId, { token: session.accessToken, cache: 'no-store' })
         .catch(() => [] as CoachAssessment[])
     : [];
 
@@ -86,7 +108,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   // are built from exactly the same rows.
   const clips = await media
     .listForPlayer(
-      id,
+      playerId,
       undefined,
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
     )

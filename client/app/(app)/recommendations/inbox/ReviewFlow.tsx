@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
 import { ageBand, formatDate, initials } from '@/lib/utils';
 
@@ -46,7 +46,6 @@ export function ReviewFlow({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [error, setError] = React.useState<string | null>(null);
 
   const inbox = useQuery({
     queryKey: ['inbox-ranked', academyId],
@@ -85,22 +84,18 @@ export function ReviewFlow({
         body: coachUserId ? { coachUserId } : {},
       }),
     onSuccess: refresh,
-    onError: (err: Error) => setError(err.message),
   });
 
   const invite = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       browserFetch(`/recommendations/${id}/invite`, { method: 'POST', body: { note } }),
     onSuccess: refresh,
-    onError: (err: Error) => setError(err.message),
   });
 
   const items = inbox.data?.items ?? [];
 
   return (
     <div className="space-y-6">
-      {error && <Alert tone="danger">{error}</Alert>}
-
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">

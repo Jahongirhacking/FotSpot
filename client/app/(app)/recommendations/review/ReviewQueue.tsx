@@ -13,7 +13,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Textarea } from '@/components/ui/Field';
 import { ageBand, formatDate, initials } from '@/lib/utils';
 
@@ -57,7 +57,6 @@ export function ReviewQueue({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [error, setError] = React.useState<string | null>(null);
 
   const pending = useQuery({
     queryKey: ['my-reviews', 'PENDING'],
@@ -78,13 +77,10 @@ export function ReviewQueue({
       void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
     },
-    onError: (err: Error) => setError(err.message),
   });
 
   return (
     <div className="space-y-6">
-      {error && <Alert tone="danger">{error}</Alert>}
-
       {(pending.data ?? []).length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}

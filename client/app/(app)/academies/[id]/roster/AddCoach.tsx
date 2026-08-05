@@ -16,7 +16,6 @@ import {
 import { CredentialsPanel } from '@/components/shared/CredentialsPanel';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Feedback';
 import { Field, Textarea } from '@/components/ui/Field';
 
 /**
@@ -39,7 +38,6 @@ export function AddCoach({ academyId }: { academyId: string }) {
   const [choice, setChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
   const [bio, setBio] = React.useState('');
   const [credentials, setCredentials] = React.useState<ManagerCredentials | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
 
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -55,13 +53,11 @@ export function AddCoach({ academyId }: { academyId: string }) {
       void queryClient.invalidateQueries({ queryKey: ['roster', academyId] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
     },
-    onError: (err: Error) => setError(err.message),
   });
 
   // `managerBody` speaks the manager vocabulary; a coach is the same two shapes
   // under different key names.
   function submit() {
-    setError(null);
     const body = managerBody(choice);
     create.mutate({
       ...(body.managerUserId ? { userId: body.managerUserId } : {}),
@@ -75,7 +71,6 @@ export function AddCoach({ academyId }: { academyId: string }) {
       {credentials && (
         <CredentialsPanel credentials={credentials} onDismiss={() => setCredentials(null)} />
       )}
-      {error && <Alert tone="danger">{error}</Alert>}
 
       <Card>
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 pb-2">
