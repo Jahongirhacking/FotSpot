@@ -112,6 +112,7 @@ model User {
   follows       Follow[] @relation("UserFollows")
   followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
   academyEndorsements AcademyEndorsement[] @relation("AcademyEndorsements")
+  coachReviews  RecommendationReview[] @relation("CoachReviews")
   mediaComments MediaComment[]
 
   createdAt DateTime @default(now())
@@ -331,6 +332,7 @@ model AcademyProfile {
   endorsements AcademyEndorsement[]
   recommendationTargets RecommendationTarget[]
   playerWeights PlayerAcademyRecommendationWeight[]
+  reviews      RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -654,6 +656,46 @@ model ScoutStats {
 
 // ---------- RECOMMENDATIONS (1.8) ----------
 
+/**
+ * A coach's verdict on a player an academy is considering.
+ *
+ * The academy manager does not judge football — that is what they employ coaches
+ * for (§1.9). A recommendation therefore goes out for review before anyone is
+ * invited, and the review is where the only credible attribute ratings on this
+ * platform get written.
+ */
+model RecommendationReview {
+  id               String @id @default(uuid())
+  recommendationId String
+  academyId        String
+  /// The endorsed coach this was handed to. Only they can decide it.
+  coachUserId      String
+  coachProfileId   String
+
+  status           ReviewStatus @default(PENDING)
+  note             String?
+  /// The assessment the coach produced while reviewing, if they rated the player.
+  assessmentId     String?
+
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  coachUser        User @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+  decidedAt  DateTime?
+
+  /// One live review per recommendation per academy — two coaches deciding the
+  /// same player for the same academy is a contradiction, not a second opinion.
+  @@unique([recommendationId, academyId])
+  @@index([coachUserId, status])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum RecommendationStatus {
   PENDING
   REVIEWING
@@ -701,6 +743,7 @@ model Recommendation {
   player     PlayerProfile @relation(fields: [playerId], references: [id])
   academy    AcademyProfile? @relation(fields: [academyId], references: [id])
   targets    RecommendationTarget[]
+  reviews    RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -805,6 +848,10 @@ model TrialApplication {
 // ---------- NOTIFICATIONS (1.12) ----------
 
 enum NotificationEvent {
+  /// A coach has been handed a player to review.
+  REVIEW_ASSIGNED
+  /// An academy is inviting the player, with the manager's note.
+  ACADEMY_INVITATION
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
   TRIAL_INVITATION

@@ -31,6 +31,8 @@ import type {
   TrialApplication,
   TrialApplicationStatus,
   ProfileSummary,
+  AcademyHistoryRow,
+  CoachReview,
   SuggestedPlayer,
   TransferListing,
 } from './types';
@@ -647,6 +649,14 @@ export const recommendations = {
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
 
   /** Credibility-ranked inbox — README §1.5.1/§1.5.2. */
+  /** Coach: players an academy has asked me to judge. */
+  myReviews: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
+    apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
+
+  /** Settled: invited or turned down. */
+  listHistory: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyHistoryRow[]>(`/recommendations/academy/${academyId}/history`, opts),
+
   listRanked: (academyId: string, opts: Opts = {}) =>
     apiFetch<{ items: RankedRecommendation[]; total: number }>(
       `/recommendations/academy/${academyId}/ranked`,
@@ -667,6 +677,46 @@ export const recommendations = {
 };
 
 // ---------- Trials ----------
+
+export const reviews = {
+  /** Manager: hand a player to an endorsed coach. Omit the coach to auto-assign. */
+  assign: (recommendationId: string, coachUserId: string | undefined, opts: Opts = {}) =>
+    apiFetch(`/recommendations/${recommendationId}/review`, {
+      method: 'POST',
+      body: coachUserId ? { coachUserId } : {},
+      ...opts,
+    }),
+
+  /** Coach: my queue. `DECIDED` returns what I have already answered. */
+  mine: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
+    apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
+
+  /** Coach: the verdict, with the ratings that become the player's credible ones. */
+  decide: (
+    reviewId: string,
+    body: {
+      decision: 'APPROVED' | 'REJECTED';
+      note?: string;
+      speed?: number;
+      passing?: number;
+      vision?: number;
+      dribbling?: number;
+      finishing?: number;
+      physical?: number;
+      leadership?: number;
+      discipline?: number;
+    },
+    opts: Opts = {},
+  ) => apiFetch(`/recommendations/reviews/${reviewId}/decision`, { method: 'POST', body, ...opts }),
+
+  /** Manager: invite an approved player, with a note they will read. */
+  invite: (recommendationId: string, note: string, opts: Opts = {}) =>
+    apiFetch<{ invited: boolean }>(`/recommendations/${recommendationId}/invite`, {
+      method: 'POST',
+      body: { note },
+      ...opts,
+    }),
+};
 
 export const trials = {
   /** GET /trials — @Public(), returns upcoming trials. */

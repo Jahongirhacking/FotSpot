@@ -42,6 +42,8 @@ export const en: Dictionary = {
     home: 'Home',
     feed: 'Feed',
     myCard: 'My card',
+    myAcademy: 'My academy',
+    recommendedPlayers: 'Recommended players',
     players: 'Players',
     findPlayers: 'Find players',
     academies: 'Academies',
@@ -133,6 +135,7 @@ export const en: Dictionary = {
 
   /** Input hints — they show the expected shape rather than repeat the label. */
   placeholders: {
+    inviteNote: 'Say when and where to come, and who to ask for',
     trialTitle: 'e.g. U14 summer selection',
     positions: 'GK, CB, LW',
     firstName: 'e.g. Javohir',
@@ -322,6 +325,10 @@ export const en: Dictionary = {
   },
 
   academy: {
+    choosePerson: 'Choose someone',
+    noCandidates: 'No eligible accounts to endorse',
+    noAcademyTitle: 'You are not part of an academy yet',
+    noAcademyBody: 'Once a manager adds you to their roster, it shows up here.',
     addCoach: 'Add a coach',
     addCoachHint:
       'Pick an existing user, or create an account — the username and password are shown once.',
@@ -426,6 +433,9 @@ export const en: Dictionary = {
     acceptedMe: 'Accepted me',
   },
   attributes: {
+    vision: 'Vision',
+    leadership: 'Leadership',
+    discipline: 'Discipline',
     pace: 'Pace',
     dribbling: 'Dribbling',
     passing: 'Passing',
@@ -582,6 +592,36 @@ export const en: Dictionary = {
   },
 
   recommendations: {
+    noReviews: 'Nothing to review',
+    noReviewsHint: 'When a manager sends you a player, they show up here.',
+    reviewed: 'Already reviewed',
+    approved: 'Approved',
+    noClips: 'This player has no clips yet',
+    coachNote: "Coach's note",
+    approvePlayer: 'Approve',
+    rejectPlayer: 'Reject',
+    reviewQueueHint:
+      'Watch the clips and score them — your ratings are the ones that count as verified.',
+    fromEndorsedScouts: 'From your endorsed scouts',
+    reviewFlowHint:
+      'A coach watches every player first. Once they approve, you send the invitation.',
+    inboxEmpty: 'Nothing new to look at',
+    history: 'Recommendation history',
+    historyHint: 'Players you invited, and players a coach turned down.',
+    historyEmpty: 'Nothing settled yet',
+    sendToCoach: 'Send to a coach',
+    anyCoach: 'Any endorsed coach',
+    sendForReview: 'Send for review',
+    inReview: 'In review',
+    notReviewed: 'Not reviewed',
+    coachApproved: 'Coach approved',
+    coachRejected: 'Coach rejected',
+    awaitingCoach: 'Waiting on the coach',
+    rejectedByCoach: 'A coach turned them down — moved to history',
+    inviteNote: 'What the player will read',
+    sendInvite: 'Send invitation',
+    invited: 'Invited',
+    rejected: 'Rejected',
     credibilityHint: 'Scout credibility — harmonic sum of the backing scouts’ weights',
     whyPlaceholder: 'Left-footed, beats his marker one-on-one, plays with his head up…',
     myRecommendations: 'My recommendations',

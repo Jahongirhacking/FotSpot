@@ -289,6 +289,65 @@ export interface RankedRecommendation {
   recommendationIds: string[];
   recommendationCount: number;
   credibility: number;
+  /** Where this player stands in the coach review — null before anyone is asked. */
+  review: InboxReview | null;
+}
+
+export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface InboxReview {
+  id: string;
+  recommendationId: string;
+  status: ReviewStatus;
+  note: string | null;
+  decidedAt: string | null;
+  coach: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  };
+}
+
+/** A settled recommendation: invited, or turned down. */
+export interface AcademyHistoryRow {
+  recommendationId: string;
+  status: 'ACCEPTED' | 'REJECTED';
+  decidedAt: string;
+  player: RankedRecommendation['player'];
+  scout: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+  };
+  note: string | null;
+  review: {
+    status: ReviewStatus;
+    note: string | null;
+    coach: { id: string; firstName: string | null; lastName: string | null };
+  } | null;
+}
+
+/** One player waiting on this coach's verdict. */
+export interface CoachReview {
+  id: string;
+  status: ReviewStatus;
+  note: string | null;
+  assignedAt: string;
+  decidedAt: string | null;
+  academy: { id: string; name: string };
+  recommendation: {
+    id: string;
+    note: string | null;
+    scout: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    };
+    player: NonNullable<RankedRecommendation['player']>;
+  };
 }
 
 export interface Trial {

@@ -46,6 +46,8 @@ export const uz = {
     home: 'Bosh sahifa',
     feed: 'Lenta',
     myCard: 'Mening kartam',
+    myAcademy: 'Mening akademiyam',
+    recommendedPlayers: 'Tavsiya etilgan o‘yinchilar',
     players: 'Futbolchilar',
     findPlayers: 'Futbolchi topish',
     academies: 'Akademiyalar',
@@ -143,6 +145,7 @@ export const uz = {
    * qayta ishlatiladi.
    */
   placeholders: {
+    inviteNote: 'Qachon va qayerga kelishini yozing',
     trialTitle: 'Masalan, U14 yozgi tanlov',
     positions: 'GK, CB, LW',
     firstName: 'Masalan, Javohir',
@@ -336,6 +339,10 @@ export const uz = {
   },
 
   academy: {
+    choosePerson: 'Odamni tanlang',
+    noCandidates: 'Tanlash uchun mos hisob topilmadi',
+    noAcademyTitle: 'Siz hali akademiyaga biriktirilmagansiz',
+    noAcademyBody: 'Akademiya menejeri sizni tarkibga qo‘shgach, u shu yerda ko‘rinadi.',
     addCoach: 'Murabbiy qo‘shish',
     addCoachHint:
       'Ro‘yxatdan o‘tgan foydalanuvchini tanlang yoki yangi hisob yarating — login va parol bir marta ko‘rsatiladi.',
@@ -440,6 +447,9 @@ export const uz = {
     acceptedMe: 'Meni qabul qilgan',
   },
   attributes: {
+    vision: 'Ko‘rish qobiliyati',
+    leadership: 'Yetakchilik',
+    discipline: 'Intizom',
     pace: 'Tezlik',
     dribbling: 'Dribling',
     passing: 'Uzatish',
@@ -599,6 +609,36 @@ export const uz = {
   },
 
   recommendations: {
+    noReviews: 'Ko‘rik uchun o‘yinchi yo‘q',
+    noReviewsHint: 'Akademiya menejeri o‘yinchini yuborsa, u shu yerda paydo bo‘ladi.',
+    reviewed: 'Ko‘rib chiqilganlar',
+    approved: 'Tasdiqlangan',
+    noClips: 'Bu o‘yinchida hali klip yo‘q',
+    coachNote: 'Murabbiy izohi',
+    approvePlayer: 'Tasdiqlash',
+    rejectPlayer: 'Rad etish',
+    reviewQueueHint:
+      'Klipni ko‘ring, bahoni qo‘ying — sizning bahoyingiz tasdiqlangan hisoblanadi.',
+    fromEndorsedScouts: 'Tasdiqlangan skautlar tavsiyalari',
+    reviewFlowHint:
+      'Har bir o‘yinchini murabbiy ko‘rib chiqadi. Murabbiy tasdiqlagach, taklif yuborasiz.',
+    inboxEmpty: 'Yangi tavsiya yo‘q',
+    history: 'Tavsiyalar tarixi',
+    historyHint: 'Taklif yuborilgan yoki rad etilgan o‘yinchilar.',
+    historyEmpty: 'Tarix hozircha bo‘sh',
+    sendToCoach: 'Murabbiyga yuborish',
+    anyCoach: 'Ixtiyoriy murabbiy',
+    sendForReview: 'Ko‘rikka yuborish',
+    inReview: 'Ko‘rikda',
+    notReviewed: 'Ko‘rilmagan',
+    coachApproved: 'Murabbiy tasdiqladi',
+    coachRejected: 'Murabbiy rad etdi',
+    awaitingCoach: 'Murabbiy javobini kutmoqda',
+    rejectedByCoach: 'Murabbiy rad etgan — tarixga o‘tdi',
+    inviteNote: 'Taklif matni',
+    sendInvite: 'Taklif yuborish',
+    invited: 'Taklif qilingan',
+    rejected: 'Rad etilgan',
     credibilityHint:
       'Skautlar ishonchliligi — qo‘llab-quvvatlagan skautlar vaznining garmonik yig‘indisi',
     whyPlaceholder: 'Chap oyoqli, qarshi o‘yinchini bir-bir yengadi, boshini ko‘tarib o‘ynaydi…',

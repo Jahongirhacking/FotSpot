@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
+import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('recommendations')
@@ -45,6 +46,53 @@ export class RecommendationsController {
   @Get('academy/:academyId/ranked')
   listRankedForAcademy(@CurrentUser() user: AuthUser, @Param('academyId') academyId: string) {
     return this.recommendationsService.listRankedForAcademy(user.userId, academyId);
+  }
+
+  /** What this academy already settled — invited or turned down. */
+  @Get('academy/:academyId/history')
+  listHistoryForAcademy(@CurrentUser() user: AuthUser, @Param('academyId') academyId: string) {
+    return this.recommendationsService.listHistoryForAcademy(user.userId, academyId);
+  }
+
+  // ---------- Coach review (§1.9) ----------
+
+  /**
+   * Hand a recommended player to an endorsed coach. Omit the coach and one is
+   * picked from the endorsed pool by who is carrying the fewest open reviews.
+   */
+  @Post(':id/review')
+  assignReview(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AssignReviewDto,
+  ) {
+    return this.recommendationsService.assignReview(user.userId, id, dto);
+  }
+
+  /** A coach's own queue. Declared before `:id` — Nest matches in order. */
+  @Get('reviews/mine')
+  listMyReviews(@CurrentUser() user: AuthUser, @Query('status') status?: 'PENDING' | 'DECIDED') {
+    return this.recommendationsService.listMyReviews(user.userId, status ?? 'PENDING');
+  }
+
+  /** The coach's verdict, and the ratings that become the player's credible ones. */
+  @Post('reviews/:reviewId/decision')
+  decideReview(
+    @CurrentUser() user: AuthUser,
+    @Param('reviewId') reviewId: string,
+    @Body() dto: ReviewDecisionDto,
+  ) {
+    return this.recommendationsService.decideReview(user.userId, reviewId, dto);
+  }
+
+  /** The manager invites an approved player, with a note they will read. */
+  @Post(':id/invite')
+  invitePlayer(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: InvitePlayerDto,
+  ) {
+    return this.recommendationsService.invitePlayer(user.userId, id, dto);
   }
 
   @Patch(':id/status')

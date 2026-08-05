@@ -64,7 +64,10 @@ export function EndorsementManager({
       <EndorseForm
         onSubmit={(values) => endorse.mutate(values)}
         pending={endorse.isPending}
+        academyId={academyId}
         labels={{
+          choosePerson: t.academy.choosePerson,
+          noCandidates: t.academy.noCandidates,
           title: t.academy.endorseTitle,
           hint: t.academy.endorseHint,
           userId: t.academy.userId,
@@ -188,11 +191,34 @@ export function EndorsementManager({
   );
 }
 
+interface Candidate {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  level: number;
+  successRate: number;
+}
+
+/**
+ * Endorse someone by picking them, not by pasting their id.
+ *
+ * The list only contains accounts that already hold the role — scouts for a scout
+ * endorsement, verified coaches for a coach one — and drops anyone this academy
+ * already endorses. The old field took a UUID, which meant the feature was usable
+ * only by someone who could read the database.
+ *
+ * The server re-checks the role on submit; this list decides what is easy to do,
+ * not what is allowed.
+ */
 function EndorseForm({
+  academyId,
   onSubmit,
   pending,
   labels,
 }: {
+  academyId: string;
   onSubmit: (values: { userId: string; role: EndorsementRole; note?: string }) => void;
   pending: boolean;
   labels: Record<string, string>;
@@ -200,6 +226,18 @@ function EndorseForm({
   const [userId, setUserId] = React.useState('');
   const [role, setRole] = React.useState<EndorsementRole>('SCOUT');
   const [note, setNote] = React.useState('');
+
+  const candidates = useQuery({
+    queryKey: ['endorsement-candidates', academyId, role],
+    queryFn: () =>
+      browserFetch<Candidate[]>(`/academies/${academyId}/endorsements/candidates?role=${role}`),
+  });
+
+  // The chosen person may vanish from the list when the role switches, and a
+  // submit carrying a stale id would endorse somebody the manager is no longer
+  // looking at.
+  const options = candidates.data ?? [];
+  const selected = options.some((option) => option.id === userId) ? userId : '';
 
   return (
     <Card>
@@ -212,21 +250,34 @@ function EndorseForm({
           className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!userId.trim()) return;
-            onSubmit({ userId: userId.trim(), role, note: note.trim() || undefined });
+            if (!selected) return;
+            onSubmit({ userId: selected, role, note: note.trim() || undefined });
             setUserId('');
             setNote('');
           }}
         >
           <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <Field label={labels.userId} htmlFor="endorse-user">
-              <Input
+            <Field
+              label={labels.userId}
+              htmlFor="endorse-user"
+              hint={options.length === 0 && !candidates.isLoading ? labels.noCandidates : undefined}
+            >
+              <Select
                 id="endorse-user"
-                value={userId}
+                value={selected}
+                disabled={candidates.isLoading || options.length === 0}
                 onChange={(event) => setUserId(event.target.value)}
-                placeholder="00000000-0000-0000-0000-000000000000"
-                className="font-mono text-xs"
-              />
+              >
+                <option value="">{labels.choosePerson}</option>
+                {options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {[option.firstName, option.lastName].filter(Boolean).join(' ') ||
+                      option.username ||
+                      option.id.slice(0, 8)}
+                    {option.username ? ` · @${option.username}` : ''}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <Field label=" " htmlFor="endorse-role">
               <Select
@@ -250,7 +301,7 @@ function EndorseForm({
             />
           </Field>
 
-          <Button type="submit" loading={pending} disabled={!userId.trim()}>
+          <Button type="submit" loading={pending} disabled={!selected}>
             <Plus aria-hidden /> {labels.submit}
           </Button>
         </form>
