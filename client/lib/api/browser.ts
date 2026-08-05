@@ -1,6 +1,6 @@
 'use client';
 
-import { ApiError, type RequestOptions } from './client';
+import { ApiError, extractMessage, type RequestOptions } from './client';
 
 /**
  * Browser-side API calls.
@@ -52,10 +52,9 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
   const payload = text ? safeJson(text) : undefined;
 
   if (!response.ok) {
-    const message =
-      (payload as { message?: string } | undefined)?.message ??
-      "That didn't work. Please try again.";
-    throw new ApiError(response.status, message, payload);
+    // The same reader the server-side boundary uses, so a message the API wrote
+    // reads the same whichever side of the app asked for it.
+    throw new ApiError(response.status, extractMessage(response.status, payload), payload);
   }
 
   return payload as T;
