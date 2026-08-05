@@ -91,9 +91,6 @@ export default async function LandingPage() {
         {/* Hero: pitch markings behind the copy, ball or video beside it. */}
         <section className="relative isolate overflow-hidden px-4 py-14 sm:py-24 lg:py-28">
           <HeroBanner />
-          {/* Kept over the photograph, much fainter: the pitch markings are the
-              brand's own line and they tie the banner to the sections below. */}
-          <PitchBackdrop className="opacity-20 dark:opacity-25" />
           <div className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
             <div>
               <Badge variant="primary" className="mb-4">
