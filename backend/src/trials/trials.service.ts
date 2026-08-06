@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CreateTrialDto, UpdateTrialApplicationStatusDto } from './dto/trial.dto';
+import {
+  CreateTrialDto,
+  UpdateTrialApplicationStatusDto,
+  UpdateTrialDto,
+} from './dto/trial.dto';
 
 @Injectable()
 export class TrialsService {
@@ -22,14 +26,56 @@ export class TrialsService {
     });
   }
 
+  /**
+   * Everything this academy has run, archived included.
+   *
+   * The manager's own list is the one place an archived trial must still appear:
+   * it is where they go to reopen one closed by mistake, and where the
+   * applicants of a finished trial still live.
+   */
   async listForAcademy(academyId: string) {
     return this.prisma.trial.findMany({ where: { academyId }, orderBy: { date: 'asc' } });
   }
 
   async listUpcoming() {
     return this.prisma.trial.findMany({
-      where: { date: { gte: new Date() } },
+      where: { date: { gte: new Date() }, status: 'OPEN' },
       orderBy: { date: 'asc' },
+    });
+  }
+
+  /**
+   * Change a published trial, or close it.
+   *
+   * There is no delete. Every application attached to a trial is a decision
+   * somebody made about a child, and a row that vanishes takes that record with
+   * it — so a trial that will not happen is ARCHIVED, which stops applications
+   * and hides it from the public list while the academy keeps the history.
+   */
+  async update(userId: string, trialId: string, dto: UpdateTrialDto) {
+    const trial = await this.getById(trialId);
+    await this.assertAcademyManager(userId, trial.academyId);
+
+    const ageRangeMin = dto.ageRangeMin ?? trial.ageRangeMin;
+    const ageRangeMax = dto.ageRangeMax ?? trial.ageRangeMax;
+    if (ageRangeMin > ageRangeMax) {
+      throw new BadRequestException('The minimum age cannot be above the maximum');
+    }
+
+    return this.prisma.trial.update({
+      where: { id: trialId },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
+        ...(dto.location !== undefined ? { location: dto.location.trim() } : {}),
+        ...(dto.date !== undefined ? { date: new Date(dto.date) } : {}),
+        ...(dto.ageRangeMin !== undefined ? { ageRangeMin: dto.ageRangeMin } : {}),
+        ...(dto.ageRangeMax !== undefined ? { ageRangeMax: dto.ageRangeMax } : {}),
+        ...(dto.positions !== undefined ? { positions: dto.positions } : {}),
+        ...(dto.requirements !== undefined
+          ? { requirements: dto.requirements.trim() || null }
+          : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+      },
     });
   }
 
@@ -45,6 +91,10 @@ export class TrialsService {
     if (!player) throw new ForbiddenException('Only players can apply to trials');
 
     const trial = await this.getById(trialId);
+    if (trial.status === 'ARCHIVED') {
+      throw new BadRequestException('This trial is closed to new applications');
+    }
+
     const age = this.ageFromBirthDate(player.birthDate, trial.date);
     if (age < trial.ageRangeMin || age > trial.ageRangeMax) {
       throw new BadRequestException(

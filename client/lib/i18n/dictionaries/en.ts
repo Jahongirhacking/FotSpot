@@ -599,6 +599,18 @@ export const en: Dictionary = {
   },
 
   trials: {
+    manageTrial: 'Manage this trial',
+    archive: 'Archive',
+    reopen: 'Reopen',
+    statusArchived: 'Archived',
+    confirmArchive: 'Archive this trial? It stops taking new applications.',
+    confirmReopen: 'Reopen this trial? It starts taking applications again.',
+    archivedHint:
+      'Archived: off the public list and closed to new applications. Everyone who already applied stays.',
+    openHint: 'Open: listed publicly and taking applications.',
+    editWarning:
+      'Narrowing the age range can leave someone who already applied outside it — their application is not removed.',
+    closedToApplications: 'This trial is closed — it is not taking new applications.',
     shortlist: 'Shortlist',
     invite: 'Invite',
     accept: 'Accept',

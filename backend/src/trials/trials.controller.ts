@@ -2,7 +2,11 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
-import { CreateTrialDto, UpdateTrialApplicationStatusDto } from './dto/trial.dto';
+import {
+  CreateTrialDto,
+  UpdateTrialApplicationStatusDto,
+  UpdateTrialDto,
+} from './dto/trial.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('trials')
@@ -36,6 +40,17 @@ export class TrialsController {
   @Get(':id')
   getById(@Param('id') id: string) {
     return this.trialsService.getById(id);
+  }
+
+  /**
+   * Edit a published trial, or archive it.
+   *
+   * Manager of the hosting academy only. See TrialsService.update for why an
+   * archive exists where a delete does not.
+   */
+  @Patch(':id')
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateTrialDto) {
+    return this.trialsService.update(user.userId, id, dto);
   }
 
   @Post(':id/apply')

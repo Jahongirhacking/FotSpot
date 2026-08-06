@@ -619,6 +619,18 @@ export const uz = {
   },
 
   trials: {
+    manageTrial: 'Sinovni boshqarish',
+    archive: 'Arxivlash',
+    reopen: 'Qayta ochish',
+    statusArchived: 'Arxivlangan',
+    confirmArchive: 'Sinov arxivlansinmi? Yangi arizalar qabul qilinmaydi.',
+    confirmReopen: 'Sinov qayta ochilsinmi? Arizalar yana qabul qilinadi.',
+    archivedHint:
+      'Sinov arxivlangan: u ommaviy ro‘yxatda ko‘rinmaydi va yangi ariza qabul qilinmaydi. Arizachilar saqlanib qoladi.',
+    openHint: 'Sinov ochiq: u ommaviy ro‘yxatda va yangi arizalar qabul qilinmoqda.',
+    editWarning:
+      'Yosh oralig‘ini toraytirsangiz, allaqachon ariza bergan ba’zi o‘yinchilar shartga mos kelmay qolishi mumkin — ularning arizasi o‘chmaydi.',
+    closedToApplications: 'Bu sinov yopilgan — yangi arizalar qabul qilinmaydi.',
     shortlist: 'Ro‘yxatga olish',
     invite: 'Taklif qilish',
     accept: 'Qabul qilish',

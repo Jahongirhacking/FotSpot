@@ -172,7 +172,12 @@ export function AcademyTrials({
                   className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{trial.title}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">{trial.title}</span>
+                      {trial.status === 'ARCHIVED' && (
+                        <Badge variant="neutral">{t.trials.statusArchived}</Badge>
+                      )}
+                    </span>
                     <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                       <span className="flex items-center gap-1">
                         <CalendarDays className="size-3" aria-hidden /> {formatDate(trial.date)}

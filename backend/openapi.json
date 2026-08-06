@@ -3814,6 +3814,43 @@
         "tags": [
           "trials"
         ]
+      },
+      "patch": {
+        "operationId": "trials_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a published trial, or archive it.\n\nManager of the hosting academy only. See TrialsService.update for why an\narchive exists where a delete does not.",
+        "tags": [
+          "trials"
+        ]
       }
     },
     "/api/v1/trials/{id}/apply": {
@@ -5713,6 +5750,52 @@
           "location",
           "date"
         ]
+      },
+      "TrialStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "ARCHIVED"
+        ]
+      },
+      "UpdateTrialDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "ARCHIVED closes the trial to new applications and hides it from the public list.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TrialStatus"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "ageRangeMin": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ageRangeMax": {
+            "type": "number",
+            "minimum": 0
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "requirements": {
+            "type": "string"
+          }
+        }
       },
       "UpdateTrialApplicationStatusDto": {
         "type": "object",

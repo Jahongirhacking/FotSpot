@@ -35,6 +35,7 @@ import type {
   Trial,
   TrialApplication,
   TrialApplicationStatus,
+  TrialStatus,
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
@@ -699,6 +700,13 @@ export const trials = {
 
   create: (academyId: string, body: CreateTrialBody, opts: Opts = {}) =>
     apiFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body, ...opts }),
+
+  /** Edit a published trial, or archive it. Hosting manager only. */
+  update: (
+    trialId: string,
+    body: Partial<CreateTrialBody> & { status?: TrialStatus },
+    opts: Opts = {},
+  ) => apiFetch<Trial>(`/trials/${trialId}`, { method: 'PATCH', body, ...opts }),
 
   apply: (trialId: string, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/${trialId}/apply`, { method: 'POST', ...opts }),

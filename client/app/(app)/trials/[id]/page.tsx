@@ -8,9 +8,11 @@ import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { Trial } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ApplyToTrialButton } from './ApplyToTrialButton';
 import { Applicants } from './Applicants';
+import { TrialAdmin } from './TrialAdmin';
 import { formatDate } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -68,9 +70,14 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
-        <Badge variant="primary">
-          {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="primary">
+            {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
+          </Badge>
+          {trial.status === 'ARCHIVED' && (
+            <Badge variant="neutral">{t.trials.statusArchived}</Badge>
+          )}
+        </div>
         <h1 className="mt-2 text-2xl font-bold">{trial.title}</h1>
         <dl className="text-muted mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <div className="flex items-center gap-1.5">
@@ -116,7 +123,14 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       </Card>
 
       {hosts ? (
-        <Applicants trialId={trial.id} />
+        <>
+          <TrialAdmin trial={trial} />
+          <Applicants trialId={trial.id} />
+        </>
+      ) : trial.status === 'ARCHIVED' ? (
+        /* Applying would be refused by the server, so the button is replaced by
+           the reason rather than left to fail under the press. */
+        <Alert tone="warning">{t.trials.closedToApplications}</Alert>
       ) : (
         <ApplyToTrialButton
           trialId={trial.id}

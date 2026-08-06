@@ -1004,9 +1004,26 @@ model Trial {
   date        DateTime
   requirements String?
 
+  /// Archived trials keep their applicants and stop taking new ones.
+  status      TrialStatus @default(OPEN)
+
   applications TrialApplication[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+}
+
+/**
+ * A trial is never deleted, only closed.
+ *
+ * Every application attached to it is a decision somebody made about a child,
+ * and a row that vanishes takes that record with it. Archiving hides the trial
+ * from the public list and refuses new applications; the academy keeps the
+ * history, and can reopen it if it was closed by mistake.
+ */
+enum TrialStatus {
+  OPEN
+  ARCHIVED
 }
 
 enum TrialApplicationStatus {

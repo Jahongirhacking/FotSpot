@@ -463,6 +463,8 @@ export interface CoachReview {
   };
 }
 
+export type TrialStatus = 'OPEN' | 'ARCHIVED';
+
 export interface Trial {
   id: string;
   academyId: string;
@@ -473,7 +475,10 @@ export interface Trial {
   location: string;
   date: string;
   requirements?: string | null;
+  /** ARCHIVED keeps the applicants and refuses new ones. There is no delete. */
+  status: TrialStatus;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface TrialApplication {
