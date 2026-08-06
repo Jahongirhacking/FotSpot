@@ -1,14 +1,14 @@
 'use client';
 
-import * as React from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
-import type { AcademyMemberRole } from '@/lib/api/types';
+import type { MemberRowData } from '@/components/academy/MemberRows';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
-import type { MemberRowData } from '@/components/academy/MemberRows';
+import type { AcademyMemberRole } from '@/lib/api/types';
 import { ageFrom, cn } from '@/lib/utils';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+import * as React from 'react';
 
 export interface MemberFilterState {
   query: string;
@@ -256,7 +256,7 @@ export function MemberFilters({
                 onChange={(age) => set({ age })}
                 labelFrom={t.common.from}
                 labelTo={t.common.to}
-                className="max-w-md"
+                className="max-w-full"
               />
             </div>
           )}

@@ -1,12 +1,12 @@
 'use client';
 
-import * as React from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { ageFrom } from '@/lib/utils';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+import * as React from 'react';
 
 /** The part of a row this bar asks questions about — queue and history both have it. */
 export interface FilterablePlayer {
@@ -142,13 +142,13 @@ export function InboxFilters({
       </div>
 
       {open && (
-        <div className="border-border space-y-3 rounded-lg border p-3">
+        <div className="border-border bg-surface-3 space-y-3 rounded-lg border p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select
               aria-label={t.recommendations.reviewStage}
               value={value.stage}
               onChange={(event) => set({ stage: event.target.value as ReviewStage })}
-              className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-40"
+              className="min-w-[min(180px,100%)] flex-1 basis-[calc(50%-0.25rem)] sm:basis-40"
             >
               <option value="">{t.recommendations.reviewStage}</option>
               {STAGES.map(([stage, label]) => (
@@ -185,7 +185,7 @@ export function InboxFilters({
                 onChange={(age) => set({ age })}
                 labelFrom={t.common.from}
                 labelTo={t.common.to}
-                className="max-w-md"
+                className="max-w-full"
               />
             </div>
           )}

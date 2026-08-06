@@ -1,7 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/lib/utils';
+import * as React from 'react';
 
 /**
  * A two-handle range, plus the two boxes that say the same thing in numbers.
@@ -53,8 +53,8 @@ export function RangeSlider({
   const setTo = (next: number) => onChange([from, clamp(next, from, max)]);
 
   return (
-    <div className={cn('space-y-2', className)}>
-      <div className="relative flex h-6 items-center">
+    <div className={cn('flex w-full flex-wrap items-center gap-4', className)}>
+      <div className="relative !mb-0 flex h-6 w-full min-w-[100px] flex-1 items-center">
         <div className="bg-surface-3 h-1 w-full rounded-full" />
         <div
           className="bg-primary absolute h-1 rounded-full"

@@ -1,5 +1,5 @@
-import type { MetadataRoute } from 'next';
 import { siteUrl } from '@/lib/seo';
+import type { MetadataRoute } from 'next';
 
 /**
  * What a crawler may read.
@@ -19,7 +19,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       disallow: [
-        '/api/',
         '/dashboard',
         '/profile',
         '/settings',
