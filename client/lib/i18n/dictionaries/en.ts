@@ -640,7 +640,9 @@ export const en: Dictionary = {
   },
 
   recommendations: {
-    reviewStage: 'Review stage',
+    activeSection: 'Active',
+    activeSectionHint: 'With a coach, or approved and waiting on your invitation.',
+    activeEmpty: 'Nothing in motion',
     statusAccepted: 'accepted',
     statusRejected: 'rejected',
     statusPending: 'still pending',

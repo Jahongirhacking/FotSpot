@@ -640,7 +640,9 @@ export const ru: Dictionary = {
   },
 
   recommendations: {
-    reviewStage: 'Этап просмотра',
+    activeSection: 'В работе',
+    activeSectionHint: 'Те, кто у тренера, и те, кого он одобрил — ждут приглашения.',
+    activeEmpty: 'В работе никого нет',
     statusAccepted: 'принято',
     statusRejected: 'отклонено',
     statusPending: 'на рассмотрении',

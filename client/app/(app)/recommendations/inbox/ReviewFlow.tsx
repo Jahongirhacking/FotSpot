@@ -2,8 +2,13 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardCheck, Mail, Send, ShieldCheck } from 'lucide-react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+} from '@tanstack/react-query';
+import { ClipboardCheck, Hourglass, Mail, Send, ShieldCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyHistoryRow, RankedRecommendation } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -18,7 +23,6 @@ import {
   filterInbox,
   InboxFilters,
   type InboxFilterState,
-  type ReviewStage,
 } from './InboxFilters';
 
 interface Coach {
@@ -109,50 +113,43 @@ export function ReviewFlow({
   const items = inbox.data?.items ?? [];
   const historyRows = history.data ?? [];
 
-  // One bar over both lists: a manager looking for a name does not know, and
-  // should not have to know, whether that player is still in the queue.
-  const shown = filterInbox(items, filters, stageOf);
+  // One bar over every list: a manager looking for a name does not know, and
+  // should not have to know, which stage that player has reached.
+  const shown = filterInbox(items, filters);
   const shownHistory = filterInbox(historyRows, filters);
+
+  // The queue is two questions, not one. "Nobody has looked at this yet" is a
+  // decision waiting on the manager; "a coach has it" and "a coach approved it"
+  // are work already in motion. Mixed together, the second kind buries the
+  // first — which is the only one the manager can act on today.
+  const arrived = shown.filter((item) => !item.review);
+  const active = shown.filter((item) => item.review);
 
   return (
     <div className="space-y-6">
       <InboxFilters rows={[...items, ...historyRows]} value={filters} onChange={setFilters} />
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="text-primary size-4" aria-hidden />
-            {t.recommendations.fromEndorsedScouts}
-          </CardTitle>
-          <p className="text-muted text-sm">{t.recommendations.reviewFlowHint}</p>
-        </CardHeader>
+      <QueueCard
+        icon={ShieldCheck}
+        title={t.recommendations.fromEndorsedScouts}
+        hint={t.recommendations.reviewFlowHint}
+        rows={arrived}
+        emptyTitle={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
+        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        assign={assign}
+        invite={invite}
+      />
 
-        <CardContent className="p-2">
-          {shown.length === 0 ? (
-            <EmptyState
-              icon={ClipboardCheck}
-              title={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
-            />
-          ) : (
-            <ul className="divide-border divide-y">
-              {shown.map((item) => (
-                <InboxRow
-                  key={item.playerId}
-                  item={item}
-                  coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
-                  // Only the row actually being sent, not the whole list.
-                  pending={
-                    (assign.isPending && assign.variables?.id === item.playerId) ||
-                    (invite.isPending && invite.variables?.id === item.playerId)
-                  }
-                  onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
-                  onInvite={(note) => invite.mutate({ id: item.playerId, note })}
-                />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <QueueCard
+        icon={Hourglass}
+        title={t.recommendations.activeSection}
+        hint={t.recommendations.activeSectionHint}
+        rows={active}
+        emptyTitle={t.recommendations.activeEmpty}
+        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        assign={assign}
+        invite={invite}
+      />
 
       <Card>
         <CardHeader className="pb-2">
@@ -204,10 +201,67 @@ export function ReviewFlow({
   );
 }
 
-/** Where a queued player sits in the review — the one thing the stage filter asks. */
-function stageOf(item: RankedRecommendation): ReviewStage {
-  if (!item.review) return 'NOT_SENT';
-  return item.review.status === 'PENDING' ? 'PENDING' : 'APPROVED';
+/**
+ * One stage of the queue.
+ *
+ * The rows are identical in both sections — a player who has come back approved
+ * still shows what a coach said and who said it — so the card is the only thing
+ * that differs, and it differs only in what it is called.
+ */
+function QueueCard({
+  icon: Icon,
+  title,
+  hint,
+  rows,
+  emptyTitle,
+  coaches,
+  assign,
+  invite,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  hint: string;
+  rows: RankedRecommendation[];
+  emptyTitle: string;
+  coaches: Coach[];
+  assign: UseMutationResult<unknown, Error, { id: string; coachUserId?: string }, unknown>;
+  invite: UseMutationResult<unknown, Error, { id: string; note: string }, unknown>;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="text-primary size-4" aria-hidden />
+          {title}
+          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+        </CardTitle>
+        <p className="text-muted text-sm">{hint}</p>
+      </CardHeader>
+
+      <CardContent className="p-2">
+        {rows.length === 0 ? (
+          <EmptyState icon={ClipboardCheck} title={emptyTitle} />
+        ) : (
+          <ul className="divide-border divide-y">
+            {rows.map((item) => (
+              <InboxRow
+                key={item.playerId}
+                item={item}
+                coaches={coaches}
+                // Only the row actually being sent, not the whole list.
+                pending={
+                  (assign.isPending && assign.variables?.id === item.playerId) ||
+                  (invite.isPending && invite.variables?.id === item.playerId)
+                }
+                onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
+                onInvite={(note) => invite.mutate({ id: item.playerId, note })}
+              />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function InboxRow({

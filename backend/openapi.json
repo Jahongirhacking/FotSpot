@@ -1365,6 +1365,27 @@
             }
           },
           {
+            "name": "minAge",
+            "required": false,
+            "in": "query",
+            "description": "Age in years, inclusive at both ends.\n\nAsked as an age and stored as a birth date, so the comparison is done here\nrather than by the caller: \"under 16\" must keep meaning under 16 next\nbirthday, and a client that converted to a date once would go stale.",
+            "schema": {
+              "minimum": 0,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxAge",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",

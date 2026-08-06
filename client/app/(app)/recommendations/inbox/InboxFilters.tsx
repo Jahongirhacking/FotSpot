@@ -18,21 +18,13 @@ export interface FilterablePlayer {
   } | null;
 }
 
-export type ReviewStage = '' | 'NOT_SENT' | 'PENDING' | 'APPROVED';
-
 export interface InboxFilterState {
   query: string;
   position: string;
-  stage: ReviewStage;
   age: [number, number] | null;
 }
 
-export const EMPTY_INBOX_FILTERS: InboxFilterState = {
-  query: '',
-  position: '',
-  stage: '',
-  age: null,
-};
+export const EMPTY_INBOX_FILTERS: InboxFilterState = { query: '', position: '', age: null };
 
 function ageBoundsOf(rows: FilterablePlayer[]): [number, number] | null {
   const ages = rows
@@ -57,9 +49,9 @@ function ageBoundsOf(rows: FilterablePlayer[]): [number, number] | null {
  * Same shape as the squad's filter bar — one row at rest, the rest on request,
  * a count on the button — because they are the same job on a different list.
  *
- * The stage select is about where a player sits in the review, so it applies to
- * the queue only. Everything in the history has already been decided, and its
- * rows say so on their own badge.
+ * There is no "stage" filter: the screen is already three sections in stage
+ * order, so a select that hid two of them would be answering a question the
+ * layout has answered.
  */
 export function InboxFilters({
   rows,
@@ -87,13 +79,7 @@ export function InboxFilters({
   const bounds = React.useMemo(() => ageBoundsOf(rows), [rows]);
 
   const set = (patch: Partial<InboxFilterState>) => onChange({ ...value, ...patch });
-  const active = (value.position ? 1 : 0) + (value.stage ? 1 : 0) + (value.age ? 1 : 0);
-
-  const STAGES: [ReviewStage, string][] = [
-    ['NOT_SENT', t.recommendations.notReviewed],
-    ['PENDING', t.recommendations.inReview],
-    ['APPROVED', t.recommendations.coachApproved],
-  ];
+  const active = (value.position ? 1 : 0) + (value.age ? 1 : 0);
 
   return (
     <div className="space-y-2">
@@ -144,20 +130,6 @@ export function InboxFilters({
       {open && (
         <div className="border-border bg-surface-3 space-y-3 rounded-lg border p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select
-              aria-label={t.recommendations.reviewStage}
-              value={value.stage}
-              onChange={(event) => set({ stage: event.target.value as ReviewStage })}
-              className="min-w-[min(180px,100%)] flex-1 basis-[calc(50%-0.25rem)] sm:basis-40"
-            >
-              <option value="">{t.recommendations.reviewStage}</option>
-              {STAGES.map(([stage, label]) => (
-                <option key={stage} value={stage}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-
             {positions.length > 0 && (
               <Select
                 aria-label={t.player.anyPosition}
@@ -195,18 +167,8 @@ export function InboxFilters({
   );
 }
 
-/**
- * Applies the bar to a list.
- *
- * `stageOf` is passed in because the queue and the history answer "where is this
- * player" from different fields, and neither should have to be reshaped to be
- * filtered.
- */
-export function filterInbox<T extends FilterablePlayer>(
-  rows: T[],
-  filters: InboxFilterState,
-  stageOf?: (row: T) => ReviewStage,
-): T[] {
+/** Applies the bar to a list. */
+export function filterInbox<T extends FilterablePlayer>(rows: T[], filters: InboxFilterState): T[] {
   const query = filters.query.trim().toLowerCase();
 
   return rows.filter((row) => {
@@ -224,8 +186,6 @@ export function filterInbox<T extends FilterablePlayer>(
       const age = ageFrom(player.birthDate);
       if (age < filters.age[0] || age > filters.age[1]) return false;
     }
-
-    if (filters.stage && stageOf && stageOf(row) !== filters.stage) return false;
 
     return true;
   });

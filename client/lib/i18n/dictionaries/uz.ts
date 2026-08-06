@@ -661,7 +661,9 @@ export const uz = {
   },
 
   recommendations: {
-    reviewStage: 'Ko‘rib chiqish bosqichi',
+    activeSection: 'Jarayonda',
+    activeSectionHint: 'Murabbiyda turganlar va u tasdiqlagan, taklif kutayotganlar.',
+    activeEmpty: 'Jarayonda hech kim yo‘q',
     statusAccepted: 'qabul qilindi',
     statusRejected: 'rad etildi',
     statusPending: 'ko‘rib chiqilmoqda',

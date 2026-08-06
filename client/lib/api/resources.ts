@@ -176,6 +176,9 @@ export interface PlayerSearchParams {
   position?: string;
   playingStyle?: PlayingStyle;
   query?: string;
+  /** Age in years, inclusive. The API compares against birth dates. */
+  minAge?: number;
+  maxAge?: number;
   page?: number;
   pageSize?: number;
 }
