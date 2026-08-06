@@ -7,6 +7,8 @@
  */
 export const uz = {
   common: {
+    filters: 'Filtrlar',
+    clear: 'Tozalash',
     from: 'Dan',
     to: 'Gacha',
     theme: 'Ko‘rinish',
@@ -24,7 +26,6 @@ export const uz = {
     back: 'Orqaga',
     continue: 'Davom etish',
     search: 'Qidirish',
-    clear: 'Tozalash',
     loading: 'Yuklanmoqda…',
     tryAgain: 'Qayta urinish',
     somethingWrong: 'Nimadir xato ketdi',
@@ -363,6 +364,8 @@ export const uz = {
     sent: 'Taklif yuborildi — javobini kutamiz.',
   },
   academy: {
+    memberType: 'A’zo turi',
+    pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',
     coachType: 'Murabbiy turi',
     anyCoachType: 'Istalgan turi',
     anyLevel: 'Istalgan daraja',
@@ -658,6 +661,7 @@ export const uz = {
   },
 
   recommendations: {
+    reviewStage: 'Ko‘rib chiqish bosqichi',
     statusAccepted: 'qabul qilindi',
     statusRejected: 'rad etildi',
     statusPending: 'ko‘rib chiqilmoqda',

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { MemberRow } from '@/components/academy/MemberRows';
+import { CandidatePicker } from '@/components/academy/CandidatePicker';
 import {
   EMPTY_FILTERS,
   filterMembers,
@@ -311,42 +312,13 @@ function AddMember({
   const { t } = useI18n();
   const [userId, setUserId] = React.useState('');
 
-  const candidates = useQuery({
-    queryKey: ['join-candidates', academyId, role],
-    queryFn: () =>
-      browserFetch<
-        { id: string; firstName: string | null; lastName: string | null; username: string | null }[]
-      >(`/academies/${academyId}/candidates?role=${role}`),
-  });
-
-  const options = candidates.data ?? [];
-
   return (
     <div className="border-border space-y-3 rounded-lg border p-3">
       <Alert tone="warning">{t.academy.addWarning}</Alert>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Select
-          aria-label={t.academy.addToSquad}
-          value={userId}
-          disabled={candidates.isLoading || options.length === 0}
-          onChange={(event) => setUserId(event.target.value)}
-          className="min-w-44 flex-1"
-        >
-          <option value="">
-            {options.length === 0 && !candidates.isLoading
-              ? t.academy.noCandidates
-              : t.academy.choosePerson}
-          </option>
-          {options.map((option) => (
-            <option key={option.id} value={option.id}>
-              {[option.firstName, option.lastName].filter(Boolean).join(' ') ||
-                option.username ||
-                option.id.slice(0, 8)}
-            </option>
-          ))}
-        </Select>
+      <CandidatePicker academyId={academyId} role={role} value={userId} onChange={setUserId} />
 
+      <div className="flex justify-end">
         <Button
           size="sm"
           disabled={!userId}

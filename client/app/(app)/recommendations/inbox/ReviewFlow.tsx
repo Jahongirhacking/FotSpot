@@ -13,6 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Select, Textarea } from '@/components/ui/Field';
 import { ageBand, formatDate } from '@/lib/utils';
+import {
+  EMPTY_INBOX_FILTERS,
+  filterInbox,
+  InboxFilters,
+  type InboxFilterState,
+  type ReviewStage,
+} from './InboxFilters';
 
 interface Coach {
   id: string;
@@ -50,6 +57,7 @@ export function ReviewFlow({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const [filters, setFilters] = React.useState<InboxFilterState>(EMPTY_INBOX_FILTERS);
 
   const inbox = useQuery({
     queryKey: ['inbox-ranked', academyId],
@@ -99,9 +107,17 @@ export function ReviewFlow({
   });
 
   const items = inbox.data?.items ?? [];
+  const historyRows = history.data ?? [];
+
+  // One bar over both lists: a manager looking for a name does not know, and
+  // should not have to know, whether that player is still in the queue.
+  const shown = filterInbox(items, filters, stageOf);
+  const shownHistory = filterInbox(historyRows, filters);
 
   return (
     <div className="space-y-6">
+      <InboxFilters rows={[...items, ...historyRows]} value={filters} onChange={setFilters} />
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -112,11 +128,14 @@ export function ReviewFlow({
         </CardHeader>
 
         <CardContent className="p-2">
-          {items.length === 0 ? (
-            <EmptyState icon={ClipboardCheck} title={t.recommendations.inboxEmpty} />
+          {shown.length === 0 ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
+            />
           ) : (
             <ul className="divide-border divide-y">
-              {items.map((item) => (
+              {shown.map((item) => (
                 <InboxRow
                   key={item.playerId}
                   item={item}
@@ -141,11 +160,14 @@ export function ReviewFlow({
           <p className="text-muted text-sm">{t.recommendations.historyHint}</p>
         </CardHeader>
         <CardContent className="p-2">
-          {(history.data ?? []).length === 0 ? (
-            <EmptyState icon={ClipboardCheck} title={t.recommendations.historyEmpty} />
+          {shownHistory.length === 0 ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title={historyRows.length === 0 ? t.recommendations.historyEmpty : t.player.noMatches}
+            />
           ) : (
             <ul className="divide-border divide-y">
-              {(history.data ?? []).map((row) => (
+              {shownHistory.map((row) => (
                 <li key={row.recommendationId} className="flex flex-wrap items-center gap-3 p-2">
                   <div className="min-w-0 flex-1">
                     <Link
@@ -180,6 +202,12 @@ export function ReviewFlow({
       </Card>
     </div>
   );
+}
+
+/** Where a queued player sits in the review — the one thing the stage filter asks. */
+function stageOf(item: RankedRecommendation): ReviewStage {
+  if (!item.review) return 'NOT_SENT';
+  return item.review.status === 'PENDING' ? 'PENDING' : 'APPROVED';
 }
 
 function InboxRow({

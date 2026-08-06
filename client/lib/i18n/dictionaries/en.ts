@@ -3,6 +3,8 @@ import type { Dictionary } from './uz';
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
 export const en: Dictionary = {
   common: {
+    filters: 'Filters',
+    clear: 'Clear',
     from: 'From',
     to: 'To',
     theme: 'Theme',
@@ -20,7 +22,6 @@ export const en: Dictionary = {
     back: 'Back',
     continue: 'Continue',
     search: 'Search',
-    clear: 'Clear',
     loading: 'Loading…',
     tryAgain: 'Try again',
     somethingWrong: 'Something went wrong',
@@ -349,6 +350,8 @@ export const en: Dictionary = {
     sent: 'Invitation sent — waiting on their answer.',
   },
   academy: {
+    memberType: 'Member type',
+    pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
     coachType: 'Coach type',
     anyCoachType: 'Any coach type',
     anyLevel: 'Any level',
@@ -637,6 +640,7 @@ export const en: Dictionary = {
   },
 
   recommendations: {
+    reviewStage: 'Review stage',
     statusAccepted: 'accepted',
     statusRejected: 'rejected',
     statusPending: 'still pending',

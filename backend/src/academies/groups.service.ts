@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import {
   CreateGroupDto,
+  ListCandidatesDto,
   MoveMembersDto,
   RequestTransferDto,
   UpdateGroupDto,
@@ -226,41 +227,76 @@ export class GroupsService {
    * the picker cannot offer a duplicate the server would then refuse.
    *
    * Manager-only, because it enumerates accounts.
+   *
+   * Paged and searchable rather than a flat hundred: on a platform with tens of
+   * thousands of players, a picker that ships the first hundred names is a
+   * picker that cannot find the hundred-and-first, and no amount of scrolling
+   * fixes it. The search is what makes the list usable; the page is what keeps
+   * the response small.
    */
-  async listJoinCandidates(userId: string, academyId: string, role: 'PLAYER' | 'COACH' | 'SCOUT') {
+  async listJoinCandidates(
+    userId: string,
+    academyId: string,
+    role: 'PLAYER' | 'COACH' | 'SCOUT',
+    dto: ListCandidatesDto = {},
+  ) {
     await this.assertManager(userId, academyId);
 
-    const users = await this.prisma.user.findMany({
-      where: {
-        isActive: true,
-        roles: { some: { role: { name: role.toLowerCase() } } },
-        academyMemberships: { none: { academyId, status: { not: 'RELEASED' } } },
-        // Somebody already asked is not a candidate: offering them again would
-        // send a second invitation the server refuses, and the manager would
-        // have no way of telling from the list which is which.
-        academyInvitations: { none: { academyId, status: 'PENDING' } },
-        // An invitation to an unverified coach is one they could not accept, so
-        // it would be a button that lies about what it will do.
-        ...(role === 'COACH' ? { coachProfile: { status: 'VERIFIED' as const } } : {}),
-      },
-      orderBy: [{ firstName: 'asc' }, { createdAt: 'asc' }],
-      take: 100,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        username: true,
-        avatarKey: true,
-        playerProfile: { select: { primaryPosition: true, birthDate: true } },
-      },
-    });
+    const page = dto.page ?? 1;
+    const pageSize = dto.pageSize ?? 20;
+    const query = dto.query?.trim();
 
-    return users.map(({ avatarKey, playerProfile, ...user }) => ({
-      ...user,
-      avatarUrl: this.storage.publicUrlOrNull(avatarKey),
-      primaryPosition: playerProfile?.primaryPosition ?? null,
-      birthDate: playerProfile?.birthDate ?? null,
-    }));
+    const where: Prisma.UserWhereInput = {
+      isActive: true,
+      roles: { some: { role: { name: role.toLowerCase() } } },
+      academyMemberships: { none: { academyId, status: { not: 'RELEASED' } } },
+      // Somebody already asked is not a candidate: offering them again would
+      // send a second invitation the server refuses, and the manager would
+      // have no way of telling from the list which is which.
+      academyInvitations: { none: { academyId, status: 'PENDING' } },
+      // An invitation to an unverified coach is one they could not accept, so
+      // it would be a button that lies about what it will do.
+      ...(role === 'COACH' ? { coachProfile: { status: 'VERIFIED' as const } } : {}),
+      ...(query
+        ? {
+            OR: [
+              { firstName: { contains: query, mode: 'insensitive' as const } },
+              { lastName: { contains: query, mode: 'insensitive' as const } },
+              { username: { contains: query, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: [{ firstName: 'asc' }, { createdAt: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          avatarKey: true,
+          playerProfile: { select: { primaryPosition: true, birthDate: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items: users.map(({ avatarKey, playerProfile, ...user }) => ({
+        ...user,
+        avatarUrl: this.storage.publicUrlOrNull(avatarKey),
+        primaryPosition: playerProfile?.primaryPosition ?? null,
+        birthDate: playerProfile?.birthDate ?? null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   // ---------- Transfers between academies ----------

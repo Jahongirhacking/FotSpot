@@ -8,6 +8,7 @@ import { InvitationsService } from './invitations.service';
 import { InviteMemberDto } from './dto/invitation.dto';
 import {
   CreateGroupDto,
+  ListCandidatesDto,
   MoveMembersDto,
   RequestTransferDto,
   UpdateGroupDto,
@@ -181,14 +182,19 @@ export class AcademiesController {
     return this.groups.moveMembers(user.userId, id, dto);
   }
 
-  /** Accounts this academy could add for a role — declared before `:id/transfers`. */
+  /**
+   * Accounts this academy could add for a role — declared before `:id/transfers`.
+   *
+   * Paged and searchable: the picker on the squad screen is a window onto every
+   * account holding that role, and there are far more of those than fit a list.
+   */
   @Get(':id/candidates')
   joinCandidates(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Query('role') role: 'PLAYER' | 'COACH' | 'SCOUT' = 'PLAYER',
+    @Query() dto: ListCandidatesDto,
   ) {
-    return this.groups.listJoinCandidates(user.userId, id, role);
+    return this.groups.listJoinCandidates(user.userId, id, dto.role ?? 'PLAYER', dto);
   }
 
   // ---------- Invitations to join ----------

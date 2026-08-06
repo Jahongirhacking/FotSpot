@@ -2210,10 +2210,44 @@
           },
           {
             "name": "role",
-            "required": true,
+            "required": false,
+            "in": "query",
+            "description": "Declared here rather than read separately: the global ValidationPipe runs\n`forbidNonWhitelisted` over the whole query object, so a parameter missing\nfrom this DTO is a 400 even when the handler binds it by name.",
+            "schema": {
+              "enum": [
+                "PLAYER",
+                "COACH",
+                "SCOUT"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 80,
               "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
             }
           }
         ],
@@ -2227,7 +2261,7 @@
             "bearer": []
           }
         ],
-        "summary": "Accounts this academy could add for a role — declared before `:id/transfers`.",
+        "summary": "Accounts this academy could add for a role — declared before `:id/transfers`.\n\nPaged and searchable: the picker on the squad screen is a window onto every\naccount holding that role, and there are far more of those than fit a list.",
         "tags": [
           "academies"
         ]
