@@ -386,6 +386,11 @@ export interface MyRecommendation {
   player: { id: string; firstName: string; lastName: string };
   /** Empty for GLOBAL — it is offered to every academy rather than addressed. */
   academies: { id: string; name: string; status: RecommendationStatus }[];
+  /** When a coach turned it down, if one did. */
+  rejectedAt?: string | null;
+  /** Set while the three-month cooldown is running; null once it has passed. */
+  canRecommendAgainAt?: string | null;
+  canRecommendAgain?: boolean;
 }
 
 /** GET /recommendations/academy/:id/ranked — README §1.5.1/§1.5.2. */

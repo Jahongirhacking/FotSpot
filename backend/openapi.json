@@ -5896,12 +5896,19 @@
       "InvitePlayerDto": {
         "type": "object",
         "properties": {
+          "trialId": {
+            "type": "string",
+            "description": "The private trial to invite them to. It must be this academy's own."
+          },
           "note": {
             "type": "string",
+            "description": "Where to be, when, what to bring — the invitation itself.",
+            "minLength": 1,
             "maxLength": 1000
           }
         },
         "required": [
+          "trialId",
           "note"
         ]
       },

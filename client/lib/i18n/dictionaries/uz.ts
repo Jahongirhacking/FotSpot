@@ -564,6 +564,7 @@ export const uz = {
   },
 
   player: {
+    recommendAgainOn: 'Bu o‘yinchini {value} dan keyin qayta tavsiya qilishingiz mumkin.',
     age: 'Yosh',
     actions: 'Amallar',
     followPlayer: 'Kuzatish',
@@ -701,6 +702,8 @@ export const uz = {
   },
 
   recommendations: {
+    inviteToTrial: 'Qaysi yopiq sinovga',
+    noPrivateTrial: 'Avval yopiq sinov yarating — taklif qilish uchun sana kerak.',
     activeSection: 'Jarayonda',
     activeSectionHint: 'Murabbiyda turganlar va u tasdiqlagan, taklif kutayotganlar.',
     activeEmpty: 'Jarayonda hech kim yo‘q',

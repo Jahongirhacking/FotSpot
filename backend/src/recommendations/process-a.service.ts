@@ -60,17 +60,22 @@ export class ProcessAService {
     });
     if (!player) throw new NotFoundException('Player not found');
 
-    const coachUserId = await this.pickCoach(db, params);
-    const coachProfile = await db.coachProfile.findUnique({ where: { userId: coachUserId } });
-    if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
+    const coachUserIds = await this.pickCoaches(db, params);
+    const profiles = await db.coachProfile.findMany({
+      where: { userId: { in: coachUserIds } },
+      select: { id: true, userId: true },
+    });
+    if (profiles.length === 0) throw new BadRequestException('That coach has no coach profile');
 
     const review = await db.recommendationReview.upsert({
       where: { playerId_academyId: { playerId: params.playerId, academyId: params.academyId } },
       // Re-running Process A on somebody already reviewed reopens the same row:
-      // the academy is asking again, not asking a second person.
+      // the academy is asking again, not asking a second person. This is also
+      // how a trial's real-life assessment follows its profile screening — same
+      // question, second time of asking, once the player is on the pitch.
       update: {
-        coachUserId,
-        coachProfileId: coachProfile.id,
+        coachUserId: profiles[0].userId,
+        coachProfileId: profiles[0].id,
         status: 'PENDING',
         decidedAt: null,
         ...(params.trialApplicationId ? { trialApplicationId: params.trialApplicationId } : {}),
@@ -79,31 +84,102 @@ export class ProcessAService {
       create: {
         playerId: params.playerId,
         academyId: params.academyId,
-        coachUserId,
-        coachProfileId: coachProfile.id,
+        coachUserId: profiles[0].userId,
+        coachProfileId: profiles[0].id,
         trialApplicationId: params.trialApplicationId ?? null,
         recommendationId: params.recommendationId ?? null,
       },
     });
 
-    await this.notifications.notify(coachUserId, 'REVIEW_ASSIGNED', {
-      reviewId: review.id,
-      playerId: params.playerId,
-      playerName: `${player.firstName} ${player.lastName}`,
-      academyId: params.academyId,
+    // Replaced rather than added to: reopening a review re-asks the question of
+    // whoever is on it now, and a coach who left the trial should not still be
+    // holding it in their queue.
+    await db.reviewCoach.deleteMany({ where: { reviewId: review.id } });
+    await db.reviewCoach.createMany({
+      data: profiles.map((profile) => ({
+        reviewId: review.id,
+        coachUserId: profile.userId,
+        coachProfileId: profile.id,
+      })),
     });
+
+    for (const profile of profiles) {
+      await this.notifications.notify(profile.userId, 'REVIEW_ASSIGNED', {
+        reviewId: review.id,
+        playerId: params.playerId,
+        playerName: `${player.firstName} ${player.lastName}`,
+        academyId: params.academyId,
+      });
+    }
 
     return review;
   }
 
   /**
-   * Whose queue it lands in.
+   * Every recommendation a trial will answer, frozen at the moment of asking.
+   *
+   * A player rarely arrives on one scout's word: one may have filed a GLOBAL
+   * recommendation months ago and another a SPECIFIC one to this academy last
+   * week. Both said *look at this player*, and the trial answers both — so both
+   * gain when the player signs, and both are turned down together when a coach
+   * says no.
+   *
+   * Taken now rather than at the end: a scout who files after the trial was
+   * arranged did not help arrange it, and counting them would make the success
+   * rate reward timing over judgement.
+   *
+   * It lives here because it is the seam between recommendations and trials, and
+   * both sides create applications — the inbox by inviting, the trial by
+   * nominating or being applied to.
+   */
+  async snapshotBackings(applicationId: string, playerId: string, academyId: string) {
+    const backing = await this.prisma.recommendation.findMany({
+      where: {
+        playerId,
+        rejectedAt: null,
+        // Addressed to this academy, or offered to everyone — a GLOBAL
+        // recommendation is a scout saying "somebody should look at this
+        // player", and this academy is the somebody that did.
+        OR: [{ targets: { some: { academyId } } }, { type: 'GLOBAL' }],
+      },
+      select: { id: true },
+    });
+    if (backing.length === 0) return;
+
+    await this.prisma.trialApplicationBacking.createMany({
+      data: backing.map((recommendation) => ({
+        applicationId,
+        recommendationId: recommendation.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  /** The recommendations riding on this application, the prompting one included. */
+  async backingsOf(applicationId: string, promptId: string | null) {
+    const rows = await this.prisma.trialApplicationBacking.findMany({
+      where: { applicationId },
+      select: { recommendationId: true },
+    });
+    const ids = new Set(rows.map((row) => row.recommendationId));
+    if (promptId) ids.add(promptId);
+    return [...ids];
+  }
+
+  /**
+   * Whose queues it lands in.
+   *
+   * `manual` names one coach; `auto` hands it to *every* coach working the trial,
+   * because a trial is worked by a staff and the profile should be in front of
+   * everybody who will be on the pitch. With no trial staff it falls back to the
+   * academy's least-loaded coach, which is the only sensible reading of "send
+   * this to whoever is free".
    *
    * A coach must be endorsed by the academy either way — endorsement is what an
    * academy's trust in a coach *is* (§1.5.3), and a review decided by somebody
    * outside it would carry weight the academy never granted.
    */
-  private async pickCoach(
+  private async pickCoaches(
     db: Prisma.TransactionClient | PrismaService,
     params: {
       academyId: string;
@@ -127,13 +203,12 @@ export class ProcessAService {
       if (!candidates.includes(params.coachUserId)) {
         throw new BadRequestException('That coach does not work for this academy');
       }
-      return params.coachUserId;
+      return [params.coachUserId];
     }
 
-    // A trial's own coaches first: they are the people who will be on the pitch
-    // that morning, so they are the ones who should have read the profile.
     const pool = params.coachPool?.filter((id) => candidates.includes(id));
-    return this.leastLoaded(db, pool?.length ? pool : candidates);
+    if (pool?.length) return pool;
+    return [await this.leastLoaded(db, candidates)];
   }
 
   /** The coach carrying the fewest open reviews. */

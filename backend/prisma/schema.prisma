@@ -114,6 +114,7 @@ model User {
   followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
   academyEndorsements AcademyEndorsement[] @relation("AcademyEndorsements")
   coachReviews  RecommendationReview[] @relation("CoachReviews")
+  reviewAssignments ReviewCoach[] @relation("ReviewAssignments")
   trialCoaching TrialCoach[] @relation("TrialCoaching")
   mediaComments MediaComment[]
 
@@ -864,7 +865,13 @@ model RecommendationReview {
   /// Who is being reviewed. Always present, unlike the recommendation.
   playerId         String
   academyId        String
-  /// The endorsed coach this was handed to. Only they can decide it.
+  /**
+   * Who answered — or, before anybody has, the first coach it was handed to.
+   *
+   * The full list is `assignees`. This column is the one that ends up meaning
+   * "who made this call", which is what an assessment has to be attributable to
+   * and what every downstream read of a decided review wants.
+   */
   coachUserId      String
   coachProfileId   String
 
@@ -879,14 +886,66 @@ model RecommendationReview {
   academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   coachUser        User @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
 
+  /// Every coach who may answer this. See ReviewCoach.
+  assignees        ReviewCoach[]
+
   assignedAt DateTime @default(now())
   decidedAt  DateTime?
 
-  /// One live review per player per academy — two coaches deciding the same
+  /// One live review per player per academy — two *decisions* about the same
   /// player for the same academy is a contradiction, not a second opinion. Keyed
   /// on the player rather than the recommendation, since there may not be one.
   @@unique([playerId, academyId])
   @@index([coachUserId, status])
+}
+
+/**
+ * A recommendation whose fate this trial decides.
+ *
+ * A player rarely arrives on one scout's word. One may have filed a GLOBAL
+ * recommendation months ago and another a SPECIFIC one to this academy last
+ * week; both were saying the same thing — *look at this player* — and the trial
+ * answers both of them at once. So every backing scout gains when the player
+ * signs, and every backing scout is turned down together when a coach says no.
+ *
+ * Snapshotted when the application is created rather than looked up at the end:
+ * a scout who files after the trial was arranged did not help arrange it, and
+ * counting them would make the success rate reward timing over judgement.
+ */
+model TrialApplicationBacking {
+  applicationId    String
+  recommendationId String
+
+  application      TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+
+  @@id([applicationId, recommendationId])
+  @@index([recommendationId])
+}
+
+/**
+ * A coach who may answer a review.
+ *
+ * A trial is worked by a staff, not by one person, and the profile should be in
+ * front of everybody who will be on the pitch that morning. They share one
+ * question, so the first to answer settles it — a second opinion recorded as a
+ * second decision would leave the academy holding two contradictory answers with
+ * no rule for which one counts.
+ */
+model ReviewCoach {
+  reviewId       String
+  coachUserId    String
+  coachProfileId String
+
+  review         RecommendationReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  coachUser      User @relation("ReviewAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  assignedAt     DateTime @default(now())
+
+  @@id([reviewId, coachUserId])
+  @@index([coachUserId])
 }
 
 enum ReviewStatus {
@@ -943,6 +1002,19 @@ model Recommendation {
   academy    AcademyProfile? @relation(fields: [academyId], references: [id])
   targets    RecommendationTarget[]
   reviews    RecommendationReview[]
+  trialApplications TrialApplication[]
+  trialBackings TrialApplicationBacking[]
+
+  /**
+   * When a coach turned this recommendation down.
+   *
+   * Stored rather than derived from `updatedAt`, which moves for reasons that
+   * have nothing to do with the answer. It is what the scout's cooldown counts
+   * from: a rejection is a judgement about *this* recommendation, and filing the
+   * same player again the next morning would be arguing with it rather than
+   * bringing new evidence.
+   */
+  rejectedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1107,6 +1179,18 @@ model TrialApplication {
   /// What the academy wrote when inviting — where to be, when, what to bring.
   /// "You are invited" with nothing else is not something a family can act on.
   inviteNote String?
+  /**
+   * The recommendation that prompted this invitation, if one did.
+   *
+   * The *whole* set of scouts whose reputation rides on the outcome is
+   * `backings` — this is only the one the manager was looking at when they
+   * decided to invite.
+   */
+  recommendationId String?
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+
+  /// Every scout whose call this trial will settle. See TrialApplicationBacking.
+  backings         TrialApplicationBacking[]
   /// The coach review that screened this application, if one has run.
   review     RecommendationReview?
 

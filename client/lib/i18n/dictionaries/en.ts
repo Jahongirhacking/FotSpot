@@ -547,6 +547,7 @@ export const en: Dictionary = {
   },
 
   player: {
+    recommendAgainOn: 'You can put this player forward again on {value}.',
     age: 'Age',
     actions: 'Actions',
     followPlayer: 'Follow this player',
@@ -679,6 +680,8 @@ export const en: Dictionary = {
   },
 
   recommendations: {
+    inviteToTrial: 'Invite to which private trial',
+    noPrivateTrial: 'Create a private trial first — an invitation needs a date to name.',
     activeSection: 'Active',
     activeSectionHint: 'With a coach, or approved and waiting on your invitation.',
     activeEmpty: 'Nothing in motion',

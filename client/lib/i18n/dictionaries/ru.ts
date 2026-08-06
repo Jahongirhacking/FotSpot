@@ -546,6 +546,7 @@ export const ru: Dictionary = {
   },
 
   player: {
+    recommendAgainOn: 'Вы сможете снова рекомендовать этого игрока с {value}.',
     age: 'Возраст',
     actions: 'Действия',
     followPlayer: 'Подписаться',
@@ -678,6 +679,8 @@ export const ru: Dictionary = {
   },
 
   recommendations: {
+    inviteToTrial: 'На какой закрытый просмотр',
+    noPrivateTrial: 'Сначала создайте закрытый просмотр — приглашать нужно на дату.',
     activeSection: 'В работе',
     activeSectionHint: 'Те, кто у тренера, и те, кого он одобрил — ждут приглашения.',
     activeEmpty: 'В работе никого нет',

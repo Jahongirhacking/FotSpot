@@ -15,6 +15,7 @@ import {
   UpdateTrialDto,
 } from './dto/trial.dto';
 import { ProcessAService } from '../recommendations/process-a.service';
+import { RecommendationsService } from '../recommendations/recommendations.service';
 import { InvitationsService } from '../academies/invitations.service';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class TrialsService {
     private notifications: NotificationsService,
     private processA: ProcessAService,
     private invitations: InvitationsService,
+    private recommendations: RecommendationsService,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -175,6 +177,8 @@ export class TrialsService {
       create: { trialId, playerId: dto.playerId, status: 'SCREENING' },
     });
 
+    await this.processA.snapshotBackings(application.id, dto.playerId, trial.academyId);
+
     await this.processA.start({
       playerId: dto.playerId,
       academyId: trial.academyId,
@@ -248,6 +252,36 @@ export class TrialsService {
       data: { status: accept ? 'CONFIRMED' : 'REJECTED' },
     });
 
+    /*
+     * Saying yes puts the profile in front of the staff who will run the day.
+     *
+     * Process A again, in `auto`, and this time to *every* coach on the trial —
+     * the first screening was about clips and numbers, this one is about a
+     * player they will have watched. Same question, second time of asking.
+     *
+     * A failure here does not undo the player's answer: they have confirmed, and
+     * an academy with nobody assigned to the trial simply has nothing to hand
+     * the profile to yet.
+     */
+    if (accept) {
+      try {
+        const coaches = await this.prisma.trialCoach.findMany({
+          where: { trialId: application.trialId },
+          select: { coachUserId: true },
+        });
+        await this.processA.start({
+          playerId: application.playerId,
+          academyId: application.trial.academyId,
+          mode: 'auto',
+          coachPool: coaches.map((row) => row.coachUserId),
+          trialApplicationId: applicationId,
+          recommendationId: application.recommendationId,
+        });
+      } catch {
+        // Nothing to assign to. The manager can send them for review by hand.
+      }
+    }
+
     const manager = await this.prisma.academyMember.findFirst({
       where: { academyId: application.trial.academyId, role: 'MANAGER' },
       select: { userId: true },
@@ -280,8 +314,25 @@ export class TrialsService {
     if (!application) throw new NotFoundException('Trial application not found');
     await this.assertAcademyManager(userId, application.trial.academyId);
 
-    const ready = ['SHORTLISTED', 'CONFIRMED', 'ACCEPTED'];
-    if (!ready.includes(application.status)) {
+    /*
+     * The gate is a coach's yes, not a status name.
+     *
+     * A general trial's applicant is approved once; a private one is screened,
+     * invited, seen on the day and approved again. Both end at the same place —
+     * a coach on this academy said this player is worth a place — so that is
+     * what is checked, rather than a list of statuses that would have to be kept
+     * in step with two different routes.
+     */
+    const review = await this.prisma.recommendationReview.findUnique({
+      where: {
+        playerId_academyId: {
+          playerId: application.playerId,
+          academyId: application.trial.academyId,
+        },
+      },
+      select: { status: true, recommendationId: true },
+    });
+    if (application.status === 'REJECTED' || review?.status !== 'APPROVED') {
       throw new BadRequestException('A coach has to approve this player first');
     }
 
@@ -295,6 +346,34 @@ export class TrialsService {
       where: { id: applicationId },
       data: { status: 'ACCEPTED' },
     });
+
+    /*
+     * Every scout who backed this player was right, and this is where that
+     * becomes true.
+     *
+     * Not at the invitation: a player invited to a look who never signs is not
+     * an accepted recommendation, and counting it as one would inflate every
+     * success rate on the platform. The reputation moves when the academy
+     * actually takes the player on — and it moves for all of them, because they
+     * all said the same thing.
+     */
+    const backings = await this.processA.backingsOf(
+      applicationId,
+      application.recommendationId ?? review?.recommendationId ?? null,
+    );
+    for (const recommendationId of backings) {
+      await this.recommendations
+        .updateStatus(
+          userId,
+          recommendationId,
+          // Named explicitly: a global recommendation has no target to infer the
+          // deciding academy from until this trial gives it one.
+          { status: 'ACCEPTED', academyId: application.trial.academyId },
+          { takeUpGlobal: true },
+        )
+        // One already-settled recommendation must not stop the others counting.
+        .catch(() => undefined);
+    }
 
     return invitation;
   }
@@ -365,6 +444,8 @@ export class TrialsService {
       update: {},
       create: { trialId, playerId: player.id },
     });
+
+    await this.processA.snapshotBackings(application.id, player.id, trial.academyId);
 
     /*
      * Process A, in `auto`: an open day can take fifty applications in a night

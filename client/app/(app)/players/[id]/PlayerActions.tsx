@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, Skeleton } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { formatDate } from '@/lib/utils';
 import {
   Dialog,
   DialogBody,
@@ -28,6 +29,8 @@ interface MyRecommendation {
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   note: string | null;
   createdAt: string;
+  /** Set while the three-month cooldown is running; null once it has passed. */
+  canRecommendAgainAt: string | null;
 }
 
 interface AcademyState {
@@ -137,7 +140,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 
           {isScout &&
             (mine ? (
-              <RecommendationResult status={mine.status} />
+              <RecommendationResult mine={mine} />
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
@@ -156,18 +159,22 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 }
 
 /**
- * What became of the one recommendation this scout filed for this player.
+ * What became of the recommendation this scout filed for this player.
  *
  * A disabled button rather than a hidden one: "you already did this, and here is
  * what happened" answers the question the scout came back to ask, where an absent
  * control just looks like a bug.
+ *
+ * A rejection is not the end of it. The door reopens three months on, and the
+ * date is on the screen — a scout who was early rather than wrong needs to know
+ * the block lifts, not merely that it is there.
  */
-function RecommendationResult({ status }: { status: MyRecommendation['status'] }) {
+function RecommendationResult({ mine }: { mine: MyRecommendation }) {
   const { t } = useI18n();
   const label =
-    status === 'ACCEPTED'
+    mine.status === 'ACCEPTED'
       ? t.recommendations.statusAccepted
-      : status === 'REJECTED'
+      : mine.status === 'REJECTED'
         ? t.recommendations.statusRejected
         : t.recommendations.statusPending;
 
@@ -177,6 +184,11 @@ function RecommendationResult({ status }: { status: MyRecommendation['status'] }
         <Check aria-hidden /> {t.player.alreadyRecommended}
       </Button>
       <p className="text-muted text-xs">{f2(t.player.recommendationResult, label)}</p>
+      {mine.canRecommendAgainAt && (
+        <p className="text-muted text-xs">
+          {f2(t.player.recommendAgainOn, formatDate(mine.canRecommendAgainAt))}
+        </p>
+      )}
     </div>
   );
 }

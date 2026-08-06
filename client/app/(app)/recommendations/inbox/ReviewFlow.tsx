@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-query';
 import { ClipboardCheck, Hourglass, Mail, Send, ShieldCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyHistoryRow, RankedRecommendation } from '@/lib/api/types';
+import type { AcademyHistoryRow, RankedRecommendation, Trial } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -105,9 +105,26 @@ export function ReviewFlow({
   });
 
   const invite = useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) =>
-      browserFetch(`/recommendations/players/${id}/invite`, { method: 'POST', body: { note } }),
+    mutationFn: ({ id, note, trialId }: { id: string; note: string; trialId: string }) =>
+      browserFetch(`/recommendations/players/${id}/invite`, {
+        method: 'POST',
+        body: { note, trialId },
+      }),
     onSuccess: refresh,
+  });
+
+  /*
+   * The private trials this academy could invite somebody to.
+   *
+   * A coach approving a profile is a judgement about clips, not about a player
+   * they have watched — so what the academy offers next is a look, and a look
+   * happens at a trial on a date. Without one there is nothing to invite them to,
+   * and the row says so rather than failing on the press.
+   */
+  const privateTrials = useQuery({
+    queryKey: ['private-trials', academyId],
+    queryFn: () => browserFetch<Trial[]>(`/trials/academy/${academyId}`),
+    select: (rows) => rows.filter((row) => row.type === 'PRIVATE' && row.status === 'OPEN'),
   });
 
   const items = inbox.data?.items ?? [];
@@ -136,6 +153,7 @@ export function ReviewFlow({
         rows={arrived}
         emptyTitle={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
         coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        trials={privateTrials.data ?? []}
         assign={assign}
         invite={invite}
       />
@@ -147,6 +165,7 @@ export function ReviewFlow({
         rows={active}
         emptyTitle={t.recommendations.activeEmpty}
         coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        trials={privateTrials.data ?? []}
         assign={assign}
         invite={invite}
       />
@@ -215,6 +234,7 @@ function QueueCard({
   rows,
   emptyTitle,
   coaches,
+  trials,
   assign,
   invite,
 }: {
@@ -224,8 +244,9 @@ function QueueCard({
   rows: RankedRecommendation[];
   emptyTitle: string;
   coaches: Coach[];
+  trials: Trial[];
   assign: UseMutationResult<unknown, Error, { id: string; coachUserId?: string }, unknown>;
-  invite: UseMutationResult<unknown, Error, { id: string; note: string }, unknown>;
+  invite: UseMutationResult<unknown, Error, { id: string; note: string; trialId: string }, unknown>;
 }) {
   return (
     <Card>
@@ -248,13 +269,14 @@ function QueueCard({
                 key={item.playerId}
                 item={item}
                 coaches={coaches}
+                trials={trials}
                 // Only the row actually being sent, not the whole list.
                 pending={
                   (assign.isPending && assign.variables?.id === item.playerId) ||
                   (invite.isPending && invite.variables?.id === item.playerId)
                 }
                 onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
-                onInvite={(note) => invite.mutate({ id: item.playerId, note })}
+                onInvite={(note, trialId) => invite.mutate({ id: item.playerId, note, trialId })}
               />
             ))}
           </ul>
@@ -267,6 +289,7 @@ function QueueCard({
 function InboxRow({
   item,
   coaches,
+  trials,
   pending,
   onAssign,
   onInvite,
@@ -275,11 +298,13 @@ function InboxRow({
   coaches: Coach[];
   pending: boolean;
   onAssign: (coachUserId?: string) => void;
-  onInvite: (note: string) => void;
+  onInvite: (note: string, trialId: string) => void;
+  trials: Trial[];
 }) {
   const { t, f } = useI18n();
   const [coachUserId, setCoachUserId] = React.useState('');
   const [note, setNote] = React.useState('');
+  const [trialId, setTrialId] = React.useState('');
   const review = item.review;
 
   return (
@@ -362,29 +387,44 @@ function InboxRow({
         </div>
       )}
 
-      {/* Approved: the manager's own decision, and the note the player reads. */}
-      {review?.status === 'APPROVED' && (
-        <div className="space-y-2">
-          <Textarea
-            aria-label={t.recommendations.inviteNote}
-            value={note}
-            maxLength={1000}
-            rows={2}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder={t.placeholders.inviteNote}
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              loading={pending}
-              disabled={!note.trim()}
-              onClick={() => onInvite(note.trim())}
+      {/* Approved: the invitation to come and be looked at, on a date. */}
+      {review?.status === 'APPROVED' &&
+        (trials.length === 0 ? (
+          <p className="text-muted text-xs">{t.recommendations.noPrivateTrial}</p>
+        ) : (
+          <div className="space-y-2">
+            <Select
+              aria-label={t.recommendations.inviteToTrial}
+              value={trialId}
+              onChange={(event) => setTrialId(event.target.value)}
             >
-              <Mail aria-hidden /> {t.recommendations.sendInvite}
-            </Button>
+              <option value="">{t.recommendations.inviteToTrial}</option>
+              {trials.map((trial) => (
+                <option key={trial.id} value={trial.id}>
+                  {trial.title} · {formatDate(trial.date)}
+                </option>
+              ))}
+            </Select>
+            <Textarea
+              aria-label={t.recommendations.inviteNote}
+              value={note}
+              maxLength={1000}
+              rows={2}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder={t.placeholders.inviteNote}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                loading={pending}
+                disabled={!note.trim() || !trialId}
+                onClick={() => onInvite(note.trim(), trialId)}
+              >
+                <Mail aria-hidden /> {t.recommendations.sendInvite}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
     </li>
   );
 }
