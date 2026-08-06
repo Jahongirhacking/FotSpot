@@ -3,21 +3,19 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRightLeft, Plus, UserPlus, Users } from 'lucide-react';
+import { Plus, UserPlus, Users } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyGroup, AcademyMember, AcademyMemberRole } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
-import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
-import { ageFrom, cn, initials } from '@/lib/utils';
+import { MemberRow } from '@/components/academy/MemberRows';
+import { cn } from '@/lib/utils';
 
 const TABS: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
-/** Reserve has no id — it is the absence of a group. */
-const RESERVE = '';
 
 /**
  * The academy's people, and the squads they are cut into.
@@ -55,6 +53,7 @@ export function SquadManager({
   const queryClient = useQueryClient();
   const [tab, setTab] = React.useState<AcademyMemberRole>('PLAYER');
   const [adding, setAdding] = React.useState(false);
+  const [invited, setInvited] = React.useState(false);
   const [creatingGroup, setCreatingGroup] = React.useState(false);
 
   const members = useQuery({
@@ -77,25 +76,19 @@ export function SquadManager({
     void queryClient.invalidateQueries({ queryKey: ['groups', academyId] });
   };
 
-  const add = useMutation({
+  // Not an add — a question. The membership appears only when they answer yes,
+  // which is why the list does not change here and a note says so instead.
+  const invite = useMutation({
     mutationFn: (userId: string) =>
-      browserFetch(`/academies/${academyId}/staff`, {
+      browserFetch(`/academies/${academyId}/invitations`, {
         method: 'POST',
         body: { userId, role: tab },
       }),
     onSuccess: () => {
       setAdding(false);
-      refresh();
+      setInvited(true);
+      void queryClient.invalidateQueries({ queryKey: ['join-candidates', academyId] });
     },
-  });
-
-  const move = useMutation({
-    mutationFn: ({ memberId, groupId }: { memberId: string; groupId: string }) =>
-      browserFetch(`/academies/${academyId}/groups/move`, {
-        method: 'POST',
-        body: { memberIds: [memberId], ...(groupId === RESERVE ? {} : { groupId }) },
-      }),
-    onSuccess: refresh,
   });
 
   const createGroup = useMutation({
@@ -129,6 +122,7 @@ export function SquadManager({
                 onClick={() => {
                   setTab(role);
                   setAdding(false);
+                  setInvited(false);
                 }}
                 className={cn(
                   'min-h-10 rounded-md text-sm font-medium transition-colors',
@@ -157,18 +151,23 @@ export function SquadManager({
             <Button
               size="sm"
               variant={adding ? 'ghost' : 'primary'}
-              onClick={() => setAdding((was) => !was)}
+              onClick={() => {
+                setAdding((was) => !was);
+                setInvited(false);
+              }}
             >
               <UserPlus aria-hidden /> {adding ? t.common.cancel : t.academy.addToSquad}
             </Button>
           </div>
 
+          {invited && <Alert tone="success">{t.invitations.sent}</Alert>}
+
           {adding && (
             <AddMember
               academyId={academyId}
               role={tab}
-              pending={add.isPending}
-              onAdd={(userId) => add.mutate(userId)}
+              pending={invite.isPending}
+              onInvite={(userId) => invite.mutate(userId)}
             />
           )}
 
@@ -177,71 +176,11 @@ export function SquadManager({
           ) : (
             <ul className="divide-border divide-y">
               {rows.map((member) => (
-                <li key={member.id} className="flex flex-wrap items-center gap-3 p-2">
-                  <Avatar
-                    src={member.avatarUrl}
-                    fallback={initials(member.firstName ?? '', member.lastName ?? '')}
-                    className="size-10 shrink-0"
-                  />
-
-                  <div className="min-w-0 flex-1">
-                    {member.playerId ? (
-                      <Link
-                        href={`/players/${member.playerId}`}
-                        className="truncate text-sm font-medium hover:underline"
-                      >
-                        {[member.firstName, member.lastName].filter(Boolean).join(' ') ||
-                          member.username}
-                      </Link>
-                    ) : (
-                      <p className="truncate text-sm font-medium">
-                        {[member.firstName, member.lastName].filter(Boolean).join(' ') ||
-                          member.username}
-                      </p>
-                    )}
-
-                    <p className="text-muted truncate text-xs">
-                      {tab === 'SCOUT'
-                        ? // A scout with no stats row has recommended nobody yet,
-                          // so there is no standing to report — say that rather
-                          // than print a level they have not earned.
-                          member.level == null
-                          ? t.recommendations.nothingYet
-                          : `${t.profile.level} ${member.level} · ${Math.round(member.successRate ?? 0)}%`
-                        : [
-                            member.birthDate ? `${ageFrom(member.birthDate)}` : null,
-                            tab === 'PLAYER' ? member.primaryPosition : member.coachType,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                    </p>
-                  </div>
-
-                  {/* A scout belongs to no squad: they work for several academies
-                      at once, so a group here would be a fiction. */}
-                  {tab !== 'SCOUT' && (
-                    <Select
-                      aria-label={t.academy.group}
-                      value={member.group?.id ?? RESERVE}
-                      disabled={move.isPending}
-                      onChange={(event) =>
-                        move.mutate({ memberId: member.id, groupId: event.target.value })
-                      }
-                      className="w-40 shrink-0"
-                    >
-                      <option value={RESERVE}>{t.nav.reserve}</option>
-                      {groups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-
-                  {tab !== 'SCOUT' && (
-                    <TransferButton academyId={academyId} member={member} onDone={refresh} />
-                  )}
-                </li>
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  controls={{ academyId, groups, onChanged: refresh }}
+                />
               ))}
             </ul>
           )}
@@ -293,11 +232,14 @@ export function SquadManager({
             </form>
           )}
 
-          <div className="border-border flex items-center gap-2 rounded-lg border p-2">
+          <Link
+            href="/academies/mine/reserve"
+            className="border-border hover:bg-surface-2 flex items-center gap-2 rounded-lg border p-2 transition-colors"
+          >
             <Users className="text-muted size-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-sm">{t.nav.reserve}</span>
             <Badge variant="neutral">{groupList.data?.reserveCount ?? 0}</Badge>
-          </div>
+          </Link>
 
           {/* The whole row is the link: editing and deleting live on the group's
               own page, where they are a decision rather than a stray click. */}
@@ -325,89 +267,6 @@ export function SquadManager({
   );
 }
 
-/** Offering somebody to another academy — the one action here that leaves. */
-function TransferButton({
-  academyId,
-  member,
-  onDone,
-}: {
-  academyId: string;
-  member: AcademyMember;
-  onDone: () => void;
-}) {
-  const { t } = useI18n();
-  const [open, setOpen] = React.useState(false);
-  const [toAcademyId, setToAcademyId] = React.useState('');
-
-  const others = useQuery({
-    queryKey: ['academies', 'public'],
-    queryFn: () => browserFetch<{ id: string; name: string }[]>('/academies'),
-    enabled: open,
-  });
-
-  const request = useMutation({
-    mutationFn: () =>
-      browserFetch(`/academies/${academyId}/transfers`, {
-        method: 'POST',
-        body: { memberId: member.id, toAcademyId },
-      }),
-    onSuccess: () => {
-      setOpen(false);
-      onDone();
-    },
-  });
-
-  if (!open) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        className="shrink-0"
-        aria-label={t.academy.transferTo}
-        onClick={() => setOpen(true)}
-      >
-        <ArrowRightLeft aria-hidden />
-      </Button>
-    );
-  }
-
-  return (
-    <div className="w-full space-y-2">
-      <Alert tone="warning">{t.academy.transferWarning}</Alert>
-      <div className="flex flex-wrap items-center gap-2">
-        <Select
-          aria-label={t.academy.transferTo}
-          value={toAcademyId}
-          onChange={(event) => setToAcademyId(event.target.value)}
-          className="min-w-40 flex-1"
-        >
-          <option value="">{t.academy.transferTo}</option>
-          {(others.data ?? [])
-            .filter((academy) => academy.id !== academyId)
-            .map((academy) => (
-              <option key={academy.id} value={academy.id}>
-                {academy.name}
-              </option>
-            ))}
-        </Select>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          {t.common.cancel}
-        </Button>
-        <Button
-          size="sm"
-          disabled={!toAcademyId}
-          loading={request.isPending}
-          onClick={() => {
-            if (window.confirm(t.academy.confirmTransfer)) request.mutate();
-          }}
-        >
-          {t.academy.transferTo}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /**
  * Adding somebody who is already on the platform.
  *
@@ -423,12 +282,12 @@ function AddMember({
   academyId,
   role,
   pending,
-  onAdd,
+  onInvite,
 }: {
   academyId: string;
   role: AcademyMemberRole;
   pending: boolean;
-  onAdd: (userId: string) => void;
+  onInvite: (userId: string) => void;
 }) {
   const { t } = useI18n();
   const [userId, setUserId] = React.useState('');
@@ -474,7 +333,7 @@ function AddMember({
           disabled={!userId}
           loading={pending}
           onClick={() => {
-            if (window.confirm(t.academy.confirmAdd)) onAdd(userId);
+            if (window.confirm(t.academy.confirmAdd)) onInvite(userId);
           }}
         >
           <UserPlus aria-hidden /> {t.academy.addToSquad}

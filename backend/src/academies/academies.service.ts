@@ -16,7 +16,6 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
-  AddStaffMemberDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -458,30 +457,6 @@ export class AcademiesService {
     });
 
     return archived;
-  }
-
-  async addStaff(userId: string, academyId: string, dto: AddStaffMemberDto) {
-    await this.assertManager(userId, academyId);
-
-    let coachId: string | undefined;
-    if (dto.role === 'COACH') {
-      const coachProfile = await this.prisma.coachProfile.findUnique({
-        where: { userId: dto.userId },
-      });
-      if (!coachProfile || coachProfile.status !== 'VERIFIED') {
-        throw new BadRequestException('User is not a verified coach');
-      }
-      coachId = coachProfile.id;
-    }
-
-    const member = await this.prisma.academyMember.upsert({
-      where: { academyId_userId: { academyId, userId: dto.userId } },
-      update: { role: dto.role, coachId },
-      create: { academyId, userId: dto.userId, role: dto.role, coachId },
-    });
-    // getPublicProfile includes members, so a staff change invalidates it too.
-    await this.invalidate(academyId);
-    return member;
   }
 
   /**

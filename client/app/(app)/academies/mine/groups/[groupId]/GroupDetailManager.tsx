@@ -4,17 +4,15 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { GroupDetail } from '@/lib/api/types';
+import type { AcademyGroup, AcademyMember, GroupDetail } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
-import { Avatar } from '@/components/ui/Avatar';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { SquadPanel } from '@/components/academy/SquadPanel';
+import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
-import { ageBand, initials } from '@/lib/utils';
 
 /**
  * One squad: who is in it, and the two decisions only its own page offers.
@@ -24,7 +22,15 @@ import { ageBand, initials } from '@/lib/utils';
  * scans all day is a delete that eventually happens by accident. Getting here is
  * the deliberate step that earns the destructive control.
  */
-export function GroupDetailManager({ initialGroup }: { initialGroup: GroupDetail }) {
+export function GroupDetailManager({
+  initialGroup,
+  initialMembers,
+  initialGroups,
+}: {
+  initialGroup: GroupDetail;
+  initialMembers: AcademyMember[];
+  initialGroups: AcademyGroup[];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -56,9 +62,6 @@ export function GroupDetailManager({ initialGroup }: { initialGroup: GroupDetail
       router.refresh();
     },
   });
-
-  const players = group.members.filter((member) => member.role === 'PLAYER');
-  const staff = group.members.filter((member) => member.role !== 'PLAYER');
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -142,51 +145,16 @@ export function GroupDetailManager({ initialGroup }: { initialGroup: GroupDetail
         )}
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          {/* Read-only. Who is in which squad is decided on the squad screen,
-              next to everybody who is not in one yet. */}
-          <CardTitle className="text-base">{t.academy.groupMembers}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          {group.members.length === 0 ? (
-            <EmptyState icon={Users} title={t.academy.groupEmpty} />
-          ) : (
-            <ul className="divide-border divide-y">
-              {[...staff, ...players].map((member) => (
-                <li key={member.id}>
-                  <Link
-                    href={member.playerId ? `/players/${member.playerId}` : '#'}
-                    className="hover:bg-surface-2 flex items-center gap-3 rounded-lg p-2"
-                  >
-                    <Avatar
-                      src={member.avatarUrl}
-                      fallback={initials(member.firstName ?? '', member.lastName ?? '')}
-                      className="size-9 shrink-0"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {[member.firstName, member.lastName].filter(Boolean).join(' ') ||
-                          member.username}
-                      </span>
-                      <span className="text-muted block truncate text-xs">
-                        {[member.primaryPosition, member.birthDate && ageBand(member.birthDate)]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    </span>
-                    {member.role !== 'PLAYER' && (
-                      <Badge variant="neutral">
-                        {t.roles[member.role.toLowerCase() as 'coach']}
-                      </Badge>
-                    )}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* The roster, not the group's own member list: only the roster knows
+          which other squads exist to move somebody into. */}
+      <SquadPanel
+        academyId={group.academy.id}
+        groupId={group.id}
+        title={t.academy.groupMembers}
+        initialMembers={initialMembers}
+        initialGroups={initialGroups}
+        canManage
+      />
     </div>
   );
 }

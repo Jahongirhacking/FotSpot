@@ -16,6 +16,8 @@ export const AuditAction = {
   ACADEMY_TRANSFER_REQUESTED: 'academy.transfer_requested',
   ACADEMY_TRANSFER_DECIDED: 'academy.transfer_decided',
   ACADEMY_COACH_ADDED: 'academy.coach_added',
+  ACADEMY_INVITATION_SENT: 'academy.invitation_sent',
+  ACADEMY_INVITATION_ANSWERED: 'academy.invitation_answered',
   ACADEMY_MEMBER_UPDATED: 'academy.member_updated',
   ACADEMY_MEMBER_RELEASED: 'academy.member_released',
   ACADEMY_MEMBER_IMPORTED: 'academy.member_imported',

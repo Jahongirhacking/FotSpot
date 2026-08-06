@@ -4,6 +4,8 @@ import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
 import { GroupsService } from './groups.service';
 import { EndorseDto, ListEndorsementsDto } from './dto/endorsement.dto';
+import { InvitationsService } from './invitations.service';
+import { InviteMemberDto } from './dto/invitation.dto';
 import {
   CreateGroupDto,
   MoveMembersDto,
@@ -15,7 +17,6 @@ import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
-  AddStaffMemberDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -34,6 +35,7 @@ export class AcademiesController {
     private academiesService: AcademiesService,
     private endorsements: EndorsementsService,
     private groups: GroupsService,
+    private invitations: InvitationsService,
   ) {}
 
   /**
@@ -122,11 +124,6 @@ export class AcademiesController {
     return this.academiesService.listAll();
   }
 
-  @Post(':id/staff')
-  addStaff(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddStaffMemberDto) {
-    return this.academiesService.addStaff(user.userId, id, dto);
-  }
-
   /**
    * Add a coach: an existing account, or a new one minted with credentials the
    * manager hands over — the same two paths an admin has for a manager.
@@ -193,6 +190,45 @@ export class AcademiesController {
     @Query('role') role: 'PLAYER' | 'COACH' | 'SCOUT' = 'PLAYER',
   ) {
     return this.groups.listJoinCandidates(user.userId, id, role);
+  }
+
+  // ---------- Invitations to join ----------
+
+  /**
+   * Ask somebody to join. Nothing is written to their record until they accept —
+   * see InvitationsService for why an academy cannot simply add people.
+   */
+  @Post(':id/invitations')
+  invite(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: InviteMemberDto) {
+    return this.invitations.invite(user.userId, id, dto);
+  }
+
+  /** What this academy has asked of people, answered or not. */
+  @Get(':id/invitations')
+  listAcademyInvitations(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invitations.listForAcademy(user.userId, id);
+  }
+
+  /** Invitations addressed to me — declared before `:id` cannot catch it. */
+  @Get('invitations/mine')
+  listMyInvitations(@CurrentUser() user: AuthUser) {
+    return this.invitations.listMine(user.userId);
+  }
+
+  @Post('invitations/:invitationId/accept')
+  acceptInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.decide(user.userId, invitationId, true);
+  }
+
+  @Post('invitations/:invitationId/reject')
+  rejectInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.decide(user.userId, invitationId, false);
+  }
+
+  /** The academy withdrawing a question nobody has answered yet. */
+  @Post('invitations/:invitationId/cancel')
+  cancelInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.cancel(user.userId, invitationId);
   }
 
   // ---------- Transfers between academies ----------

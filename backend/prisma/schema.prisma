@@ -101,6 +101,7 @@ model User {
   playerProfile PlayerProfile?
   coachProfile  CoachProfile?
   academyMemberships AcademyMember[]
+  academyInvitations AcademyInvitation[] @relation("InvitationsReceived")
   recommendationsMade Recommendation[] @relation("ScoutRecommendations")
   coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
   notifications Notification[]
@@ -330,6 +331,7 @@ model AcademyProfile {
   groups   AcademyGroup[]
   transfersOut MemberTransfer[] @relation("TransfersOut")
   transfersIn  MemberTransfer[] @relation("TransfersIn")
+  invitations  AcademyInvitation[]
   trials   Trial[]
   recommendations Recommendation[]
   scoutFollows AcademyScoutFollow[]
@@ -423,6 +425,45 @@ model MemberTransfer {
 enum TransferStatus {
   PENDING
   APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/**
+ * An academy asking somebody to join it, and their answer.
+ *
+ * A membership is a claim on a person's record — it decides who may assess them,
+ * which squad they train with, and which club appears on their profile. So an
+ * academy cannot simply write itself onto somebody: it asks, and the person
+ * accepts. Only on acceptance does an AcademyMember row appear, in the reserve.
+ *
+ * Separate from MemberTransfer, which is two academies agreeing about somebody
+ * who has already said yes to one of them. This is the first yes.
+ */
+model AcademyInvitation {
+  id        String @id @default(uuid())
+  academyId String
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// What they are being asked to join as. Never MANAGER — that is appointed.
+  role   AcademyMemberRole
+  status InvitationStatus @default(PENDING)
+  note   String?
+
+  invitedByUserId String
+
+  createdAt DateTime @default(now())
+  decidedAt DateTime?
+
+  @@index([userId, status])
+  @@index([academyId, status])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
   REJECTED
   CANCELLED
 }
@@ -998,6 +1039,10 @@ enum NotificationEvent {
   REVIEW_ASSIGNED
   /// An academy is inviting the player, with the manager's note.
   ACADEMY_INVITATION
+  /// An academy is asking somebody to join it — awaiting their yes or no.
+  ACADEMY_JOIN_INVITATION
+  /// How the person answered an academy's invitation to join.
+  ACADEMY_JOIN_ANSWER
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
   TRIAL_INVITATION

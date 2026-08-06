@@ -1943,70 +1943,6 @@
         ]
       }
     },
-    "/api/v1/academies/{id}/staff": {
-      "post": {
-        "operationId": "academies_addStaff",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddStaffMemberDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "academies"
-        ]
-      },
-      "get": {
-        "operationId": "academies_listStaff",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "academies"
-        ]
-      }
-    },
     "/api/v1/academies/{id}/coaches": {
       "post": {
         "operationId": "academies_createCoach",
@@ -2292,6 +2228,186 @@
           }
         ],
         "summary": "Accounts this academy could add for a role — declared before `:id/transfers`.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/invitations": {
+      "post": {
+        "operationId": "academies_invite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      },
+      "get": {
+        "operationId": "academies_listAcademyInvitations",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What this academy has asked of people, answered or not.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/invitations/mine": {
+      "get": {
+        "operationId": "academies_listMyInvitations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invitations addressed to me — declared before `:id` cannot catch it.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/invitations/{invitationId}/accept": {
+      "post": {
+        "operationId": "academies_acceptInvitation",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/invitations/{invitationId}/reject": {
+      "post": {
+        "operationId": "academies_rejectInvitation",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/invitations/{invitationId}/cancel": {
+      "post": {
+        "operationId": "academies_cancelInvitation",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The academy withdrawing a question nobody has answered yet.",
         "tags": [
           "academies"
         ]
@@ -2674,6 +2790,34 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/staff": {
+      "get": {
+        "operationId": "academies_listStaff",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/endorsements/candidates": {
       "get": {
         "operationId": "academies_endorsementCandidates",
@@ -2833,6 +2977,60 @@
         "summary": "Ends the relationship. The record is kept as REVOKED, not deleted.",
         "tags": [
           "academies"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "notifications_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "operationId": "notifications_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -3575,60 +3773,6 @@
         ],
         "tags": [
           "recommendations"
-        ]
-      }
-    },
-    "/api/v1/notifications": {
-      "get": {
-        "operationId": "notifications_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/v1/notifications/{id}/read": {
-      "patch": {
-        "operationId": "notifications_markRead",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
         ]
       }
     },
@@ -5254,27 +5398,6 @@
           }
         }
       },
-      "AddStaffMemberDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "description": "Players are members too — an academy's squad is a roster, not a search.",
-            "enum": [
-              "COACH",
-              "SCOUT",
-              "PLAYER"
-            ]
-          }
-        },
-        "required": [
-          "userId",
-          "role"
-        ]
-      },
       "CreateCoachDto": {
         "type": "object",
         "properties": {
@@ -5345,6 +5468,31 @@
         },
         "required": [
           "memberIds"
+        ]
+      },
+      "InviteMemberDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "COACH",
+              "SCOUT",
+              "PLAYER"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "description": "Shown to the person deciding — \"we watched you at the Andijon trial\".",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "role",
+          "userId"
         ]
       },
       "RequestTransferDto": {

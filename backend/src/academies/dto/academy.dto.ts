@@ -60,12 +60,6 @@ export class UpdateAcademyDto {
   @IsOptional() @IsString() description?: string;
 }
 
-export class AddStaffMemberDto {
-  @IsUUID() userId: string;
-  /** Players are members too — an academy's squad is a roster, not a search. */
-  @IsIn(['COACH', 'SCOUT', 'PLAYER']) role: 'COACH' | 'SCOUT' | 'PLAYER';
-}
-
 /**
  * Change what a member is, or whether they are still active.
  *

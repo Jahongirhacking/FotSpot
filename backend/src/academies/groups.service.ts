@@ -50,8 +50,10 @@ export class GroupsService {
 
     // The reserve is a real part of the squad list even though it is not a row,
     // so the count comes back with the groups rather than being another request.
+    // Not the manager: they run the place rather than train with it, so counting
+    // them would make the reserve badge disagree with the list it opens.
     const reserve = await this.prisma.academyMember.count({
-      where: { academyId, groupId: null, status: 'ACTIVE' },
+      where: { academyId, groupId: null, status: 'ACTIVE', role: { not: 'MANAGER' } },
     });
 
     return {
@@ -105,6 +107,7 @@ export class GroupsService {
         playerId: user.playerProfile?.id ?? null,
         primaryPosition: user.playerProfile?.primaryPosition ?? null,
         birthDate: user.playerProfile?.birthDate ?? null,
+        coachType: member.coachType,
       })),
     };
   }
@@ -232,8 +235,12 @@ export class GroupsService {
         isActive: true,
         roles: { some: { role: { name: role.toLowerCase() } } },
         academyMemberships: { none: { academyId, status: { not: 'RELEASED' } } },
-        // addStaff refuses an unverified coach, so offering one would be a
-        // button that lies about what it will do.
+        // Somebody already asked is not a candidate: offering them again would
+        // send a second invitation the server refuses, and the manager would
+        // have no way of telling from the list which is which.
+        academyInvitations: { none: { academyId, status: 'PENDING' } },
+        // An invitation to an unverified coach is one they could not accept, so
+        // it would be a button that lies about what it will do.
         ...(role === 'COACH' ? { coachProfile: { status: 'VERIFIED' as const } } : {}),
       },
       orderBy: [{ firstName: 'asc' }, { createdAt: 'asc' }],

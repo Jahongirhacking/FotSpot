@@ -226,7 +226,34 @@ export interface GroupDetail extends Omit<AcademyGroup, 'memberCount'> {
     playerId: string | null;
     primaryPosition: string | null;
     birthDate: string | null;
+    coachType: string | null;
   }[];
+}
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+
+/** An academy asking somebody to join it, and their answer. */
+export interface AcademyInvitation {
+  id: string;
+  academyId: string;
+  userId: string;
+  role: AcademyMemberRole;
+  status: InvitationStatus;
+  note: string | null;
+  invitedByUserId: string;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+/** The invitee's view — they need to know which academy is asking. */
+export interface MyInvitation extends AcademyInvitation {
+  academy: {
+    id: string;
+    name: string;
+    region: string | null;
+    district: string | null;
+    status: VerificationStatus;
+  };
 }
 
 export type TransferStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -474,6 +501,10 @@ export interface CoachAssessment {
 }
 
 export type NotificationEvent =
+  | 'REVIEW_ASSIGNED'
+  | 'ACADEMY_INVITATION'
+  | 'ACADEMY_JOIN_INVITATION'
+  | 'ACADEMY_JOIN_ANSWER'
   | 'RECOMMENDATION_ACCEPTED'
   | 'RECOMMENDATION_REJECTED'
   | 'TRIAL_INVITATION'

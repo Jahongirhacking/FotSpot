@@ -1,23 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ArrowLeft, Building2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
-import { Building2 } from 'lucide-react';
 import { academies } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
-import { AddCoach } from '@/app/(app)/academies/[id]/roster/AddCoach';
+import { AddCoach } from './AddCoach';
 import { EmptyState } from '@/components/ui/Feedback';
 
-export const metadata: Metadata = { title: 'Add a coach' };
+export const metadata: Metadata = { title: 'Create a coach' };
 
 /**
- * A page of its own for hiring a coach.
+ * Minting a coach account.
  *
- * The same form lives on the roster's coaches tab, where a manager already
- * looking at their staff would expect it. This route exists so the action can be
- * reached in one press from anywhere — creating an account and reading out the
- * credentials is a task somebody sits down to do, not something they stumble
- * into while scrolling a list.
+ * Its own page rather than a panel on the squad screen, because creating an
+ * account and reading the credentials out to somebody is a task a manager sits
+ * down to do — not something to stumble into while scrolling a list. Inviting a
+ * coach who is *already* on the platform is the squad screen's job, and needs
+ * that person's consent.
  */
 export default async function NewCoachPage() {
   const session = await getSession();
@@ -40,21 +40,19 @@ export default async function NewCoachPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <Link
+        href="/academies/mine/squad"
+        className="text-muted hover:text-foreground inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" aria-hidden /> {t.academy.squad}
+      </Link>
+
       <header>
         <h1 className="text-xl font-bold">{t.academy.addCoach}</h1>
         <p className="text-muted text-sm">{t.academy.addCoachHint}</p>
       </header>
 
       <AddCoach academyId={academy.id} defaultOpen />
-
-      <p className="text-muted text-sm">
-        <Link
-          href={`/academies/${academy.id}/roster?role=COACH`}
-          className="text-primary hover:underline"
-        >
-          {t.academy.roster}
-        </Link>
-      </p>
     </div>
   );
 }

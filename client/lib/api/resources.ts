@@ -4,6 +4,8 @@
  */
 import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
 import type {
+  AcademyInvitation,
+  MyInvitation,
   AcademyProfile,
   AcademyScoutFollow,
   AcademyScoutFollowState,
@@ -969,9 +971,46 @@ export const academyRoster = {
       body: { memberId },
       ...opts,
     }),
+};
 
-  add: (academyId: string, body: { userId: string; role: AcademyMemberRole }, opts: Opts = {}) =>
-    apiFetch<AcademyMember>(`/academies/${academyId}/staff`, { method: 'POST', body, ...opts }),
+export const invitations = {
+  /** Ask somebody to join. Nothing is written to their record until they accept. */
+  send: (
+    academyId: string,
+    body: { userId: string; role: AcademyMemberRole; note?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<AcademyInvitation>(`/academies/${academyId}/invitations`, {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  /** What an academy has asked of people, answered or not. */
+  listForAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation[]>(`/academies/${academyId}/invitations`, opts),
+
+  /** What has been asked of me. */
+  listMine: (opts: Opts = {}) => apiFetch<MyInvitation[]>('/academies/invitations/mine', opts),
+
+  accept: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/accept`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  reject: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/reject`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  /** The academy withdrawing a question nobody has answered yet. */
+  cancel: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/cancel`, {
+      method: 'POST',
+      ...opts,
+    }),
 };
 
 export const clipRatings = {
