@@ -3273,12 +3273,12 @@
         ]
       }
     },
-    "/api/v1/recommendations/{id}/review": {
+    "/api/v1/recommendations/players/{playerId}/review": {
       "post": {
         "operationId": "recommendations_assignReview",
         "parameters": [
           {
-            "name": "id",
+            "name": "playerId",
             "required": true,
             "in": "path",
             "schema": {
@@ -3379,12 +3379,12 @@
         ]
       }
     },
-    "/api/v1/recommendations/{id}/invite": {
+    "/api/v1/recommendations/players/{playerId}/invite": {
       "post": {
         "operationId": "recommendations_invitePlayer",
         "parameters": [
           {
-            "name": "id",
+            "name": "playerId",
             "required": true,
             "in": "path",
             "schema": {

@@ -39,6 +39,7 @@ export const ru: Dictionary = {
   },
 
   nav: {
+    addCoach: 'Добавить тренера',
     groups: 'Группы',
     myGroup: 'Моя группа',
     reserve: 'Резерв',

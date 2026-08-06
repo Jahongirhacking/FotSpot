@@ -293,6 +293,7 @@ model PlayerProfile {
   academyWeights  PlayerAcademyRecommendationWeight[]
   coachAssessments CoachAssessment[]
   trialApplications TrialApplication[]
+  reviews          RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -793,7 +794,16 @@ model ScoutStats {
  */
 model RecommendationReview {
   id               String @id @default(uuid())
-  recommendationId String
+  /// The scout recommendation that prompted this, if one did.
+  ///
+  /// Nullable because an academy does not need permission to look at a player: a
+  /// manager who spots someone in search can send them straight to a coach. A
+  /// recommendation is how a scout puts a player *in front of* an academy, not
+  /// the only way one may be considered — tying review to it made scouts a gate
+  /// on the academy's own judgement.
+  recommendationId String?
+  /// Who is being reviewed. Always present, unlike the recommendation.
+  playerId         String
   academyId        String
   /// The endorsed coach this was handed to. Only they can decide it.
   coachUserId      String
@@ -804,16 +814,18 @@ model RecommendationReview {
   /// The assessment the coach produced while reviewing, if they rated the player.
   assessmentId     String?
 
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+  player           PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
   academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   coachUser        User @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
 
   assignedAt DateTime @default(now())
   decidedAt  DateTime?
 
-  /// One live review per recommendation per academy — two coaches deciding the
-  /// same player for the same academy is a contradiction, not a second opinion.
-  @@unique([recommendationId, academyId])
+  /// One live review per player per academy — two coaches deciding the same
+  /// player for the same academy is a contradiction, not a second opinion. Keyed
+  /// on the player rather than the recommendation, since there may not be one.
+  @@unique([playerId, academyId])
   @@index([coachUserId, status])
 }
 

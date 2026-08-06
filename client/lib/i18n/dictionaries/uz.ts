@@ -43,6 +43,7 @@ export const uz = {
   },
 
   nav: {
+    addCoach: 'Murabbiy qo‘shish',
     groups: 'Guruhlar',
     myGroup: 'Mening guruhim',
     reserve: 'Zaxira',

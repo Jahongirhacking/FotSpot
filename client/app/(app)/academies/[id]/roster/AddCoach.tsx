@@ -31,10 +31,17 @@ import { Field, Textarea } from '@/components/ui/Field';
  * so the panel showing it has to be dismissed rather than fading — see
  * CredentialsPanel.
  */
-export function AddCoach({ academyId }: { academyId: string }) {
+export function AddCoach({
+  academyId,
+  defaultOpen = false,
+}: {
+  academyId: string;
+  /** Open on load, for the page whose only purpose is this form. */
+  defaultOpen?: boolean;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(defaultOpen);
   const [choice, setChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
   const [bio, setBio] = React.useState('');
   const [credentials, setCredentials] = React.useState<ManagerCredentials | null>(null);

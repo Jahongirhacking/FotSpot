@@ -194,6 +194,10 @@ function f2(template: string, value: string) {
  * answered. A rejection puts the button back to "send for review" — a coach
  * saying no this month is not a permanent verdict, and the manager may want a
  * second opinion later.
+ *
+ * No recommendation is required. An academy that finds a player in search may
+ * send them to a coach directly; a scout's recommendation is how a player reaches
+ * the *inbox*, not permission to look at them.
  */
 function ManagerAction({ playerId }: { playerId: string }) {
   const { t } = useI18n();
@@ -227,7 +231,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
 
   const assign = useMutation({
     mutationFn: () =>
-      browserFetch(`/recommendations/${state?.recommendation?.id}/review`, {
+      browserFetch(`/recommendations/players/${playerId}/review`, {
         method: 'POST',
         body: coachUserId ? { coachUserId } : {},
       }),
@@ -236,7 +240,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
 
   const invite = useMutation({
     mutationFn: () =>
-      browserFetch(`/recommendations/${state?.recommendation?.id}/invite`, {
+      browserFetch(`/recommendations/players/${playerId}/invite`, {
         method: 'POST',
         body: { note: note.trim() },
       }),
@@ -246,13 +250,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
   if (!state) return null;
 
-  // Nobody has put this player in front of the academy, so there is nothing to
-  // send anywhere. Saying so beats a button that would fail.
-  if (!state.recommendation) {
-    return <p className="text-muted text-sm">{t.player.noRecommendationYet}</p>;
-  }
-
-  if (state.recommendation.status === 'ACCEPTED') {
+  if (state.recommendation?.status === 'ACCEPTED') {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
         <Check className="size-4" aria-hidden /> {t.player.alreadyInvited}

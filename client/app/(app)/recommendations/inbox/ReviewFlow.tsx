@@ -82,8 +82,10 @@ export function ReviewFlow({
   };
 
   const assign = useMutation({
+    // Keyed on the player: a review is about who is being judged, and the
+    // recommendation is only how they reached this inbox.
     mutationFn: ({ id, coachUserId }: { id: string; coachUserId?: string }) =>
-      browserFetch(`/recommendations/${id}/review`, {
+      browserFetch(`/recommendations/players/${id}/review`, {
         method: 'POST',
         body: coachUserId ? { coachUserId } : {},
       }),
@@ -92,7 +94,7 @@ export function ReviewFlow({
 
   const invite = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
-      browserFetch(`/recommendations/${id}/invite`, { method: 'POST', body: { note } }),
+      browserFetch(`/recommendations/players/${id}/invite`, { method: 'POST', body: { note } }),
     onSuccess: refresh,
   });
 
@@ -121,13 +123,11 @@ export function ReviewFlow({
                   coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
                   // Only the row actually being sent, not the whole list.
                   pending={
-                    (assign.isPending && assign.variables?.id === item.recommendationIds[0]) ||
-                    (invite.isPending && invite.variables?.id === item.recommendationIds[0])
+                    (assign.isPending && assign.variables?.id === item.playerId) ||
+                    (invite.isPending && invite.variables?.id === item.playerId)
                   }
-                  onAssign={(coachUserId) =>
-                    assign.mutate({ id: item.recommendationIds[0], coachUserId })
-                  }
-                  onInvite={(note) => invite.mutate({ id: item.recommendationIds[0], note })}
+                  onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
+                  onInvite={(note) => invite.mutate({ id: item.playerId, note })}
                 />
               ))}
             </ul>

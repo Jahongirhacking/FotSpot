@@ -8,6 +8,7 @@ import {
   Home,
   Inbox,
   Search,
+  UserPlus,
   ShieldCheck,
   Sparkles,
   Users,
@@ -83,6 +84,7 @@ export function navForRole(role: Role | null): NavItem[] {
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
         { href: '/academies/mine/groups', label: 'groups', icon: Users },
+        { href: '/academies/mine/coaches/new', label: 'addCoach', icon: UserPlus },
         { href: '/players', label: 'findPlayers', icon: Search },
         { href: '/trials', label: 'trials', icon: CalendarDays },
       ];

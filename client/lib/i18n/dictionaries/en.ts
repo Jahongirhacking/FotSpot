@@ -39,6 +39,7 @@ export const en: Dictionary = {
   },
 
   nav: {
+    addCoach: 'Add a coach',
     groups: 'Groups',
     myGroup: 'My group',
     reserve: 'Reserve',

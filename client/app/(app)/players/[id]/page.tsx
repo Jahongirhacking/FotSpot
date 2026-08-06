@@ -10,7 +10,7 @@ import { coaches, media, players, recommendations, users } from '@/lib/api/resou
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
-import { formatDate } from '@/lib/utils';
+import { ageBand, formatDate } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PlayerActions } from './PlayerActions';
@@ -52,9 +52,35 @@ export async function generateMetadata({
   const { id } = await params;
   try {
     const player = await fetchPlayer(id, { revalidate: 300 });
-    return { title: `${player.firstName} ${player.lastName}` };
+    const name = `${player.firstName} ${player.lastName}`;
+    const description = [
+      player.primaryPosition,
+      ageBand(player.birthDate),
+      player.region,
+      'on FotSpot',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+    // The handle is the canonical address when there is one: two URLs for one
+    // player split whatever ranking they earn between them.
+    const canonical = player.username ? `/players/@${player.username}` : `/players/${player.id}`;
+
+    return {
+      title: name,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        type: 'profile',
+        title: name,
+        description,
+        url: canonical,
+        ...(player.avatarUrl ? { images: [{ url: player.avatarUrl }] } : {}),
+      },
+      twitter: { card: 'summary', title: name, description },
+    };
   } catch {
-    return { title: 'Player' };
+    return { title: 'Player', robots: { index: false, follow: true } };
   }
 }
 
