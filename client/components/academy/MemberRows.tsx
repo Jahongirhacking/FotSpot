@@ -67,6 +67,10 @@ export function MemberRow({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  // Which panel is open, held here rather than inside each button: an expanded
+  // warning has to be a full-width sibling of the row's controls, not a child of
+  // the strip they sit in, or it inherits that strip's width.
+  const [panel, setPanel] = React.useState<'transfer' | 'expel' | null>(null);
 
   const move = useMutation({
     mutationFn: (groupId: string) =>
@@ -116,35 +120,66 @@ export function MemberRow({
         <p className="text-muted truncate text-xs">{detail}</p>
       </div>
 
-      {controls && member.role !== 'SCOUT' && (
-        <>
-          <Select
-            aria-label={t.academy.group}
-            value={member.group?.id ?? RESERVE}
-            disabled={move.isPending}
-            onChange={(event) => move.mutate(event.target.value)}
-            className="w-40 shrink-0"
-          >
-            <option value={RESERVE}>{t.nav.reserve}</option>
-            {controls.groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </Select>
+      {/* The controls travel together. On a phone they take a line of their own
+          so the name above keeps the full width instead of being truncated to
+          make room for a group picker. */}
+      {controls && (
+        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
+          {member.role !== 'SCOUT' && (
+            <>
+              <Select
+                aria-label={t.academy.group}
+                value={member.group?.id ?? RESERVE}
+                disabled={move.isPending}
+                onChange={(event) => move.mutate(event.target.value)}
+                className="w-36 shrink-0 sm:w-40"
+              >
+                <option value={RESERVE}>{t.nav.reserve}</option>
+                {controls.groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </Select>
 
-          <TransferButton
-            academyId={controls.academyId}
-            memberId={member.id}
-            onDone={controls.onChanged}
-          />
-        </>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                aria-label={t.academy.transferTo}
+                onClick={() => setPanel(panel === 'transfer' ? null : 'transfer')}
+              >
+                <ArrowRightLeft aria-hidden />
+              </Button>
+            </>
+          )}
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-danger shrink-0"
+            aria-label={t.academy.expel}
+            onClick={() => setPanel(panel === 'expel' ? null : 'expel')}
+          >
+            <UserMinus aria-hidden />
+          </Button>
+        </div>
       )}
 
-      {controls && (
-        <ExpelButton
+      {controls && panel === 'transfer' && (
+        <TransferPanel
           academyId={controls.academyId}
           memberId={member.id}
+          onClose={() => setPanel(null)}
+          onDone={controls.onChanged}
+        />
+      )}
+
+      {controls && panel === 'expel' && (
+        <ExpelPanel
+          academyId={controls.academyId}
+          memberId={member.id}
+          onClose={() => setPanel(null)}
           onDone={controls.onChanged}
         />
       )}
@@ -161,46 +196,33 @@ export function MemberRow({
  * staff, the academy's backing — because "expel" reads as permanent and here it
  * is not.
  */
-function ExpelButton({
+function ExpelPanel({
   academyId,
   memberId,
+  onClose,
   onDone,
 }: {
   academyId: string;
   memberId: string;
+  onClose: () => void;
   onDone: () => void;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = React.useState(false);
 
   const expel = useMutation({
     mutationFn: () =>
       browserFetch(`/academies/${academyId}/members/${memberId}/release`, { method: 'POST' }),
     onSuccess: () => {
-      setOpen(false);
+      onClose();
       onDone();
     },
   });
-
-  if (!open) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        className="text-danger shrink-0"
-        aria-label={t.academy.expel}
-        onClick={() => setOpen(true)}
-      >
-        <UserMinus aria-hidden />
-      </Button>
-    );
-  }
 
   return (
     <div className="w-full space-y-2">
       <Alert tone="danger">{t.academy.expelWarning}</Alert>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        <Button size="sm" variant="ghost" onClick={onClose}>
           {t.common.cancel}
         </Button>
         <Button
@@ -269,23 +291,23 @@ export function MemberSections({
  * member stays where they are. The warning says so, because "transfer" sounds
  * like something that has already happened.
  */
-export function TransferButton({
+function TransferPanel({
   academyId,
   memberId,
+  onClose,
   onDone,
 }: {
   academyId: string;
   memberId: string;
+  onClose: () => void;
   onDone: () => void;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = React.useState(false);
   const [toAcademyId, setToAcademyId] = React.useState('');
 
   const others = useQuery({
     queryKey: ['academies', 'public'],
     queryFn: () => browserFetch<{ id: string; name: string }[]>('/academies'),
-    enabled: open,
   });
 
   const request = useMutation({
@@ -295,24 +317,10 @@ export function TransferButton({
         body: { memberId, toAcademyId },
       }),
     onSuccess: () => {
-      setOpen(false);
+      onClose();
       onDone();
     },
   });
-
-  if (!open) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        className="shrink-0"
-        aria-label={t.academy.transferTo}
-        onClick={() => setOpen(true)}
-      >
-        <ArrowRightLeft aria-hidden />
-      </Button>
-    );
-  }
 
   return (
     <div className="w-full space-y-2">
@@ -333,7 +341,7 @@ export function TransferButton({
               </option>
             ))}
         </Select>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        <Button size="sm" variant="ghost" onClick={onClose}>
           {t.common.cancel}
         </Button>
         <Button

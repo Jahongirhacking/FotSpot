@@ -7,6 +7,8 @@
  */
 export const uz = {
   common: {
+    from: 'Dan',
+    to: 'Gacha',
     theme: 'Ko‘rinish',
     themeLight: 'Yorug‘',
     themeDark: 'Qorong‘i',
@@ -559,7 +561,7 @@ export const uz = {
   },
 
   player: {
-    anyAge: 'Istalgan yosh',
+    age: 'Yosh',
     actions: 'Amallar',
     followPlayer: 'Kuzatish',
     coachAssessHint:

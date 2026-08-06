@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import type { AcademyMemberRole } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Input, Select } from '@/components/ui/Field';
+import { RangeSlider } from '@/components/ui/RangeSlider';
 import type { MemberRowData } from '@/components/academy/MemberRows';
 import { ageFrom } from '@/lib/utils';
 
@@ -13,21 +14,34 @@ export interface MemberFilterState {
   /** Position for players, coach type for coaches, level for scouts. */
   detail: string;
   group: string;
-  band: string;
+  /** `null` until the manager touches the slider — see ageBoundsOf. */
+  age: [number, number] | null;
 }
 
-export const EMPTY_FILTERS: MemberFilterState = { query: '', detail: '', group: '', band: '' };
+export const EMPTY_FILTERS: MemberFilterState = { query: '', detail: '', group: '', age: null };
 
 /** Reserve is the absence of a group, so it needs a value the empty option is not using. */
 const RESERVE_VALUE = '__reserve__';
 
-const BANDS: [string, (age: number) => boolean][] = [
-  ['U12', (age) => age < 12],
-  ['U14', (age) => age >= 12 && age < 14],
-  ['U16', (age) => age >= 14 && age < 16],
-  ['U18', (age) => age >= 16 && age < 18],
-  ['18+', (age) => age >= 18],
-];
+/**
+ * The youngest and oldest on the list, not a fixed 0–100.
+ *
+ * A range whose ends are ages nobody here is wastes most of its travel on empty
+ * space, and on a phone that is the difference between one pixel per year and
+ * five. Returns null when nobody has a birth date on file, which is what hides
+ * the control rather than showing one that filters nothing.
+ */
+function ageBoundsOf(members: MemberRowData[]): [number, number] | null {
+  const ages = members
+    .filter((member) => member.birthDate)
+    .map((member) => ageFrom(member.birthDate as string));
+  if (ages.length === 0) return null;
+
+  const low = Math.min(...ages);
+  const high = Math.max(...ages);
+  // A squad of one age still needs two distinguishable handles.
+  return low === high ? [low, low + 1] : [low, high];
+}
 
 /** What the detail filter means for each role — the one thing that differs. */
 function detailOf(member: MemberRowData): string | null {
@@ -78,6 +92,7 @@ export function MemberFilters({
     return [...seen].sort((a, b) => a[1].localeCompare(b[1]));
   }, [members]);
 
+  const bounds = React.useMemo(() => ageBoundsOf(members), [members]);
   const set = (patch: Partial<MemberFilterState>) => onChange({ ...value, ...patch });
 
   const detailLabel =
@@ -89,7 +104,7 @@ export function MemberFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-44 flex-[2] basis-44">
+      <div className="relative basis-full sm:min-w-44 sm:flex-[2] sm:basis-44">
         <Search
           className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           aria-hidden
@@ -108,7 +123,7 @@ export function MemberFilters({
           aria-label={detailLabel}
           value={value.detail}
           onChange={(event) => set({ detail: event.target.value })}
-          className="min-w-32 flex-1 basis-32"
+          className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-32"
         >
           <option value="">{detailLabel}</option>
           {details.map((detail) => (
@@ -125,7 +140,7 @@ export function MemberFilters({
           aria-label={t.academy.anyGroup}
           value={value.group}
           onChange={(event) => set({ group: event.target.value })}
-          className="min-w-32 flex-1 basis-32"
+          className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-32"
         >
           <option value="">{t.academy.anyGroup}</option>
           <option value={RESERVE_VALUE}>{t.nav.reserve}</option>
@@ -137,20 +152,21 @@ export function MemberFilters({
         </Select>
       )}
 
-      {role !== 'SCOUT' && (
-        <Select
-          aria-label={t.player.anyAge}
-          value={value.band}
-          onChange={(event) => set({ band: event.target.value })}
-          className="min-w-32 flex-1 basis-32"
-        >
-          <option value="">{t.player.anyAge}</option>
-          {BANDS.map(([label]) => (
-            <option key={label} value={label}>
-              {label}
-            </option>
-          ))}
-        </Select>
+      {/* Its own row: a two-handle track squeezed beside three selects has no
+          room left to drag in. */}
+      {role !== 'SCOUT' && bounds && (
+        <div className="w-full">
+          <p className="text-muted mb-1 text-xs">{t.player.age}</p>
+          <RangeSlider
+            min={bounds[0]}
+            max={bounds[1]}
+            value={value.age ?? bounds}
+            onChange={(age) => set({ age })}
+            labelFrom={t.common.from}
+            labelTo={t.common.to}
+            className="max-w-md"
+          />
+        </div>
       )}
     </div>
   );
@@ -178,10 +194,10 @@ export function filterMembers(members: MemberRowData[], filters: MemberFilterSta
       }
     }
 
-    if (filters.band) {
+    if (filters.age) {
       if (!member.birthDate) return false;
-      const band = BANDS.find(([label]) => label === filters.band);
-      if (band && !band[1](ageFrom(member.birthDate))) return false;
+      const age = ageFrom(member.birthDate);
+      if (age < filters.age[0] || age > filters.age[1]) return false;
     }
 
     return true;

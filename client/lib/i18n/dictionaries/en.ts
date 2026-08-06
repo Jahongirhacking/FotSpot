@@ -3,6 +3,8 @@ import type { Dictionary } from './uz';
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
 export const en: Dictionary = {
   common: {
+    from: 'From',
+    to: 'To',
     theme: 'Theme',
     themeLight: 'Light',
     themeDark: 'Dark',
@@ -542,7 +544,7 @@ export const en: Dictionary = {
   },
 
   player: {
-    anyAge: 'Any age',
+    age: 'Age',
     actions: 'Actions',
     followPlayer: 'Follow this player',
     coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',

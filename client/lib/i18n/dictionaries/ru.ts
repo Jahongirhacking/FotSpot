@@ -3,6 +3,8 @@ import type { Dictionary } from './uz';
 /** Russian. Typed against the Uzbek source, so a missing key is a build error. */
 export const ru: Dictionary = {
   common: {
+    from: 'От',
+    to: 'До',
     theme: 'Тема',
     themeLight: 'Светлая',
     themeDark: 'Тёмная',
@@ -541,7 +543,7 @@ export const ru: Dictionary = {
   },
 
   player: {
-    anyAge: 'Любой возраст',
+    age: 'Возраст',
     actions: 'Действия',
     followPlayer: 'Подписаться',
     coachAssessHint: 'Оценка тренера заменяет самооценку на карточке подтверждённой.',
