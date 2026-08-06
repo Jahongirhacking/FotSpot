@@ -86,7 +86,7 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href={`/academies/${academy.id}/scouts`}>
+            <Link href="/academies/mine/squad?tab=SCOUT">
               <ShieldCheck aria-hidden /> {t.academy.scoutNetwork}
             </Link>
           </Button>
@@ -112,13 +112,13 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
             icon={ShieldCheck}
             label={t.academy.endorsedScouts}
             value={summary.endorsedScouts}
-            href={`/academies/${academy.id}/scouts`}
+            href="/academies/mine/squad?tab=SCOUT"
           />
           <Metric
             icon={Users}
             label={t.academy.endorsedCoaches}
             value={summary.endorsedCoaches}
-            href={`/academies/${academy.id}/scouts`}
+            href="/academies/mine/squad?tab=COACH"
           />
           <Metric icon={CalendarDays} label={t.academy.openTrials} value={summary.openTrials} />
           <Metric

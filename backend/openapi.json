@@ -2818,87 +2818,7 @@
         ]
       }
     },
-    "/api/v1/academies/{id}/endorsements/candidates": {
-      "get": {
-        "operationId": "academies_endorsementCandidates",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "role",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "query",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "academies"
-        ]
-      }
-    },
     "/api/v1/academies/{id}/endorsements": {
-      "post": {
-        "operationId": "academies_endorse",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EndorseDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "academies"
-        ]
-      },
       "get": {
         "operationId": "academies_listEndorsements",
         "parameters": [
@@ -2929,52 +2849,6 @@
             "bearer": []
           }
         ],
-        "summary": "This academy's endorsed scouts and coaches. Manager only.",
-        "tags": [
-          "academies"
-        ]
-      }
-    },
-    "/api/v1/academies/{id}/endorsements/{userId}/{role}": {
-      "delete": {
-        "operationId": "academies_revokeEndorsement",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "userId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "role",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Ends the relationship. The record is kept as REVOKED, not deleted.",
         "tags": [
           "academies"
         ]
@@ -5555,30 +5429,6 @@
         "enum": [
           "SCOUT",
           "COACH"
-        ]
-      },
-      "EndorseDto": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/EndorsementRole"
-              }
-            ]
-          },
-          "note": {
-            "type": "string",
-            "maxLength": 500,
-            "description": "Internal note, visible to the academy only."
-          },
-          "userId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "role",
-          "userId"
         ]
       },
       "FollowTargetType": {

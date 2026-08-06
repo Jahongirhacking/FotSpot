@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRightLeft } from 'lucide-react';
+import { ArrowRightLeft, UserMinus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyGroup, AcademyMemberRole } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -140,7 +140,81 @@ export function MemberRow({
           />
         </>
       )}
+
+      {controls && (
+        <ExpelButton
+          academyId={controls.academyId}
+          memberId={member.id}
+          onDone={controls.onChanged}
+        />
+      )}
     </li>
+  );
+}
+
+/**
+ * Ending a membership.
+ *
+ * Not a delete: the row goes to RELEASED, so every assessment the person made
+ * and every squad they were in still means something, and the academy can invite
+ * them back later. The warning says exactly what is lost — the group and, for
+ * staff, the academy's backing — because "expel" reads as permanent and here it
+ * is not.
+ */
+function ExpelButton({
+  academyId,
+  memberId,
+  onDone,
+}: {
+  academyId: string;
+  memberId: string;
+  onDone: () => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = React.useState(false);
+
+  const expel = useMutation({
+    mutationFn: () =>
+      browserFetch(`/academies/${academyId}/members/${memberId}/release`, { method: 'POST' }),
+    onSuccess: () => {
+      setOpen(false);
+      onDone();
+    },
+  });
+
+  if (!open) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-danger shrink-0"
+        aria-label={t.academy.expel}
+        onClick={() => setOpen(true)}
+      >
+        <UserMinus aria-hidden />
+      </Button>
+    );
+  }
+
+  return (
+    <div className="w-full space-y-2">
+      <Alert tone="danger">{t.academy.expelWarning}</Alert>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          {t.common.cancel}
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          loading={expel.isPending}
+          onClick={() => {
+            if (window.confirm(t.academy.confirmExpel)) expel.mutate();
+          }}
+        >
+          <UserMinus aria-hidden /> {t.academy.expel}
+        </Button>
+      </div>
+    </div>
   );
 }
 

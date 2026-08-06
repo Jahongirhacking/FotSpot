@@ -223,6 +223,21 @@ export class InvitationsService {
         },
       });
 
+      // Joining as a coach or a scout *is* the endorsement. An academy that has
+      // taken somebody onto its staff has already vouched for them, and asking
+      // it to say so a second time on another screen only produced staff whose
+      // recommendations the academy would not accept from its own people.
+      if (invitation.role === 'COACH' || invitation.role === 'SCOUT') {
+        const role = invitation.role;
+        await tx.academyEndorsement.upsert({
+          where: {
+            academyId_userId_role: { academyId: invitation.academyId, userId, role },
+          },
+          update: { status: 'ACTIVE', revokedAt: null },
+          create: { academyId: invitation.academyId, userId, role },
+        });
+      }
+
       return tx.academyInvitation.update({
         where: { id: invitationId },
         data: { status: 'ACCEPTED', decidedAt: new Date() },

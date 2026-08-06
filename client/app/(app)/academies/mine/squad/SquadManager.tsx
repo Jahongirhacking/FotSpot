@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, UserPlus, Users } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
@@ -13,6 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { MemberRow } from '@/components/academy/MemberRows';
+import {
+  EMPTY_FILTERS,
+  filterMembers,
+  MemberFilters,
+  type MemberFilterState,
+} from '@/components/academy/MemberFilters';
 import { cn } from '@/lib/utils';
 
 const TABS: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
@@ -51,7 +58,13 @@ export function SquadManager({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [tab, setTab] = React.useState<AcademyMemberRole>('PLAYER');
+  // `?tab=SCOUT` is how the dashboard's scout-network button lands here: the
+  // scouts are part of the squad now, not a screen of their own.
+  const requested = useSearchParams().get('tab');
+  const [tab, setTab] = React.useState<AcademyMemberRole>(
+    TABS.includes(requested as AcademyMemberRole) ? (requested as AcademyMemberRole) : 'PLAYER',
+  );
+  const [filters, setFilters] = React.useState<MemberFilterState>(EMPTY_FILTERS);
   const [adding, setAdding] = React.useState(false);
   const [invited, setInvited] = React.useState(false);
   const [creatingGroup, setCreatingGroup] = React.useState(false);
@@ -101,7 +114,8 @@ export function SquadManager({
   });
 
   const groups = groupList.data?.groups ?? [];
-  const rows = (members.data ?? []).filter((member) => member.role === tab);
+  const inTab = (members.data ?? []).filter((member) => member.role === tab);
+  const rows = filterMembers(inTab, filters);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -123,6 +137,7 @@ export function SquadManager({
                   setTab(role);
                   setAdding(false);
                   setInvited(false);
+                  setFilters(EMPTY_FILTERS);
                 }}
                 className={cn(
                   'min-h-10 rounded-md text-sm font-medium transition-colors',
@@ -169,6 +184,10 @@ export function SquadManager({
               pending={invite.isPending}
               onInvite={(userId) => invite.mutate(userId)}
             />
+          )}
+
+          {inTab.length > 0 && (
+            <MemberFilters members={inTab} role={tab} value={filters} onChange={setFilters} />
           )}
 
           {rows.length === 0 ? (

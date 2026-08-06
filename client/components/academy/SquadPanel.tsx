@@ -1,11 +1,18 @@
 'use client';
 
+import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyGroup, AcademyMember } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { MemberSections } from '@/components/academy/MemberRows';
+import {
+  EMPTY_FILTERS,
+  filterMembers,
+  MemberFilters,
+  type MemberFilterState,
+} from '@/components/academy/MemberFilters';
 
 /**
  * The people in one squad — a group, or the reserve.
@@ -34,6 +41,7 @@ export function SquadPanel({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const [filters, setFilters] = React.useState<MemberFilterState>(EMPTY_FILTERS);
 
   const roster = useQuery({
     queryKey: ['roster', academyId, 'ALL'],
@@ -66,9 +74,21 @@ export function SquadPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-2">
+      <CardContent className="space-y-3 p-2">
+        {/* No group select here: every row on this page is already in the same
+            squad, so filtering by it would be a control with one answer. */}
+        {members.length > 0 && (
+          <MemberFilters
+            members={members}
+            role={null}
+            value={filters}
+            onChange={setFilters}
+            showGroup={false}
+          />
+        )}
+
         <MemberSections
-          members={members}
+          members={filterMembers(members, filters)}
           emptyLabel={t.academy.groupEmpty}
           controls={
             canManage

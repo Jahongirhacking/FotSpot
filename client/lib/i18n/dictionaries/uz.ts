@@ -361,6 +361,14 @@ export const uz = {
     sent: 'Taklif yuborildi — javobini kutamiz.',
   },
   academy: {
+    coachType: 'Murabbiy turi',
+    anyCoachType: 'Istalgan turi',
+    anyLevel: 'Istalgan daraja',
+    anyGroup: 'Istalgan guruh',
+    expel: 'Akademiyadan chiqarish',
+    expelWarning:
+      'Bu a’zolikni tugatadi: u guruhdan chiqadi, murabbiy yoki skaut bo‘lsa akademiya tasdig‘i bekor qilinadi. Baholari va tarixi saqlanadi, keyinchalik uni yana taklif qilishingiz mumkin.',
+    confirmExpel: 'Bu odam akademiyadan chiqarilsinmi?',
     reserveHint:
       'Hali guruhga biriktirilmagan a’zolar. Ularni guruhga o‘tkazing yoki boshqa akademiyaga transfer qiling.',
     noCandidates: 'Mos hisob topilmadi',
@@ -460,24 +468,8 @@ export const uz = {
     managerUser: 'Rahbar (foydalanuvchi ID)',
     managerUserHint: 'Bu akademiyani boshqaradigan hisob. Keyinroq ham qo‘shish mumkin.',
     scoutNetwork: 'Skautlar tarmog‘i',
-    scoutNetworkHint:
-      'Kuzatish — ijtimoiy, hech narsani o‘zgartirmaydi. Tasdiqlash (ishga olish) esa skautga sizning akademiyangizga futbolchi tavsiya qilish huquqini beradi.',
-    endorsed: 'Tasdiqlangan',
     endorsedScouts: 'Tasdiqlangan skautlar',
     endorsedCoaches: 'Tasdiqlangan murabbiylar',
-    endorse: 'Tasdiqlash',
-    revoke: 'Bekor qilish',
-    revoked: 'Bekor qilingan',
-    endorseTitle: 'Skaut yoki murabbiyni tasdiqlash',
-    endorseHint:
-      'Foydalanuvchi ID sini kiriting. Tasdiqlangan skaut sizning akademiyangizga aniq tavsiya yubora oladi.',
-    userId: 'Foydalanuvchi ID',
-    endorseNote: 'Izoh (faqat sizga ko‘rinadi)',
-    noEndorsements: 'Hali hech kim tasdiqlanmagan.',
-    followedScouts: 'Kuzatilayotgan skautlar',
-    noFollowedScouts: 'Hali hech kim kuzatilmayapti.',
-    socialOnly: 'Faqat ijtimoiy — reytingga ta’sir qilmaydi',
-    followForTrials: 'Sinovlar uchun kuzatish',
     following: 'Kuzatilmoqda',
   },
 
@@ -567,6 +559,7 @@ export const uz = {
   },
 
   player: {
+    anyAge: 'Istalgan yosh',
     actions: 'Amallar',
     followPlayer: 'Kuzatish',
     coachAssessHint:
@@ -586,7 +579,7 @@ export const uz = {
     findPlayers: 'Futbolchilarni topish',
     searchByName: 'Ism bo‘yicha qidirish',
     allRegions: 'Barcha viloyatlar',
-    anyPosition: 'Har qanday pozitsiya',
+    anyPosition: 'Istalgan amplua',
     anyStyle: 'Har qanday uslub',
     noMatches: 'Hech kim topilmadi',
     noMatchesHint: 'Filtrlarni kengaytirib ko‘ring — platforma hali viloyatma-viloyat o‘smoqda.',

@@ -347,6 +347,14 @@ export const en: Dictionary = {
     sent: 'Invitation sent — waiting on their answer.',
   },
   academy: {
+    coachType: 'Coach type',
+    anyCoachType: 'Any coach type',
+    anyLevel: 'Any level',
+    anyGroup: 'Any group',
+    expel: 'Expel from academy',
+    expelWarning:
+      'This ends the membership: they leave their group, and a coach or scout loses the academy’s backing. Their assessments and history stay, and you can invite them again later.',
+    confirmExpel: 'Expel this person from the academy?',
     reserveHint: 'Everyone not in a squad yet. Move them into a group, or on to another academy.',
     groupMembers: 'Group members',
     deleteGroupNote: 'Deleting a group does not remove anybody — they go back to the reserve.',
@@ -443,24 +451,8 @@ export const en: Dictionary = {
     managerUser: 'Manager (user ID)',
     managerUserHint: 'The account that will run this academy. Can be added later.',
     scoutNetwork: 'Scout network',
-    scoutNetworkHint:
-      'Following is social and changes nothing. Endorsing (hiring) is what lets a scout address a recommendation to your academy.',
-    endorsed: 'Endorsed',
     endorsedScouts: 'Endorsed scouts',
     endorsedCoaches: 'Endorsed coaches',
-    endorse: 'Endorse',
-    revoke: 'Revoke',
-    revoked: 'Revoked',
-    endorseTitle: 'Endorse a scout or coach',
-    endorseHint:
-      'Enter their user ID. An endorsed scout can send recommendations addressed to your academy.',
-    userId: 'User ID',
-    endorseNote: 'Note (visible to you only)',
-    noEndorsements: 'Nobody endorsed yet.',
-    followedScouts: 'Scouts you follow',
-    noFollowedScouts: 'Not following anyone yet.',
-    socialOnly: 'Social only — no effect on ranking',
-    followForTrials: 'Follow for trials',
     following: 'Following',
   },
 
@@ -550,6 +542,7 @@ export const en: Dictionary = {
   },
 
   player: {
+    anyAge: 'Any age',
     actions: 'Actions',
     followPlayer: 'Follow this player',
     coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',

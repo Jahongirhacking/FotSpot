@@ -537,45 +537,6 @@ export interface ManagerCredentials {
   password: string;
 }
 
-// ---------- Endorsements (README §1.5.3) ----------
-
-export type EndorsementRole = 'SCOUT' | 'COACH';
-export type EndorsementStatus = 'ACTIVE' | 'REVOKED';
-
-export interface Endorsement {
-  id: string;
-  academyId: string;
-  userId: string;
-  role: EndorsementRole;
-  status: EndorsementStatus;
-  note?: string | null;
-  createdAt: string;
-  revokedAt?: string | null;
-  user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null };
-}
-
-export const endorsements = {
-  list: (academyId: string, role?: EndorsementRole, opts: Opts = {}) =>
-    apiFetch<Endorsement[]>(`/academies/${academyId}/endorsements${toQuery({ role })}`, opts),
-
-  endorse: (
-    academyId: string,
-    body: { userId: string; role: EndorsementRole; note?: string },
-    opts: Opts = {},
-  ) =>
-    apiFetch<Endorsement>(`/academies/${academyId}/endorsements`, {
-      method: 'POST',
-      body,
-      ...opts,
-    }),
-
-  revoke: (academyId: string, userId: string, role: EndorsementRole, opts: Opts = {}) =>
-    apiFetch<Endorsement>(`/academies/${academyId}/endorsements/${userId}/${role}`, {
-      method: 'DELETE',
-      ...opts,
-    }),
-};
-
 /** Public recommendation record for a player — README §1.5.3. */
 export interface PlayerRecommendationSummary {
   playerId: string;

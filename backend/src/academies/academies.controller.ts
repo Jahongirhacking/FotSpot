@@ -3,7 +3,7 @@ import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
 import { GroupsService } from './groups.service';
-import { EndorseDto, ListEndorsementsDto } from './dto/endorsement.dto';
+import { ListEndorsementsDto } from './dto/endorsement.dto';
 import { InvitationsService } from './invitations.service';
 import { InviteMemberDto } from './dto/invitation.dto';
 import {
@@ -12,7 +12,6 @@ import {
   RequestTransferDto,
   UpdateGroupDto,
 } from './dto/group.dto';
-import { EndorsementRole } from '@prisma/client';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -322,37 +321,13 @@ export class AcademiesController {
   // ---- Endorsements (README 1.5.3) ----
 
   /**
-   * Endorse (hire) a scout or coach. Unlike following, this has consequences: it
-   * is what lets a scout address a recommendation to this academy.
+   * This academy's endorsed scouts and coaches.
+   *
+   * Read-only: endorsement is no longer something a manager grants on a screen
+   * of its own. Joining the academy as a coach or a scout *is* the endorsement,
+   * and being expelled withdraws it — one act, one place, no second mechanism to
+   * drift out of step with the first.
    */
-  /** Who this academy could endorse — real accounts holding the role, not ids. */
-  @Get(':id/endorsements/candidates')
-  endorsementCandidates(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Query('role') role: 'SCOUT' | 'COACH' = 'SCOUT',
-    @Query('query') query?: string,
-  ) {
-    return this.endorsements.listCandidates(user.userId, id, role as never, query);
-  }
-
-  @Post(':id/endorsements')
-  endorse(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: EndorseDto) {
-    return this.endorsements.endorse(user.userId, id, dto);
-  }
-
-  /** Ends the relationship. The record is kept as REVOKED, not deleted. */
-  @Delete(':id/endorsements/:userId/:role')
-  revokeEndorsement(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Param('role') role: EndorsementRole,
-  ) {
-    return this.endorsements.revoke(user.userId, id, userId, role);
-  }
-
-  /** This academy's endorsed scouts and coaches. Manager only. */
   @Get(':id/endorsements')
   listEndorsements(
     @CurrentUser() user: AuthUser,
