@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { CalendarDays, MapPin } from 'lucide-react';
 import { academies, trials } from '@/lib/api/resources';
 import { AcademyTrials } from './AcademyTrials';
+import { MyTrialInvitations } from './MyTrialInvitations';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -44,6 +45,10 @@ export default async function TrialsPage() {
         <h1 className="text-xl font-bold">{t.trials.openTrials}</h1>
         <p className="text-muted text-sm">{t.trials.openTrialsHint}</p>
       </header>
+
+      {/* A private trial is never on the board below, so the only way a player
+          learns of one is here (and in their notifications). */}
+      {session && <MyTrialInvitations />}
 
       {managed && (
         <AcademyTrials academyId={managed.id} academyName={managed.name} initial={managedTrials} />

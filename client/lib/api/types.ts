@@ -24,8 +24,9 @@ export type PlayingStyle =
 
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
+/** In the order it moves — see the Prisma enum for what each one means. */
 export type TrialApplicationStatus =
-  'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
+  'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INVITED' | 'CONFIRMED' | 'REJECTED' | 'ACCEPTED';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
   'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
@@ -465,6 +466,9 @@ export interface CoachReview {
 
 export type TrialStatus = 'OPEN' | 'ARCHIVED';
 
+/** GENERAL is the open board; PRIVATE is by invitation and never listed. */
+export type TrialType = 'GENERAL' | 'PRIVATE';
+
 export interface Trial {
   id: string;
   academyId: string;
@@ -477,6 +481,7 @@ export interface Trial {
   requirements?: string | null;
   /** ARCHIVED keeps the applicants and refuses new ones. There is no delete. */
   status: TrialStatus;
+  type: TrialType;
   createdAt: string;
   updatedAt: string;
 }
@@ -486,6 +491,18 @@ export interface TrialApplication {
   trialId: string;
   playerId: string;
   status: TrialApplicationStatus;
+  /** What the academy wrote when inviting — private trials only. */
+  inviteNote?: string | null;
+  /** Where Process A got to, when the row came from a screen that includes it. */
+  review?: {
+    id: string;
+    status: ReviewStatus;
+    note: string | null;
+    decidedAt: string | null;
+    coachUser: { id: string; firstName: string | null; lastName: string | null };
+  } | null;
+  /** Joined on the player's own list so they can read what they were invited to. */
+  trial?: Trial;
   createdAt: string;
 }
 

@@ -599,6 +599,33 @@ export const en: Dictionary = {
   },
 
   trials: {
+    trialType: 'Trial type',
+    withCoach: 'With',
+    awaitingPlayer: 'Waiting on the player',
+    invitePlaceholder: 'Saturday 10:00, Yunusobod pitch 3. Bring boots and a water bottle.',
+    addToSquad: 'Add to squad',
+    squadInvitationSent: 'An invitation to join the academy has been sent — the player accepts it.',
+    statusScreening: 'With a coach',
+    statusConfirmed: 'Confirmed',
+    assignedCoaches: 'Coaches on this trial',
+    assignedCoachesHint:
+      'Who works this session. A general trial sends its applications to them first.',
+    noCoachesYet: 'Add a coach to the academy first — somebody has to read the profiles.',
+    nominatePlayer: 'Put a player forward',
+    nominate: 'Choose',
+    nominateHint:
+      'Nothing reaches the player yet: the profile goes to a coach, and only their yes lets you invite.',
+    reviewingCoach: 'Reviewing coach',
+    sendForReview: 'Send for review',
+    typeGeneral: 'General trial',
+    typePrivate: 'Private trial',
+    typeHint: 'A general trial is public. A private one is only ever seen by the players you pick.',
+    privateNotice:
+      'This is a private trial — only you, the academy and its coaches on it can see it.',
+    yourInvitation: 'Your invitation',
+    acceptInvitation: 'Accept',
+    declineInvitation: 'Decline',
+    confirmedNotice: 'You have confirmed you are coming.',
     manageTrial: 'Manage this trial',
     archive: 'Archive',
     reopen: 'Reopen',

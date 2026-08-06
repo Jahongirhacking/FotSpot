@@ -36,6 +36,7 @@ import type {
   TrialApplication,
   TrialApplicationStatus,
   TrialStatus,
+  TrialType,
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
@@ -701,6 +702,41 @@ export const trials = {
   create: (academyId: string, body: CreateTrialBody, opts: Opts = {}) =>
     apiFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body, ...opts }),
 
+  /** Who works this trial. */
+  listCoaches: (trialId: string, opts: Opts = {}) =>
+    apiFetch<{ id: string; firstName: string | null; lastName: string | null }[]>(
+      `/trials/${trialId}/coaches`,
+      opts,
+    ),
+
+  /** Names the coaches working this trial, replacing the list. */
+  assignCoaches: (trialId: string, coachUserIds: string[], opts: Opts = {}) =>
+    apiFetch(`/trials/${trialId}/coaches`, { method: 'POST', body: { coachUserIds }, ...opts }),
+
+  /** Put a player forward for a private trial — starts Process A in `manual`. */
+  nominate: (trialId: string, body: { playerId: string; coachUserId: string }, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/${trialId}/nominate`, { method: 'POST', body, ...opts }),
+
+  /** Invite a screened player to a private trial, with the note they will read. */
+  invite: (applicationId: string, note: string, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/invite`, {
+      method: 'POST',
+      body: { note },
+      ...opts,
+    }),
+
+  /** The player's yes or no to a private trial invitation. */
+  respond: (applicationId: string, accept: boolean, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/respond`, {
+      method: 'POST',
+      body: { accept },
+      ...opts,
+    }),
+
+  /** Take the player on — sends them an invitation to join the academy. */
+  addToSquad: (applicationId: string, opts: Opts = {}) =>
+    apiFetch(`/trials/applications/${applicationId}/squad`, { method: 'POST', ...opts }),
+
   /** Edit a published trial, or archive it. Hosting manager only. */
   update: (
     trialId: string,
@@ -731,6 +767,8 @@ export const trials = {
 
 export interface CreateTrialBody {
   title: string;
+  /** Omitted means GENERAL — the open board. */
+  type?: TrialType;
   ageRangeMin: number;
   ageRangeMax: number;
   positions: string[];

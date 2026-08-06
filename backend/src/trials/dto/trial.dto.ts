@@ -1,19 +1,29 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TrialStatus } from '@prisma/client';
+import { TrialStatus, TrialType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 export class CreateTrialDto {
   @IsString() title: string;
+
+  /** GENERAL is the open day; PRIVATE is a session for players the academy picks. */
+  @ApiPropertyOptional({ enum: TrialType, enumName: 'TrialType' })
+  @IsOptional()
+  @IsEnum(TrialType)
+  type?: TrialType;
 
   @Type(() => Number) @IsInt() @Min(0) ageRangeMin: number;
   @Type(() => Number) @IsInt() @Min(0) ageRangeMax: number;
@@ -54,4 +64,26 @@ const APPLICATION_STATUSES = ['SHORTLISTED', 'INVITED', 'REJECTED', 'ACCEPTED'] 
 
 export class UpdateTrialApplicationStatusDto {
   @IsIn(APPLICATION_STATUSES) status: (typeof APPLICATION_STATUSES)[number];
+}
+
+/** Who works this trial. Replaces the whole list, so it is also how one is removed. */
+export class AssignCoachesDto {
+  @IsArray() @IsUUID('4', { each: true }) coachUserIds: string[];
+}
+
+/** The academy putting a player forward for a private trial. */
+export class NominatePlayerDto {
+  @IsUUID() playerId: string;
+
+  /** Whose eye the manager wants on them. Required — this is Process A(manual). */
+  @IsUUID() coachUserId: string;
+}
+
+/** The invitation the player reads, so the note is not optional. */
+export class InviteToTrialDto {
+  @IsString() @MinLength(1) @MaxLength(500) note: string;
+}
+
+export class RespondToInvitationDto {
+  @IsBoolean() accept: boolean;
 }

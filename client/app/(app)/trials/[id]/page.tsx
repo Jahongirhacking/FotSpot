@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ApplyToTrialButton } from './ApplyToTrialButton';
 import { Applicants } from './Applicants';
 import { TrialAdmin } from './TrialAdmin';
+import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -74,6 +75,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           <Badge variant="primary">
             {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
           </Badge>
+          {trial.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
           {trial.status === 'ARCHIVED' && (
             <Badge variant="neutral">{t.trials.statusArchived}</Badge>
           )}
@@ -125,7 +127,8 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       {hosts ? (
         <>
           <TrialAdmin trial={trial} />
-          <Applicants trialId={trial.id} />
+          <TrialStaff trial={trial} academyId={trial.academyId} />
+          <Applicants trial={trial} />
         </>
       ) : trial.status === 'ARCHIVED' ? (
         /* Applying would be refused by the server, so the button is replaced by

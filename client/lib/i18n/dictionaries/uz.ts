@@ -619,6 +619,34 @@ export const uz = {
   },
 
   trials: {
+    trialType: 'Sinov turi',
+    withCoach: 'Murabbiyda',
+    awaitingPlayer: 'O‘yinchining javobi kutilmoqda',
+    invitePlaceholder: 'Shanba 10:00, Yunusobod 3-maydon. Butsa va suv olib keling.',
+    addToSquad: 'Tarkibga qo‘shish',
+    squadInvitationSent: 'Akademiyaga qo‘shilish taklifi yuborildi — o‘yinchi qabul qilishi kerak.',
+    statusScreening: 'Ko‘rikda',
+    statusConfirmed: 'Tasdiqladi',
+    assignedCoaches: 'Biriktirilgan murabbiylar',
+    assignedCoachesHint:
+      'Shu sinovda ishlaydigan murabbiylar. Umumiy sinov arizalari avval ularga boradi.',
+    noCoachesYet: 'Avval akademiyaga murabbiy qo‘shing — arizani ko‘rib chiqadigan odam kerak.',
+    nominatePlayer: 'O‘yinchi taklif qilish',
+    nominate: 'Tanlash',
+    nominateHint:
+      'Bu o‘yinchiga hech narsa bormaydi: profil murabbiyga ko‘rikka yuboriladi va faqat u tasdiqlasa taklif yuborasiz.',
+    reviewingCoach: 'Ko‘rib chiquvchi murabbiy',
+    sendForReview: 'Ko‘rikka yuborish',
+    typeGeneral: 'Umumiy sinov',
+    typePrivate: 'Yopiq sinov',
+    typeHint:
+      'Umumiy sinov hammaga ko‘rinadi. Yopiq sinov faqat siz tanlagan o‘yinchiga ko‘rinadi.',
+    privateNotice:
+      'Bu yopiq sinov — u faqat sizga, akademiyaga va biriktirilgan murabbiylarga ko‘rinadi.',
+    yourInvitation: 'Sizga taklif',
+    acceptInvitation: 'Qabul qilish',
+    declineInvitation: 'Rad etish',
+    confirmedNotice: 'Kelishingizni tasdiqladingiz.',
     manageTrial: 'Sinovni boshqarish',
     archive: 'Arxivlash',
     reopen: 'Qayta ochish',

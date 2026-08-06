@@ -3811,6 +3811,7 @@
             "bearer": []
           }
         ],
+        "summary": "One trial. A general one is public; a private one is a 404 to anyone but the\nacademy, its coaches on that trial, and the player it concerns.\n\n`@Public()` with an optional user rather than an authenticated route: the\nopen board has to be readable by somebody who has not signed up yet.",
         "tags": [
           "trials"
         ]
@@ -3848,6 +3849,111 @@
           }
         ],
         "summary": "Edit a published trial, or archive it.\n\nManager of the hosting academy only. See TrialsService.update for why an\narchive exists where a delete does not.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/{id}/coaches": {
+      "get": {
+        "operationId": "trials_listCoaches",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who works this trial — public, the way the hosting academy is.",
+        "tags": [
+          "trials"
+        ]
+      },
+      "post": {
+        "operationId": "trials_assignCoaches",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCoachesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Name the coaches working this trial. Replaces the list.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/{id}/nominate": {
+      "post": {
+        "operationId": "trials_nominate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NominatePlayerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Put a player forward for a private trial, starting Process A in `manual`.\n\nThe mirror of a general trial's apply: there the player comes and screening\nfollows, here the academy chooses and screening comes first.",
         "tags": [
           "trials"
         ]
@@ -3943,6 +4049,113 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/applications/{applicationId}/invite": {
+      "post": {
+        "operationId": "trials_invite",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteToTrialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invite a screened player to a private trial, with the note they will read.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/applications/{applicationId}/respond": {
+      "post": {
+        "operationId": "trials_respond",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondToInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The player's yes or no — the one step nobody can take for them.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/applications/{applicationId}/squad": {
+      "post": {
+        "operationId": "trials_addToSquad",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take the player on: sends them an invitation to join the academy.\n\nNot a direct write to the squad — joining is still the player's yes to give,\nthe same rule every other route into a squad follows.",
         "tags": [
           "trials"
         ]
@@ -5712,9 +5925,24 @@
           "status"
         ]
       },
+      "TrialType": {
+        "type": "string",
+        "enum": [
+          "GENERAL",
+          "PRIVATE"
+        ]
+      },
       "CreateTrialDto": {
         "type": "object",
         "properties": {
+          "type": {
+            "description": "GENERAL is the open day; PRIVATE is a session for players the academy picks.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TrialType"
+              }
+            ]
+          },
           "title": {
             "type": "string"
           },
@@ -5749,6 +5977,36 @@
           "positions",
           "location",
           "date"
+        ]
+      },
+      "AssignCoachesDto": {
+        "type": "object",
+        "properties": {
+          "coachUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "coachUserIds"
+        ]
+      },
+      "NominatePlayerDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string"
+          },
+          "coachUserId": {
+            "type": "string",
+            "description": "Whose eye the manager wants on them. Required — this is Process A(manual)."
+          }
+        },
+        "required": [
+          "playerId",
+          "coachUserId"
         ]
       },
       "TrialStatus": {
@@ -5796,6 +6054,30 @@
             "type": "string"
           }
         }
+      },
+      "InviteToTrialDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "RespondToInvitationDto": {
+        "type": "object",
+        "properties": {
+          "accept": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accept"
+        ]
       },
       "UpdateTrialApplicationStatusDto": {
         "type": "object",

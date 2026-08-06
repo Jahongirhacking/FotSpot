@@ -11,6 +11,7 @@ import { StorageService } from '../storage/storage.service';
 import { EndorsementsService } from '../academies/endorsements.service';
 import { academyVisibleWeight, contributionOf } from './recommendation-weight.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProcessAService } from './process-a.service';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
 import { RedisService } from '../redis/redis.service';
@@ -41,6 +42,7 @@ export class RecommendationsService {
     private notifications: NotificationsService,
     private redis: RedisService,
     private endorsements: EndorsementsService,
+    private processA: ProcessAService,
   ) {}
 
   /**
@@ -381,76 +383,27 @@ export class RecommendationsService {
     });
     const recommendationId = target?.recommendationId ?? null;
 
-    const endorsed = await this.prisma.academyEndorsement.findMany({
-      where: { academyId, role: 'COACH', status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
-      select: { userId: true },
-    });
-    if (endorsed.length === 0) {
-      throw new BadRequestException('Endorse a coach before sending players for review');
-    }
-
-    const candidates = endorsed.map((row) => row.userId);
-    if (dto.coachUserId && !candidates.includes(dto.coachUserId)) {
-      throw new BadRequestException('That coach is not endorsed by this academy');
-    }
-
-    const coachUserId = dto.coachUserId ?? (await this.leastLoadedCoach(candidates));
-    const coachProfile = await this.prisma.coachProfile.findUnique({
-      where: { userId: coachUserId },
-    });
-    if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
-
-    const review = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.recommendationReview.upsert({
-        where: { playerId_academyId: { playerId, academyId } },
-        // Reassigning replaces the open review rather than adding a second one.
-        update: {
-          coachUserId,
-          coachProfileId: coachProfile.id,
-          status: 'PENDING',
-          decidedAt: null,
-        },
-        create: {
-          playerId,
-          recommendationId,
-          academyId,
-          coachUserId,
-          coachProfileId: coachProfile.id,
-        },
-      });
-
-      if (recommendationId) {
-        await tx.recommendationTarget.updateMany({
-          where: { recommendationId, academyId },
-          data: { status: 'REVIEWING' },
-        });
-      }
-
-      return created;
-    });
-
-    await this.notifications.notify(coachUserId, 'REVIEW_ASSIGNED', {
-      reviewId: review.id,
+    /*
+     * The same Process A a trial runs. `manual` when the manager named a coach,
+     * `auto` when they left it to the academy — one process, and the inbox is
+     * simply another way in.
+     */
+    const review = await this.processA.start({
       playerId,
-      playerName: `${player.firstName} ${player.lastName}`,
       academyId,
+      mode: dto.coachUserId ? 'manual' : 'auto',
+      coachUserId: dto.coachUserId,
+      recommendationId,
     });
+
+    if (recommendationId) {
+      await this.prisma.recommendationTarget.updateMany({
+        where: { recommendationId, academyId },
+        data: { status: 'REVIEWING' },
+      });
+    }
 
     return review;
-  }
-
-  /** The endorsed coach carrying the fewest open reviews. */
-  private async leastLoadedCoach(candidates: string[]) {
-    const open = await this.prisma.recommendationReview.groupBy({
-      by: ['coachUserId'],
-      where: { coachUserId: { in: candidates }, status: 'PENDING' },
-      _count: { _all: true },
-    });
-    const load = new Map(open.map((row) => [row.coachUserId, row._count._all]));
-    return candidates.reduce((best, candidate) =>
-      (load.get(candidate) ?? 0) < (load.get(best) ?? 0) ? candidate : best,
-    );
   }
 
   /** The reviews waiting on this coach, with everything the screen renders. */
@@ -572,6 +525,21 @@ export class RecommendationsService {
         await tx.recommendationTarget.updateMany({
           where: { recommendationId: review.recommendationId, academyId: review.academyId },
           data: { status: 'REJECTED' },
+        });
+      }
+
+      /*
+       * Process A's answer, written where the trial can read it.
+       *
+       * TRUE moves the application to SHORTLISTED, which is what unlocks the
+       * academy's next move — "Add to squad" on a general trial, "Invite" on a
+       * private one. FALSE ends it. The coach never sees the difference: they
+       * answered one question about one player.
+       */
+      if (review.trialApplicationId) {
+        await tx.trialApplication.update({
+          where: { id: review.trialApplicationId },
+          data: { status: dto.decision === 'APPROVED' ? 'SHORTLISTED' : 'REJECTED' },
         });
       }
 
