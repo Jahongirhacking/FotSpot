@@ -447,6 +447,13 @@ model AcademyMember {
   /// row that quietly changed academies overnight.
   previousAcademyId String?
 
+  /// What kind of coach they are here — head coach, goalkeeping coach, and so on.
+  ///
+  /// On the membership rather than on CoachProfile because it is a job at one
+  /// academy, not a property of the person: the same coach can be a head coach at
+  /// one club and a youth coach at another.
+  coachType  String?
+
   /// The squad they are in, or null for the academy's reserve.
   ///
   /// Null rather than a `Reserve` group row: everybody who joins starts there, so

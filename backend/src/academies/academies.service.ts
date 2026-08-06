@@ -601,6 +601,8 @@ export class AcademiesService {
         joinedAt: true,
         releasedAt: true,
         previousAcademyId: true,
+        coachType: true,
+        group: { select: { id: true, name: true } },
         user: {
           select: {
             id: true,
@@ -620,6 +622,14 @@ export class AcademiesService {
       .filter((id): id is string => !!id);
     const ratings = await this.ratingsFor(playerIds);
 
+    // A scout's standing is what the scouts tab shows instead of a rating, and
+    // ScoutStats is keyed by userId without a relation — one query for the page.
+    const stats = await this.prisma.scoutStats.findMany({
+      where: { userId: { in: members.map((member) => member.user.id) } },
+      select: { userId: true, level: true, successRate: true },
+    });
+    const standing = new Map(stats.map((row) => [row.userId, row]));
+
     return members
       .map(({ user, ...member }) => ({
         ...member,
@@ -633,6 +643,8 @@ export class AcademiesService {
         birthDate: user.playerProfile?.birthDate ?? null,
         coachStatus: user.coachProfile?.status ?? null,
         rating: user.playerProfile ? (ratings.get(user.playerProfile.id) ?? null) : null,
+        level: standing.get(user.id)?.level ?? null,
+        successRate: standing.get(user.id)?.successRate ?? null,
       }))
       .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
   }
@@ -688,6 +700,7 @@ export class AcademiesService {
       data: {
         ...(dto.role ? { role: dto.role } : {}),
         ...(dto.status ? { status: dto.status, releasedAt: null } : {}),
+        ...(dto.coachType !== undefined ? { coachType: dto.coachType.trim() || null } : {}),
       },
     });
     await this.invalidate(academyId);

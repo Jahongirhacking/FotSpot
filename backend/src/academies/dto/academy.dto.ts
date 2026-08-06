@@ -75,6 +75,8 @@ export class AddStaffMemberDto {
 export class UpdateMemberDto {
   @IsOptional() @IsIn(['COACH', 'SCOUT', 'PLAYER']) role?: 'COACH' | 'SCOUT' | 'PLAYER';
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
+  /** Head coach, goalkeeping coach, fitness coach — free text, per academy. */
+  @IsOptional() @IsString() @MaxLength(60) coachType?: string;
 }
 
 export class ListMembersDto {

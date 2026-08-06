@@ -39,6 +39,7 @@ export const en: Dictionary = {
   },
 
   nav: {
+    squad: 'Squad',
     addCoach: 'Add a coach',
     groups: 'Groups',
     myGroup: 'My group',
@@ -331,6 +332,19 @@ export const en: Dictionary = {
   },
 
   academy: {
+    groupMembers: 'Group members',
+    deleteGroupNote: 'Deleting a group does not remove anybody — they go back to the reserve.',
+    squad: 'Squad',
+    squadHint: 'Everyone at the academy, and the groups they are cut into.',
+    addToSquad: 'Add to squad',
+    addWarning:
+      'This puts another person on your academy’s books. Add them only with their agreement.',
+    confirmAdd: 'Add this person to the academy?',
+    transferWarning:
+      'A transfer needs the other academy’s agreement. If they approve, the member moves to their reserve.',
+    confirmTransfer: 'Send this transfer request?',
+    transferTo: 'Transfer',
+    group: 'Group',
     groupsHint: 'Groups are named squads of your players. Everyone new starts in the reserve.',
     newGroup: 'New group',
     groupName: 'Group name',
@@ -344,7 +358,7 @@ export const en: Dictionary = {
     noGroupBody: 'Once a manager adds you to one, it shows up here.',
     groupEmpty: 'Nobody in this group yet',
     choosePerson: 'Choose someone',
-    noCandidates: 'No eligible accounts to endorse',
+    noCandidates: 'No eligible accounts',
     noAcademyTitle: 'You are not part of an academy yet',
     noAcademyBody: 'Once a manager adds you to their roster, it shows up here.',
     addCoach: 'Add a coach',

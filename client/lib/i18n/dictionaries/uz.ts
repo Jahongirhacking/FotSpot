@@ -43,6 +43,7 @@ export const uz = {
   },
 
   nav: {
+    squad: 'Tarkib',
     addCoach: 'Murabbiy qo‘shish',
     groups: 'Guruhlar',
     myGroup: 'Mening guruhim',
@@ -345,6 +346,20 @@ export const uz = {
   },
 
   academy: {
+    noCandidates: 'Mos hisob topilmadi',
+    groupMembers: 'Guruh a’zolari',
+    deleteGroupNote: 'Guruhni o‘chirish a’zolarni o‘chirmaydi — ular zaxiraga qaytadi.',
+    squad: 'Tarkib',
+    squadHint: 'Akademiya a’zolari va guruhlar.',
+    addToSquad: 'Tarkibga qo‘shish',
+    addWarning:
+      'Bu boshqa foydalanuvchini akademiyangiz ro‘yxatiga qo‘shadi. Ularning roziligi bilan qo‘shing.',
+    confirmAdd: 'Bu odamni akademiyaga qo‘shasizmi?',
+    transferWarning:
+      'Transfer boshqa akademiyaning roziligini talab qiladi va tasdiqlansa, a’zo ularning zaxirasiga o‘tadi.',
+    confirmTransfer: 'Transfer so‘rovi yuborilsinmi?',
+    transferTo: 'Transfer qilish',
+    group: 'Guruh',
     groupsHint:
       'Guruhlar — akademiya o‘yinchilarining nomlangan tarkiblari. Yangi qo‘shilgan har kim zaxirada bo‘ladi.',
     newGroup: 'Yangi guruh',
@@ -359,7 +374,6 @@ export const uz = {
     noGroupBody: 'Akademiya menejeri sizni guruhga qo‘shgach, u shu yerda ko‘rinadi.',
     groupEmpty: 'Bu guruhda hali hech kim yo‘q',
     choosePerson: 'Odamni tanlang',
-    noCandidates: 'Tanlash uchun mos hisob topilmadi',
     noAcademyTitle: 'Siz hali akademiyaga biriktirilmagansiz',
     noAcademyBody: 'Akademiya menejeri sizni tarkibga qo‘shgach, u shu yerda ko‘rinadi.',
     addCoach: 'Murabbiy qo‘shish',

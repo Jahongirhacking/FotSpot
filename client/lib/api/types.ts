@@ -164,6 +164,13 @@ export interface AcademyMember {
   birthDate: string | null;
   coachStatus: string | null;
   rating: number | null;
+  /** What kind of coach they are here — head coach, GK coach. Null for others. */
+  coachType: string | null;
+  /** The squad they are in, or null for the reserve. */
+  group: { id: string; name: string } | null;
+  /** A scout's standing (§1.5). Null for anyone who is not one. */
+  level: number | null;
+  successRate: number | null;
 }
 
 export interface TransferListing {

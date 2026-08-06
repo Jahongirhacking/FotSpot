@@ -215,6 +215,47 @@ export class GroupsService {
     return { moved: count };
   }
 
+  /**
+   * Who this academy could add to its squad, for the role being viewed.
+   *
+   * Only accounts that already hold the role: an academy cannot make somebody a
+   * player by listing them as one. Anyone already on the books is excluded, so
+   * the picker cannot offer a duplicate the server would then refuse.
+   *
+   * Manager-only, because it enumerates accounts.
+   */
+  async listJoinCandidates(userId: string, academyId: string, role: 'PLAYER' | 'COACH' | 'SCOUT') {
+    await this.assertManager(userId, academyId);
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        roles: { some: { role: { name: role.toLowerCase() } } },
+        academyMemberships: { none: { academyId, status: { not: 'RELEASED' } } },
+        // addStaff refuses an unverified coach, so offering one would be a
+        // button that lies about what it will do.
+        ...(role === 'COACH' ? { coachProfile: { status: 'VERIFIED' as const } } : {}),
+      },
+      orderBy: [{ firstName: 'asc' }, { createdAt: 'asc' }],
+      take: 100,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        avatarKey: true,
+        playerProfile: { select: { primaryPosition: true, birthDate: true } },
+      },
+    });
+
+    return users.map(({ avatarKey, playerProfile, ...user }) => ({
+      ...user,
+      avatarUrl: this.storage.publicUrlOrNull(avatarKey),
+      primaryPosition: playerProfile?.primaryPosition ?? null,
+      birthDate: playerProfile?.birthDate ?? null,
+    }));
+  }
+
   // ---------- Transfers between academies ----------
 
   /**

@@ -2260,6 +2260,43 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/candidates": {
+      "get": {
+        "operationId": "academies_joinCandidates",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accounts this academy could add for a role — declared before `:id/transfers`.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/transfers": {
       "post": {
         "operationId": "academies_requestTransfer",
@@ -5346,6 +5383,11 @@
               "ACTIVE",
               "INACTIVE"
             ]
+          },
+          "coachType": {
+            "type": "string",
+            "description": "Head coach, goalkeeping coach, fitness coach — free text, per academy.",
+            "maxLength": 60
           }
         }
       },

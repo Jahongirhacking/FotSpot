@@ -8,7 +8,6 @@ import {
   Home,
   Inbox,
   Search,
-  UserPlus,
   ShieldCheck,
   Sparkles,
   Users,
@@ -83,8 +82,10 @@ export function navForRole(role: Role | null): NavItem[] {
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/recommendations/inbox', label: 'inbox', icon: Inbox },
-        { href: '/academies/mine/groups', label: 'groups', icon: Users },
-        { href: '/academies/mine/coaches/new', label: 'addCoach', icon: UserPlus },
+        // One entry, because "who is here" and "how are they arranged" are the
+        // same screen's two halves. Minting a coach account lives inside it too:
+        // it is one way of adding a coach, not a separate destination.
+        { href: '/academies/mine/squad', label: 'squad', icon: Users },
         { href: '/players', label: 'findPlayers', icon: Search },
         { href: '/trials', label: 'trials', icon: CalendarDays },
       ];

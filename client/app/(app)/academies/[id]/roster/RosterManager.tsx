@@ -194,6 +194,10 @@ export function RosterManager({
                           previousAcademyId: null,
                           birthDate: null,
                           coachStatus: null,
+                          coachType: null,
+                          group: null,
+                          level: null,
+                          successRate: null,
                         }}
                         from={row.academy.name}
                       />

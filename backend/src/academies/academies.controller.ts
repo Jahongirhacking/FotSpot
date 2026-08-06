@@ -185,6 +185,16 @@ export class AcademiesController {
     return this.groups.moveMembers(user.userId, id, dto);
   }
 
+  /** Accounts this academy could add for a role — declared before `:id/transfers`. */
+  @Get(':id/candidates')
+  joinCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('role') role: 'PLAYER' | 'COACH' | 'SCOUT' = 'PLAYER',
+  ) {
+    return this.groups.listJoinCandidates(user.userId, id, role);
+  }
+
   // ---------- Transfers between academies ----------
 
   /** Offer a member to another academy. Nothing moves until they answer. */
