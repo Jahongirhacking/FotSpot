@@ -101,6 +101,7 @@ model User {
   playerProfile PlayerProfile?
   coachProfile  CoachProfile?
   academyMemberships AcademyMember[]
+  academyInvitations AcademyInvitation[] @relation("InvitationsReceived")
   recommendationsMade Recommendation[] @relation("ScoutRecommendations")
   coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
   notifications Notification[]
@@ -113,6 +114,8 @@ model User {
   followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
   academyEndorsements AcademyEndorsement[] @relation("AcademyEndorsements")
   coachReviews  RecommendationReview[] @relation("CoachReviews")
+  reviewAssignments ReviewCoach[] @relation("ReviewAssignments")
+  trialCoaching TrialCoach[] @relation("TrialCoaching")
   mediaComments MediaComment[]
 
   createdAt DateTime @default(now())
@@ -293,6 +296,7 @@ model PlayerProfile {
   academyWeights  PlayerAcademyRecommendationWeight[]
   coachAssessments CoachAssessment[]
   trialApplications TrialApplication[]
+  reviews          RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -329,6 +333,7 @@ model AcademyProfile {
   groups   AcademyGroup[]
   transfersOut MemberTransfer[] @relation("TransfersOut")
   transfersIn  MemberTransfer[] @relation("TransfersIn")
+  invitations  AcademyInvitation[]
   trials   Trial[]
   recommendations Recommendation[]
   scoutFollows AcademyScoutFollow[]
@@ -426,6 +431,45 @@ enum TransferStatus {
   CANCELLED
 }
 
+/**
+ * An academy asking somebody to join it, and their answer.
+ *
+ * A membership is a claim on a person's record — it decides who may assess them,
+ * which squad they train with, and which club appears on their profile. So an
+ * academy cannot simply write itself onto somebody: it asks, and the person
+ * accepts. Only on acceptance does an AcademyMember row appear, in the reserve.
+ *
+ * Separate from MemberTransfer, which is two academies agreeing about somebody
+ * who has already said yes to one of them. This is the first yes.
+ */
+model AcademyInvitation {
+  id        String @id @default(uuid())
+  academyId String
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// What they are being asked to join as. Never MANAGER — that is appointed.
+  role   AcademyMemberRole
+  status InvitationStatus @default(PENDING)
+  note   String?
+
+  invitedByUserId String
+
+  createdAt DateTime @default(now())
+  decidedAt DateTime?
+
+  @@index([userId, status])
+  @@index([academyId, status])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
 enum AcademyMemberStatus {
   ACTIVE
   INACTIVE
@@ -445,6 +489,13 @@ model AcademyMember {
   /// Where they came from, so a transfer is a fact on the record rather than a
   /// row that quietly changed academies overnight.
   previousAcademyId String?
+
+  /// What kind of coach they are here — head coach, goalkeeping coach, and so on.
+  ///
+  /// On the membership rather than on CoachProfile because it is a job at one
+  /// academy, not a property of the person: the same coach can be a head coach at
+  /// one club and a youth coach at another.
+  coachType  String?
 
   /// The squad they are in, or null for the academy's reserve.
   ///
@@ -793,9 +844,34 @@ model ScoutStats {
  */
 model RecommendationReview {
   id               String @id @default(uuid())
-  recommendationId String
+  /// The scout recommendation that prompted this, if one did.
+  ///
+  /// Nullable because an academy does not need permission to look at a player: a
+  /// manager who spots someone in search can send them straight to a coach. A
+  /// recommendation is how a scout puts a player *in front of* an academy, not
+  /// the only way one may be considered — tying review to it made scouts a gate
+  /// on the academy's own judgement.
+  recommendationId String?
+  /**
+   * The trial application that prompted this, if one did.
+   *
+   * The other half of the same idea as `recommendationId`: a coach's job here is
+   * "look at this player and say yes or no", and what put the player in front of
+   * them — a scout, a trial, or the manager's own eye — is context rather than a
+   * different kind of work. Both are nullable and both may be set: a scout's pick
+   * who then applies to the trial is one review, not two.
+   */
+  trialApplicationId String? @unique
+  /// Who is being reviewed. Always present, unlike the recommendation.
+  playerId         String
   academyId        String
-  /// The endorsed coach this was handed to. Only they can decide it.
+  /**
+   * Who answered — or, before anybody has, the first coach it was handed to.
+   *
+   * The full list is `assignees`. This column is the one that ends up meaning
+   * "who made this call", which is what an assessment has to be attributable to
+   * and what every downstream read of a decided review wants.
+   */
   coachUserId      String
   coachProfileId   String
 
@@ -804,17 +880,72 @@ model RecommendationReview {
   /// The assessment the coach produced while reviewing, if they rated the player.
   assessmentId     String?
 
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+  trialApplication TrialApplication? @relation(fields: [trialApplicationId], references: [id], onDelete: SetNull)
+  player           PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
   academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   coachUser        User @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  /// Every coach who may answer this. See ReviewCoach.
+  assignees        ReviewCoach[]
 
   assignedAt DateTime @default(now())
   decidedAt  DateTime?
 
-  /// One live review per recommendation per academy — two coaches deciding the
-  /// same player for the same academy is a contradiction, not a second opinion.
-  @@unique([recommendationId, academyId])
+  /// One live review per player per academy — two *decisions* about the same
+  /// player for the same academy is a contradiction, not a second opinion. Keyed
+  /// on the player rather than the recommendation, since there may not be one.
+  @@unique([playerId, academyId])
   @@index([coachUserId, status])
+}
+
+/**
+ * A recommendation whose fate this trial decides.
+ *
+ * A player rarely arrives on one scout's word. One may have filed a GLOBAL
+ * recommendation months ago and another a SPECIFIC one to this academy last
+ * week; both were saying the same thing — *look at this player* — and the trial
+ * answers both of them at once. So every backing scout gains when the player
+ * signs, and every backing scout is turned down together when a coach says no.
+ *
+ * Snapshotted when the application is created rather than looked up at the end:
+ * a scout who files after the trial was arranged did not help arrange it, and
+ * counting them would make the success rate reward timing over judgement.
+ */
+model TrialApplicationBacking {
+  applicationId    String
+  recommendationId String
+
+  application      TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+
+  @@id([applicationId, recommendationId])
+  @@index([recommendationId])
+}
+
+/**
+ * A coach who may answer a review.
+ *
+ * A trial is worked by a staff, not by one person, and the profile should be in
+ * front of everybody who will be on the pitch that morning. They share one
+ * question, so the first to answer settles it — a second opinion recorded as a
+ * second decision would leave the academy holding two contradictory answers with
+ * no rule for which one counts.
+ */
+model ReviewCoach {
+  reviewId       String
+  coachUserId    String
+  coachProfileId String
+
+  review         RecommendationReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  coachUser      User @relation("ReviewAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  assignedAt     DateTime @default(now())
+
+  @@id([reviewId, coachUserId])
+  @@index([coachUserId])
 }
 
 enum ReviewStatus {
@@ -871,6 +1002,19 @@ model Recommendation {
   academy    AcademyProfile? @relation(fields: [academyId], references: [id])
   targets    RecommendationTarget[]
   reviews    RecommendationReview[]
+  trialApplications TrialApplication[]
+  trialBackings TrialApplicationBacking[]
+
+  /**
+   * When a coach turned this recommendation down.
+   *
+   * Stored rather than derived from `updatedAt`, which moves for reasons that
+   * have nothing to do with the answer. It is what the scout's cooldown counts
+   * from: a rejection is a judgement about *this* recommendation, and filing the
+   * same player again the next morning would be arguing with it rather than
+   * bringing new evidence.
+   */
+  rejectedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -944,15 +1088,84 @@ model Trial {
   date        DateTime
   requirements String?
 
+  /// Archived trials keep their applicants and stop taking new ones.
+  status      TrialStatus @default(OPEN)
+  /// GENERAL is public and self-serve; PRIVATE is by invitation only.
+  type        TrialType   @default(GENERAL)
+
   applications TrialApplication[]
+  /// The coaches who screen and assess for this trial. A private trial is
+  /// visible to them; a general one hands them its applicants automatically.
+  coaches      TrialCoach[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
 }
 
+/**
+ * A trial is never deleted, only closed.
+ *
+ * Every application attached to it is a decision somebody made about a child,
+ * and a row that vanishes takes that record with it. Archiving hides the trial
+ * from the public list and refuses new applications; the academy keeps the
+ * history, and can reopen it if it was closed by mistake.
+ */
+enum TrialStatus {
+  OPEN
+  ARCHIVED
+}
+
+/**
+ * Who a trial is for.
+ *
+ * GENERAL is the open day: any player may find it and apply, and screening
+ * happens after they do. PRIVATE is the opposite motion — the academy (or a
+ * scout, through a recommendation) picks somebody, has a coach screen them, and
+ * only then invites them. It is never listed publicly, because a session for one
+ * named child is not an announcement.
+ */
+enum TrialType {
+  GENERAL
+  PRIVATE
+}
+
+/**
+ * A coach working a trial.
+ *
+ * Assignment is per trial rather than per academy: a club runs its U14 morning
+ * and its goalkeeper session with different staff, and "every endorsed coach can
+ * see every trial" makes the private ones public within the building.
+ */
+model TrialCoach {
+  trialId     String
+  coachUserId String
+
+  trial       Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  coachUser   User  @relation("TrialCoaching", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  assignedAt  DateTime @default(now())
+
+  @@id([trialId, coachUserId])
+  @@index([coachUserId])
+}
+
+/**
+ * Where an application stands, in the order it moves.
+ *
+ * `APPLIED`      a player put themselves forward (general trials only)
+ * `SCREENING`    a coach has the profile — Process A is running
+ * `SHORTLISTED`  Process A returned TRUE; the academy's move is next
+ * `INVITED`      a private trial's invitation is out, awaiting the player
+ * `CONFIRMED`    the player accepted and is expected on the day
+ * `ACCEPTED`     the academy took them on
+ * `REJECTED`     a coach said no, the academy said no, or the player declined
+ */
 enum TrialApplicationStatus {
   APPLIED
+  SCREENING
   SHORTLISTED
   INVITED
+  CONFIRMED
   REJECTED
   ACCEPTED
 }
@@ -962,6 +1175,24 @@ model TrialApplication {
   trialId  String
   playerId String
   status   TrialApplicationStatus @default(APPLIED)
+
+  /// What the academy wrote when inviting — where to be, when, what to bring.
+  /// "You are invited" with nothing else is not something a family can act on.
+  inviteNote String?
+  /**
+   * The recommendation that prompted this invitation, if one did.
+   *
+   * The *whole* set of scouts whose reputation rides on the outcome is
+   * `backings` — this is only the one the manager was looking at when they
+   * decided to invite.
+   */
+  recommendationId String?
+  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+
+  /// Every scout whose call this trial will settle. See TrialApplicationBacking.
+  backings         TrialApplicationBacking[]
+  /// The coach review that screened this application, if one has run.
+  review     RecommendationReview?
 
   trial    Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
   player   PlayerProfile @relation(fields: [playerId], references: [id])
@@ -979,6 +1210,10 @@ enum NotificationEvent {
   REVIEW_ASSIGNED
   /// An academy is inviting the player, with the manager's note.
   ACADEMY_INVITATION
+  /// An academy is asking somebody to join it — awaiting their yes or no.
+  ACADEMY_JOIN_INVITATION
+  /// How the person answered an academy's invitation to join.
+  ACADEMY_JOIN_ANSWER
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
   TRIAL_INVITATION

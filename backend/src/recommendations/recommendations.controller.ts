@@ -69,16 +69,19 @@ export class RecommendationsController {
   // ---------- Coach review (§1.9) ----------
 
   /**
-   * Hand a recommended player to an endorsed coach. Omit the coach and one is
-   * picked from the endorsed pool by who is carrying the fewest open reviews.
+   * Hand a player to an endorsed coach. Omit the coach and one is picked from the
+   * endorsed pool by who is carrying the fewest open reviews.
+   *
+   * Keyed on the player, not a recommendation: an academy may review anybody it
+   * has found, and a scout's recommendation only decides who appears in the inbox.
    */
-  @Post(':id/review')
+  @Post('players/:playerId/review')
   assignReview(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('playerId') playerId: string,
     @Body() dto: AssignReviewDto,
   ) {
-    return this.recommendationsService.assignReview(user.userId, id, dto);
+    return this.recommendationsService.assignReview(user.userId, playerId, dto);
   }
 
   /** A coach's own queue. Declared before `:id` — Nest matches in order. */
@@ -98,13 +101,13 @@ export class RecommendationsController {
   }
 
   /** The manager invites an approved player, with a note they will read. */
-  @Post(':id/invite')
+  @Post('players/:playerId/invite')
   invitePlayer(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
+    @Param('playerId') playerId: string,
     @Body() dto: InvitePlayerDto,
   ) {
-    return this.recommendationsService.invitePlayer(user.userId, id, dto);
+    return this.recommendationsService.invitePlayer(user.userId, playerId, dto);
   }
 
   @Patch(':id/status')

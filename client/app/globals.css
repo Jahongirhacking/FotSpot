@@ -274,6 +274,48 @@
     scrollbar-width: thin;
   }
 
+  /*
+   * Two range inputs share one track (components/ui/RangeSlider). The input
+   * itself must not take the pointer or the upper one would swallow every drag
+   * meant for the lower handle; only the thumbs do, which is why these rules
+   * cannot live in a utility class alone — ::-webkit-slider-thumb has no
+   * Tailwind equivalent.
+   */
+  .range-thumb {
+    pointer-events: none;
+  }
+
+  .range-thumb::-webkit-slider-thumb {
+    pointer-events: auto;
+    appearance: none;
+    height: 1.125rem;
+    width: 1.125rem;
+    border-radius: 9999px;
+    border: 2px solid var(--primary);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  .range-thumb::-moz-range-thumb {
+    pointer-events: auto;
+    height: 1.125rem;
+    width: 1.125rem;
+    border-radius: 9999px;
+    border: 2px solid var(--primary);
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  .range-thumb:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  .range-thumb:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
   .pitch-gradient {
     background-image:
       radial-gradient(

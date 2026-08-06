@@ -5,6 +5,7 @@ import { Providers } from '@/components/layout/Providers';
 import { getSession } from '@/lib/session';
 import { getLocale } from '@/lib/i18n/server';
 import { THEME_SCRIPT } from '@/lib/theme';
+import { siteUrl } from '@/lib/seo';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -16,13 +17,35 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const DESCRIPTION =
+  'Grassroots to academy football in Uzbekistan. Build your player card, get discovered by academies, and apply for trials.';
+
+/**
+ * Site-wide metadata.
+ *
+ * `metadataBase` is what makes every relative canonical and social image on every
+ * page resolve to an absolute URL — without it Next emits relative ones, which
+ * crawlers ignore and social scrapers cannot fetch.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
     default: 'FotSpot — get seen',
     template: '%s · FotSpot',
   },
-  description:
-    'Grassroots to academy football in Uzbekistan. Build your player card, get discovered by academies, and apply for trials.',
+  description: DESCRIPTION,
+  applicationName: 'FotSpot',
+  keywords: ['football', 'futbol', 'Uzbekistan', 'academy', 'scout', 'player card', 'trials'],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: 'FotSpot',
+    title: 'FotSpot — get seen',
+    description: DESCRIPTION,
+    url: '/',
+  },
+  twitter: { card: 'summary_large_image', title: 'FotSpot — get seen', description: DESCRIPTION },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {

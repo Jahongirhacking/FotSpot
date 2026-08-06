@@ -4,6 +4,8 @@
  */
 import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
 import type {
+  AcademyInvitation,
+  MyInvitation,
   AcademyProfile,
   AcademyScoutFollow,
   AcademyScoutFollowState,
@@ -33,6 +35,8 @@ import type {
   Trial,
   TrialApplication,
   TrialApplicationStatus,
+  TrialStatus,
+  TrialType,
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
@@ -174,6 +178,9 @@ export interface PlayerSearchParams {
   position?: string;
   playingStyle?: PlayingStyle;
   query?: string;
+  /** Age in years, inclusive. The API compares against birth dates. */
+  minAge?: number;
+  maxAge?: number;
   page?: number;
   pageSize?: number;
 }
@@ -535,45 +542,6 @@ export interface ManagerCredentials {
   password: string;
 }
 
-// ---------- Endorsements (README §1.5.3) ----------
-
-export type EndorsementRole = 'SCOUT' | 'COACH';
-export type EndorsementStatus = 'ACTIVE' | 'REVOKED';
-
-export interface Endorsement {
-  id: string;
-  academyId: string;
-  userId: string;
-  role: EndorsementRole;
-  status: EndorsementStatus;
-  note?: string | null;
-  createdAt: string;
-  revokedAt?: string | null;
-  user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null };
-}
-
-export const endorsements = {
-  list: (academyId: string, role?: EndorsementRole, opts: Opts = {}) =>
-    apiFetch<Endorsement[]>(`/academies/${academyId}/endorsements${toQuery({ role })}`, opts),
-
-  endorse: (
-    academyId: string,
-    body: { userId: string; role: EndorsementRole; note?: string },
-    opts: Opts = {},
-  ) =>
-    apiFetch<Endorsement>(`/academies/${academyId}/endorsements`, {
-      method: 'POST',
-      body,
-      ...opts,
-    }),
-
-  revoke: (academyId: string, userId: string, role: EndorsementRole, opts: Opts = {}) =>
-    apiFetch<Endorsement>(`/academies/${academyId}/endorsements/${userId}/${role}`, {
-      method: 'DELETE',
-      ...opts,
-    }),
-};
-
 /** Public recommendation record for a player — README §1.5.3. */
 export interface PlayerRecommendationSummary {
   playerId: string;
@@ -734,6 +702,48 @@ export const trials = {
   create: (academyId: string, body: CreateTrialBody, opts: Opts = {}) =>
     apiFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body, ...opts }),
 
+  /** Who works this trial. */
+  listCoaches: (trialId: string, opts: Opts = {}) =>
+    apiFetch<{ id: string; firstName: string | null; lastName: string | null }[]>(
+      `/trials/${trialId}/coaches`,
+      opts,
+    ),
+
+  /** Names the coaches working this trial, replacing the list. */
+  assignCoaches: (trialId: string, coachUserIds: string[], opts: Opts = {}) =>
+    apiFetch(`/trials/${trialId}/coaches`, { method: 'POST', body: { coachUserIds }, ...opts }),
+
+  /** Put a player forward for a private trial — starts Process A in `manual`. */
+  nominate: (trialId: string, body: { playerId: string; coachUserId: string }, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/${trialId}/nominate`, { method: 'POST', body, ...opts }),
+
+  /** Invite a screened player to a private trial, with the note they will read. */
+  invite: (applicationId: string, note: string, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/invite`, {
+      method: 'POST',
+      body: { note },
+      ...opts,
+    }),
+
+  /** The player's yes or no to a private trial invitation. */
+  respond: (applicationId: string, accept: boolean, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/respond`, {
+      method: 'POST',
+      body: { accept },
+      ...opts,
+    }),
+
+  /** Take the player on — sends them an invitation to join the academy. */
+  addToSquad: (applicationId: string, opts: Opts = {}) =>
+    apiFetch(`/trials/applications/${applicationId}/squad`, { method: 'POST', ...opts }),
+
+  /** Edit a published trial, or archive it. Hosting manager only. */
+  update: (
+    trialId: string,
+    body: Partial<CreateTrialBody> & { status?: TrialStatus },
+    opts: Opts = {},
+  ) => apiFetch<Trial>(`/trials/${trialId}`, { method: 'PATCH', body, ...opts }),
+
   apply: (trialId: string, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/${trialId}/apply`, { method: 'POST', ...opts }),
 
@@ -757,6 +767,8 @@ export const trials = {
 
 export interface CreateTrialBody {
   title: string;
+  /** Omitted means GENERAL — the open board. */
+  type?: TrialType;
   ageRangeMin: number;
   ageRangeMax: number;
   positions: string[];
@@ -969,9 +981,46 @@ export const academyRoster = {
       body: { memberId },
       ...opts,
     }),
+};
 
-  add: (academyId: string, body: { userId: string; role: AcademyMemberRole }, opts: Opts = {}) =>
-    apiFetch<AcademyMember>(`/academies/${academyId}/staff`, { method: 'POST', body, ...opts }),
+export const invitations = {
+  /** Ask somebody to join. Nothing is written to their record until they accept. */
+  send: (
+    academyId: string,
+    body: { userId: string; role: AcademyMemberRole; note?: string },
+    opts: Opts = {},
+  ) =>
+    apiFetch<AcademyInvitation>(`/academies/${academyId}/invitations`, {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
+
+  /** What an academy has asked of people, answered or not. */
+  listForAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation[]>(`/academies/${academyId}/invitations`, opts),
+
+  /** What has been asked of me. */
+  listMine: (opts: Opts = {}) => apiFetch<MyInvitation[]>('/academies/invitations/mine', opts),
+
+  accept: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/accept`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  reject: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/reject`, {
+      method: 'POST',
+      ...opts,
+    }),
+
+  /** The academy withdrawing a question nobody has answered yet. */
+  cancel: (invitationId: string, opts: Opts = {}) =>
+    apiFetch<AcademyInvitation>(`/academies/invitations/${invitationId}/cancel`, {
+      method: 'POST',
+      ...opts,
+    }),
 };
 
 export const clipRatings = {

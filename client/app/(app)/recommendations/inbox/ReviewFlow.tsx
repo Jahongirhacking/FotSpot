@@ -2,10 +2,15 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardCheck, Mail, Send, ShieldCheck } from 'lucide-react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+} from '@tanstack/react-query';
+import { ClipboardCheck, Hourglass, Mail, Send, ShieldCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyHistoryRow, RankedRecommendation } from '@/lib/api/types';
+import type { AcademyHistoryRow, RankedRecommendation, Trial } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +18,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Select, Textarea } from '@/components/ui/Field';
 import { ageBand, formatDate } from '@/lib/utils';
+import {
+  EMPTY_INBOX_FILTERS,
+  filterInbox,
+  InboxFilters,
+  type InboxFilterState,
+} from './InboxFilters';
 
 interface Coach {
   id: string;
@@ -50,6 +61,7 @@ export function ReviewFlow({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const [filters, setFilters] = React.useState<InboxFilterState>(EMPTY_INBOX_FILTERS);
 
   const inbox = useQuery({
     queryKey: ['inbox-ranked', academyId],
@@ -82,8 +94,10 @@ export function ReviewFlow({
   };
 
   const assign = useMutation({
+    // Keyed on the player: a review is about who is being judged, and the
+    // recommendation is only how they reached this inbox.
     mutationFn: ({ id, coachUserId }: { id: string; coachUserId?: string }) =>
-      browserFetch(`/recommendations/${id}/review`, {
+      browserFetch(`/recommendations/players/${id}/review`, {
         method: 'POST',
         body: coachUserId ? { coachUserId } : {},
       }),
@@ -91,49 +105,70 @@ export function ReviewFlow({
   });
 
   const invite = useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) =>
-      browserFetch(`/recommendations/${id}/invite`, { method: 'POST', body: { note } }),
+    mutationFn: ({ id, note, trialId }: { id: string; note: string; trialId: string }) =>
+      browserFetch(`/recommendations/players/${id}/invite`, {
+        method: 'POST',
+        body: { note, trialId },
+      }),
     onSuccess: refresh,
   });
 
+  /*
+   * The private trials this academy could invite somebody to.
+   *
+   * A coach approving a profile is a judgement about clips, not about a player
+   * they have watched — so what the academy offers next is a look, and a look
+   * happens at a trial on a date. Without one there is nothing to invite them to,
+   * and the row says so rather than failing on the press.
+   */
+  const privateTrials = useQuery({
+    queryKey: ['private-trials', academyId],
+    queryFn: () => browserFetch<Trial[]>(`/trials/academy/${academyId}`),
+    select: (rows) => rows.filter((row) => row.type === 'PRIVATE' && row.status === 'OPEN'),
+  });
+
   const items = inbox.data?.items ?? [];
+  const historyRows = history.data ?? [];
+
+  // One bar over every list: a manager looking for a name does not know, and
+  // should not have to know, which stage that player has reached.
+  const shown = filterInbox(items, filters);
+  const shownHistory = filterInbox(historyRows, filters);
+
+  // The queue is two questions, not one. "Nobody has looked at this yet" is a
+  // decision waiting on the manager; "a coach has it" and "a coach approved it"
+  // are work already in motion. Mixed together, the second kind buries the
+  // first — which is the only one the manager can act on today.
+  const arrived = shown.filter((item) => !item.review);
+  const active = shown.filter((item) => item.review);
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="text-primary size-4" aria-hidden />
-            {t.recommendations.fromEndorsedScouts}
-          </CardTitle>
-          <p className="text-muted text-sm">{t.recommendations.reviewFlowHint}</p>
-        </CardHeader>
+      <InboxFilters rows={[...items, ...historyRows]} value={filters} onChange={setFilters} />
 
-        <CardContent className="p-2">
-          {items.length === 0 ? (
-            <EmptyState icon={ClipboardCheck} title={t.recommendations.inboxEmpty} />
-          ) : (
-            <ul className="divide-border divide-y">
-              {items.map((item) => (
-                <InboxRow
-                  key={item.playerId}
-                  item={item}
-                  coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
-                  // Only the row actually being sent, not the whole list.
-                  pending={
-                    (assign.isPending && assign.variables?.id === item.recommendationIds[0]) ||
-                    (invite.isPending && invite.variables?.id === item.recommendationIds[0])
-                  }
-                  onAssign={(coachUserId) =>
-                    assign.mutate({ id: item.recommendationIds[0], coachUserId })
-                  }
-                  onInvite={(note) => invite.mutate({ id: item.recommendationIds[0], note })}
-                />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <QueueCard
+        icon={ShieldCheck}
+        title={t.recommendations.fromEndorsedScouts}
+        hint={t.recommendations.reviewFlowHint}
+        rows={arrived}
+        emptyTitle={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
+        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        trials={privateTrials.data ?? []}
+        assign={assign}
+        invite={invite}
+      />
+
+      <QueueCard
+        icon={Hourglass}
+        title={t.recommendations.activeSection}
+        hint={t.recommendations.activeSectionHint}
+        rows={active}
+        emptyTitle={t.recommendations.activeEmpty}
+        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        trials={privateTrials.data ?? []}
+        assign={assign}
+        invite={invite}
+      />
 
       <Card>
         <CardHeader className="pb-2">
@@ -141,11 +176,14 @@ export function ReviewFlow({
           <p className="text-muted text-sm">{t.recommendations.historyHint}</p>
         </CardHeader>
         <CardContent className="p-2">
-          {(history.data ?? []).length === 0 ? (
-            <EmptyState icon={ClipboardCheck} title={t.recommendations.historyEmpty} />
+          {shownHistory.length === 0 ? (
+            <EmptyState
+              icon={ClipboardCheck}
+              title={historyRows.length === 0 ? t.recommendations.historyEmpty : t.player.noMatches}
+            />
           ) : (
             <ul className="divide-border divide-y">
-              {(history.data ?? []).map((row) => (
+              {shownHistory.map((row) => (
                 <li key={row.recommendationId} className="flex flex-wrap items-center gap-3 p-2">
                   <div className="min-w-0 flex-1">
                     <Link
@@ -182,9 +220,76 @@ export function ReviewFlow({
   );
 }
 
+/**
+ * One stage of the queue.
+ *
+ * The rows are identical in both sections — a player who has come back approved
+ * still shows what a coach said and who said it — so the card is the only thing
+ * that differs, and it differs only in what it is called.
+ */
+function QueueCard({
+  icon: Icon,
+  title,
+  hint,
+  rows,
+  emptyTitle,
+  coaches,
+  trials,
+  assign,
+  invite,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  hint: string;
+  rows: RankedRecommendation[];
+  emptyTitle: string;
+  coaches: Coach[];
+  trials: Trial[];
+  assign: UseMutationResult<unknown, Error, { id: string; coachUserId?: string }, unknown>;
+  invite: UseMutationResult<unknown, Error, { id: string; note: string; trialId: string }, unknown>;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className="text-primary size-4" aria-hidden />
+          {title}
+          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+        </CardTitle>
+        <p className="text-muted text-sm">{hint}</p>
+      </CardHeader>
+
+      <CardContent className="p-2">
+        {rows.length === 0 ? (
+          <EmptyState icon={ClipboardCheck} title={emptyTitle} />
+        ) : (
+          <ul className="divide-border divide-y">
+            {rows.map((item) => (
+              <InboxRow
+                key={item.playerId}
+                item={item}
+                coaches={coaches}
+                trials={trials}
+                // Only the row actually being sent, not the whole list.
+                pending={
+                  (assign.isPending && assign.variables?.id === item.playerId) ||
+                  (invite.isPending && invite.variables?.id === item.playerId)
+                }
+                onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
+                onInvite={(note, trialId) => invite.mutate({ id: item.playerId, note, trialId })}
+              />
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function InboxRow({
   item,
   coaches,
+  trials,
   pending,
   onAssign,
   onInvite,
@@ -193,11 +298,13 @@ function InboxRow({
   coaches: Coach[];
   pending: boolean;
   onAssign: (coachUserId?: string) => void;
-  onInvite: (note: string) => void;
+  onInvite: (note: string, trialId: string) => void;
+  trials: Trial[];
 }) {
   const { t, f } = useI18n();
   const [coachUserId, setCoachUserId] = React.useState('');
   const [note, setNote] = React.useState('');
+  const [trialId, setTrialId] = React.useState('');
   const review = item.review;
 
   return (
@@ -280,29 +387,44 @@ function InboxRow({
         </div>
       )}
 
-      {/* Approved: the manager's own decision, and the note the player reads. */}
-      {review?.status === 'APPROVED' && (
-        <div className="space-y-2">
-          <Textarea
-            aria-label={t.recommendations.inviteNote}
-            value={note}
-            maxLength={1000}
-            rows={2}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder={t.placeholders.inviteNote}
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              loading={pending}
-              disabled={!note.trim()}
-              onClick={() => onInvite(note.trim())}
+      {/* Approved: the invitation to come and be looked at, on a date. */}
+      {review?.status === 'APPROVED' &&
+        (trials.length === 0 ? (
+          <p className="text-muted text-xs">{t.recommendations.noPrivateTrial}</p>
+        ) : (
+          <div className="space-y-2">
+            <Select
+              aria-label={t.recommendations.inviteToTrial}
+              value={trialId}
+              onChange={(event) => setTrialId(event.target.value)}
             >
-              <Mail aria-hidden /> {t.recommendations.sendInvite}
-            </Button>
+              <option value="">{t.recommendations.inviteToTrial}</option>
+              {trials.map((trial) => (
+                <option key={trial.id} value={trial.id}>
+                  {trial.title} · {formatDate(trial.date)}
+                </option>
+              ))}
+            </Select>
+            <Textarea
+              aria-label={t.recommendations.inviteNote}
+              value={note}
+              maxLength={1000}
+              rows={2}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder={t.placeholders.inviteNote}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                loading={pending}
+                disabled={!note.trim() || !trialId}
+                onClick={() => onInvite(note.trim(), trialId)}
+              >
+                <Mail aria-hidden /> {t.recommendations.sendInvite}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
     </li>
   );
 }

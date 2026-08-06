@@ -25,6 +25,8 @@ export default async function PlayersPage({
     region?: string;
     position?: string;
     playingStyle?: string;
+    minAge?: string;
+    maxAge?: string;
     page?: string;
   }>;
 }) {
@@ -40,6 +42,8 @@ export default async function PlayersPage({
         region: params.region,
         position: params.position,
         playingStyle: params.playingStyle as PlayingStyle | undefined,
+        minAge: params.minAge ? Number(params.minAge) : undefined,
+        maxAge: params.maxAge ? Number(params.maxAge) : undefined,
         page,
         pageSize: 12,
       },
@@ -57,11 +61,7 @@ export default async function PlayersPage({
       <PlayerFilters />
 
       {result.items.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={t.player.noMatches}
-          description={t.player.noMatchesHint}
-        />
+        <EmptyState icon={Users} title={t.player.noMatches} description={t.player.noMatchesHint} />
       ) : (
         <>
           {/* Cards are portrait, so more of them fit per row than the old list

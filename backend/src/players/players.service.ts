@@ -256,6 +256,27 @@ export class PlayersService {
     if (dto.position) {
       where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];
     }
+    // Age is asked in years and stored as a birth date, so the bound flips: the
+    // youngest allowed age is the *latest* birth date that still qualifies.
+    // `maxAge` is inclusive, so it reaches back to the day before that birthday.
+    if (dto.minAge !== undefined || dto.maxAge !== undefined) {
+      const today = new Date();
+      where.birthDate = {
+        ...(dto.minAge !== undefined
+          ? { lte: new Date(today.getFullYear() - dto.minAge, today.getMonth(), today.getDate()) }
+          : {}),
+        ...(dto.maxAge !== undefined
+          ? {
+              gt: new Date(
+                today.getFullYear() - dto.maxAge - 1,
+                today.getMonth(),
+                today.getDate(),
+              ),
+            }
+          : {}),
+      };
+    }
+
     if (dto.query) {
       where.AND = [
         {

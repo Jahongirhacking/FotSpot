@@ -3,19 +3,20 @@ import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
 import { GroupsService } from './groups.service';
-import { EndorseDto, ListEndorsementsDto } from './dto/endorsement.dto';
+import { ListEndorsementsDto } from './dto/endorsement.dto';
+import { InvitationsService } from './invitations.service';
+import { InviteMemberDto } from './dto/invitation.dto';
 import {
   CreateGroupDto,
+  ListCandidatesDto,
   MoveMembersDto,
   RequestTransferDto,
   UpdateGroupDto,
 } from './dto/group.dto';
-import { EndorsementRole } from '@prisma/client';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
-  AddStaffMemberDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -34,6 +35,7 @@ export class AcademiesController {
     private academiesService: AcademiesService,
     private endorsements: EndorsementsService,
     private groups: GroupsService,
+    private invitations: InvitationsService,
   ) {}
 
   /**
@@ -122,11 +124,6 @@ export class AcademiesController {
     return this.academiesService.listAll();
   }
 
-  @Post(':id/staff')
-  addStaff(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: AddStaffMemberDto) {
-    return this.academiesService.addStaff(user.userId, id, dto);
-  }
-
   /**
    * Add a coach: an existing account, or a new one minted with credentials the
    * manager hands over — the same two paths an admin has for a manager.
@@ -183,6 +180,60 @@ export class AcademiesController {
   @Post(':id/groups/move')
   moveMembers(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: MoveMembersDto) {
     return this.groups.moveMembers(user.userId, id, dto);
+  }
+
+  /**
+   * Accounts this academy could add for a role — declared before `:id/transfers`.
+   *
+   * Paged and searchable: the picker on the squad screen is a window onto every
+   * account holding that role, and there are far more of those than fit a list.
+   */
+  @Get(':id/candidates')
+  joinCandidates(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query() dto: ListCandidatesDto,
+  ) {
+    return this.groups.listJoinCandidates(user.userId, id, dto.role ?? 'PLAYER', dto);
+  }
+
+  // ---------- Invitations to join ----------
+
+  /**
+   * Ask somebody to join. Nothing is written to their record until they accept —
+   * see InvitationsService for why an academy cannot simply add people.
+   */
+  @Post(':id/invitations')
+  invite(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: InviteMemberDto) {
+    return this.invitations.invite(user.userId, id, dto);
+  }
+
+  /** What this academy has asked of people, answered or not. */
+  @Get(':id/invitations')
+  listAcademyInvitations(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.invitations.listForAcademy(user.userId, id);
+  }
+
+  /** Invitations addressed to me — declared before `:id` cannot catch it. */
+  @Get('invitations/mine')
+  listMyInvitations(@CurrentUser() user: AuthUser) {
+    return this.invitations.listMine(user.userId);
+  }
+
+  @Post('invitations/:invitationId/accept')
+  acceptInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.decide(user.userId, invitationId, true);
+  }
+
+  @Post('invitations/:invitationId/reject')
+  rejectInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.decide(user.userId, invitationId, false);
+  }
+
+  /** The academy withdrawing a question nobody has answered yet. */
+  @Post('invitations/:invitationId/cancel')
+  cancelInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.cancel(user.userId, invitationId);
   }
 
   // ---------- Transfers between academies ----------
@@ -276,37 +327,13 @@ export class AcademiesController {
   // ---- Endorsements (README 1.5.3) ----
 
   /**
-   * Endorse (hire) a scout or coach. Unlike following, this has consequences: it
-   * is what lets a scout address a recommendation to this academy.
+   * This academy's endorsed scouts and coaches.
+   *
+   * Read-only: endorsement is no longer something a manager grants on a screen
+   * of its own. Joining the academy as a coach or a scout *is* the endorsement,
+   * and being expelled withdraws it — one act, one place, no second mechanism to
+   * drift out of step with the first.
    */
-  /** Who this academy could endorse — real accounts holding the role, not ids. */
-  @Get(':id/endorsements/candidates')
-  endorsementCandidates(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Query('role') role: 'SCOUT' | 'COACH' = 'SCOUT',
-    @Query('query') query?: string,
-  ) {
-    return this.endorsements.listCandidates(user.userId, id, role as never, query);
-  }
-
-  @Post(':id/endorsements')
-  endorse(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: EndorseDto) {
-    return this.endorsements.endorse(user.userId, id, dto);
-  }
-
-  /** Ends the relationship. The record is kept as REVOKED, not deleted. */
-  @Delete(':id/endorsements/:userId/:role')
-  revokeEndorsement(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Param('role') role: EndorsementRole,
-  ) {
-    return this.endorsements.revoke(user.userId, id, userId, role);
-  }
-
-  /** This academy's endorsed scouts and coaches. Manager only. */
   @Get(':id/endorsements')
   listEndorsements(
     @CurrentUser() user: AuthUser,

@@ -3,49 +3,67 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardList, Star, UserCheck, X } from 'lucide-react';
+import { ClipboardList, Hourglass, Mail, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { PlayerProfile, TrialApplicationStatus } from '@/lib/api/types';
+import type { PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
+import { Textarea } from '@/components/ui/Field';
 import { ageBand, formatDate } from '@/lib/utils';
 
-interface Applicant {
-  id: string;
-  playerId: string;
-  status: TrialApplicationStatus;
-  createdAt: string;
+interface Applicant extends TrialApplication {
   player: PlayerProfile;
 }
 
 /**
- * Who applied, for the academy hosting the trial.
+ * Who applied, and the one thing to do about each of them.
  *
- * The four statuses are the spec's own progression (§1.11) — shortlisted, then
- * invited, then accepted or rejected — and each is one press, because a manager
- * triaging thirty applications on a phone the evening before a trial is the case
- * this screen exists for.
+ * ## The row offers the next step, not every step
  *
- * Nothing here is destructive: rejecting sets a status the player can see, and it
- * can be moved again afterwards. The list is only fetched for the hosting
- * manager; the endpoint refuses everyone else regardless of what is drawn.
+ * A screen with four status buttons live at once asked the manager to know the
+ * process by heart, and let them mark somebody ACCEPTED whom no coach had ever
+ * looked at. Each row now shows where the application actually is and the single
+ * action that moves it:
+ *
+ * - waiting on a coach → nothing to press, and it says whose desk it is on
+ * - a coach approved → **Invite** on a private trial, **Add to squad** on an open one
+ * - invited → waiting on the player
+ * - the player confirmed → **Add to squad**
+ *
+ * ## The coach's answer is Process A's answer
+ *
+ * Approving and rejecting are not on this screen at all. The academy asks; a
+ * coach decides. Putting a reject button here would let a manager overrule the
+ * judgement the whole screening step exists to obtain.
  */
-export function Applicants({ trialId }: { trialId: string }) {
+export function Applicants({ trial }: { trial: Trial }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
   const applicants = useQuery({
-    queryKey: ['trial-applications', trialId],
-    queryFn: () => browserFetch<Applicant[]>(`/trials/${trialId}/applications`),
+    queryKey: ['trial-applications', trial.id],
+    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial.id}/applications`),
   });
 
-  const setStatus = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: TrialApplicationStatus }) =>
-      browserFetch(`/trials/applications/${id}/status`, { method: 'PATCH', body: { status } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial-applications', trialId] }),
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: ['trial-applications', trial.id] });
+
+  const invite = useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string }) =>
+      browserFetch(`/trials/applications/${id}/invite`, { method: 'POST', body: { note } }),
+    onSuccess: refresh,
+  });
+
+  const addToSquad = useMutation({
+    mutationFn: (id: string) =>
+      browserFetch(`/trials/applications/${id}/squad`, { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['roster'] });
+      refresh();
+    },
   });
 
   const rows = applicants.data ?? [];
@@ -68,62 +86,17 @@ export function Applicants({ trialId }: { trialId: string }) {
         ) : (
           <ul className="divide-border divide-y">
             {rows.map((application) => (
-              <li key={application.id} className="space-y-2 p-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/players/${application.playerId}`}
-                    className="min-w-0 flex-1 hover:underline"
-                  >
-                    <span className="block truncate text-sm font-medium">
-                      {application.player.firstName} {application.player.lastName}
-                    </span>
-                    <span className="text-muted block truncate text-xs">
-                      {[
-                        application.player.primaryPosition,
-                        ageBand(application.player.birthDate),
-                        application.player.region,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                      {' · '}
-                      {formatDate(application.createdAt)}
-                    </span>
-                  </Link>
-                  <StatusBadge status={application.status} />
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  <Action
-                    label={t.trials.shortlist}
-                    icon={Star}
-                    active={application.status === 'SHORTLISTED'}
-                    pending={setStatus.isPending}
-                    onClick={() => setStatus.mutate({ id: application.id, status: 'SHORTLISTED' })}
-                  />
-                  <Action
-                    label={t.trials.invite}
-                    icon={UserCheck}
-                    active={application.status === 'INVITED'}
-                    pending={setStatus.isPending}
-                    onClick={() => setStatus.mutate({ id: application.id, status: 'INVITED' })}
-                  />
-                  <Action
-                    label={t.trials.accept}
-                    icon={Check}
-                    active={application.status === 'ACCEPTED'}
-                    pending={setStatus.isPending}
-                    onClick={() => setStatus.mutate({ id: application.id, status: 'ACCEPTED' })}
-                  />
-                  <Action
-                    label={t.trials.reject}
-                    icon={X}
-                    active={application.status === 'REJECTED'}
-                    pending={setStatus.isPending}
-                    danger
-                    onClick={() => setStatus.mutate({ id: application.id, status: 'REJECTED' })}
-                  />
-                </div>
-              </li>
+              <ApplicantRow
+                key={application.id}
+                application={application}
+                isPrivate={trial.type === 'PRIVATE'}
+                pending={
+                  (invite.isPending && invite.variables?.id === application.id) ||
+                  (addToSquad.isPending && addToSquad.variables === application.id)
+                }
+                onInvite={(note) => invite.mutate({ id: application.id, note })}
+                onAddToSquad={() => addToSquad.mutate(application.id)}
+              />
             ))}
           </ul>
         )}
@@ -132,49 +105,136 @@ export function Applicants({ trialId }: { trialId: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: TrialApplicationStatus }) {
+function ApplicantRow({
+  application,
+  isPrivate,
+  pending,
+  onInvite,
+  onAddToSquad,
+}: {
+  application: Applicant;
+  isPrivate: boolean;
+  pending: boolean;
+  onInvite: (note: string) => void;
+  onAddToSquad: () => void;
+}) {
+  const { t } = useI18n();
+  const [note, setNote] = React.useState('');
+  const [writing, setWriting] = React.useState(false);
+
+  const { status, review } = application;
+  const screening = status === 'APPLIED' || status === 'SCREENING';
+  // A private trial invites first and takes them on afterwards; an open day has
+  // already had them in front of a coach, so the squad is the next step.
+  const canInvite = isPrivate && status === 'SHORTLISTED';
+  const canAdd = status === 'SHORTLISTED' ? !isPrivate : status === 'CONFIRMED';
+
+  return (
+    <li className="space-y-2 p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={`/players/${application.playerId}`} className="min-w-0 flex-1 hover:underline">
+          <span className="block truncate text-sm font-medium">
+            {application.player.firstName} {application.player.lastName}
+          </span>
+          <span className="text-muted block truncate text-xs">
+            {[
+              application.player.primaryPosition,
+              ageBand(application.player.birthDate),
+              application.player.region,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            {' · '}
+            {formatDate(application.createdAt)}
+          </span>
+        </Link>
+        <StatusBadge status={status} />
+      </div>
+
+      {/* Whose desk it is on. "In review" without a name is a status a manager
+          can do nothing with. */}
+      {screening && review && (
+        <p className="text-muted flex items-center gap-1.5 text-xs">
+          <Hourglass className="size-3.5" aria-hidden />
+          {t.trials.withCoach}: {review.coachUser.firstName} {review.coachUser.lastName}
+        </p>
+      )}
+
+      {review?.note && review.decidedAt && (
+        <p className="bg-surface-2 rounded-lg p-2 text-xs">
+          {t.recommendations.coachNote}: {review.note}
+        </p>
+      )}
+
+      {status === 'INVITED' && <p className="text-muted text-xs">{t.trials.awaitingPlayer}</p>}
+
+      {(canInvite || canAdd) && (
+        <div className="flex flex-wrap justify-end gap-2">
+          {canInvite &&
+            (writing ? (
+              <div className="w-full space-y-2">
+                <Textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={2}
+                  placeholder={t.trials.invitePlaceholder}
+                  aria-label={t.recommendations.inviteNote}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setWriting(false)}>
+                    {t.common.cancel}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!note.trim()}
+                    loading={pending}
+                    onClick={() => onInvite(note.trim())}
+                  >
+                    <Mail aria-hidden /> {t.trials.invite}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" onClick={() => setWriting(true)}>
+                <Mail aria-hidden /> {t.trials.invite}
+              </Button>
+            ))}
+
+          {canAdd && (
+            <Button size="sm" loading={pending} onClick={onAddToSquad}>
+              <UserPlus aria-hidden /> {t.trials.addToSquad}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {status === 'ACCEPTED' && (
+        <p className="text-muted text-xs">{t.trials.squadInvitationSent}</p>
+      )}
+    </li>
+  );
+}
+
+function StatusBadge({ status }: { status: Applicant['status'] }) {
   const { t } = useI18n();
   const variant =
-    status === 'ACCEPTED'
+    status === 'ACCEPTED' || status === 'CONFIRMED'
       ? 'success'
       : status === 'REJECTED'
         ? 'neutral'
-        : status === 'INVITED'
+        : status === 'INVITED' || status === 'SHORTLISTED'
           ? 'primary'
           : 'warning';
-  return <Badge variant={variant}>{t.trials[statusKey(status)]}</Badge>;
-}
 
-/** `applied` is taken in this block by the player-facing "You've applied". */
-function statusKey(status: TrialApplicationStatus) {
-  return `status${status.charAt(0)}${status.slice(1).toLowerCase()}` as
-    'statusApplied' | 'statusShortlisted' | 'statusInvited' | 'statusAccepted' | 'statusRejected';
-}
+  const label = {
+    APPLIED: t.trials.statusApplied,
+    SCREENING: t.trials.statusScreening,
+    SHORTLISTED: t.trials.statusShortlisted,
+    INVITED: t.trials.statusInvited,
+    CONFIRMED: t.trials.statusConfirmed,
+    REJECTED: t.trials.statusRejected,
+    ACCEPTED: t.trials.statusAccepted,
+  }[status];
 
-function Action({
-  label,
-  icon: Icon,
-  active,
-  pending,
-  danger,
-  onClick,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  active: boolean;
-  pending: boolean;
-  danger?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      size="sm"
-      variant={active ? 'primary' : 'outline'}
-      className={!active && danger ? 'text-danger' : undefined}
-      disabled={pending || active}
-      onClick={onClick}
-    >
-      <Icon className="size-4" aria-hidden /> {label}
-    </Button>
-  );
+  return <Badge variant={variant}>{label}</Badge>;
 }

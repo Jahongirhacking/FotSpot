@@ -59,17 +59,17 @@ export function ProfileSummaryCard() {
         {isManager && academy && (
           <div className="grid grid-cols-3 gap-2">
             <CountLink
-              href={`/academies/${academy.id}/roster?role=PLAYER`}
+              href="/academies/mine/squad"
               value={academy.players}
               label={t.profile.players}
             />
             <CountLink
-              href={`/academies/${academy.id}/roster?role=COACH`}
+              href="/academies/mine/squad"
               value={academy.coaches}
               label={t.profile.coaches}
             />
             <CountLink
-              href={`/academies/${academy.id}/roster?role=SCOUT`}
+              href="/academies/mine/squad"
               value={academy.scouts}
               label={t.profile.scouts}
               className="sm:col-start-3"
@@ -80,7 +80,7 @@ export function ProfileSummaryCard() {
         <div className="grid grid-cols-1">
           {data.coach && (
             <CountLink
-              href={academy ? `/academies/${academy.id}/roster?role=PLAYER` : '/players'}
+              href={academy ? '/groups/mine' : '/players'}
               value={data.coach.assessedPlayers}
               label={t.profile.assessedPlayers}
             />

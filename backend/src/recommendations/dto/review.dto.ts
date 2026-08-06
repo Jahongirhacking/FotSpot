@@ -1,4 +1,14 @@
-import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 /**
  * Hand a recommendation to a coach.
@@ -38,5 +48,9 @@ export class ReviewDecisionDto {
 
 /** The manager's invitation, in the player's own notifications. */
 export class InvitePlayerDto {
-  @IsString() @MaxLength(1000) note: string;
+  /** The private trial to invite them to. It must be this academy's own. */
+  @IsUUID() trialId: string;
+
+  /** Where to be, when, what to bring — the invitation itself. */
+  @IsString() @MinLength(1) @MaxLength(1000) note: string;
 }

@@ -11,6 +11,8 @@ import { StorageService } from '../storage/storage.service';
 import { EndorsementsService } from '../academies/endorsements.service';
 import { academyVisibleWeight, contributionOf } from './recommendation-weight.util';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProcessAService } from './process-a.service';
+import { cooldownEndsAt } from './recommendation-cooldown.util';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
 import { RedisService } from '../redis/redis.service';
@@ -41,6 +43,7 @@ export class RecommendationsService {
     private notifications: NotificationsService,
     private redis: RedisService,
     private endorsements: EndorsementsService,
+    private processA: ProcessAService,
   ) {}
 
   /**
@@ -59,20 +62,35 @@ export class RecommendationsService {
     if (!player) throw new BadRequestException('Player not found');
 
     /*
-     * One recommendation per scout per player.
+     * One live recommendation per scout per player, and a wait after a rejection.
      *
      * The reputation formula counts accepted over sent (§1.5), so a scout who
      * could file the same player five times would either multiply one good call
      * into five successes or bury one bad call among four duplicates. Either way
      * the success rate stops describing their judgement, which is the only thing
      * it exists to describe.
+     *
+     * A rejection does not close the door for good: a fifteen-year-old in
+     * February is not the player they are in October, and a scout who was early
+     * rather than wrong should be able to say so. But not the next morning —
+     * that is arguing with the answer, not bringing new evidence. So the door
+     * reopens after RECOMMENDATION_COOLDOWN_MONTHS.
      */
     const already = await this.prisma.recommendation.findFirst({
       where: { scoutId, playerId: dto.playerId },
-      select: { id: true, status: true },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, rejectedAt: true },
     });
-    if (already) {
+    if (already && !already.rejectedAt) {
       throw new ConflictException('You have already recommended this player');
+    }
+    if (already?.rejectedAt) {
+      const openAt = cooldownEndsAt(already.rejectedAt);
+      if (openAt > new Date()) {
+        throw new ConflictException(
+          `This recommendation was turned down. You can put this player forward again on ${openAt.toISOString().slice(0, 10)}.`,
+        );
+      }
     }
 
     const targets = await this.resolveTargets(scoutId, dto);
@@ -243,6 +261,7 @@ export class RecommendationsService {
         status: true,
         note: true,
         createdAt: true,
+        rejectedAt: true,
         targets: { select: { academyId: true, status: true } },
       },
     });
@@ -260,13 +279,28 @@ export class RecommendationsService {
         ? 'REJECTED'
         : recommendation.status === 'ACCEPTED'
           ? 'ACCEPTED'
-          : 'PENDING';
+          : // A coach turned it down. The academy may have reopened its own
+            // review since — that is their business — but for the scout this
+            // recommendation was answered, and answered no.
+            recommendation.rejectedAt
+            ? 'REJECTED'
+            : 'PENDING';
+
+    /*
+     * When they may put this player forward again, or null if they may not yet
+     * — the screen needs the date, not just a disabled button, or the scout is
+     * left guessing whether the door ever reopens.
+     */
+    const openAt = recommendation.rejectedAt ? cooldownEndsAt(recommendation.rejectedAt) : null;
 
     return {
       id: recommendation.id,
       status,
       note: recommendation.note,
       createdAt: recommendation.createdAt,
+      rejectedAt: recommendation.rejectedAt,
+      canRecommendAgainAt: openAt && openAt > new Date() ? openAt : null,
+      canRecommendAgain: !!openAt && openAt <= new Date(),
     };
   }
 
@@ -306,12 +340,7 @@ export class RecommendationsService {
     if (!target) return { academy: membership.academy, recommendation: null, review: null };
 
     const review = await this.prisma.recommendationReview.findUnique({
-      where: {
-        recommendationId_academyId: {
-          recommendationId: target.recommendationId,
-          academyId: membership.academyId,
-        },
-      },
+      where: { playerId_academyId: { playerId, academyId: membership.academyId } },
       select: {
         id: true,
         status: true,
@@ -354,126 +383,105 @@ export class RecommendationsService {
    * was the ask; least-loaded is random's useful cousin and stops one coach
    * collecting the whole inbox by luck.
    */
-  async assignReview(userId: string, recommendationId: string, dto: AssignReviewDto) {
-    const recommendation = await this.prisma.recommendation.findUnique({
-      where: { id: recommendationId },
-      include: { targets: true, player: { select: { id: true, firstName: true, lastName: true } } },
+  async assignReview(userId: string, playerId: string, dto: AssignReviewDto) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { id: true, firstName: true, lastName: true },
     });
-    if (!recommendation) throw new NotFoundException('Recommendation not found');
+    if (!player) throw new NotFoundException('Player not found');
 
-    const academyId = await this.academyForManager(userId, recommendation);
-    await this.assertAcademyManager(userId, academyId);
-
-    const endorsed = await this.prisma.academyEndorsement.findMany({
-      where: { academyId, role: 'COACH', status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
-      select: { userId: true },
+    /*
+     * The academy is the manager's own, not one read off a recommendation.
+     *
+     * An academy does not need a scout's permission to look at a player: a
+     * manager who finds somebody in search can send them straight to a coach.
+     * A recommendation is how a scout puts a player *in front of* an academy —
+     * it fills the inbox — and requiring one made scouts a gate on the academy's
+     * own judgement.
+     */
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER' },
+      select: { academyId: true },
     });
-    if (endorsed.length === 0) {
-      throw new BadRequestException('Endorse a coach before sending players for review');
-    }
+    if (!membership) throw new ForbiddenException('Only an academy manager can do that');
+    const academyId = membership.academyId;
 
-    const candidates = endorsed.map((row) => row.userId);
-    if (dto.coachUserId && !candidates.includes(dto.coachUserId)) {
-      throw new BadRequestException('That coach is not endorsed by this academy');
-    }
-
-    const coachUserId = dto.coachUserId ?? (await this.leastLoadedCoach(candidates));
-    const coachProfile = await this.prisma.coachProfile.findUnique({
-      where: { userId: coachUserId },
+    // If a scout did recommend this player to us, the review records which one,
+    // so accepting it later still moves that scout's reputation.
+    const target = await this.prisma.recommendationTarget.findFirst({
+      where: { academyId, recommendation: { playerId } },
+      orderBy: { createdAt: 'desc' },
+      select: { recommendationId: true },
     });
-    if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
+    const recommendationId = target?.recommendationId ?? null;
 
-    const review = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.recommendationReview.upsert({
-        where: { recommendationId_academyId: { recommendationId, academyId } },
-        // Reassigning replaces the open review rather than adding a second one.
-        update: {
-          coachUserId,
-          coachProfileId: coachProfile.id,
-          status: 'PENDING',
-          decidedAt: null,
-        },
-        create: {
-          recommendationId,
-          academyId,
-          coachUserId,
-          coachProfileId: coachProfile.id,
-        },
-      });
+    /*
+     * The same Process A a trial runs. `manual` when the manager named a coach,
+     * `auto` when they left it to the academy — one process, and the inbox is
+     * simply another way in.
+     */
+    const review = await this.processA.start({
+      playerId,
+      academyId,
+      mode: dto.coachUserId ? 'manual' : 'auto',
+      coachUserId: dto.coachUserId,
+      recommendationId,
+    });
 
-      await tx.recommendationTarget.updateMany({
+    if (recommendationId) {
+      await this.prisma.recommendationTarget.updateMany({
         where: { recommendationId, academyId },
         data: { status: 'REVIEWING' },
       });
-      if (recommendation.academyId === academyId) {
-        await tx.recommendation.update({
-          where: { id: recommendationId },
-          data: { status: 'REVIEWING' },
-        });
-      }
-
-      return created;
-    });
-
-    await this.notifications.notify(coachUserId, 'REVIEW_ASSIGNED', {
-      reviewId: review.id,
-      playerId: recommendation.playerId,
-      playerName: `${recommendation.player.firstName} ${recommendation.player.lastName}`,
-      academyId,
-    });
+    }
 
     return review;
-  }
-
-  /** The endorsed coach carrying the fewest open reviews. */
-  private async leastLoadedCoach(candidates: string[]) {
-    const open = await this.prisma.recommendationReview.groupBy({
-      by: ['coachUserId'],
-      where: { coachUserId: { in: candidates }, status: 'PENDING' },
-      _count: { _all: true },
-    });
-    const load = new Map(open.map((row) => [row.coachUserId, row._count._all]));
-    return candidates.reduce((best, candidate) =>
-      (load.get(candidate) ?? 0) < (load.get(best) ?? 0) ? candidate : best,
-    );
   }
 
   /** The reviews waiting on this coach, with everything the screen renders. */
   async listMyReviews(userId: string, status: 'PENDING' | 'DECIDED' = 'PENDING') {
     const reviews = await this.prisma.recommendationReview.findMany({
       where: {
-        coachUserId: userId,
+        // Every coach the review was handed to sees it, not only the one whose
+        // id ended up on the row — a trial is worked by a staff.
+        assignees: { some: { coachUserId: userId } },
         ...(status === 'PENDING' ? { status: 'PENDING' } : { status: { not: 'PENDING' } }),
       },
       orderBy: { assignedAt: 'desc' },
       take: 50,
       include: {
         academy: { select: { id: true, name: true } },
+        // The player hangs off the review, not the recommendation: a review the
+        // academy started itself has no recommendation, and the coach still has
+        // to see who they are judging.
+        player: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            birthDate: true,
+            primaryPosition: true,
+            region: true,
+          },
+        },
         recommendation: {
           include: {
             scout: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
-            player: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                birthDate: true,
-                primaryPosition: true,
-                region: true,
-              },
-            },
           },
         },
       },
     });
 
+    // A review the academy started itself has no recommendation and no scout —
+    // the coach's screen shows the player either way.
     return reviews.map((review) => ({
       ...review,
-      recommendation: {
-        ...review.recommendation,
-        scout: this.storage.withAvatarUrl(review.recommendation.scout),
-      },
+      recommendation: review.recommendation
+        ? {
+            ...review.recommendation,
+            scout: this.storage.withAvatarUrl(review.recommendation.scout),
+          }
+        : null,
     }));
   }
 
@@ -493,11 +501,24 @@ export class RecommendationsService {
   async decideReview(userId: string, reviewId: string, dto: ReviewDecisionDto) {
     const review = await this.prisma.recommendationReview.findUnique({
       where: { id: reviewId },
-      include: { recommendation: { select: { id: true, playerId: true, scoutId: true } } },
+      include: {
+        recommendation: { select: { id: true, playerId: true, scoutId: true } },
+        player: { select: { id: true } },
+      },
     });
     if (!review) throw new NotFoundException('Review not found');
-    if (review.coachUserId !== userId) {
-      throw new ForbiddenException('Only the coach this was assigned to can decide it');
+
+    /*
+     * Any assigned coach may answer, and the first who does settles it. Two
+     * decisions on one question would leave the academy holding contradictory
+     * answers with no rule for which counts — so the row records who answered,
+     * and it leaves everybody else's queue.
+     */
+    const assignment = await this.prisma.reviewCoach.findUnique({
+      where: { reviewId_coachUserId: { reviewId, coachUserId: userId } },
+    });
+    if (!assignment) {
+      throw new ForbiddenException('Only a coach this was assigned to can decide it');
     }
     if (review.status !== 'PENDING')
       throw new BadRequestException('This review is already decided');
@@ -515,8 +536,8 @@ export class RecommendationsService {
         const assessment = await tx.coachAssessment.create({
           data: {
             coachUserId: userId,
-            coachProfileId: review.coachProfileId,
-            playerId: review.recommendation.playerId,
+            coachProfileId: assignment.coachProfileId,
+            playerId: review.playerId,
             speed: dto.speed!,
             passing: dto.passing!,
             vision: dto.vision!,
@@ -538,15 +559,83 @@ export class RecommendationsService {
           note: dto.note ?? null,
           assessmentId: assessmentId ?? null,
           decidedAt: new Date(),
+          // Whoever answered is who the decision is attributable to, whichever
+          // of the assigned coaches got to it first.
+          coachUserId: userId,
+          coachProfileId: assignment.coachProfileId,
         },
       });
 
       // A rejection closes this academy's interest now; an approval waits for the
       // manager's invitation, so the target stays in REVIEWING.
+      // Only a review that came from a recommendation has a target to close.
       if (dto.decision === 'REJECTED') {
-        await tx.recommendationTarget.updateMany({
-          where: { recommendationId: review.recommendationId, academyId: review.academyId },
-          data: { status: 'REJECTED' },
+        /*
+         * What was rejected is the recommendation, not the player.
+         *
+         * The academy may look at them again tomorrow — a manager can send the
+         * same player for review as often as they like. What the answer binds is
+         * the *scouts*: filing the same player again the next morning would be
+         * arguing with it rather than bringing new evidence, so the cooldown
+         * counts from here (see RECOMMENDATION_COOLDOWN_MONTHS).
+         *
+         * All of them, not only the one the manager happened to be looking at. A
+         * player backed by three scouts was put forward by three scouts, and one
+         * coach's no answers all three.
+         */
+        const backings = review.trialApplicationId
+          ? await tx.trialApplicationBacking.findMany({
+              where: { applicationId: review.trialApplicationId },
+              select: { recommendationId: true },
+            })
+          : [];
+        const rejected = new Set(backings.map((row) => row.recommendationId));
+        if (review.recommendationId) rejected.add(review.recommendationId);
+
+        if (rejected.size > 0) {
+          const ids = [...rejected];
+          await tx.recommendationTarget.updateMany({
+            where: { recommendationId: { in: ids }, academyId: review.academyId },
+            data: { status: 'REJECTED' },
+          });
+          await tx.recommendation.updateMany({
+            where: { id: { in: ids }, rejectedAt: null },
+            data: { status: 'REJECTED', rejectedAt: new Date() },
+          });
+        }
+      }
+
+      /*
+       * Process A's answer, written where the trial can read it.
+       *
+       * TRUE moves the application to SHORTLISTED, which is what unlocks the
+       * academy's next move — "Add to squad" on a general trial, "Invite" on a
+       * private one. FALSE ends it. The coach never sees the difference: they
+       * answered one question about one player.
+       */
+      if (review.trialApplicationId) {
+        const application = await tx.trialApplication.findUnique({
+          where: { id: review.trialApplicationId },
+          select: { status: true },
+        });
+
+        /*
+         * A rejection ends the application. An approval moves it on — except
+         * where the player has already confirmed they are coming, which means
+         * this was the assessment *at* the trial rather than the screening
+         * before it. There is nowhere further to move: what unlocks the squad is
+         * the coach's yes, and the row already says the player turned up.
+         */
+        const next =
+          dto.decision === 'REJECTED'
+            ? 'REJECTED'
+            : application?.status === 'CONFIRMED'
+              ? 'CONFIRMED'
+              : 'SHORTLISTED';
+
+        await tx.trialApplication.update({
+          where: { id: review.trialApplicationId },
+          data: { status: next },
         });
       }
 
@@ -554,55 +643,82 @@ export class RecommendationsService {
     });
 
     // The player's cached profile now has a new assessment on it.
-    await this.redis.del(RedisKeys.playerProfile(review.recommendation.playerId));
+    await this.redis.del(RedisKeys.playerProfile(review.playerId));
     return result;
   }
 
   /**
-   * The manager invites the player, in their own notifications, with a note.
+   * The manager invites the player to a private trial.
    *
-   * Only after a coach approved: inviting on a manager's hunch is the shortcut
-   * this whole flow exists to remove. The note is required because "an academy
-   * wants you" with no word about what happens next is not an invitation a
-   * fourteen-year-old's family can act on.
+   * Not to the academy. A coach approving a *profile* is a judgement about clips
+   * and numbers — the player has not been on a pitch in front of anybody yet, so
+   * the thing to offer is a look, not a place. The trial's own coaches assess
+   * them on the day, and only that second yes puts the squad in reach.
+   *
+   * The recommendation travels with the application, because when the player
+   * finally signs it is the scout's call that was right, and by then the review
+   * that started this has been reopened for the trial itself.
    */
-  async invitePlayer(userId: string, recommendationId: string, dto: InvitePlayerDto) {
-    const recommendation = await this.prisma.recommendation.findUnique({
-      where: { id: recommendationId },
-      include: {
-        targets: true,
-        player: { select: { id: true, userId: true, firstName: true } },
-      },
+  async invitePlayer(userId: string, playerId: string, dto: InvitePlayerDto) {
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER' },
+      select: { academyId: true, academy: { select: { name: true } } },
     });
-    if (!recommendation) throw new NotFoundException('Recommendation not found');
-
-    const academyId = await this.academyForManager(userId, recommendation);
-    await this.assertAcademyManager(userId, academyId);
+    if (!membership) throw new ForbiddenException('Only an academy manager can do that');
+    const academyId = membership.academyId;
 
     const review = await this.prisma.recommendationReview.findUnique({
-      where: { recommendationId_academyId: { recommendationId, academyId } },
+      where: { playerId_academyId: { playerId, academyId } },
     });
     if (!review || review.status !== 'APPROVED') {
       throw new BadRequestException('A coach has to approve this player first');
     }
 
-    const academy = await this.prisma.academyProfile.findUnique({
-      where: { id: academyId },
-      select: { name: true },
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true, birthDate: true },
+    });
+    if (!player) throw new NotFoundException('Player not found');
+
+    const trial = await this.prisma.trial.findUnique({ where: { id: dto.trialId } });
+    if (!trial || trial.academyId !== academyId) {
+      throw new BadRequestException('That trial belongs to another academy');
+    }
+    if (trial.type !== 'PRIVATE') {
+      throw new BadRequestException('Invite to a private trial — a general one is open to anybody');
+    }
+    if (trial.status === 'ARCHIVED') throw new BadRequestException('That trial is closed');
+
+    const application = await this.prisma.trialApplication.upsert({
+      where: { trialId_playerId: { trialId: trial.id, playerId } },
+      update: {
+        status: 'INVITED',
+        inviteNote: dto.note.trim(),
+        recommendationId: review.recommendationId,
+      },
+      create: {
+        trialId: trial.id,
+        playerId,
+        status: 'INVITED',
+        inviteNote: dto.note.trim(),
+        recommendationId: review.recommendationId,
+      },
     });
 
-    // Accepting is what moves the scout's reputation and the player's weight, so
-    // it goes through the existing path rather than a second copy of that logic.
-    await this.updateStatus(userId, recommendationId, { status: 'ACCEPTED' });
+    // Every scout who put this player forward is riding on the trial's answer.
+    await this.processA.snapshotBackings(application.id, playerId, academyId);
 
-    await this.notifications.notify(recommendation.player.userId, 'ACADEMY_INVITATION', {
+    await this.notifications.notify(player.userId, 'TRIAL_INVITATION', {
+      applicationId: application.id,
+      trialId: trial.id,
+      trialTitle: trial.title,
       academyId,
-      academyName: academy?.name ?? '',
-      note: dto.note,
-      playerId: recommendation.playerId,
+      academyName: membership.academy.name,
+      status: 'INVITED',
+      note: dto.note.trim(),
     });
 
-    return { invited: true };
+    return application;
   }
 
   /**
@@ -879,21 +995,44 @@ export class RecommendationsService {
    * success rate counts each verdict separately, which is what makes recommending
    * widely a real risk rather than a free bet.
    */
-  async updateStatus(userId: string, recommendationId: string, dto: UpdateRecommendationStatusDto) {
+  async updateStatus(
+    userId: string,
+    recommendationId: string,
+    dto: UpdateRecommendationStatusDto,
+    /**
+     * Set by the trial flow, which settles every scout who backed a player at
+     * once — see `takeUpGlobal`.
+     */
+    options: { takeUpGlobal?: boolean } = {},
+  ) {
     const recommendation = await this.prisma.recommendation.findUnique({
       where: { id: recommendationId },
       include: { targets: true },
     });
     if (!recommendation) throw new NotFoundException('Recommendation not found');
 
-    if (recommendation.type === RecommendationType.GLOBAL) {
+    if (recommendation.type === RecommendationType.GLOBAL && !options.takeUpGlobal) {
       throw new BadRequestException(
         'A global recommendation is not addressed to an academy and cannot be accepted or rejected.',
       );
     }
 
     const academyId = await this.resolveDecidingAcademy(userId, recommendation.targets, dto);
-    const target = recommendation.targets.find((t) => t.academyId === academyId);
+    let target = recommendation.targets.find((t) => t.academyId === academyId);
+
+    /*
+     * A global recommendation is a scout saying "somebody should look at this
+     * player". It names no academy, so ordinarily no academy can accept or
+     * reject it — but an academy that has now put that player through a trial
+     * *is* the somebody, and the scout's call stands or falls with the outcome
+     * like everybody else's. Taking it up addresses it here, and from that point
+     * it settles through exactly the same path as a specific one.
+     */
+    if (!target && recommendation.type === RecommendationType.GLOBAL && options.takeUpGlobal) {
+      target = await this.prisma.recommendationTarget.create({
+        data: { recommendationId, academyId },
+      });
+    }
 
     if (!target) throw new ForbiddenException('This recommendation was not sent to your academy');
     if (target.status === 'ACCEPTED' || target.status === 'REJECTED') {
@@ -906,6 +1045,16 @@ export class RecommendationsService {
     });
 
     if (dto.status === 'ACCEPTED') {
+      /*
+       * A recommendation that was turned down and then accepted after all is not
+       * one the scout should still be serving a cooldown for — they were right,
+       * and the clock was started by an answer that has since been overtaken.
+       */
+      await this.prisma.recommendation.update({
+        where: { id: recommendation.id },
+        data: { rejectedAt: null },
+      });
+
       await this.bumpScoutStats(recommendation.scoutId, { acceptedDelta: 1 });
       await this.notifications.notify(recommendation.scoutId, 'RECOMMENDATION_ACCEPTED', {
         recommendationId,

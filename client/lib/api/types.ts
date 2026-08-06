@@ -24,8 +24,9 @@ export type PlayingStyle =
 
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
+/** In the order it moves — see the Prisma enum for what each one means. */
 export type TrialApplicationStatus =
-  'APPLIED' | 'SHORTLISTED' | 'INVITED' | 'REJECTED' | 'ACCEPTED';
+  'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INVITED' | 'CONFIRMED' | 'REJECTED' | 'ACCEPTED';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
   'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
@@ -164,6 +165,13 @@ export interface AcademyMember {
   birthDate: string | null;
   coachStatus: string | null;
   rating: number | null;
+  /** What kind of coach they are here — head coach, GK coach. Null for others. */
+  coachType: string | null;
+  /** The squad they are in, or null for the reserve. */
+  group: { id: string; name: string } | null;
+  /** A scout's standing (§1.5). Null for anyone who is not one. */
+  level: number | null;
+  successRate: number | null;
 }
 
 export interface TransferListing {
@@ -219,7 +227,34 @@ export interface GroupDetail extends Omit<AcademyGroup, 'memberCount'> {
     playerId: string | null;
     primaryPosition: string | null;
     birthDate: string | null;
+    coachType: string | null;
   }[];
+}
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+
+/** An academy asking somebody to join it, and their answer. */
+export interface AcademyInvitation {
+  id: string;
+  academyId: string;
+  userId: string;
+  role: AcademyMemberRole;
+  status: InvitationStatus;
+  note: string | null;
+  invitedByUserId: string;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+/** The invitee's view — they need to know which academy is asking. */
+export interface MyInvitation extends AcademyInvitation {
+  academy: {
+    id: string;
+    name: string;
+    region: string | null;
+    district: string | null;
+    status: VerificationStatus;
+  };
 }
 
 export type TransferStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -351,6 +386,11 @@ export interface MyRecommendation {
   player: { id: string; firstName: string; lastName: string };
   /** Empty for GLOBAL — it is offered to every academy rather than addressed. */
   academies: { id: string; name: string; status: RecommendationStatus }[];
+  /** When a coach turned it down, if one did. */
+  rejectedAt?: string | null;
+  /** Set while the three-month cooldown is running; null once it has passed. */
+  canRecommendAgainAt?: string | null;
+  canRecommendAgain?: boolean;
 }
 
 /** GET /recommendations/academy/:id/ranked — README §1.5.1/§1.5.2. */
@@ -429,6 +469,11 @@ export interface CoachReview {
   };
 }
 
+export type TrialStatus = 'OPEN' | 'ARCHIVED';
+
+/** GENERAL is the open board; PRIVATE is by invitation and never listed. */
+export type TrialType = 'GENERAL' | 'PRIVATE';
+
 export interface Trial {
   id: string;
   academyId: string;
@@ -439,7 +484,11 @@ export interface Trial {
   location: string;
   date: string;
   requirements?: string | null;
+  /** ARCHIVED keeps the applicants and refuses new ones. There is no delete. */
+  status: TrialStatus;
+  type: TrialType;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface TrialApplication {
@@ -447,6 +496,18 @@ export interface TrialApplication {
   trialId: string;
   playerId: string;
   status: TrialApplicationStatus;
+  /** What the academy wrote when inviting — private trials only. */
+  inviteNote?: string | null;
+  /** Where Process A got to, when the row came from a screen that includes it. */
+  review?: {
+    id: string;
+    status: ReviewStatus;
+    note: string | null;
+    decidedAt: string | null;
+    coachUser: { id: string; firstName: string | null; lastName: string | null };
+  } | null;
+  /** Joined on the player's own list so they can read what they were invited to. */
+  trial?: Trial;
   createdAt: string;
 }
 
@@ -467,6 +528,10 @@ export interface CoachAssessment {
 }
 
 export type NotificationEvent =
+  | 'REVIEW_ASSIGNED'
+  | 'ACADEMY_INVITATION'
+  | 'ACADEMY_JOIN_INVITATION'
+  | 'ACADEMY_JOIN_ANSWER'
   | 'RECOMMENDATION_ACCEPTED'
   | 'RECOMMENDATION_REJECTED'
   | 'TRIAL_INVITATION'

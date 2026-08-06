@@ -16,7 +16,6 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
-  AddStaffMemberDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -460,30 +459,6 @@ export class AcademiesService {
     return archived;
   }
 
-  async addStaff(userId: string, academyId: string, dto: AddStaffMemberDto) {
-    await this.assertManager(userId, academyId);
-
-    let coachId: string | undefined;
-    if (dto.role === 'COACH') {
-      const coachProfile = await this.prisma.coachProfile.findUnique({
-        where: { userId: dto.userId },
-      });
-      if (!coachProfile || coachProfile.status !== 'VERIFIED') {
-        throw new BadRequestException('User is not a verified coach');
-      }
-      coachId = coachProfile.id;
-    }
-
-    const member = await this.prisma.academyMember.upsert({
-      where: { academyId_userId: { academyId, userId: dto.userId } },
-      update: { role: dto.role, coachId },
-      create: { academyId, userId: dto.userId, role: dto.role, coachId },
-    });
-    // getPublicProfile includes members, so a staff change invalidates it too.
-    await this.invalidate(academyId);
-    return member;
-  }
-
   /**
    * The academy's people: coaches, scouts and the squad.
    *
@@ -567,6 +542,15 @@ export class AcademiesService {
         create: { academyId, userId, role: 'COACH', coachId: coach.id },
       });
 
+      // Taking somebody onto the staff is the endorsement. Making the manager
+      // say it twice, on another screen, only produced coaches whose reviews
+      // their own academy would not accept.
+      await tx.academyEndorsement.upsert({
+        where: { academyId_userId_role: { academyId, userId, role: 'COACH' } },
+        update: { status: 'ACTIVE', revokedAt: null },
+        create: { academyId, userId, role: 'COACH' },
+      });
+
       return { member, coachId: coach.id, credentials };
     });
 
@@ -601,6 +585,8 @@ export class AcademiesService {
         joinedAt: true,
         releasedAt: true,
         previousAcademyId: true,
+        coachType: true,
+        group: { select: { id: true, name: true } },
         user: {
           select: {
             id: true,
@@ -620,6 +606,14 @@ export class AcademiesService {
       .filter((id): id is string => !!id);
     const ratings = await this.ratingsFor(playerIds);
 
+    // A scout's standing is what the scouts tab shows instead of a rating, and
+    // ScoutStats is keyed by userId without a relation — one query for the page.
+    const stats = await this.prisma.scoutStats.findMany({
+      where: { userId: { in: members.map((member) => member.user.id) } },
+      select: { userId: true, level: true, successRate: true },
+    });
+    const standing = new Map(stats.map((row) => [row.userId, row]));
+
     return members
       .map(({ user, ...member }) => ({
         ...member,
@@ -633,6 +627,8 @@ export class AcademiesService {
         birthDate: user.playerProfile?.birthDate ?? null,
         coachStatus: user.coachProfile?.status ?? null,
         rating: user.playerProfile ? (ratings.get(user.playerProfile.id) ?? null) : null,
+        level: standing.get(user.id)?.level ?? null,
+        successRate: standing.get(user.id)?.successRate ?? null,
       }))
       .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
   }
@@ -688,6 +684,7 @@ export class AcademiesService {
       data: {
         ...(dto.role ? { role: dto.role } : {}),
         ...(dto.status ? { status: dto.status, releasedAt: null } : {}),
+        ...(dto.coachType !== undefined ? { coachType: dto.coachType.trim() || null } : {}),
       },
     });
     await this.invalidate(academyId);
@@ -712,9 +709,19 @@ export class AcademiesService {
     if (!member || member.academyId !== academyId) throw new NotFoundException('Member not found');
     if (member.role === 'MANAGER') throw new BadRequestException('A manager cannot be released');
 
-    const released = await this.prisma.academyMember.update({
-      where: { id: memberId },
-      data: { status: 'RELEASED', releasedAt: new Date() },
+    const released = await this.prisma.$transaction(async (tx) => {
+      // Expelling withdraws the trust that came with joining. A scout who is no
+      // longer staff must not keep addressing recommendations to this academy,
+      // and a coach must not keep reviewing for it.
+      await tx.academyEndorsement.updateMany({
+        where: { academyId, userId: member.userId, status: 'ACTIVE' },
+        data: { status: 'REVOKED', revokedAt: new Date() },
+      });
+
+      return tx.academyMember.update({
+        where: { id: memberId },
+        data: { status: 'RELEASED', releasedAt: new Date(), groupId: null },
+      });
     });
     await this.invalidate(academyId);
     await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, { memberId, academyId });

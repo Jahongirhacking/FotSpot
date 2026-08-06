@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
 } from 'class-validator';
 import { PlayingStyle } from '@prisma/client';
@@ -76,6 +77,17 @@ export class SearchPlayersDto {
   @IsEnum(PlayingStyle)
   playingStyle?: PlayingStyle;
   @IsOptional() @IsString() query?: string;
+
+  /**
+   * Age in years, inclusive at both ends.
+   *
+   * Asked as an age and stored as a birth date, so the comparison is done here
+   * rather than by the caller: "under 16" must keep meaning under 16 next
+   * birthday, and a client that converted to a date once would go stale.
+   */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) minAge?: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) maxAge?: number;
 
   @IsOptional()
   @Type(() => Number)

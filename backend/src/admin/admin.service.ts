@@ -6,14 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { StorageService } from '../storage/storage.service';
-import { RbacService } from '../rbac/rbac.service';
-import { CoachesService } from '../coaches/coaches.service';
 import { AcademiesService } from '../academies/academies.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
+import { AuditService } from '../audit/audit.service';
+import { CoachesService } from '../coaches/coaches.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { RbacService } from '../rbac/rbac.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class AdminService {
@@ -222,9 +222,13 @@ export class AdminService {
       select: { id: true, isActive: true },
     });
 
-    await this.audit.record(actorId, isActive ? AuditAction.USER_ENABLED : AuditAction.USER_DISABLED, {
-      userId,
-    });
+    await this.audit.record(
+      actorId,
+      isActive ? AuditAction.USER_ENABLED : AuditAction.USER_DISABLED,
+      {
+        userId,
+      },
+    );
 
     return user;
   }

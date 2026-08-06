@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "TrialStatus" AS ENUM ('OPEN', 'ARCHIVED');
+
+-- AlterTable
+ALTER TABLE "Trial" ADD COLUMN     "status" "TrialStatus" NOT NULL DEFAULT 'OPEN',
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

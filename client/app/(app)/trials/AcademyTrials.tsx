@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
-import { Field, Input, Textarea } from '@/components/ui/Field';
+import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -54,6 +54,7 @@ export function AcademyTrials({
     setError(null);
     const form = new FormData(event.currentTarget);
     create.mutate({
+      type: String(form.get('type') ?? 'GENERAL'),
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
       date: new Date(String(form.get('date'))).toISOString(),
@@ -86,6 +87,13 @@ export function AcademyTrials({
 
         {open && (
           <form onSubmit={submit} className="border-border space-y-3 rounded-lg border p-3">
+            <Field label={t.trials.trialType} htmlFor="trial-type" hint={t.trials.typeHint}>
+              <Select id="trial-type" name="type" defaultValue="GENERAL">
+                <option value="GENERAL">{t.trials.typeGeneral}</option>
+                <option value="PRIVATE">{t.trials.typePrivate}</option>
+              </Select>
+            </Field>
+
             <Field label={t.trials.title} htmlFor="trial-title" required>
               <Input
                 id="trial-title"
@@ -172,7 +180,15 @@ export function AcademyTrials({
                   className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{trial.title}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">{trial.title}</span>
+                      {trial.type === 'PRIVATE' && (
+                        <Badge variant="warning">{t.trials.typePrivate}</Badge>
+                      )}
+                      {trial.status === 'ARCHIVED' && (
+                        <Badge variant="neutral">{t.trials.statusArchived}</Badge>
+                      )}
+                    </span>
                     <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                       <span className="flex items-center gap-1">
                         <CalendarDays className="size-3" aria-hidden /> {formatDate(trial.date)}

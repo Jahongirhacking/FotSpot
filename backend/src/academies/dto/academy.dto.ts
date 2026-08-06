@@ -60,12 +60,6 @@ export class UpdateAcademyDto {
   @IsOptional() @IsString() description?: string;
 }
 
-export class AddStaffMemberDto {
-  @IsUUID() userId: string;
-  /** Players are members too — an academy's squad is a roster, not a search. */
-  @IsIn(['COACH', 'SCOUT', 'PLAYER']) role: 'COACH' | 'SCOUT' | 'PLAYER';
-}
-
 /**
  * Change what a member is, or whether they are still active.
  *
@@ -75,6 +69,8 @@ export class AddStaffMemberDto {
 export class UpdateMemberDto {
   @IsOptional() @IsIn(['COACH', 'SCOUT', 'PLAYER']) role?: 'COACH' | 'SCOUT' | 'PLAYER';
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
+  /** Head coach, goalkeeping coach, fitness coach — free text, per academy. */
+  @IsOptional() @IsString() @MaxLength(60) coachType?: string;
 }
 
 export class ListMembersDto {

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, Skeleton } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { formatDate } from '@/lib/utils';
 import {
   Dialog,
   DialogBody,
@@ -28,6 +29,8 @@ interface MyRecommendation {
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   note: string | null;
   createdAt: string;
+  /** Set while the three-month cooldown is running; null once it has passed. */
+  canRecommendAgainAt: string | null;
 }
 
 interface AcademyState {
@@ -137,7 +140,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 
           {isScout &&
             (mine ? (
-              <RecommendationResult status={mine.status} />
+              <RecommendationResult mine={mine} />
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
@@ -156,18 +159,22 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 }
 
 /**
- * What became of the one recommendation this scout filed for this player.
+ * What became of the recommendation this scout filed for this player.
  *
  * A disabled button rather than a hidden one: "you already did this, and here is
  * what happened" answers the question the scout came back to ask, where an absent
  * control just looks like a bug.
+ *
+ * A rejection is not the end of it. The door reopens three months on, and the
+ * date is on the screen — a scout who was early rather than wrong needs to know
+ * the block lifts, not merely that it is there.
  */
-function RecommendationResult({ status }: { status: MyRecommendation['status'] }) {
+function RecommendationResult({ mine }: { mine: MyRecommendation }) {
   const { t } = useI18n();
   const label =
-    status === 'ACCEPTED'
+    mine.status === 'ACCEPTED'
       ? t.recommendations.statusAccepted
-      : status === 'REJECTED'
+      : mine.status === 'REJECTED'
         ? t.recommendations.statusRejected
         : t.recommendations.statusPending;
 
@@ -177,6 +184,11 @@ function RecommendationResult({ status }: { status: MyRecommendation['status'] }
         <Check aria-hidden /> {t.player.alreadyRecommended}
       </Button>
       <p className="text-muted text-xs">{f2(t.player.recommendationResult, label)}</p>
+      {mine.canRecommendAgainAt && (
+        <p className="text-muted text-xs">
+          {f2(t.player.recommendAgainOn, formatDate(mine.canRecommendAgainAt))}
+        </p>
+      )}
     </div>
   );
 }
@@ -194,6 +206,10 @@ function f2(template: string, value: string) {
  * answered. A rejection puts the button back to "send for review" — a coach
  * saying no this month is not a permanent verdict, and the manager may want a
  * second opinion later.
+ *
+ * No recommendation is required. An academy that finds a player in search may
+ * send them to a coach directly; a scout's recommendation is how a player reaches
+ * the *inbox*, not permission to look at them.
  */
 function ManagerAction({ playerId }: { playerId: string }) {
   const { t } = useI18n();
@@ -227,7 +243,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
 
   const assign = useMutation({
     mutationFn: () =>
-      browserFetch(`/recommendations/${state?.recommendation?.id}/review`, {
+      browserFetch(`/recommendations/players/${playerId}/review`, {
         method: 'POST',
         body: coachUserId ? { coachUserId } : {},
       }),
@@ -236,7 +252,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
 
   const invite = useMutation({
     mutationFn: () =>
-      browserFetch(`/recommendations/${state?.recommendation?.id}/invite`, {
+      browserFetch(`/recommendations/players/${playerId}/invite`, {
         method: 'POST',
         body: { note: note.trim() },
       }),
@@ -246,13 +262,7 @@ function ManagerAction({ playerId }: { playerId: string }) {
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
   if (!state) return null;
 
-  // Nobody has put this player in front of the academy, so there is nothing to
-  // send anywhere. Saying so beats a button that would fail.
-  if (!state.recommendation) {
-    return <p className="text-muted text-sm">{t.player.noRecommendationYet}</p>;
-  }
-
-  if (state.recommendation.status === 'ACCEPTED') {
+  if (state.recommendation?.status === 'ACCEPTED') {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
         <Check className="size-4" aria-hidden /> {t.player.alreadyInvited}
