@@ -146,8 +146,13 @@ window and a rewatch comes from the browser cache instead of the network.
 - **Recommendation status flow** (1.8): PENDING → REVIEWING →
   ACCEPTED/REJECTED, academy-manager-only transitions, reputation bump +
   notifications fired on ACCEPTED/REJECTED.
-- **Coach verification gating** (1.9): assessments can only be submitted by
-  a `CoachProfile` with `status = VERIFIED`; verifying a coach grants the
+- **Attribute assessment gating** (1.9, TRIAL.md Rules 21–23): two conditions,
+  both checked on every write. The `CoachProfile` must be `VERIFIED`, **and** the
+  coach must share an `AcademyGroup` with the player — see
+  `GroupsService.assertCoachesPlayer`, which also guards a coach's rating of a
+  clip. The reserve (`AcademyMember.groupId = null`) qualifies nobody. Neither
+  the online review nor a trial verdict accepts ratings at all (Rule 22): each
+  takes a decision and a note, and nothing else. Verifying a coach grants the
   `coach` RBAC role.
 - **Academy creation** (1.10, revised): **admin/super_admin only** — there are
   roughly 50 academies in Uzbekistan, so they are onboarded by the platform team

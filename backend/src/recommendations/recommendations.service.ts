@@ -20,17 +20,6 @@ import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/revie
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 
-/** The eight a coach scores. Approval needs all of them. */
-const ATTRIBUTE_KEYS = [
-  'speed',
-  'passing',
-  'vision',
-  'dribbling',
-  'finishing',
-  'physical',
-  'leadership',
-  'discipline',
-] as const;
 import {
   computeRecommendationCredibility,
   computeScoutLevel,
@@ -608,52 +597,25 @@ export class RecommendationsService {
       throw new BadRequestException('This review is already decided');
 
     /*
-     * Ratings are optional, on both answers.
+     * No attributes here. TRIAL.md Rule 22.
      *
      * An online review asks a coach one question — is this player worth a look —
-     * and the answer is yes or no. Requiring eight numbers to say yes made the
-     * cheap decision the expensive one, and a screen full of sliders is not what
-     * somebody reading clips on a phone should have to work through.
-     *
-     * The columns stay: a coach who *does* score a player still writes the most
-     * credible numbers the platform holds (§1.6), and the rating flow on a clip
-     * still uses them. Nothing here demands them.
+     * and the answer is yes or no. It is not the place to score somebody: the
+     * coach has watched clips, which is enough to say "worth a look" and not
+     * enough to say "physical 62". Attribute ratings belong to squad work, where
+     * the coach and the player share a group (Rule 21, README §1.9), and a
+     * player being screened is in no group of this coach's.
      */
-    const ratings = ATTRIBUTE_KEYS.map((key) => dto[key]);
-    const rated = ratings.every((value) => typeof value === 'number');
 
     /** The recommendations this decision answered, for the reputation pass below. */
     let settled: string[] = [];
 
     const result = await this.prisma.$transaction(async (tx) => {
-      let assessmentId: string | undefined;
-
-      if (rated) {
-        const assessment = await tx.coachAssessment.create({
-          data: {
-            coachUserId: userId,
-            coachProfileId: assignment.coachProfileId,
-            playerId: review.playerId,
-            speed: dto.speed!,
-            passing: dto.passing!,
-            vision: dto.vision!,
-            dribbling: dto.dribbling!,
-            finishing: dto.finishing!,
-            physical: dto.physical!,
-            leadership: dto.leadership!,
-            discipline: dto.discipline!,
-            notes: dto.note ?? null,
-          },
-        });
-        assessmentId = assessment.id;
-      }
-
       const updated = await tx.recommendationReview.update({
         where: { id: reviewId },
         data: {
           status: dto.decision,
           note: dto.note ?? null,
-          assessmentId: assessmentId ?? null,
           decidedAt: new Date(),
           // Whoever answered is who the decision is attributable to, whichever
           // of the assigned coaches got to it first.

@@ -852,8 +852,12 @@ model ScoutStats {
  *
  * The academy manager does not judge football — that is what they employ coaches
  * for (§1.9). A recommendation therefore goes out for review before anyone is
- * invited, and the review is where the only credible attribute ratings on this
- * platform get written.
+ * invited, and the coach answers ACCEPT or REJECT.
+ *
+ * That is the whole answer. No attribute ratings are written here (TRIAL.md
+ * Rule 22): the coach has watched clips, which is enough to say "worth a look"
+ * and not enough to score somebody. Scoring belongs to CoachAssessment, gated on
+ * the coach and the player sharing a squad group.
  */
 model RecommendationReview {
   id               String @id @default(uuid())
@@ -890,8 +894,6 @@ model RecommendationReview {
 
   status           ReviewStatus @default(PENDING)
   note             String?
-  /// The assessment the coach produced while reviewing, if they rated the player.
-  assessmentId     String?
 
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
   trialApplication TrialApplication? @relation(fields: [trialApplicationId], references: [id], onDelete: SetNull)
@@ -1075,6 +1077,20 @@ model RecommendationTarget {
 
 // ---------- COACH ASSESSMENT (1.9) ----------
 
+/**
+ * A coach's ratings of a player they coach.
+ *
+ * Written **if and only if** the coach and the player share an AcademyGroup —
+ * TRIAL.md Rule 21, README §1.9, enforced by `GroupsService.assertCoachesPlayer`.
+ * The reserve (`AcademyMember.groupId = null`) is the absence of a group, so it
+ * qualifies nobody.
+ *
+ * This is the one number a player cannot write about themselves (§12.4), and it
+ * is worth that only if whoever wrote it has watched them train. So it is
+ * deliberately unreachable from the two screens where a coach judges a stranger:
+ * an online review answers ACCEPT/REJECT and a trial answers PASS/FAIL, and
+ * neither writes a row here (Rule 22).
+ */
 model CoachAssessment {
   id       String @id @default(uuid())
   coachUserId String
@@ -1328,15 +1344,6 @@ model TrialResult {
 
   verdict       TrialVerdict
   note          String?
-  /**
-   * The ratings the coach wrote while testing them, if they rated the player.
-   *
-   * Required on a PASS. These are the most credible numbers the platform can
-   * hold — a coach who watched the player on a pitch rather than on video — and
-   * they go through the same CoachAssessment table as any other, which is what
-   * makes them count against a player's self-reported claims (§1.6).
-   */
-  assessmentId  String?
 
   decidedAt DateTime @default(now())
 

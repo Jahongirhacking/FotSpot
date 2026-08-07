@@ -1225,429 +1225,6 @@
         ]
       }
     },
-    "/api/v1/players/me": {
-      "post": {
-        "operationId": "players_createProfile",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePlayerProfileDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      },
-      "get": {
-        "operationId": "players_getOwnProfile",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      },
-      "patch": {
-        "operationId": "players_updateProfile",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePlayerProfileDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      }
-    },
-    "/api/v1/players/me/stats": {
-      "patch": {
-        "operationId": "players_updateStats",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePlayerStatsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      }
-    },
-    "/api/v1/players/search": {
-      "get": {
-        "operationId": "players_search",
-        "parameters": [
-          {
-            "name": "playingStyle",
-            "required": false,
-            "in": "query",
-            "description": "\"We need a Destroyer, U16, Fergana\" - README 21.3 recruitment filter.",
-            "schema": {
-              "$ref": "#/components/schemas/PlayingStyle"
-            }
-          },
-          {
-            "name": "region",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "position",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "query",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "minAge",
-            "required": false,
-            "in": "query",
-            "description": "Age in years, inclusive at both ends.\n\nAsked as an age and stored as a birth date, so the comparison is done here\nrather than by the caller: \"under 16\" must keep meaning under 16 next\nbirthday, and a client that converted to a date once would go stale.",
-            "schema": {
-              "minimum": 0,
-              "maximum": 60,
-              "type": "number"
-            }
-          },
-          {
-            "name": "maxAge",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 0,
-              "maximum": 60,
-              "type": "number"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 20,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      }
-    },
-    "/api/v1/players/by-username/{username}": {
-      "get": {
-        "operationId": "players_getByUsername",
-        "parameters": [
-          {
-            "name": "username",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Resolves `/players/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as a player id.",
-        "tags": [
-          "players"
-        ]
-      }
-    },
-    "/api/v1/players/{id}": {
-      "get": {
-        "operationId": "players_getPublicProfile",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "players"
-        ]
-      }
-    },
-    "/api/v1/coaches/me": {
-      "post": {
-        "operationId": "coaches_createProfile",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCoachProfileDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "coaches"
-        ]
-      },
-      "get": {
-        "operationId": "coaches_getOwnProfile",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "coaches"
-        ]
-      }
-    },
-    "/api/v1/coaches/{id}": {
-      "get": {
-        "operationId": "coaches_getPublicProfile",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "coaches"
-        ]
-      }
-    },
-    "/api/v1/coaches/academy/{academyId}": {
-      "post": {
-        "operationId": "coaches_createForAcademy",
-        "parameters": [
-          {
-            "name": "academyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCoachForAcademyDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "An academy manager adds a coach to their academy. Created VERIFIED — the\nacademy vouches for them, and the platform already vetted the academy.",
-        "tags": [
-          "coaches"
-        ]
-      }
-    },
-    "/api/v1/coaches/assessments": {
-      "post": {
-        "operationId": "coaches_createAssessment",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAssessmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "coaches"
-        ]
-      }
-    },
-    "/api/v1/coaches/assessments/player/{playerId}": {
-      "get": {
-        "operationId": "coaches_listForPlayer",
-        "parameters": [
-          {
-            "name": "playerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "coaches"
-        ]
-      }
-    },
     "/api/v1/academies": {
       "post": {
         "operationId": "academies_register",
@@ -2990,6 +2567,429 @@
         ],
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/players/me": {
+      "post": {
+        "operationId": "players_createProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlayerProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      },
+      "get": {
+        "operationId": "players_getOwnProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      },
+      "patch": {
+        "operationId": "players_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlayerProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/me/stats": {
+      "patch": {
+        "operationId": "players_updateStats",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlayerStatsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/search": {
+      "get": {
+        "operationId": "players_search",
+        "parameters": [
+          {
+            "name": "playingStyle",
+            "required": false,
+            "in": "query",
+            "description": "\"We need a Destroyer, U16, Fergana\" - README 21.3 recruitment filter.",
+            "schema": {
+              "$ref": "#/components/schemas/PlayingStyle"
+            }
+          },
+          {
+            "name": "region",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "position",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minAge",
+            "required": false,
+            "in": "query",
+            "description": "Age in years, inclusive at both ends.\n\nAsked as an age and stored as a birth date, so the comparison is done here\nrather than by the caller: \"under 16\" must keep meaning under 16 next\nbirthday, and a client that converted to a date once would go stale.",
+            "schema": {
+              "minimum": 0,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxAge",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/by-username/{username}": {
+      "get": {
+        "operationId": "players_getByUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolves `/players/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as a player id.",
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/players/{id}": {
+      "get": {
+        "operationId": "players_getPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "players"
+        ]
+      }
+    },
+    "/api/v1/coaches/me": {
+      "post": {
+        "operationId": "coaches_createProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCoachProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "coaches"
+        ]
+      },
+      "get": {
+        "operationId": "coaches_getOwnProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "coaches"
+        ]
+      }
+    },
+    "/api/v1/coaches/{id}": {
+      "get": {
+        "operationId": "coaches_getPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "coaches"
+        ]
+      }
+    },
+    "/api/v1/coaches/academy/{academyId}": {
+      "post": {
+        "operationId": "coaches_createForAcademy",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCoachForAcademyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An academy manager adds a coach to their academy. Created VERIFIED — the\nacademy vouches for them, and the platform already vetted the academy.",
+        "tags": [
+          "coaches"
+        ]
+      }
+    },
+    "/api/v1/coaches/assessments": {
+      "post": {
+        "operationId": "coaches_createAssessment",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssessmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "coaches"
+        ]
+      }
+    },
+    "/api/v1/coaches/assessments/player/{playerId}": {
+      "get": {
+        "operationId": "coaches_listForPlayer",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "coaches"
         ]
       }
     },
@@ -5402,248 +5402,6 @@
           "body"
         ]
       },
-      "PlayingStyle": {
-        "type": "string",
-        "enum": [
-          "POACHER",
-          "TARGET_MAN",
-          "DEEP_LYING_FORWARD",
-          "WIDE_THREAT",
-          "BOX_TO_BOX",
-          "PLAYMAKER",
-          "DESTROYER",
-          "ORCHESTRATOR",
-          "BALL_PLAYING_DEFENDER",
-          "STOPPER",
-          "OVERLAPPING_FULL_BACK",
-          "SWEEPER",
-          "OFFENSIVE_KEEPER",
-          "DEFENSIVE_KEEPER"
-        ]
-      },
-      "CreatePlayerProfileDto": {
-        "type": "object",
-        "properties": {
-          "playingStyle": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PlayingStyle"
-              }
-            ]
-          },
-          "firstName": {
-            "type": "string"
-          },
-          "lastName": {
-            "type": "string"
-          },
-          "birthDate": {
-            "type": "string"
-          },
-          "gender": {
-            "type": "string"
-          },
-          "height": {
-            "type": "number"
-          },
-          "weight": {
-            "type": "number"
-          },
-          "dominantFoot": {
-            "type": "string",
-            "enum": [
-              "LEFT",
-              "RIGHT",
-              "BOTH"
-            ]
-          },
-          "primaryPosition": {
-            "type": "string"
-          },
-          "secondaryPosition": {
-            "type": "string"
-          },
-          "region": {
-            "type": "string"
-          },
-          "district": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "firstName",
-          "lastName",
-          "birthDate",
-          "gender"
-        ]
-      },
-      "UpdatePlayerProfileDto": {
-        "type": "object",
-        "properties": {
-          "playingStyle": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/PlayingStyle"
-              }
-            ]
-          },
-          "birthDate": {
-            "type": "string",
-            "description": "Editable, at the product's request.\n\nIt is the one field here that is also an age gate (§11.1): the age band on the\ncard, the trial age checks and what counts as an under-18 account all read it,\nso a player who edits it changes which trials they can apply to. It is\ntherefore bounded to a plausible playing age rather than accepted as any date,\nand every change is written to the audit log."
-          },
-          "height": {
-            "type": "number"
-          },
-          "weight": {
-            "type": "number"
-          },
-          "dominantFoot": {
-            "type": "string",
-            "enum": [
-              "LEFT",
-              "RIGHT",
-              "BOTH"
-            ]
-          },
-          "primaryPosition": {
-            "type": "string"
-          },
-          "secondaryPosition": {
-            "type": "string"
-          },
-          "region": {
-            "type": "string"
-          },
-          "district": {
-            "type": "string"
-          }
-        }
-      },
-      "UpdatePlayerStatsDto": {
-        "type": "object",
-        "properties": {
-          "matches": {
-            "type": "number",
-            "minimum": 0
-          },
-          "goals": {
-            "type": "number",
-            "minimum": 0
-          },
-          "assists": {
-            "type": "number",
-            "minimum": 0
-          },
-          "cleanSheets": {
-            "type": "number",
-            "minimum": 0
-          },
-          "sprintTime": {
-            "type": "number"
-          },
-          "jugglingRecord": {
-            "type": "number",
-            "minimum": 0
-          }
-        }
-      },
-      "CreateCoachProfileDto": {
-        "type": "object",
-        "properties": {
-          "bio": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateCoachForAcademyDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string"
-          },
-          "bio": {
-            "type": "string",
-            "maxLength": 1000
-          }
-        },
-        "required": [
-          "userId"
-        ]
-      },
-      "CreateAssessmentDto": {
-        "type": "object",
-        "properties": {
-          "playerId": {
-            "type": "string"
-          },
-          "speed": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "passing": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "vision": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "dribbling": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "finishing": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "physical": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "leadership": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "discipline": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "notes": {
-            "type": "string"
-          },
-          "mediaUrls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "documentUrls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "playerId",
-          "speed",
-          "passing",
-          "vision",
-          "dribbling",
-          "finishing",
-          "physical",
-          "leadership",
-          "discipline"
-        ]
-      },
       "NewManagerDto": {
         "type": "object",
         "properties": {
@@ -5885,6 +5643,248 @@
           "COACH"
         ]
       },
+      "PlayingStyle": {
+        "type": "string",
+        "enum": [
+          "POACHER",
+          "TARGET_MAN",
+          "DEEP_LYING_FORWARD",
+          "WIDE_THREAT",
+          "BOX_TO_BOX",
+          "PLAYMAKER",
+          "DESTROYER",
+          "ORCHESTRATOR",
+          "BALL_PLAYING_DEFENDER",
+          "STOPPER",
+          "OVERLAPPING_FULL_BACK",
+          "SWEEPER",
+          "OFFENSIVE_KEEPER",
+          "DEFENSIVE_KEEPER"
+        ]
+      },
+      "CreatePlayerProfileDto": {
+        "type": "object",
+        "properties": {
+          "playingStyle": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayingStyle"
+              }
+            ]
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "height": {
+            "type": "number"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "dominantFoot": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "RIGHT",
+              "BOTH"
+            ]
+          },
+          "primaryPosition": {
+            "type": "string"
+          },
+          "secondaryPosition": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "birthDate",
+          "gender"
+        ]
+      },
+      "UpdatePlayerProfileDto": {
+        "type": "object",
+        "properties": {
+          "playingStyle": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlayingStyle"
+              }
+            ]
+          },
+          "birthDate": {
+            "type": "string",
+            "description": "Editable, at the product's request.\n\nIt is the one field here that is also an age gate (§11.1): the age band on the\ncard, the trial age checks and what counts as an under-18 account all read it,\nso a player who edits it changes which trials they can apply to. It is\ntherefore bounded to a plausible playing age rather than accepted as any date,\nand every change is written to the audit log."
+          },
+          "height": {
+            "type": "number"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "dominantFoot": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "RIGHT",
+              "BOTH"
+            ]
+          },
+          "primaryPosition": {
+            "type": "string"
+          },
+          "secondaryPosition": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdatePlayerStatsDto": {
+        "type": "object",
+        "properties": {
+          "matches": {
+            "type": "number",
+            "minimum": 0
+          },
+          "goals": {
+            "type": "number",
+            "minimum": 0
+          },
+          "assists": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cleanSheets": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sprintTime": {
+            "type": "number"
+          },
+          "jugglingRecord": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateCoachProfileDto": {
+        "type": "object",
+        "properties": {
+          "bio": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateCoachForAcademyDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "CreateAssessmentDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string"
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "vision": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "dribbling": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "finishing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "physical": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "leadership": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "discipline": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "notes": {
+            "type": "string"
+          },
+          "mediaUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "documentUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "playerId",
+          "speed",
+          "passing",
+          "vision",
+          "dribbling",
+          "finishing",
+          "physical",
+          "leadership",
+          "discipline"
+        ]
+      },
       "FollowTargetType": {
         "type": "string",
         "enum": [
@@ -5996,46 +5996,6 @@
           "note": {
             "type": "string",
             "maxLength": 1000
-          },
-          "speed": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "passing": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "vision": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "dribbling": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "finishing": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "physical": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "leadership": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "discipline": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
           }
         },
         "required": [
@@ -6258,46 +6218,6 @@
           "note": {
             "type": "string",
             "maxLength": 1000
-          },
-          "speed": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "passing": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "vision": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "dribbling": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "finishing": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "physical": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "leadership": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "discipline": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
           }
         },
         "required": [

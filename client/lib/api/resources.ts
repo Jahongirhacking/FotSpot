@@ -3,7 +3,6 @@
  * Route strings mirror the NestJS controllers 1:1 — if a route moves, it moves here.
  */
 import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
-import type { AssessmentKey } from '@/lib/assessment';
 import type {
   AcademyInvitation,
   MyInvitation,
@@ -676,21 +675,15 @@ export const reviews = {
   mine: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
     apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
 
-  /** Coach: the verdict, with the ratings that become the player's credible ones. */
+  /**
+   * Coach: ACCEPT or REJECT, and why.
+   *
+   * No ratings, deliberately — TRIAL.md Rule 22. A review asks one question, and
+   * scoring a player is squad work that needs a shared group (Rule 21).
+   */
   decide: (
     reviewId: string,
-    body: {
-      decision: 'APPROVED' | 'REJECTED';
-      note?: string;
-      speed?: number;
-      passing?: number;
-      vision?: number;
-      dribbling?: number;
-      finishing?: number;
-      physical?: number;
-      leadership?: number;
-      discipline?: number;
-    },
+    body: { decision: 'APPROVED' | 'REJECTED'; note?: string },
     opts: Opts = {},
   ) => apiFetch(`/recommendations/reviews/${reviewId}/decision`, { method: 'POST', body, ...opts }),
 
@@ -755,12 +748,13 @@ export const trials = {
   /**
    * The coach's PASS or FAIL, after testing the player in person.
    *
-   * Assigned coaches only, and only one per application. Ratings are required on
-   * a PASS — see `RecordTrialVerdictDto`.
+   * Assigned coaches only, and only one per application. No ratings — one
+   * morning is not a season, so attributes wait until the player is in a squad
+   * group somebody coaches (TRIAL.md Rules 21–22).
    */
   recordVerdict: (
     applicationId: string,
-    body: { verdict: TrialVerdict; note?: string } & Partial<Record<AssessmentKey, number>>,
+    body: { verdict: TrialVerdict; note?: string },
     opts: Opts = {},
   ) => apiFetch(`/trials/applications/${applicationId}/verdict`, { method: 'POST', body, ...opts }),
 

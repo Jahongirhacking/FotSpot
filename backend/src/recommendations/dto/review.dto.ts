@@ -1,13 +1,10 @@
 import {
   IsDateString,
   IsIn,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 
@@ -23,28 +20,21 @@ export class AssignReviewDto {
   @IsOptional() @IsUUID() coachUserId?: string;
 }
 
-const ATTRIBUTE = { min: 0, max: 100 } as const;
-
 /**
- * The coach's verdict, and the ratings they watched the clips to arrive at.
+ * The coach's answer to an Online Coach Review: ACCEPT or REJECT, and why.
  *
- * Ratings are required on approval and optional on rejection: a coach saying no
- * has still watched the player and their numbers are worth recording, but making
- * them fill in eight fields to decline is how "reject" stops being used honestly.
+ * There are no attribute ratings on this DTO, and there must not be
+ * (TRIAL.md Rule 22). A review asks one question — is this player worth a look
+ * — and a screen that asks for eight numbers alongside it is a screen where the
+ * answer stops being the point. Scoring speed and dribbling is squad work,
+ * permitted only between a coach and a player who share a group (Rule 21,
+ * README §1.9); it goes through `POST /coaches/assessments`, which enforces
+ * exactly that.
  */
 export class ReviewDecisionDto {
   @IsIn(['APPROVED', 'REJECTED']) decision: 'APPROVED' | 'REJECTED';
 
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
-
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) speed?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) passing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) vision?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) dribbling?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) finishing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) physical?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) leadership?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) discipline?: number;
 }
 
 /**

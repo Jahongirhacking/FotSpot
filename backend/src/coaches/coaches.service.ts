@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
+import { GroupsService } from '../academies/groups.service';
 import { CreateAssessmentDto, CreateCoachProfileDto } from './dto/coach.dto';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class CoachesService {
     private prisma: PrismaService,
     private rbac: RbacService,
     private audit: AuditService,
+    private groups: GroupsService,
   ) {}
 
   /**
@@ -102,6 +104,18 @@ export class CoachesService {
     return updated;
   }
 
+  /**
+   * A coach records what they think of a player they coach.
+   *
+   * Two gates, and no others (README §1.9, TRIAL.md Rule 21): the coach profile
+   * is VERIFIED, and the coach shares a squad group with the player. The second
+   * is the one that makes the number mean anything — it is the difference
+   * between somebody who has watched this player train and somebody who has
+   * watched a video of them.
+   *
+   * Deliberately not reachable from the online-review or trial screens. Those
+   * ask a coach one question each, and Rule 22 keeps attributes off both.
+   */
   async createAssessment(userId: string, dto: CreateAssessmentDto) {
     const coachProfile = await this.prisma.coachProfile.findUnique({ where: { userId } });
     if (!coachProfile) throw new NotFoundException('Coach profile not found');
@@ -111,6 +125,8 @@ export class CoachesService {
 
     const player = await this.prisma.playerProfile.findUnique({ where: { id: dto.playerId } });
     if (!player) throw new BadRequestException('Player not found');
+
+    await this.groups.assertCoachesPlayer(userId, dto.playerId);
 
     return this.prisma.coachAssessment.create({
       data: {

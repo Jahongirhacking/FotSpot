@@ -22,18 +22,6 @@ import { RedisKeys } from '../redis/redis.keys';
 import { ageAt } from '../common/age.util';
 import { sanitizeRichText } from '../common/rich-text.util';
 
-/** The eight a coach scores. A pass needs all of them. */
-const ATTRIBUTE_KEYS = [
-  'speed',
-  'passing',
-  'vision',
-  'dribbling',
-  'finishing',
-  'physical',
-  'leadership',
-  'discipline',
-] as const;
-
 @Injectable()
 export class TrialsService {
   constructor(
@@ -418,46 +406,17 @@ export class TrialsService {
     }
 
     /*
-     * Ratings are optional, on both verdicts.
+     * No attributes here. TRIAL.md Rule 22.
      *
      * A coach at the side of a pitch answers one question — did they pass — and
      * eight sliders between them and that answer is how verdicts stop being
-     * recorded on the day. The columns remain for whoever wants to score a
-     * player; nothing here requires it.
+     * recorded on the day. It is also a judgement they are not yet in a position
+     * to make: one morning is enough to say PASS, not enough to fill in eight
+     * attributes as though they had coached the player for a season. Those come
+     * later, once the manager places the player in a group and somebody becomes
+     * responsible for coaching them (Rule 21, README §1.9).
      */
-    const ratings = ATTRIBUTE_KEYS.map((key) => dto[key]);
-    const rated = ratings.every((value) => typeof value === 'number');
-
     const result = await this.prisma.$transaction(async (tx) => {
-      let assessmentId: string | undefined;
-
-      /*
-       * The ratings go through the same table as any other coach assessment,
-       * which is what makes them count: the attribute bars treat a coach's
-       * number as verified evidence and a player's own as a claim (§1.6). These
-       * are the strongest numbers the platform can hold — taken on a pitch
-       * rather than off a video.
-       */
-      if (rated) {
-        const assessment = await tx.coachAssessment.create({
-          data: {
-            coachUserId: userId,
-            coachProfileId: coachProfile.id,
-            playerId: application.playerId,
-            speed: dto.speed!,
-            passing: dto.passing!,
-            vision: dto.vision!,
-            dribbling: dto.dribbling!,
-            finishing: dto.finishing!,
-            physical: dto.physical!,
-            leadership: dto.leadership!,
-            discipline: dto.discipline!,
-            notes: dto.note ?? null,
-          },
-        });
-        assessmentId = assessment.id;
-      }
-
       const written = await tx.trialResult.create({
         data: {
           applicationId,
@@ -465,7 +424,6 @@ export class TrialsService {
           coachProfileId: coachProfile.id,
           verdict: dto.verdict,
           note: dto.note ?? null,
-          assessmentId: assessmentId ?? null,
         },
       });
 

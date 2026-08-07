@@ -109,32 +109,22 @@ export class UpdateTrialApplicationStatusDto {
   @IsIn(APPLICATION_STATUSES) status: (typeof APPLICATION_STATUSES)[number];
 }
 
-const ATTRIBUTE = { min: 0, max: 100 } as const;
-
 /**
  * The coach's verdict after physically testing the player — TRIAL.md Rules 4, 7.
  *
  * PASS/FAIL, never ACCEPT/REJECT: this is the football examination, not the
  * online screening that decides who is worth looking at (§36).
  *
- * Ratings are required on a PASS and optional on a FAIL, mirroring the online
- * review: numbers taken on a pitch are the most credible the platform can hold,
- * but making a coach fill in eight fields to fail somebody is how "fail" stops
- * being used honestly.
+ * There are no attribute ratings on this DTO, and there must not be (Rule 22).
+ * One morning is enough to say PASS; it is not enough to fill in eight
+ * attributes as though the coach had worked with the player for a season. Those
+ * come later, from a coach who shares the player's squad group (Rule 21,
+ * README §1.9) — a trialist shares one with nobody.
  */
 export class RecordTrialVerdictDto {
   @IsIn(['PASS', 'FAIL']) verdict: 'PASS' | 'FAIL';
 
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
-
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) speed?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) passing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) vision?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) dribbling?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) finishing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) physical?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) leadership?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) discipline?: number;
 }
 
 /** Paging for the academy's archived-trial history. */

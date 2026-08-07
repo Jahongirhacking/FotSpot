@@ -20,17 +20,6 @@ import type { RedisService } from '../redis/redis.service';
  * Each one had a counterexample in this service before the split.
  */
 
-const RATINGS = {
-  speed: 70,
-  passing: 65,
-  vision: 60,
-  dribbling: 72,
-  finishing: 58,
-  physical: 66,
-  leadership: 55,
-  discipline: 80,
-};
-
 const TRIAL = {
   id: 'trial-1',
   /** Comfortably before the exam, so the default fixture takes applications. */
@@ -175,18 +164,18 @@ describe('TrialsService.recordVerdict — who may decide (Rules 7, 16)', () => {
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
     prisma.trialCoach.findUnique.mockResolvedValue(null);
 
-    await expect(
-      service.recordVerdict('manager-1', 'app-1', { verdict: 'PASS', ...RATINGS }),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.recordVerdict('manager-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('refuses a player who was never expected on the day', async () => {
     const { service, prisma } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('INVITED'));
 
-    await expect(
-      service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS }),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('answers once — a second verdict is a second trial', async () => {
@@ -208,17 +197,20 @@ describe('TrialsService.recordVerdict — who may decide (Rules 7, 16)', () => {
     await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).resolves.toEqual(
       expect.objectContaining({ verdict: 'PASS' }),
     );
-    // Nothing to write an assessment from, so none is written.
+    // A verdict never writes attributes. Rule 22.
     expect(tx.coachAssessment.create).not.toHaveBeenCalled();
   });
 
-  it('still records the ratings when a coach does give them', async () => {
+  it('never writes attributes, even on a pass — one morning is not a season (Rule 22)', async () => {
     const { service, prisma, tx } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('CONFIRMED'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
 
-    expect(tx.coachAssessment.create).toHaveBeenCalled();
+    // Scoring a player belongs to a coach who shares their squad group
+    // (Rule 21) — a trialist shares one with nobody, so there is no verdict
+    // this service may turn into a CoachAssessment row.
+    expect(tx.coachAssessment.create).not.toHaveBeenCalled();
   });
 
   it('fails one without them too — declining honestly must stay cheap', async () => {
@@ -236,7 +228,7 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
     const { service, prisma, tx, recommendations } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('CONFIRMED'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
 
     expect(recommendations.clearPlayerRecommendations).toHaveBeenCalledWith(PLAYER.id);
     expect(recommendations.settleTrialBackings).toHaveBeenCalledWith({
@@ -269,24 +261,11 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
     );
   });
 
-  it('writes the ratings as a coach assessment — the most credible ones there are', async () => {
-    const { service, prisma, tx } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('CONFIRMED'));
-
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
-
-    expect(tx.coachAssessment.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ playerId: PLAYER.id, coachUserId: 'coach-1', ...RATINGS }),
-      }),
-    );
-  });
-
   it('tells the manager about a pass — it is the only verdict that asks them for anything', async () => {
     const { service, prisma, notifications } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('CONFIRMED'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
 
     expect(notifications.notify).toHaveBeenCalledWith(
       'manager-1',
@@ -322,7 +301,7 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
     const { service, prisma, invitations } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('CONFIRMED'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
 
     expect(invitations.invite).not.toHaveBeenCalled();
   });
@@ -404,7 +383,7 @@ describe('TrialsService — archiving a finished trial', () => {
     // No outstanding applications, one in total.
     prisma.trialApplication.count.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS', ...RATINGS });
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
 
     expect(prisma.trial.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'ARCHIVED' } }),

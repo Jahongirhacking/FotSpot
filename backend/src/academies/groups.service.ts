@@ -440,6 +440,54 @@ export class GroupsService {
     });
   }
 
+  /**
+   * A coach may only put numbers on a player they actually coach.
+   *
+   * TRIAL.md Rule 21 / README §1.9: attribute assessment is permitted **if and
+   * only if** the coach and the player share a group inside the same academy
+   * squad. Both are ACTIVE memberships with the same non-null `groupId`.
+   *
+   * The reserve grants nothing. `groupId = null` is the *absence* of a group
+   * (§1.10.1), so `{ in: [] }` — or a null on either side — must never match:
+   * two people who have merely not been sorted yet have not trained together.
+   *
+   * Why this gate and not "is a verified coach": an attribute rating is the one
+   * number on this platform a player cannot write about themselves (§12.4), and
+   * it is worth that only if whoever wrote it has watched them train. Reading
+   * clips for an online review is enough to say *worth a look*; it is not enough
+   * to say *physical 62*. Rule 22 keeps it off the review and trial screens for
+   * the same reason, and this is the check behind them.
+   */
+  async assertCoachesPlayer(coachUserId: string, playerId: string) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true },
+    });
+    if (!player) throw new NotFoundException('Player not found');
+
+    const squads = await this.prisma.academyMember.findMany({
+      where: { userId: coachUserId, role: 'COACH', status: 'ACTIVE', groupId: { not: null } },
+      select: { groupId: true },
+    });
+    const groupIds = squads.map((row) => row.groupId).filter((id): id is string => !!id);
+
+    const shared =
+      groupIds.length > 0 &&
+      (await this.prisma.academyMember.findFirst({
+        where: {
+          userId: player.userId,
+          role: 'PLAYER',
+          status: 'ACTIVE',
+          groupId: { in: groupIds },
+        },
+        select: { id: true },
+      }));
+
+    if (!shared) {
+      throw new ForbiddenException('A coach may only assess players in their own group');
+    }
+  }
+
   private async assertManager(userId: string, academyId: string) {
     const membership = await this.prisma.academyMember.findFirst({
       where: { userId, academyId, role: 'MANAGER' },
