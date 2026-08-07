@@ -19,6 +19,8 @@ import { Field, Input, PasswordInput } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { homeHrefForRole } from '@/components/layout/nav';
+import { resolveActiveRole } from '@/lib/roles';
 
 type Method = 'phone' | 'email';
 
@@ -88,15 +90,28 @@ function MethodTab({
   );
 }
 
-/** Shared post-login navigation: honour `next`, else let /dashboard route by role. */
+/**
+ * Shared post-login navigation: honour `next`, else start where the role starts.
+ *
+ * "Else /dashboard" was wrong for half the roles. A scout's menu does not contain
+ * `/dashboard` at all and a coach's begins at their academy, so signing in put
+ * them on a page with nothing highlighted and no obvious next move.
+ */
 function useAfterLogin(redirectTo?: string) {
-  return React.useCallback(() => {
-    // Hard navigation, not router.push: the server layout must re-read the new
-    // session cookies so the shell renders with the right role immediately.
-    // Only same-origin paths are honoured — an absolute `next` would be an open
-    // redirect.
-    window.location.assign(redirectTo?.startsWith('/') ? redirectTo : '/dashboard');
-  }, [redirectTo]);
+  return React.useCallback(
+    (roles: string[] = []) => {
+      // Hard navigation, not router.push: the server layout must re-read the new
+      // session cookies so the shell renders with the right role immediately.
+      // Only same-origin paths are honoured — an absolute `next` would be an
+      // open redirect.
+      if (redirectTo?.startsWith('/')) {
+        window.location.assign(redirectTo);
+        return;
+      }
+      window.location.assign(homeHrefForRole(resolveActiveRole(roles, null)));
+    },
+    [redirectTo],
+  );
 }
 
 function EmailLogin({ redirectTo }: { redirectTo?: string }) {
@@ -122,7 +137,10 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       setServerError(body.message ?? t.auth.couldNotSignIn);
       return;
     }
-    afterLogin();
+    // The login route answers with the roles it just wrote cookies for, which is
+    // what decides where this account starts.
+    const { roles } = await response.json().catch(() => ({ roles: [] }));
+    afterLogin(roles);
   }
 
   return (
@@ -243,7 +261,8 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       setServerError(body.message ?? t.auth.codeDidNotWork);
       return;
     }
-    afterLogin();
+    const { roles } = await response.json().catch(() => ({ roles: [] }));
+    afterLogin(roles);
   }
 
   if (stage === 'phone') {

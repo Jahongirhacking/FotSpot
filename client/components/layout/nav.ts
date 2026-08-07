@@ -63,13 +63,18 @@ export function navForRole(role: Role | null): NavItem[] {
      * them. Browsing other academies, hosting trials and keeping a pick list are
      * a scout's and a manager's jobs — leaving them here made the menu a list of
      * things a coach cannot do.
+     *
+     * Trials rather than a separate "Recommended players": both halves of a
+     * coach's judging are the same job seen at two moments — read the profile,
+     * then watch them play — and the online review queue now sits alongside the
+     * trials it feeds, on /trials. Two menu entries made them look like two
+     * unrelated inboxes.
      */
     case 'coach':
       return [
-        { href: '/dashboard', label: 'home', icon: Home },
         { href: '/academies/mine', label: 'myAcademy', icon: Building2 },
         { href: '/groups/mine', label: 'myGroup', icon: Users },
-        { href: '/recommendations/review', label: 'recommendedPlayers', icon: ClipboardCheck },
+        { href: '/trials', label: 'trials', icon: ClipboardCheck },
         { href: '/players', label: 'players', icon: Search },
       ];
 
@@ -103,4 +108,20 @@ export function navForRole(role: Role | null): NavItem[] {
     default:
       return COMMON;
   }
+}
+
+/**
+ * Where a role begins.
+ *
+ * The first entry of its menu, which is the one screen that role opens the app
+ * to do something on. Used on login and on a role switch, because landing
+ * somewhere outside the current menu leaves nothing highlighted and no obvious
+ * next move — a scout signing in used to arrive at `/dashboard`, which is not in
+ * a scout's menu at all.
+ *
+ * Deliberately derived from `navForRole` rather than listed separately: two
+ * lists would agree today and disagree the first time somebody reorders a menu.
+ */
+export function homeHrefForRole(role: Role | null): string {
+  return navForRole(role)[0]?.href ?? '/dashboard';
 }

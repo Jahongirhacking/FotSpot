@@ -4,24 +4,28 @@ import * as React from 'react';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster, toast } from 'sonner';
 import { ApiError } from '@/lib/api/client';
+import {
+  DEFAULT_MUTATION_ERROR_KIND,
+  DEFAULT_QUERY_ERROR_KIND,
+  reportBackgroundError,
+} from '@/lib/api/error-kind';
 import { SessionProvider, type SessionSeed } from './SessionProvider';
 import { I18nProvider } from './I18nProvider';
 import type { Locale } from '@/lib/i18n';
 
 /**
- * Every failed request says why, once.
+ * Every failure is either shown or recorded, and never both.
  *
- * The API already returns a written message for every rejection — "That account
- * is not a scout", "A coach has to approve this player first" — and until now
- * most of them died in a `console.error` or an inline alert three scrolls down.
- * Surfacing them here means a screen has to opt *out* of explaining a failure
- * rather than opt in, which is the right way round.
+ * See `lib/api/error-kind.ts` for the two kinds. In short: a `client` error
+ * happened because somebody pressed something and is owed an answer; a
+ * `background` error happened because the app asked a question nobody was
+ * waiting on. This is the one place that decision turns into a toast or a
+ * silent report, so no screen has to remember to handle it.
  *
- * Mutations always toast: the user pressed something and nothing happened, so
- * they are owed a reason, and screens no longer keep their own copy of it.
- * Queries toast only what they cannot show themselves —
- * 401 and 403 are handled by redirects and by pages that render their own empty
- * states, and a background refetch failing on a flaky connection is not news.
+ * The rule used to be "queries toast unless they are 401 or 403", which put a
+ * red banner in front of a coach because a speculative "do you have a review for
+ * this player" probe came back empty. Nothing was wrong with their account and
+ * there was nothing for them to do about it.
  */
 function toastError(error: unknown) {
   const message =
@@ -37,10 +41,27 @@ function toastError(error: unknown) {
 function makeQueryClient() {
   return new QueryClient({
     mutationCache: new MutationCache({
-      onError: toastError,
+      // A mutation that names a `success` message says it once, here. Screens
+      // that change visibly enough on their own simply do not set one.
+      onSuccess: (_data, _variables, _context, mutation) => {
+        const message = mutation.meta?.success;
+        if (message) toast.success(message);
+      },
+      onError: (error, _variables, _context, mutation) => {
+        const kind = mutation.meta?.errorKind ?? DEFAULT_MUTATION_ERROR_KIND;
+        if (kind === 'background') return reportBackgroundError(error);
+        toastError(error);
+      },
     }),
     queryCache: new QueryCache({
-      onError: (error) => {
+      onError: (error, query) => {
+        const kind = query.meta?.errorKind ?? DEFAULT_QUERY_ERROR_KIND;
+        if (kind === 'background') {
+          return reportBackgroundError(error, { key: query.queryKey });
+        }
+        // Even a client-marked query stays quiet on auth: 401 is handled by the
+        // redirect in `browserFetch`, and 403 by pages that render their own
+        // "you cannot see this" state.
         if (error instanceof ApiError && (error.isUnauthorized || error.isForbidden)) return;
         toastError(error);
       },

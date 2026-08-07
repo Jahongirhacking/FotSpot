@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarDays, MapPin } from 'lucide-react';
-import { academies, trials } from '@/lib/api/resources';
+import { academies, recommendations, trials } from '@/lib/api/resources';
 import { AcademyTrials } from './AcademyTrials';
+import { CoachTrials } from './CoachTrials';
 import { MyTrialInvitations } from './MyTrialInvitations';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
+import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +19,33 @@ export const metadata: Metadata = { title: 'Trials' };
 export default async function TrialsPage() {
   const session = await getSession();
   const { t } = await getServerT();
+
+  /*
+   * A coach's Trials is a different screen, not the public board with extras.
+   *
+   * What they need is the sessions they are working and the profiles waiting on
+   * them; the open-day list is a thing players apply to and academies host, and
+   * a coach does neither. Keyed on the *active* role, so somebody who coaches
+   * and also has a player profile still sees the board while wearing that hat.
+   */
+  if (session?.activeRole === 'coach') {
+    const opts = { token: session.accessToken, cache: 'no-store' as const };
+    const [coaching, pending] = await Promise.all([
+      trials.myCoaching(opts).catch(() => [] as CoachTrial[]),
+      recommendations.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
+    ]);
+
+    return (
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-xl font-bold">{t.nav.trials}</h1>
+          <p className="text-muted text-sm">{t.trials.coachTrialsHint}</p>
+        </header>
+        <CoachTrials initialTrials={coaching} initialReviews={pending} />
+      </div>
+    );
+  }
+
   const list = await trials
     .listUpcoming(session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 })
     .catch(() => []);

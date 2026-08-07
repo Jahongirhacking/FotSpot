@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, Hourglass, Mail, UserPlus } from 'lucide-react';
+import { ClipboardList, Hourglass, Mail, UserCheck, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -28,16 +28,19 @@ interface Applicant extends TrialApplication {
  * looked at. Each row now shows where the application actually is and the single
  * action that moves it:
  *
- * - waiting on a coach → nothing to press, and it says whose desk it is on
- * - a coach approved → **Invite** on a private trial, **Add to squad** on an open one
+ * - waiting on an online review → nothing to press, and it says whose desk it is on
+ * - the review accepted → **Invite** (private trials only)
  * - invited → waiting on the player
- * - the player confirmed → **Add to squad**
+ * - confirmed, or applied to an open day → waiting on the trial itself
+ * - a coach passed them → **Add to squad**
+ * - a coach failed them → nothing; the answer is the coach's and it is final
  *
- * ## The coach's answer is Process A's answer
+ * ## Neither verdict is the manager's to give
  *
- * Approving and rejecting are not on this screen at all. The academy asks; a
- * coach decides. Putting a reject button here would let a manager overrule the
- * judgement the whole screening step exists to obtain.
+ * Not the online accept/reject and not the trial's pass/fail. The academy asks;
+ * a coach decides (Rule 16). The only thing squad placement waits on is a PASS
+ * (Rule 8), which is why "Add to squad" appears nowhere else — an online
+ * approval used to unlock it, and an approval is explicitly not a pass (§11).
  */
 export function Applicants({ trial }: { trial: Trial }) {
   const { t } = useI18n();
@@ -55,6 +58,7 @@ export function Applicants({ trial }: { trial: Trial }) {
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       browserFetch(`/trials/applications/${id}/invite`, { method: 'POST', body: { note } }),
     onSuccess: refresh,
+    meta: { success: t.recommendations.invitationSent },
   });
 
   const addToSquad = useMutation({
@@ -64,6 +68,7 @@ export function Applicants({ trial }: { trial: Trial }) {
       void queryClient.invalidateQueries({ queryKey: ['roster'] });
       refresh();
     },
+    meta: { success: t.trials.addedToSquadDone },
   });
 
   const rows = applicants.data ?? [];
@@ -122,25 +127,27 @@ function ApplicantRow({
   const [note, setNote] = React.useState('');
   const [writing, setWriting] = React.useState(false);
 
-  const { status, review } = application;
-  const screening = status === 'APPLIED' || status === 'SCREENING';
-  // A private trial invites first and takes them on afterwards; an open day has
-  // already had them in front of a coach, so the squad is the next step.
+  const { status, review, result } = application;
+  const screening = status === 'SCREENING';
   const canInvite = isPrivate && status === 'SHORTLISTED';
-  const canAdd = status === 'SHORTLISTED' ? !isPrivate : status === 'CONFIRMED';
+  // The one gate: a coach passed them in person. Nothing else reaches a squad.
+  const canAdd = status === 'PASSED';
+  // Applied to an open day, or confirmed for a private one — either way the next
+  // thing that happens is the trial, and nobody here can hurry it.
+  const awaitingTrial = status === 'APPLIED' || status === 'CONFIRMED';
 
   return (
     <li className="space-y-2 p-2">
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/players/${application.playerId}`} className="min-w-0 flex-1 hover:underline">
           <span className="block truncate text-sm font-medium">
-            {application.player.firstName} {application.player.lastName}
+            {application.player?.firstName} {application.player?.lastName}
           </span>
           <span className="text-muted block truncate text-xs">
             {[
-              application.player.primaryPosition,
-              ageBand(application.player.birthDate),
-              application.player.region,
+              application.player?.primaryPosition,
+              application.player?.birthDate && ageBand(application.player.birthDate),
+              application.player?.region,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -156,7 +163,7 @@ function ApplicantRow({
       {screening && review && (
         <p className="text-muted flex items-center gap-1.5 text-xs">
           <Hourglass className="size-3.5" aria-hidden />
-          {t.trials.withCoach}: {review.coachUser.firstName} {review.coachUser.lastName}
+          {t.trials.withCoach}: {review.coachUser?.firstName} {review.coachUser?.lastName}
         </p>
       )}
 
@@ -166,7 +173,20 @@ function ApplicantRow({
         </p>
       )}
 
+      {/* The verdict, with the coach who gave it. A manager acting on "Add to
+          squad" should be able to see whose judgement they are acting on. */}
+      {result && (
+        <p className="bg-surface-2 rounded-lg p-2 text-xs">
+          {result.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed} ·{' '}
+          {result.coachUser?.firstName} {result.coachUser?.lastName} ·{' '}
+          {result.decidedAt && formatDate(result.decidedAt)}
+          {result.note && ` — ${result.note}`}
+        </p>
+      )}
+
       {status === 'INVITED' && <p className="text-muted text-xs">{t.trials.awaitingPlayer}</p>}
+
+      {awaitingTrial && <p className="text-muted text-xs">{t.trials.awaitingVerdict}</p>}
 
       {(canInvite || canAdd) && (
         <div className="flex flex-wrap justify-end gap-2">
@@ -208,8 +228,12 @@ function ApplicantRow({
         </div>
       )}
 
+      {/* Done. The button is replaced by what happened to it, so the row reads
+          as finished rather than as an action somebody forgot to take. */}
       {status === 'ACCEPTED' && (
-        <p className="text-muted text-xs">{t.trials.squadInvitationSent}</p>
+        <p className="text-success flex items-center gap-1.5 text-sm font-medium">
+          <UserCheck className="size-4" aria-hidden /> {t.trials.addedToSquad}
+        </p>
       )}
     </li>
   );
@@ -218,11 +242,11 @@ function ApplicantRow({
 function StatusBadge({ status }: { status: Applicant['status'] }) {
   const { t } = useI18n();
   const variant =
-    status === 'ACCEPTED' || status === 'CONFIRMED'
+    status === 'ACCEPTED' || status === 'PASSED'
       ? 'success'
-      : status === 'REJECTED'
+      : status === 'REJECTED' || status === 'FAILED'
         ? 'neutral'
-        : status === 'INVITED' || status === 'SHORTLISTED'
+        : status === 'INVITED' || status === 'SHORTLISTED' || status === 'CONFIRMED'
           ? 'primary'
           : 'warning';
 
@@ -232,6 +256,8 @@ function StatusBadge({ status }: { status: Applicant['status'] }) {
     SHORTLISTED: t.trials.statusShortlisted,
     INVITED: t.trials.statusInvited,
     CONFIRMED: t.trials.statusConfirmed,
+    PASSED: t.trials.statusPassed,
+    FAILED: t.trials.statusFailed,
     REJECTED: t.trials.statusRejected,
     ACCEPTED: t.trials.statusAccepted,
   }[status];

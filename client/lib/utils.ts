@@ -45,6 +45,24 @@ export function formatDate(value: string | Date): string {
   });
 }
 
+/**
+ * Date and time on the 24-hour clock.
+ *
+ * `en-GB` for the same reason the date pickers carry `lang="en-GB"`: nobody
+ * arranging a football session here writes half past two as 2:30 PM, and a
+ * notification about a trial should read the way the trial was written.
+ */
+export function formatDateTime(value: string | Date): string {
+  return new Date(value).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export function relativeTime(value: string | Date): string {
   const diffMs = Date.now() - new Date(value).getTime();
   const minutes = Math.round(diffMs / 60000);

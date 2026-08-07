@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CalendarDays, ClipboardList, MapPin } from 'lucide-react';
+import { CalendarDays, ClipboardList, Hourglass, MapPin } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
 import { academies, trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
@@ -12,9 +12,11 @@ import { Alert } from '@/components/ui/Feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ApplyToTrialButton } from './ApplyToTrialButton';
 import { Applicants } from './Applicants';
+import { CoachSheet } from './CoachSheet';
 import { TrialAdmin } from './TrialAdmin';
 import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
+import { TrialNote } from '@/components/trials/TrialNote';
 
 export async function generateMetadata({
   params,
@@ -58,23 +60,36 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
    * role, so an academy manager reading another academy's trial is a candidate's
    * view, not a manager's.
    */
-  const [academy, relation] = await Promise.all([
+  const [academy, relation, coaching] = await Promise.all([
     academies.getById(trial.academyId, { revalidate: 300 }).catch(() => null),
     session
       ? academies
           .relation(trial.academyId, { token: session.accessToken, cache: 'no-store' })
           .catch(() => null)
       : null,
+    /*
+     * "Am I working this trial?" asked directly, rather than fetching the
+     * assigned coaches and looking for myself in them — the session carries no
+     * user id, and this is the same question in one request.
+     */
+    session?.activeRole === 'coach'
+      ? trials.myCoaching({ token: session.accessToken, cache: 'no-store' }).catch(() => [])
+      : [],
   ]);
   const hosts = relation?.relation === 'MANAGER';
+  const works = coaching.some((assigned) => assigned.id === id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="primary">
-            {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
-          </Badge>
+          {/* A private trial states no age range: it is for one named child who
+              was already chosen, so there is no rule to show them. */}
+          {trial.ageRangeMin != null && trial.ageRangeMax != null && (
+            <Badge variant="primary">
+              {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
+            </Badge>
+          )}
           {trial.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
           {trial.status === 'ARCHIVED' && (
             <Badge variant="neutral">{t.trials.statusArchived}</Badge>
@@ -84,9 +99,20 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         <dl className="text-muted mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <div className="flex items-center gap-1.5">
             <CalendarDays className="size-4" aria-hidden />
-            <dt className="sr-only">{t.trials.date}</dt>
+            <dt className="sr-only">{t.trials.examDate}</dt>
             <dd>{formatDate(trial.date)}</dd>
           </div>
+          {/* The two dates are different promises — when to turn up, and by when
+              to say you are coming — so both are on the page, not just the one. */}
+          {trial.applyDeadline && (
+            <div className="flex items-center gap-1.5">
+              <Hourglass className="size-4" aria-hidden />
+              <dt className="sr-only">{t.trials.applyDeadline}</dt>
+              <dd>
+                {t.trials.applyDeadline}: {formatDate(trial.applyDeadline)}
+              </dd>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <MapPin className="size-4" aria-hidden />
             <dt className="sr-only">{t.trials.location}</dt>
@@ -104,21 +130,33 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="text-primary size-4" aria-hidden /> {t.trials.positionsWanted}
+            <ClipboardList className="text-primary size-4" aria-hidden />
+            {trial.positions.length > 0 ? t.trials.positionsWanted : t.trials.aboutThisTrial}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-1.5">
-            {trial.positions.map((position) => (
-              <Badge key={position} variant="neutral" className="font-mono">
-                {position}
-              </Badge>
-            ))}
-          </div>
+          {trial.positions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {trial.positions.map((position) => (
+                <Badge key={position} variant="neutral" className="font-mono">
+                  {position}
+                </Badge>
+              ))}
+            </div>
+          )}
           {trial.requirements && (
             <div>
               <h2 className="mb-1 text-sm font-medium">{t.trials.whatToBring}</h2>
               <p className="text-muted text-sm">{trial.requirements}</p>
+            </div>
+          )}
+
+          {/* The academy's note, rendered through the one component allowed to
+              hand HTML to the DOM — see TrialNote for what guards it. */}
+          {trial.note && (
+            <div>
+              <h2 className="mb-1 text-sm font-medium">{t.notes.playerNote}</h2>
+              <TrialNote html={trial.note} />
             </div>
           )}
         </CardContent>
@@ -130,6 +168,10 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           <TrialStaff trial={trial} academyId={trial.academyId} />
           <Applicants trial={trial} />
         </>
+      ) : works ? (
+        /* A coach on this trial gets the sheet and the verdict, and nothing
+           administrative — the staff list and the squad are the manager's. */
+        <CoachSheet trial={trial} />
       ) : trial.status === 'ARCHIVED' ? (
         /* Applying would be refused by the server, so the button is replaced by
            the reason rather than left to fail under the press. */
@@ -138,7 +180,12 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         <ApplyToTrialButton
           trialId={trial.id}
           existingStatus={existing?.status ?? null}
-          ageRange={{ min: trial.ageRangeMin, max: trial.ageRangeMax }}
+          ageRange={
+            trial.ageRangeMin != null && trial.ageRangeMax != null
+              ? { min: trial.ageRangeMin, max: trial.ageRangeMax }
+              : null
+          }
+          applyDeadline={trial.applyDeadline}
         />
       )}
     </div>

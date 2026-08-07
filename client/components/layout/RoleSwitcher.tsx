@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { ROLE_META, type Role } from '@/lib/roles';
+import { homeHrefForRole } from './nav';
 import { useSession } from './SessionProvider';
 import { Menu, MenuContent, MenuLabel, MenuRadioItem, MenuTrigger } from '@/components/ui/Menu';
 import { Badge } from '@/components/ui/Badge';
@@ -28,7 +29,15 @@ export function RoleSwitcher() {
   function switchTo(role: Role) {
     if (role === activeRole) return;
     setActiveRole(role);
-    // Server Components render per-role content, so the tree has to be re-fetched.
+    /*
+     * Go to where the new role starts, not wherever the old one was standing.
+     *
+     * A manager switching to coach was left on `/recommendations/inbox` — a
+     * screen a coach cannot use, with nothing in the menu highlighted. Server
+     * Components render per-role content, so the tree still has to be
+     * re-fetched; `push` then `refresh` does both.
+     */
+    router.push(homeHrefForRole(role));
     router.refresh();
   }
 
