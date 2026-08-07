@@ -45,6 +45,28 @@ export const uz = {
     language: 'Til',
   },
 
+  /**
+   * What a search engine and a shared link show — README §14.
+   *
+   * Translated like everything else, and Uzbek by default, because the sentence
+   * under a search result is the first thing most visitors read and an English
+   * one is a sentence they skip. The locale comes from the reader's cookie, so a
+   * link shared into a Russian-speaking group opens with a Russian card.
+   */
+  seo: {
+    title: 'FotSpot — Mahalladan futbol akademiyasigacha',
+    description:
+      'Futbolchi profilingizni yarating, iste’dodingizni video orqali ko‘rsating, skautlar va akademiyalar e’tiboriga tushing. Sinovlarga ariza bering.',
+    keywords: [
+      'futbol',
+      'futbolchi',
+      'futbol akademiyasi',
+      'skaut',
+      'yosh futbolchi',
+      'futbol sinovlari',
+      'O‘zbekiston futboli',
+    ],
+  },
 
   nav: {
     squad: 'Tarkib',

@@ -41,6 +41,20 @@ export const en: Dictionary = {
     language: 'Language',
   },
 
+  seo: {
+    title: 'FotSpot — From Local Football to Academy',
+    description:
+      'Create your football profile, prove your talent with video, get discovered by Scouts and Academies, and apply to Trials.',
+    keywords: [
+      'football',
+      'football player',
+      'football academy',
+      'scout',
+      'young footballer',
+      'football trials',
+      'Uzbekistan football',
+    ],
+  },
 
   nav: {
     squad: 'Squad',

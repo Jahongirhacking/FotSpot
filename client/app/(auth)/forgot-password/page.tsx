@@ -4,7 +4,11 @@ import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
-export const metadata: Metadata = { title: 'Reset your password' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.auth.forgotTitle };
+}
 
 /**
  * NOTE (Next 16): `searchParams` is a Promise and must be awaited.

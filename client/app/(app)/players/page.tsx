@@ -9,7 +9,11 @@ import { PlayerResultCard } from './PlayerResultCard';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Pagination } from '@/components/shared/Pagination';
 
-export const metadata: Metadata = { title: 'Players' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.nav.players };
+}
 
 /**
  * Search is URL-driven, not stored in Zustand (client/CLAUDE.md §8) — so a filtered

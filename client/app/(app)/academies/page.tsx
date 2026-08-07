@@ -10,7 +10,11 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/Feedback';
 
-export const metadata: Metadata = { title: 'Academies' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.nav.academies };
+}
 
 export default async function AcademiesPage() {
   const session = await getSession();
@@ -68,7 +72,9 @@ export default async function AcademiesPage() {
                       <div className="bg-primary/12 text-primary grid size-10 shrink-0 place-items-center rounded-xl">
                         <Building2 className="size-5" aria-hidden />
                       </div>
-                      {academy.status === 'VERIFIED' && <Badge variant="success">{t.profile.verified}</Badge>}
+                      {academy.status === 'VERIFIED' && (
+                        <Badge variant="success">{t.profile.verified}</Badge>
+                      )}
                     </div>
                     <p className="mt-3 font-semibold">{academy.name}</p>
                     <p className="text-muted mt-0.5 flex items-center gap-1 text-xs">

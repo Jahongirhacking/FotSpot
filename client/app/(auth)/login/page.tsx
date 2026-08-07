@@ -5,7 +5,11 @@ import { getServerT } from '@/lib/i18n/server';
 import { Alert } from '@/components/ui/Feedback';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
-export const metadata: Metadata = { title: 'Sign in' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.auth.signIn };
+}
 
 /** NOTE (Next 16): `searchParams` is a Promise and must be awaited. */
 export default async function LoginPage({

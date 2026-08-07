@@ -4,7 +4,11 @@ import { RegisterForm } from './RegisterForm';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
-export const metadata: Metadata = { title: 'Create an account' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.auth.createAccountTitle };
+}
 
 export default async function RegisterPage() {
   const { t } = await getServerT();

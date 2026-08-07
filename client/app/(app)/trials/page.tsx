@@ -14,7 +14,11 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/Feedback';
 import { formatDate } from '@/lib/utils';
 
-export const metadata: Metadata = { title: 'Trials' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.nav.trials };
+}
 
 export default async function TrialsPage() {
   const session = await getSession();

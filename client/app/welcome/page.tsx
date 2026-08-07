@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
+import { getServerT } from '@/lib/i18n/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { WelcomeChoice } from './WelcomeChoice';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 
-export const metadata: Metadata = { title: 'Welcome' };
+/** The tab title is translated like the page under it — see app/layout.tsx. */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return { title: t.welcome.title };
+}
 
 /**
  * First-login role discovery — README §1.2.2.
@@ -37,8 +42,8 @@ export default async function WelcomePage() {
             What brings you to FotSpot?
           </h1>
           <p className="text-muted mx-auto mt-2 max-w-md text-sm">
-            Pick the one that fits you today. You can add the other later, and plenty of
-            people are both.
+            Pick the one that fits you today. You can add the other later, and plenty of people are
+            both.
           </p>
         </div>
 
