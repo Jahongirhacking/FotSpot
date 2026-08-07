@@ -1119,6 +1119,58 @@ These responsibilities MUST NOT be merged into one operation.
 
 ---
 
+## 31.1 Attribute Assessment — a third thing, and not a decision at all
+
+Rating a Player's **attributes** (speed, passing, vision, dribbling, finishing, physical,
+leadership, discipline) is NOT part of either decision above.
+
+An Online Coach Review answers ACCEPT / REJECT.
+
+A Trial answers PASS / FAIL.
+
+Neither of them asks the Coach for a number, and neither of them may require one.
+
+Attribute assessment is a **squad activity**: it is what a Coach records about a Player they
+train week after week, not about a stranger they are judging for admission.
+
+### The rule
+
+> **A Coach may assess a Player's attributes IF AND ONLY IF that Player is in the same Group
+> as the Coach, inside the same Academy Squad.**
+
+Both sides of the "if and only if" are load-bearing:
+
+- **Only if** — a Coach with no shared Group has no standing to put a number on a Player, even
+  if they are a verified Coach, even if they are reviewing that Player online, and even if they
+  are the Coach running the Trial that Player has turned up to.
+- **If** — a Coach who _does_ share the Group needs no further permission. That is their squad;
+  assessing it is the job.
+
+### Why
+
+An attribute rating is the one number on this platform a Player cannot write about themselves.
+It is worth that only if whoever wrote it has actually watched the Player train. A Coach
+reading clips for an Online Coach Review has seen video — enough to say "worth a look", not
+enough to say "physical 62". A Coach at a Trial has seen one morning — enough to say PASS, not
+enough to fill in eight attributes as though they had coached the Player for a season.
+
+Allowing it in either place would also quietly re-merge the two decisions Rule 19 keeps apart:
+a screen that asks for eight ratings _and_ a verdict is a screen where the verdict stops being
+the point.
+
+### What follows from it
+
+1. An Online Coach Review MUST NOT accept, require, or write attribute ratings.
+2. A Trial verdict MUST NOT accept, require, or write attribute ratings.
+3. An attribute assessment MUST be refused unless the Coach and the Player share a Group.
+4. A Player in the **Reserve** (no Group) is assessable by nobody — the Reserve is the absence
+   of a Group, not a Group everybody shares.
+5. A Player who has just passed a Trial is not yet assessable. They become assessable when the
+   Academy Manager places them in a Squad Group (Rule 9), which is the moment somebody becomes
+   responsible for coaching them.
+
+---
+
 # 32. Academy Manager Responsibilities
 
 The Academy Manager is responsible for:
@@ -1316,7 +1368,32 @@ A reputation metric based on the outcomes of the Scouts' recommendations.
 
 ### Squad
 
-The Academy's group of Players and Coaches.
+Everyone on an Academy's books — its Players, Coaches, Scouts and Manager. A Squad is a
+membership of the Academy, not a team sheet.
+
+### Group
+
+A named team inside the Squad — "U14", "First team", "Goalkeepers". Only the Academy Manager
+creates Groups and decides who is in them; a Coach works with the Group they are given.
+
+A Group is what makes a Coach responsible for a Player, and it is the only thing that permits
+attribute assessment (§31.1).
+
+### Reserve
+
+Squad membership with **no** Group. It is where everyone lands when they join an Academy and
+where they return when a Group is dissolved.
+
+The Reserve is the _absence_ of a Group, not a Group of its own. Nobody shares a Group with a
+Player in the Reserve, so nobody may assess them.
+
+### Attribute Assessment
+
+A Coach's ratings of a Player's speed, passing, vision, dribbling, finishing, physical,
+leadership and discipline.
+
+Not a decision, not a verdict, and never part of an Online Coach Review or a Trial. Permitted
+only between a Coach and a Player who share a Group (§31.1).
 
 ---
 
@@ -1403,6 +1480,21 @@ The following rules are mandatory:
 ### Rule 20
 
 **Do not introduce alternative interpretations of these rules without discussing them first.**
+
+### Rule 21
+
+**A Coach may assess a Player's attributes if and only if the Coach and the Player share a
+Group inside the same Academy Squad (§31.1).**
+
+### Rule 22
+
+**Neither an Online Coach Review nor a Trial verdict may require, accept or write attribute
+ratings. A Coach presses ACCEPT / REJECT, or PASS / FAIL, and nothing else.**
+
+### Rule 23
+
+**The Reserve is the absence of a Group. A Player in the Reserve shares a Group with nobody and
+is therefore assessable by nobody.**
 
 ---
 
