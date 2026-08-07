@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -6,8 +6,9 @@ import {
   AssignCoachesDto,
   CreateTrialDto,
   InviteToTrialDto,
-  NominatePlayerDto,
+  RecordTrialVerdictDto,
   RespondToInvitationDto,
+  TrialHistoryQueryDto,
   UpdateTrialApplicationStatusDto,
   UpdateTrialDto,
 } from './dto/trial.dto';
@@ -32,6 +33,26 @@ export class TrialsController {
   @Get()
   listUpcoming() {
     return this.trialsService.listUpcoming();
+  }
+
+  /**
+   * The academy's finished trials, newest first.
+   *
+   * Manager-only and paginated: a history that never stops growing needs pages,
+   * and an archived trial still carries its applicants.
+   */
+  @Get('academy/:academyId/history')
+  listArchivedForAcademy(
+    @CurrentUser() user: AuthUser,
+    @Param('academyId') academyId: string,
+    @Query() query: TrialHistoryQueryDto,
+  ) {
+    return this.trialsService.listArchivedForAcademy(
+      user.userId,
+      academyId,
+      query.page,
+      query.pageSize,
+    );
   }
 
   @Public()
@@ -71,17 +92,6 @@ export class TrialsController {
   }
 
   /**
-   * Put a player forward for a private trial, starting Process A in `manual`.
-   *
-   * The mirror of a general trial's apply: there the player comes and screening
-   * follows, here the academy chooses and screening comes first.
-   */
-  @Post(':id/nominate')
-  nominate(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: NominatePlayerDto) {
-    return this.trialsService.nominate(user.userId, id, dto);
-  }
-
-  /**
    * Edit a published trial, or archive it.
    *
    * Manager of the hosting academy only. See TrialsService.update for why an
@@ -100,6 +110,18 @@ export class TrialsController {
   @Get('applications/mine')
   listMyApplications(@CurrentUser() user: AuthUser) {
     return this.trialsService.listMyApplications(user.userId);
+  }
+
+  /**
+   * The trials this coach is working.
+   *
+   * Assignment is the whole of a coach's relationship with a trial — it is what
+   * lets them read a private one, see the sheet and record a verdict — so it is
+   * also what this lists.
+   */
+  @Get('coaching/mine')
+  listMyCoaching(@CurrentUser() user: AuthUser) {
+    return this.trialsService.listForCoach(user.userId);
   }
 
   @Get(':id/applications')
@@ -128,16 +150,33 @@ export class TrialsController {
   }
 
   /**
+   * The coach's PASS or FAIL, after testing the player in person.
+   *
+   * Written by a coach working this trial, never by the manager — the academy
+   * does not evaluate the football. Only a PASS makes the player eligible for a
+   * squad place, and only a PASS clears their recommendations.
+   */
+  @Post('applications/:applicationId/verdict')
+  recordVerdict(
+    @CurrentUser() user: AuthUser,
+    @Param('applicationId') applicationId: string,
+    @Body() dto: RecordTrialVerdictDto,
+  ) {
+    return this.trialsService.recordVerdict(user.userId, applicationId, dto);
+  }
+
+  /**
    * Take the player on: sends them an invitation to join the academy.
    *
    * Not a direct write to the squad — joining is still the player's yes to give,
-   * the same rule every other route into a squad follows.
+   * the same rule every other route into a squad follows. Requires a trial PASS.
    */
   @Post('applications/:applicationId/squad')
   addToSquad(@CurrentUser() user: AuthUser, @Param('applicationId') applicationId: string) {
     return this.trialsService.addToSquad(user.userId, applicationId);
   }
 
+  /** The academy declining an applicant. The only status a manager may write. */
   @Patch('applications/:applicationId/status')
   updateApplicationStatus(
     @CurrentUser() user: AuthUser,

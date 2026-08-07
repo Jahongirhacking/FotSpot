@@ -84,6 +84,18 @@ export class RecommendationsController {
     return this.recommendationsService.assignReview(user.userId, playerId, dto);
   }
 
+  /**
+   * This coach's review of one player, or null if nobody gave them that player.
+   *
+   * Lets a coach answer from the profile they are reading rather than hunting
+   * the same person down in their queue. Null is the rule, not an empty state:
+   * a coach may only judge players an academy assigned to them.
+   */
+  @Get('player/:playerId/my-review')
+  myReviewFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
+    return this.recommendationsService.myReviewFor(user.userId, playerId);
+  }
+
   /** A coach's own queue. Declared before `:id` — Nest matches in order. */
   @Get('reviews/mine')
   listMyReviews(@CurrentUser() user: AuthUser, @Query('status') status?: 'PENDING' | 'DECIDED') {

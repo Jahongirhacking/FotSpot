@@ -35,10 +35,12 @@ export class AdminService {
 
   async verifyCoach(actorId: string, coachProfileId: string, approve: boolean) {
     const result = await this.coachesService.verify(coachProfileId, approve, actorId);
-    await this.notifications.notify(result.userId, 'VERIFICATION_RESULT', {
-      subject: 'coach',
-      approved: approve,
-    });
+    await this.notifications.notify(
+      result.userId,
+      'VERIFICATION_RESULT',
+      { subject: 'coach', approved: approve },
+      { userId: actorId, role: 'admin' },
+    );
     return result;
   }
 
@@ -48,10 +50,12 @@ export class AdminService {
       where: { academyId, role: 'MANAGER' },
     });
     if (manager) {
-      await this.notifications.notify(manager.userId, 'VERIFICATION_RESULT', {
-        subject: 'academy',
-        approved: approve,
-      });
+      await this.notifications.notify(
+        manager.userId,
+        'VERIFICATION_RESULT',
+        { subject: 'academy', approved: approve },
+        { userId: actorId, role: 'admin' },
+      );
     }
     return result;
   }

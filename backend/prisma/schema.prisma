@@ -105,6 +105,7 @@ model User {
   recommendationsMade Recommendation[] @relation("ScoutRecommendations")
   coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
   notifications Notification[]
+  notificationsTriggered Notification[] @relation("NotificationActors")
   otpCodes      OtpCode[]
   verificationCodes VerificationCode[]
   passwordResetCodes PasswordResetCode[]
@@ -116,6 +117,7 @@ model User {
   coachReviews  RecommendationReview[] @relation("CoachReviews")
   reviewAssignments ReviewCoach[] @relation("ReviewAssignments")
   trialCoaching TrialCoach[] @relation("TrialCoaching")
+  trialVerdicts TrialResult[] @relation("TrialVerdicts")
   mediaComments MediaComment[]
 
   createdAt DateTime @default(now())
@@ -327,6 +329,17 @@ model AcademyProfile {
   region   String?
   district String?
   description String?
+  /**
+   * What this academy writes on every trial unless it says otherwise.
+   *
+   * Sanitised HTML, same as `Trial.note`. It exists because the note is largely
+   * the same each time — the same pitch, the same kit, the same person to ask
+   * for — and retyping it per trial is how it ends up half-written or missing.
+   * Copied into the trial at creation rather than joined at read time: a trial
+   * that has happened should keep the words the family actually read, not
+   * whatever the academy's default says a year later.
+   */
+  defaultTrialNote String?
   status   VerificationStatus @default(PENDING)
 
   members  AcademyMember[]
@@ -1016,6 +1029,21 @@ model Recommendation {
    */
   rejectedAt DateTime?
 
+  /**
+   * When a trial PASS retired this from the player's live recommendations.
+   *
+   * TRIAL.md §27 says a pass empties `Player.recommendations`. It cannot mean
+   * *delete*, because the very next step in §8 is recalculating the success rate
+   * of the scouts who filed them — a number computed from these rows. What is
+   * cleared is the player's live backing: they have been placed, so nobody is
+   * still vouching for them to be looked at, and the discoverability weight those
+   * recommendations bought goes with them.
+   *
+   * The row survives as the scout's record, which is what the reputation system
+   * reads and what the scout sees under "everything I put forward".
+   */
+  clearedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1081,12 +1109,50 @@ model Trial {
   academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
   title       String
-  ageRangeMin Int
-  ageRangeMax Int
+  /**
+   * Who a trial is open to. Null on a private trial, which is open to nobody.
+   *
+   * A range answers "may I apply?", and on a private trial nobody may: it exists
+   * for one named child who was already chosen. Storing their exact age there
+   * was a number that looked like a rule and was really a fact about one person
+   * — and it was shown to them as a restriction they had passed.
+   */
+  ageRangeMin Int?
+  ageRangeMax Int?
+  /// Wanted positions. Empty on a private trial, for the same reason.
   positions   String[]
   location    String
+  /// When the examination itself happens — the day the player is tested.
   date        DateTime
+  /**
+   * Last moment a player may put themselves forward.
+   *
+   * Separate from `date` because an academy needs the list closed before the
+   * morning it runs: somebody has to book pitches, print sheets and tell coaches
+   * how many are coming. Applications after that point are not late, they are
+   * impossible.
+   *
+   * Nullable only for trials created before deadlines existed — those stay open
+   * until their exam date, which is how they already behaved. Every new trial
+   * carries one.
+   */
+  applyDeadline DateTime?
   requirements String?
+  /**
+   * What the academy wants the player to read, as sanitised HTML.
+   *
+   * Rich rather than plain because this is where an academy writes the things a
+   * family actually needs — what to bring, where to park, who to ask for — and
+   * those read as a list, not a paragraph. Stored already sanitised: it arrives
+   * through `sanitizeRichText`, so nothing downstream has to remember to clean
+   * it, and a row that somehow held a script tag could not have come from this
+   * API.
+   *
+   * Prefilled from `AcademyProfile.defaultTrialNote` at the screen, not here —
+   * a default is a starting point for the person writing, not a value the
+   * database should invent.
+   */
+  note        String?
 
   /// Archived trials keep their applicants and stop taking new ones.
   status      TrialStatus @default(OPEN)
@@ -1152,13 +1218,27 @@ model TrialCoach {
 /**
  * Where an application stands, in the order it moves.
  *
+ * Two routes end at the same place, and only one of them is screened online
+ * (TRIAL.md Rule 5):
+ *
+ *   general  APPLIED ─────────────────────────────→ PASSED / FAILED
+ *   private  SCREENING → SHORTLISTED → INVITED → CONFIRMED → PASSED / FAILED
+ *
  * `APPLIED`      a player put themselves forward (general trials only)
- * `SCREENING`    a coach has the profile — Process A is running
- * `SHORTLISTED`  Process A returned TRUE; the academy's move is next
+ * `SCREENING`    a coach has the profile — the online review is running
+ * `SHORTLISTED`  the online review said ACCEPT; the academy's move is next
  * `INVITED`      a private trial's invitation is out, awaiting the player
  * `CONFIRMED`    the player accepted and is expected on the day
- * `ACCEPTED`     the academy took them on
- * `REJECTED`     a coach said no, the academy said no, or the player declined
+ * `PASSED`       a coach tested them in person and passed them (see TrialResult)
+ * `FAILED`       a coach tested them in person and failed them
+ * `ACCEPTED`     the academy took them on — squad placement, after a PASS
+ * `REJECTED`     the online review said REJECT, the academy said no, or the
+ *                player declined the invitation
+ *
+ * `PASSED`/`FAILED` are the *coach's* verdict and `ACCEPTED` is the *academy's*
+ * administrative act on top of it. They are deliberately different words: §36
+ * forbids reading a trial verdict as an accept/reject, and conflating the two is
+ * what let an online approval unlock a squad place.
  */
 enum TrialApplicationStatus {
   APPLIED
@@ -1166,6 +1246,8 @@ enum TrialApplicationStatus {
   SHORTLISTED
   INVITED
   CONFIRMED
+  PASSED
+  FAILED
   REJECTED
   ACCEPTED
 }
@@ -1191,8 +1273,15 @@ model TrialApplication {
 
   /// Every scout whose call this trial will settle. See TrialApplicationBacking.
   backings         TrialApplicationBacking[]
-  /// The coach review that screened this application, if one has run.
+  /**
+   * The *online* coach review that screened this application, if one ran.
+   *
+   * Private trials only. A general trial is not screened online at all
+   * (TRIAL.md Rule 5) — the player applies and is tested on the day.
+   */
   review     RecommendationReview?
+  /// What the coach said after testing them in person. See TrialResult.
+  result     TrialResult?
 
   trial    Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
   player   PlayerProfile @relation(fields: [playerId], references: [id])
@@ -1203,11 +1292,70 @@ model TrialApplication {
   @@unique([trialId, playerId])
 }
 
+/**
+ * PASS or FAIL — TRIAL.md Rule 4.
+ *
+ * Never ACCEPT/REJECT. Those belong to the online review, which decides whether
+ * a player is worth *looking at*; this decides whether they passed the football
+ * examination, and only this one reaches a squad (Rule 8).
+ */
+enum TrialVerdict {
+  PASS
+  FAIL
+}
+
+/**
+ * A coach's verdict after physically testing a player at a trial.
+ *
+ * Its own row rather than a second decision on `RecommendationReview`, which is
+ * what this used to be. Rule 19 forbids merging the two, and the merged version
+ * had a concrete cost: reopening the review reset the online screening to
+ * PENDING, so "what did the coach say about this player's profile" and "did they
+ * pass the day" overwrote each other, and there was no way to hold both.
+ *
+ * One per application. A trial answers once — a second look is a second trial,
+ * with its own application and its own row.
+ */
+model TrialResult {
+  id            String @id @default(uuid())
+  applicationId String @unique
+  application   TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  /// The coach who ran the test. Must be working this trial — see TrialCoach.
+  coachUserId    String
+  coachProfileId String
+  coachUser      User @relation("TrialVerdicts", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  verdict       TrialVerdict
+  note          String?
+  /**
+   * The ratings the coach wrote while testing them, if they rated the player.
+   *
+   * Required on a PASS. These are the most credible numbers the platform can
+   * hold — a coach who watched the player on a pitch rather than on video — and
+   * they go through the same CoachAssessment table as any other, which is what
+   * makes them count against a player's self-reported claims (§1.6).
+   */
+  assessmentId  String?
+
+  decidedAt DateTime @default(now())
+
+  @@index([coachUserId])
+}
+
 // ---------- NOTIFICATIONS (1.12) ----------
 
 enum NotificationEvent {
   /// A coach has been handed a player to review.
   REVIEW_ASSIGNED
+  /**
+   * A coach accepted a player at online review, and the academy's move is next.
+   *
+   * Only an ACCEPT is sent. A rejection asks nothing of the manager — the coach
+   * has answered and the line is closed — whereas an acceptance leaves a player
+   * waiting on an invitation only they can send.
+   */
+  REVIEW_DECIDED
   /// An academy is inviting the player, with the manager's note.
   ACADEMY_INVITATION
   /// An academy is asking somebody to join it — awaiting their yes or no.
@@ -1217,7 +1365,22 @@ enum NotificationEvent {
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
   TRIAL_INVITATION
+  /**
+   * The exam moved. Sent to everybody already holding an application.
+   *
+   * A date is the one detail of a trial a family has arranged their week around,
+   * so changing it silently is the one edit that can waste somebody's morning.
+   */
+  TRIAL_RESCHEDULED
   TRIAL_RESULT
+  /**
+   * The academy has taken the player on after a trial they passed.
+   *
+   * Separate from the join invitation the placement also sends: that one is
+   * paperwork awaiting a yes, this one is the news. A child who passed a trial
+   * should be told they passed and were wanted, not only handed a form.
+   */
+  SQUAD_PLACEMENT
   VERIFICATION_RESULT
 }
 
@@ -1225,6 +1388,23 @@ model Notification {
   id      String @id @default(uuid())
   userId  String
   user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * Who caused this, and in what capacity.
+   *
+   * "A coach accepted a player" and "the academy accepted a player" are read
+   * very differently by whoever gets the message, and until now a notification
+   * said neither — only what happened. Nullable for the events nobody triggered:
+   * a scheduled job, or a rule firing on its own.
+   *
+   * `actorRole` is stored rather than derived because a user holds several roles
+   * at once and only the caller knows which one was acting. A scout who is also
+   * a coach rejecting a player did it as a coach, and the row should say so a
+   * year later even if they have stopped being either.
+   */
+  actorUserId String?
+  actor       User? @relation("NotificationActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorRole   String?
 
   event   NotificationEvent
   payload Json

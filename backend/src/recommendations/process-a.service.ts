@@ -50,6 +50,8 @@ export class ProcessAService {
     coachPool?: string[];
     trialApplicationId?: string;
     recommendationId?: string | null;
+    /** Who sent this player for review — a manager, or the trial they applied to. */
+    actor?: { userId: string; role: string };
     tx?: Prisma.TransactionClient;
   }) {
     const db = params.tx ?? this.prisma;
@@ -104,12 +106,17 @@ export class ProcessAService {
     });
 
     for (const profile of profiles) {
-      await this.notifications.notify(profile.userId, 'REVIEW_ASSIGNED', {
-        reviewId: review.id,
-        playerId: params.playerId,
-        playerName: `${player.firstName} ${player.lastName}`,
-        academyId: params.academyId,
-      });
+      await this.notifications.notify(
+        profile.userId,
+        'REVIEW_ASSIGNED',
+        {
+          reviewId: review.id,
+          playerId: params.playerId,
+          playerName: `${player.firstName} ${player.lastName}`,
+          academyId: params.academyId,
+        },
+        params.actor,
+      );
     }
 
     return review;
@@ -137,6 +144,9 @@ export class ProcessAService {
       where: {
         playerId,
         rejectedAt: null,
+        // A cleared recommendation was already settled by a trial the player
+        // passed (Rule 13). It is not riding on this one.
+        clearedAt: null,
         // Addressed to this academy, or offered to everyone — a GLOBAL
         // recommendation is a scout saying "somebody should look at this
         // player", and this academy is the somebody that did.

@@ -2915,6 +2915,35 @@
         "parameters": [],
         "responses": {
           "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "operationId": "notifications_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
             "description": ""
           }
         },
@@ -2923,6 +2952,7 @@
             "bearer": []
           }
         ],
+        "summary": "Clear the whole list.\n\nDeclared before `:id/read` — Nest matches routes in order, and `read-all`\nwould otherwise be read as an id.",
         "tags": [
           "notifications"
         ]
@@ -3475,6 +3505,42 @@
         ]
       }
     },
+    "/api/v1/recommendations/player/{playerId}/my-review": {
+      "get": {
+        "operationId": "recommendations_myReviewFor",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "This coach's review of one player, or null if nobody gave them that player.\n\nLets a coach answer from the profile they are reading rather than hunting\nthe same person down in their queue. Null is the rule, not an empty state:\na coach may only judge players an academy assigned to them.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/reviews/mine": {
       "get": {
         "operationId": "recommendations_listMyReviews",
@@ -3568,7 +3634,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3788,6 +3861,56 @@
         ]
       }
     },
+    "/api/v1/trials/academy/{academyId}/history": {
+      "get": {
+        "operationId": "trials_listArchivedForAcademy",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The academy's finished trials, newest first.\n\nManager-only and paginated: a history that never stops growing needs pages,\nand an archived trial still carries its applicants.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
     "/api/v1/trials/{id}": {
       "get": {
         "operationId": "trials_getById",
@@ -3920,45 +4043,6 @@
         ]
       }
     },
-    "/api/v1/trials/{id}/nominate": {
-      "post": {
-        "operationId": "trials_nominate",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NominatePlayerDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Put a player forward for a private trial, starting Process A in `manual`.\n\nThe mirror of a general trial's apply: there the player comes and screening\nfollows, here the academy chooses and screening comes first.",
-        "tags": [
-          "trials"
-        ]
-      }
-    },
     "/api/v1/trials/{id}/apply": {
       "post": {
         "operationId": "trials_apply",
@@ -4011,6 +4095,26 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/coaching/mine": {
+      "get": {
+        "operationId": "trials_listMyCoaching",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The trials this coach is working.\n\nAssignment is the whole of a coach's relationship with a trial — it is what\nlets them read a private one, see the sheet and record a verdict — so it is\nalso what this lists.",
         "tags": [
           "trials"
         ]
@@ -4132,6 +4236,45 @@
         ]
       }
     },
+    "/api/v1/trials/applications/{applicationId}/verdict": {
+      "post": {
+        "operationId": "trials_recordVerdict",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTrialVerdictDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The coach's PASS or FAIL, after testing the player in person.\n\nWritten by a coach working this trial, never by the manager — the academy\ndoes not evaluate the football. Only a PASS makes the player eligible for a\nsquad place, and only a PASS clears their recommendations.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
     "/api/v1/trials/applications/{applicationId}/squad": {
       "post": {
         "operationId": "trials_addToSquad",
@@ -4155,7 +4298,7 @@
             "bearer": []
           }
         ],
-        "summary": "Take the player on: sends them an invitation to join the academy.\n\nNot a direct write to the squad — joining is still the player's yes to give,\nthe same rule every other route into a squad follows.",
+        "summary": "Take the player on: sends them an invitation to join the academy.\n\nNot a direct write to the squad — joining is still the player's yes to give,\nthe same rule every other route into a squad follows. Requires a trial PASS.",
         "tags": [
           "trials"
         ]
@@ -4194,6 +4337,7 @@
             "bearer": []
           }
         ],
+        "summary": "The academy declining an applicant. The only status a manager may write.",
         "tags": [
           "trials"
         ]
@@ -5574,6 +5718,11 @@
           },
           "description": {
             "type": "string"
+          },
+          "defaultTrialNote": {
+            "type": "string",
+            "description": "The note this academy puts on every trial unless it says otherwise.\n\nHTML from the note editor, sanitised server-side before storage. It is a\n*default*, copied into a trial at creation — editing it later does not\nrewrite the notes of trials that have already happened.",
+            "maxLength": 20000
           }
         }
       },
@@ -5896,19 +6045,26 @@
       "InvitePlayerDto": {
         "type": "object",
         "properties": {
-          "trialId": {
+          "date": {
             "type": "string",
-            "description": "The private trial to invite them to. It must be this academy's own."
+            "description": "When to come. The trial is created for this moment."
+          },
+          "location": {
+            "type": "string",
+            "description": "Where to come.",
+            "minLength": 1,
+            "maxLength": 200
           },
           "note": {
             "type": "string",
-            "description": "Where to be, when, what to bring — the invitation itself.",
+            "description": "What to bring, and anything else the family needs — the invitation itself.",
             "minLength": 1,
             "maxLength": 1000
           }
         },
         "required": [
-          "trialId",
+          "date",
+          "location",
           "note"
         ]
       },
@@ -5971,10 +6127,20 @@
             "type": "string"
           },
           "date": {
-            "type": "string"
+            "type": "string",
+            "description": "When the examination happens — the day the player is tested."
+          },
+          "applyDeadline": {
+            "type": "string",
+            "description": "Last moment somebody may apply. Must not be after the exam.\n\nRequired on creation even though the column is nullable: the null is only\nfor trials written before deadlines existed, and a new trial without one is\na list nobody can close."
           },
           "requirements": {
             "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "description": "What the player reads, as HTML from the note editor.\n\nSanitised server-side before it is stored (`sanitizeRichText`) — the\nclient sanitises too, but anybody can post here without loading the client.",
+            "maxLength": 20000
           }
         },
         "required": [
@@ -5983,7 +6149,8 @@
           "ageRangeMax",
           "positions",
           "location",
-          "date"
+          "date",
+          "applyDeadline"
         ]
       },
       "AssignCoachesDto": {
@@ -5998,22 +6165,6 @@
         },
         "required": [
           "coachUserIds"
-        ]
-      },
-      "NominatePlayerDto": {
-        "type": "object",
-        "properties": {
-          "playerId": {
-            "type": "string"
-          },
-          "coachUserId": {
-            "type": "string",
-            "description": "Whose eye the manager wants on them. Required — this is Process A(manual)."
-          }
-        },
-        "required": [
-          "playerId",
-          "coachUserId"
         ]
       },
       "TrialStatus": {
@@ -6055,10 +6206,18 @@
             "type": "string"
           },
           "date": {
+            "type": "string",
+            "description": "Moving this notifies every applicant — see `TrialsService.update`.\n\nA venue that falls through the week before is the ordinary case, and a\nmanager whose only recourse is a second trial leaves the first collecting\napplications for a session nobody will run."
+          },
+          "applyDeadline": {
             "type": "string"
           },
           "requirements": {
             "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 20000
           }
         }
       },
@@ -6086,16 +6245,72 @@
           "accept"
         ]
       },
+      "RecordTrialVerdictDto": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "vision": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "dribbling": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "finishing": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "physical": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "leadership": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "discipline": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
       "UpdateTrialApplicationStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
             "enum": [
-              "SHORTLISTED",
-              "INVITED",
-              "REJECTED",
-              "ACCEPTED"
+              "REJECTED"
             ]
           }
         },

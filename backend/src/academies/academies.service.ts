@@ -8,6 +8,7 @@ import {
 import * as argon2 from 'argon2';
 import { AcademyMemberRole, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { sanitizeRichText } from '../common/rich-text.util';
 import { RedisService } from '../redis/redis.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
@@ -403,7 +404,14 @@ export class AcademiesService {
     if (!isAdmin) await this.assertManager(userId, academyId);
     const updated = await this.prisma.academyProfile.update({
       where: { id: academyId },
-      data: dto,
+      data: {
+        ...dto,
+        // The one field that carries markup. Cleaned here because this endpoint
+        // is reachable without the editor that cleans it on the way in.
+        ...(dto.defaultTrialNote !== undefined
+          ? { defaultTrialNote: sanitizeRichText(dto.defaultTrialNote) }
+          : {}),
+      },
     });
     await this.invalidate(academyId, updated.region);
     return updated;
