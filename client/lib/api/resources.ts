@@ -37,10 +37,13 @@ import type {
   TrialApplicationStatus,
   TrialStatus,
   TrialType,
+  TrialVerdict,
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
   CoachReview,
+  CoachTrial,
+  MyCoachReview,
   SuggestedPlayer,
   TransferListing,
 } from './types';
@@ -621,6 +624,15 @@ export const recommendations = {
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
 
   /** Credibility-ranked inbox — README §1.5.1/§1.5.2. */
+  /**
+   * Coach: my own review of one player, or null if nobody assigned them to me.
+   *
+   * Null is the rule rather than an empty state — a coach may only judge players
+   * an academy put in front of them.
+   */
+  myReviewFor: (playerId: string, opts: Opts = {}) =>
+    apiFetch<MyCoachReview | null>(`/recommendations/player/${playerId}/my-review`, opts),
+
   /** Coach: players an academy has asked me to judge. */
   myReviews: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
     apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
@@ -663,21 +675,15 @@ export const reviews = {
   mine: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
     apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
 
-  /** Coach: the verdict, with the ratings that become the player's credible ones. */
+  /**
+   * Coach: ACCEPT or REJECT, and why.
+   *
+   * No ratings, deliberately — TRIAL.md Rule 22. A review asks one question, and
+   * scoring a player is squad work that needs a shared group (Rule 21).
+   */
   decide: (
     reviewId: string,
-    body: {
-      decision: 'APPROVED' | 'REJECTED';
-      note?: string;
-      speed?: number;
-      passing?: number;
-      vision?: number;
-      dribbling?: number;
-      finishing?: number;
-      physical?: number;
-      leadership?: number;
-      discipline?: number;
-    },
+    body: { decision: 'APPROVED' | 'REJECTED'; note?: string },
     opts: Opts = {},
   ) => apiFetch(`/recommendations/reviews/${reviewId}/decision`, { method: 'POST', body, ...opts }),
 
@@ -697,6 +703,16 @@ export const trials = {
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Trial[]>(`/trials/academy/${academyId}`, opts),
 
+  /** The academy's finished trials, newest first. Manager-only, paginated. */
+  archivedForAcademy: (
+    academyId: string,
+    params: { page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<Trial>>(`/trials/academy/${academyId}/history${toQuery({ ...params })}`, opts),
+
+  /** Coach: the trials I am assigned to work. */
+  myCoaching: (opts: Opts = {}) => apiFetch<CoachTrial[]>('/trials/coaching/mine', opts),
+
   getById: (id: string, opts: Opts = {}) => apiFetch<Trial>(`/trials/${id}`, opts),
 
   create: (academyId: string, body: CreateTrialBody, opts: Opts = {}) =>
@@ -713,10 +729,6 @@ export const trials = {
   assignCoaches: (trialId: string, coachUserIds: string[], opts: Opts = {}) =>
     apiFetch(`/trials/${trialId}/coaches`, { method: 'POST', body: { coachUserIds }, ...opts }),
 
-  /** Put a player forward for a private trial — starts Process A in `manual`. */
-  nominate: (trialId: string, body: { playerId: string; coachUserId: string }, opts: Opts = {}) =>
-    apiFetch<TrialApplication>(`/trials/${trialId}/nominate`, { method: 'POST', body, ...opts }),
-
   /** Invite a screened player to a private trial, with the note they will read. */
   invite: (applicationId: string, note: string, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/applications/${applicationId}/invite`, {
@@ -732,6 +744,19 @@ export const trials = {
       body: { accept },
       ...opts,
     }),
+
+  /**
+   * The coach's PASS or FAIL, after testing the player in person.
+   *
+   * Assigned coaches only, and only one per application. No ratings — one
+   * morning is not a season, so attributes wait until the player is in a squad
+   * group somebody coaches (TRIAL.md Rules 21–22).
+   */
+  recordVerdict: (
+    applicationId: string,
+    body: { verdict: TrialVerdict; note?: string },
+    opts: Opts = {},
+  ) => apiFetch(`/trials/applications/${applicationId}/verdict`, { method: 'POST', body, ...opts }),
 
   /** Take the player on — sends them an invitation to join the academy. */
   addToSquad: (applicationId: string, opts: Opts = {}) =>
@@ -773,8 +798,13 @@ export interface CreateTrialBody {
   ageRangeMax: number;
   positions: string[];
   location: string;
+  /** When the examination happens. */
   date: string;
+  /** Last moment somebody may apply. Must not be after `date`. */
+  applyDeadline: string;
   requirements?: string;
+  /** Sanitised HTML from the note editor. The server sanitises it again. */
+  note?: string;
 }
 
 // ---------- Media ----------
@@ -1072,6 +1102,10 @@ export const notifications = {
 
   markRead: (id: string, opts: Opts = {}) =>
     apiFetch<AppNotification>(`/notifications/${id}/read`, { method: 'PATCH', ...opts }),
+
+  /** Clear the whole list. Returns how many were actually unread. */
+  markAllRead: (opts: Opts = {}) =>
+    apiFetch<{ count: number }>('/notifications/read-all', { method: 'PATCH', ...opts }),
 };
 
 // ---------- Auth / sessions ----------

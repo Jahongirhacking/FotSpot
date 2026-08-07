@@ -2,15 +2,13 @@
 
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserCheck, UserPlus } from 'lucide-react';
+import { UserCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplication } from '@/lib/api/types';
+import type { Trial } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
-import { Select } from '@/components/ui/Field';
-import { PlayerSearchPicker } from './PlayerSearchPicker';
 
 interface Coach {
   id: string;
@@ -32,18 +30,17 @@ const coachName = (coach: Coach) =>
  * academy's staff, so the person who will be on the pitch is the one who read
  * the profile.
  *
- * ## Why a private trial nominates instead of waiting
+ * ## A private trial has no staff to pick and no player to add
  *
- * It is the mirror of an open day. There a player applies and screening follows;
- * here the academy picks somebody and screening comes first — nothing reaches
- * the player until a coach has said yes.
+ * It is created by an invitation, for exactly one named child, with the coach
+ * who accepted them already on it. There is no "nominate" here any more: that
+ * control was the one way a second player could be put into a session that is
+ * for one, and the flow it belonged to — pick a player, then screen them —
+ * now starts from the player's own profile and ends with the invitation.
  */
 export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: string }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [nominating, setNominating] = React.useState(false);
-  const [playerId, setPlayerId] = React.useState('');
-  const [coachUserId, setCoachUserId] = React.useState('');
 
   const staff = useQuery({
     queryKey: ['academy-coaches', academyId],
@@ -62,19 +59,7 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
     mutationFn: (coachUserIds: string[]) =>
       browserFetch(`/trials/${trial.id}/coaches`, { method: 'POST', body: { coachUserIds } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial-coaches', trial.id] }),
-  });
-
-  const nominate = useMutation({
-    mutationFn: () =>
-      browserFetch<TrialApplication>(`/trials/${trial.id}/nominate`, {
-        method: 'POST',
-        body: { playerId, coachUserId },
-      }),
-    onSuccess: () => {
-      setNominating(false);
-      setPlayerId('');
-      void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial.id] });
-    },
+    meta: { success: t.trials.coachesUpdated },
   });
 
   const coaches = (staff.data ?? []).map((row) => row.user ?? { id: row.userId });
@@ -117,55 +102,6 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
               );
             })}
           </ul>
-        )}
-
-        {trial.type === 'PRIVATE' && (
-          <div className="border-border space-y-3 rounded-lg border p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-medium">{t.trials.nominatePlayer}</span>
-              <Button
-                size="sm"
-                variant={nominating ? 'ghost' : 'primary'}
-                onClick={() => setNominating((was) => !was)}
-              >
-                <UserPlus aria-hidden /> {nominating ? t.common.cancel : t.trials.nominate}
-              </Button>
-            </div>
-
-            {nominating && (
-              <>
-                {/* Nothing reaches the player here: this hands the profile to a
-                    coach, and only their yes produces an invitation. */}
-                <Alert tone="info">{t.trials.nominateHint}</Alert>
-
-                <PlayerSearchPicker value={playerId} onChange={setPlayerId} />
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    aria-label={t.trials.reviewingCoach}
-                    value={coachUserId}
-                    onChange={(event) => setCoachUserId(event.target.value)}
-                    className="min-w-44 flex-1"
-                  >
-                    <option value="">{t.trials.reviewingCoach}</option>
-                    {coaches.map((coach) => (
-                      <option key={coach.id} value={coach.id}>
-                        {coachName(coach)}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    size="sm"
-                    disabled={!playerId || !coachUserId}
-                    loading={nominate.isPending}
-                    onClick={() => nominate.mutate()}
-                  >
-                    {t.trials.sendForReview}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
         )}
       </CardContent>
     </Card>

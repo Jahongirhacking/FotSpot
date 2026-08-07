@@ -49,7 +49,20 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
-  const payload = text ? safeJson(text) : undefined;
+  /*
+   * An empty 200 is `null`, not `undefined`.
+   *
+   * Nest sends nothing at all for a handler that returns `null` — which is what
+   * "no review for this player" looks like on the wire. Reading that as
+   * `undefined` made TanStack Query throw *"data is undefined"* from inside the
+   * query function, which is a framework complaint about our fetch layer dressed
+   * up as an application error. `null` is the honest value for a body that says
+   * "the answer is nothing", and queries can hold it.
+   *
+   * 204 stays `undefined`: it means "no content to speak of", which is what a
+   * mutation returns, and nobody reads it.
+   */
+  const payload = text ? safeJson(text) : null;
 
   if (!response.ok) {
     // The same reader the server-side boundary uses, so a message the API wrote

@@ -45,22 +45,45 @@ export const uz = {
     language: 'Til',
   },
 
+  /**
+   * What a search engine and a shared link show — README §14.
+   *
+   * Translated like everything else, and Uzbek by default, because the sentence
+   * under a search result is the first thing most visitors read and an English
+   * one is a sentence they skip. The locale comes from the reader's cookie, so a
+   * link shared into a Russian-speaking group opens with a Russian card.
+   */
+  seo: {
+    title: 'FotSpot — Mahalladan futbol akademiyasigacha',
+    description:
+      'Futbolchi profilingizni yarating, iste’dodingizni video orqali ko‘rsating, skautlar va akademiyalar e’tiboriga tushing. Sinovlarga ariza bering.',
+    keywords: [
+      'futbol',
+      'futbolchi',
+      'futbol akademiyasi',
+      'skaut',
+      'yosh futbolchi',
+      'futbol sinovlari',
+      'O‘zbekiston futboli',
+    ],
+  },
+
   nav: {
     squad: 'Tarkib',
     groups: 'Guruhlar',
-    myGroup: 'Mening guruhim',
+    myGroup: 'Guruhim',
     reserve: 'Zaxira',
     home: 'Bosh sahifa',
     feed: 'Lenta',
-    myCard: 'Mening kartam',
-    myAcademy: 'Mening akademiyam',
-    recommendedPlayers: 'Tavsiya etilgan o‘yinchilar',
+    myCard: 'Kartam',
+    myAcademy: 'Akademiyam',
+    recommendedPlayers: 'Tavsiya etilganlar',
     players: 'Futbolchilar',
     findPlayers: 'Futbolchi topish',
     academies: 'Akademiyalar',
     trials: 'Sinovlar',
-    myPicks: 'Mening tavsiyalarim',
-    inbox: 'Kelgan tavsiyalar',
+    myPicks: 'Tavsiyalarim',
+    inbox: 'Tavsiyalar',
     verification: 'Tasdiqlash',
     moderation: 'Moderatsiya',
     users: 'Foydalanuvchilar',
@@ -624,6 +647,15 @@ export const uz = {
     withCoach: 'Murabbiyda',
     awaitingPlayer: 'O‘yinchining javobi kutilmoqda',
     invitePlaceholder: 'Shanba 10:00, Yunusobod 3-maydon. Butsa va suv olib keling.',
+    addedToSquad: 'Jamoaga qo‘shildi',
+    aboutThisTrial: 'Sinov haqida',
+    addedToSquadDone: 'Futbolchi jamoaga qo‘shildi',
+    verdictRecorded: 'Hukm yozildi',
+    trialCreated: 'Sinov yaratildi',
+    coachesUpdated: 'Murabbiylar ro‘yxati yangilandi',
+    answerSent: 'Javobingiz yuborildi',
+    trialUpdated: 'Sinov yangilandi',
+    applicationSent: 'Arizangiz yuborildi',
     addToSquad: 'Tarkibga qo‘shish',
     squadInvitationSent: 'Akademiyaga qo‘shilish taklifi yuborildi — o‘yinchi qabul qilishi kerak.',
     statusScreening: 'Ko‘rikda',
@@ -669,6 +701,79 @@ export const uz = {
     statusInvited: 'Taklif qilingan',
     statusAccepted: 'Qabul qilingan',
     statusRejected: 'Rad etilgan',
+    examDate: 'Sinov sanasi va vaqti',
+    applyDeadline: 'Ariza muddati',
+    applyDeadlineHint:
+      'Shu vaqtdan keyin hech kim ariza bera olmaydi. Sinov sanasidan keyin bo‘lishi mumkin emas.',
+    moveDateWarning:
+      'Sanani o‘zgartirsangiz, ariza bergan har bir futbolchiga bildirishnoma boradi.',
+    history: 'Tarix',
+    historyHint: 'Yakunlangan sinovlar — har bir futbolchi hukm olgan va arxivga o‘tgan.',
+    noHistory: 'Tarix bo‘sh',
+    noHistoryHint:
+      'Sinov barcha arizalari hukm olgach avtomatik arxivlanadi va shu yerda ko‘rinadi.',
+    applicationStatus: 'Arizangiz holati',
+    applicationsClosed: 'Arizalar qabuli yopilgan',
+    applicationsClosedOn:
+      'Muddat {date} da tugagan. Sinovni ko‘rishingiz mumkin, lekin ariza bera olmaysiz.',
+    ageCheckedAutomatically: 'Yoshingiz {min}–{max} oralig‘iga avtomatik tekshiriladi.',
+    applyBefore: '{date} gacha ariza bering.',
+    statusPassed: 'O‘tdi',
+    statusFailed: 'O‘tmadi',
+
+    // Akademiya menejeri uchun ikki bo‘lim
+    globalTrials: 'Umumiy sinovlar',
+    globalTrialsHint:
+      'Ochiq kun: e’lon qilinadi, mos yoshdagi har bir futbolchi ariza beradi, kunning o‘zida murabbiy baholaydi.',
+    createGlobalTrial: 'Umumiy sinov yaratish',
+    privateTrials: 'Yopiq sinovlar',
+    privateTrialsHint:
+      'Har biri onlayn ko‘rikdan o‘tgan bitta futbolchi uchun. Ular Inbox’dagi taklif orqali paydo bo‘ladi.',
+    noPrivateTrials: 'Yopiq sinov yo‘q',
+    noPrivateTrialsHint:
+      'Yopiq sinov murabbiy futbolchini onlayn qabul qilganda va siz uni taklif qilganingizda paydo bo‘ladi.',
+
+    // Murabbiy ko‘rinishi
+    coachTrialsHint: 'Siz ishlayotgan sinovlar va sizni kutayotgan profillar.',
+    myTrialsHint: 'Sizga biriktirilgan sinovlar. Faqat shu yerda hukm yozasiz.',
+    noAssignedTrials: 'Sizga sinov biriktirilmagan',
+    noAssignedTrialsHint: 'Menejer sizni sinovga biriktirgach, u shu yerda ko‘rinadi.',
+    onlineCoachReview: 'Onlayn ko‘rik',
+    onlineCoachReviewHint: 'Profilini baholashingiz kutilayotgan futbolchilar.',
+    statOnlineReviews: 'Onlayn ko‘rik',
+    statAwaitingVerdict: 'Hukm kutmoqda',
+    statTrials: 'Sinovlar',
+    needsYourVerdict: 'Hukmingiz kutilmoqda',
+    needsYourVerdictHint:
+      'Javob berilmagan futbolchisi bor sinovlar — sanasi o‘tganlari ham shu yerda.',
+    nothingAwaitingVerdict: 'Hammasiga javob berilgan',
+    nothingAwaitingVerdictHint: 'Sizni kutayotgan futbolchi yo‘q.',
+    settledTrials: 'Yakunlangan sinovlar',
+    settledTrialsHint: 'Har bir futbolchisi hukm olgan sinovlar.',
+    datePassed: 'sana o‘tdi',
+    allAnswered: 'Yakunlangan',
+    applicantCount: '{count} ta ariza',
+    awaitingCount: '{count} ta kutmoqda',
+    decideReviews: '{count} ta ko‘rikni hal qilish',
+    openReviewQueue: 'Ko‘rik ro‘yxatini ochish',
+
+    // Kun varaqasi va hukm
+    sheet: 'Kun varaqasi',
+    sheetHint: 'Kim keldi va ular haqida nima dedingiz. Hukm — PASS yoki FAIL.',
+    sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
+    recordVerdict: 'Hukm yozish',
+    pass: 'O‘tkazish',
+    fail: 'O‘tkazmaslik',
+    confirmPass: 'Bu futbolchini o‘tkazasizmi?',
+    confirmPassBody:
+      'Buni orqaga qaytarib bo‘lmaydi. Futbolchi jamoaga qabul qilinishi mumkin bo‘ladi (qarorni menejer qabul qiladi), profilidagi tavsiyalar tozalanadi va uni tavsiya qilgan skautlarning reytingi qayta hisoblanadi.',
+    confirmFail: 'Bu futbolchini o‘tkazmaysizmi?',
+    confirmFailBody:
+      'Buni orqaga qaytarib bo‘lmaydi. Futbolchi jamoaga qo‘shilmaydi va uni tavsiya qilgan skautlarning reytingi qayta hisoblanadi. Tavsiyalar tozalanmaydi.',
+    verdictPassed: 'Sinovdan o‘tdi',
+    verdictFailed: 'Sinovdan o‘tmadi',
+    notExpectedYet: 'Bu futbolchi hali kunga kutilmayapti.',
+    awaitingVerdict: 'Murabbiyning kundagi hukmi kutilmoqda',
     title: 'Sarlavha',
     date: 'Sana va vaqt',
     ageMin: 'Eng kichik yosh',
@@ -702,19 +807,33 @@ export const uz = {
   },
 
   recommendations: {
-    inviteToTrial: 'Qaysi yopiq sinovga',
-    noPrivateTrial: 'Avval yopiq sinov yarating — taklif qilish uchun sana kerak.',
+    invite: 'Taklif qilish',
+    inviteTitle: 'Yopiq sinovga taklif',
+    inviteCreatesTrial:
+      'Taklif yuborilganda shu futbolchi uchun yopiq sinov avtomatik yaratiladi. Uni faqat shu futbolchi ko‘radi.',
     activeSection: 'Jarayonda',
     activeSectionHint: 'Murabbiyda turganlar va u tasdiqlagan, taklif kutayotganlar.',
     activeEmpty: 'Jarayonda hech kim yo‘q',
     statusAccepted: 'qabul qilindi',
     statusRejected: 'rad etildi',
     statusPending: 'ko‘rib chiqilmoqda',
+    reviewAskedOf: 'Sizdan bu futbolchini baholash so‘ralgan',
+    confirmApproveTitle: 'Bu futbolchini qabul qilasizmi?',
+    confirmApproveBody:
+      'Buni orqaga qaytarib bo‘lmaydi. Akademiya menejeri uni yopiq sinovga taklif qila oladi.',
+    confirmRejectTitle: 'Bu futbolchini rad etasizmi?',
+    confirmRejectBody:
+      'Buni orqaga qaytarib bo‘lmaydi. Bu akademiya uchun jarayon tugaydi va uni tavsiya qilgan skautlarning reytingi qayta hisoblanadi.',
+    confirmReject: '{name} ni rad etasizmi? Bu akademiya uchun jarayonni yakunlaydi.',
     noReviews: 'Ko‘rik uchun o‘yinchi yo‘q',
     noReviewsHint: 'Akademiya menejeri o‘yinchini yuborsa, u shu yerda paydo bo‘ladi.',
     reviewed: 'Ko‘rib chiqilganlar',
     approved: 'Tasdiqlangan',
     noClips: 'Bu o‘yinchida hali klip yo‘q',
+    sentForReview: 'Futbolchi murabbiyga yuborildi',
+    recommendationSent: 'Tavsiya yuborildi',
+    invitationSent: 'Taklif yuborildi',
+    reviewDecided: 'Qaroringiz yozildi',
     coachNote: 'Murabbiy izohi',
     approvePlayer: 'Tasdiqlash',
     rejectPlayer: 'Rad etish',
@@ -788,19 +907,43 @@ export const uz = {
     awaitingDecision: '{count} ta akademiya qaroriga kutilmoqda',
   },
 
+  /** Matn muharriri va sinov izohlari. */
+  notes: {
+    bold: 'Qalin',
+    italic: 'Kursiv',
+    bulletList: 'Ro‘yxat',
+    numberedList: 'Raqamli ro‘yxat',
+    link: 'Havola',
+    write: 'Yozish',
+    preview: 'Ko‘rish',
+    nothingToPreview: 'Hali hech narsa yozilmagan.',
+    placeholder: 'Nima olib kelish, qayerga borish, kimni so‘rash kerakligini yozing.',
+    defaultNoteSaved: 'Standart izoh saqlandi',
+    defaultNote: 'Standart izoh',
+    defaultNoteHint:
+      'Har bir yangi sinov shu matndan boshlanadi. Uni keyin o‘zgartirsangiz, allaqachon yaratilgan sinovlar o‘zgarmaydi.',
+    defaultNotePlaceholder: 'Masalan: butsa va suv oling. Maydon 3, Yunusobod. Aziz akani so‘rang.',
+    playerNote: 'Futbolchi uchun izoh',
+    playerNoteHint: 'Sinov sahifasida futbolchi shuni o‘qiydi. Ixtiyoriy.',
+  },
+
   notifications: {
     joinInvitation: 'Tabriklaymiz! Sizni akademiyaga taklif qilishmoqda',
     joinAnswer: 'Taklifga javob keldi',
     academyInvitation: 'Akademiya sizni sinovga chaqirmoqda',
+    trialRescheduled: 'Sinov sanasi o‘zgardi',
     reviewAssigned: 'Ko‘rib chiqish uchun futbolchi berildi',
+    reviewAccepted: 'Murabbiy futbolchini qabul qildi — endi taklif sizdan',
     title: 'Bildirishnomalar',
     nothingYet: 'Hali hech narsa yo‘q',
     nothingYetHint: 'Tavsiya natijalari, sinov takliflari va tasdiqlash yangiliklari shu yerda.',
+    markAllRead: 'Hammasini o‘qilgan deb belgilash ({count})',
     markRead: 'O‘qilgan deb belgilash',
     unread: 'o‘qilmagan',
     recommendationAccepted: 'Tavsiya qabul qilindi',
     recommendationRejected: 'Tavsiya rad etildi',
     trialInvitation: 'Sizni sinovga taklif qilishdi',
+    squadPlacement: 'Tabriklaymiz! Akademiya sizni jamoaga qabul qildi',
     trialResult: 'Sinov natijasi',
     verificationResult: 'Tasdiqlash yangiligi',
   },
@@ -939,31 +1082,100 @@ export const uz = {
   },
 
   landing: {
-    heroTitle: 'Mahallangizdagi eng yaxshi yosh futbolchi e’tibordan chetda qolmasligi shart.',
+    heroTitle: 'Mahalladagi iste’dod akademiyagacha yetib borsin.',
     heroBody:
-      "Futbolchilar uchun professional profil. Akademiyalar uchun aqlli skauting. FotSpot iste'dod va imkoniyatni bir joyda uchrashtiradi",
+      'Futbolchilar uchun professional profil. Skautlar uchun ishonchli tavsiyalar. Akademiyalar uchun tezkor saralash.',
     createCard: 'Futbolchi kartangizni yarating',
     browsePlayers: 'Futbolchilarni ko‘rish',
     freeForever: 'Futbolchilar, ota-onalar va skautlar uchun — doim bepul.',
     getStarted: 'Boshlash',
-    pillar1Title: 'CV emas, tasdiqlangan futbol profili',
-    pillar1Body:
-      "Pozitsiya, o'yin uslubi, statistikalar va qisqa videolar — barchasi bitta joyda. Har bir ko'rsatkich ishonchli manba bilan tasdiqlanadi, shunda akademiyalar iste'dodni ishonch bilan baholay oladi",
-    pillar2Title: "Ishonchli skautlar tarmog'i",
-    pillar2Body:
-      "Har kim iste'dodni tavsiya qilishi mumkin. Ammo skautning ishonchliligi faqat akademiyalar tasdiqlagan tavsiyalar asosida shakllanadi. FotSpot obro'ni natija bilan o'lchaydi",
-    pillar3Title: 'Akademiyalar uchun aqlli saralash',
-    pillar3Body:
-      "Yosh, pozitsiya, hudud va o'yin uslubi bo'yicha iste'dodlarni bir necha soniyada toping. FotSpot akademiyalarga vaqtni tejash va eng munosib futbolchilarni tezroq aniqlash imkonini beradi",
+
+    pillar1Title: 'CV emas — futbol profili',
+    pillar1Body: 'Pozitsiya, o‘yin uslubi, statistika va video-isbotlar bitta profilda.',
+
+    pillar2Title: 'Obro‘ natija bilan',
+    pillar2Body: 'Skaut reytingi tavsiyalar soniga emas, ular bergan natijaga asoslanadi.',
+
+    pillar3Title: 'Akademiya uchun tezkor saralash',
+    pillar3Body: 'Yosh, pozitsiya, hudud va o‘yin uslubi bo‘yicha kerakli futbolchini tez toping.',
+
     recentlyJoined: 'Yaqinda qo‘shilganlar',
     viewMyCard: 'Kartamni ko‘rish',
     watchHighlights: 'Videoni ko‘rish',
     latestClips: 'Yangi videolar',
-    latestClipsBody: 'Futbolchilar o‘z mahoratini ko‘rsatadi — 60 soniyada.',
-    noClipsYet: 'Hali video yuklanmagan. Birinchi bo‘ling.',
+    latestClipsBody: 'Futbolchilar mahoratini qisqa videolarda namoyish etadi.',
+    noClipsYet: 'Hali video yo‘q. Birinchi bo‘ling.',
     statPlayers: 'Futbolchilar',
     statAcademies: 'Akademiyalar',
     statTrials: 'Ochiq sinovlar',
+
+    pipelineBypass:
+      'Ochiq sinov: futbolchi to‘g‘ridan-to‘g‘ri ariza beradi — onlayn ko‘rik ham, tavsiya ham kerak emas.',
+
+    pipelineTitle: 'Futbolchi akademiyaga qanday yetib boradi',
+
+    pipelineBody:
+      'Kashfiyotdan tarkibgacha aniq yo‘l. Faqat maydondagi haqiqiy sinov futbolchini tarkibga olib boradi.',
+
+    pipeline: {
+      discovered: {
+        title: 'Kashf qilindi',
+        body: 'Futbolchi profil va video-isbotlarini yaratadi. Istalgan skaut uni topishi mumkin.',
+      },
+
+      recommended: {
+        title: 'Tavsiya qilindi',
+        body: 'Skaut futbolchini akademiyaga tavsiya qiladi. Natija uning obro‘siga ta’sir qiladi.',
+      },
+
+      review: {
+        title: 'Onlayn murabbiy ko‘rigi',
+        body: 'Murabbiy profilni ko‘rib, qabul qiladi yoki rad etadi. Ochiq sinovda bu bosqich bo‘lmaydi.',
+      },
+
+      trial: {
+        title: 'Sinov — maydonda',
+        body: 'Haqiqiy imtihon. Murabbiy futbolchini maydonda sinaydi va o‘tdi yoki o‘tmadi deb baholaydi.',
+      },
+
+      squad: {
+        title: 'Tarkib',
+        body: 'Sinovdan o‘tgan futbolchini akademiya menejeri tarkibga qo‘shadi.',
+      },
+    },
+    valueTitle: 'Futboldagi bo‘shliqni to‘ldiramiz',
+    valueBody: 'Iste’dod, tavsiya va imkoniyatni bir joyda bog‘laymiz.',
+    value: {
+      players: {
+        title: 'Futbolchilar uchun',
+        body: 'Iste’dodingiz ko‘rinmasa, imkoniyat ham kelmaydi.',
+        points: [
+          'Video-isbotga asoslangan professional profil',
+          'Ochiq sinovlarga bevosita ariza bering',
+          '18 yoshgacha profil yopiq va platforma bepul',
+        ],
+      },
+
+      scouts: {
+        title: 'Skautlar uchun',
+        body: 'Obro‘ tavsiyalar soni bilan emas, natija bilan o‘lchanadi.',
+        points: [
+          'Iste’dodlarni toping va tavsiya qiling',
+          'Muvaffaqiyat reytingingiz real natijalar asosida oshadi',
+          'Akademiyalar bilan professional aloqalar yarating',
+        ],
+      },
+
+      academies: {
+        title: 'Akademiyalar uchun',
+        body: 'Kerakli futbolchini tezroq toping, vaqtni tejang.',
+        points: [
+          'Yosh, pozitsiya va hudud bo‘yicha tezkor qidiruv',
+          'Murabbiy onlayn saralaydi — keyin futbolchi sinovga keladi',
+          'Sinovlar va tarkiblarni yagona tizimda boshqaring',
+        ],
+      },
+    },
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
     safetyBody:
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',

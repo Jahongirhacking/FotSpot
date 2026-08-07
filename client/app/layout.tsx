@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/layout/Providers';
 import { getSession } from '@/lib/session';
-import { getLocale } from '@/lib/i18n/server';
+import { getLocale, getServerT } from '@/lib/i18n/server';
+import type { Locale } from '@/lib/i18n/config';
 import { THEME_SCRIPT } from '@/lib/theme';
 import { siteUrl } from '@/lib/seo';
 
@@ -17,36 +18,58 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-const DESCRIPTION =
-  'Grassroots to academy football in Uzbekistan. Build your player card, get discovered by academies, and apply for trials.';
+/** What OpenGraph wants, which is not what an `html lang` wants. */
+const OG_LOCALE: Record<Locale, string> = { uz: 'uz_UZ', ru: 'ru_RU', en: 'en_US' };
 
 /**
- * Site-wide metadata.
+ * Site-wide metadata, in the reader's language.
+ *
+ * A function rather than a constant because the title and description are
+ * translated (§14) and a static export cannot read the locale cookie. Uzbek is
+ * what an unrecognised visitor gets — see lib/i18n/config.ts for why that is the
+ * default rather than English — so that is also what a crawler indexes and what
+ * an unopened link previews as.
  *
  * `metadataBase` is what makes every relative canonical and social image on every
  * page resolve to an absolute URL — without it Next emits relative ones, which
  * crawlers ignore and social scrapers cannot fetch.
+ *
+ * Deliberately **no `alternates.languages`**. hreflang points at a *different URL*
+ * per language, and this app has one URL per page with the locale in a cookie
+ * (config.ts explains that trade). Emitting hreflang here would tell a crawler
+ * that three addresses exist when only one does, which is worse than saying
+ * nothing.
  */
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl()),
-  title: {
-    default: 'FotSpot — get seen',
-    template: '%s · FotSpot',
-  },
-  description: DESCRIPTION,
-  applicationName: 'FotSpot',
-  keywords: ['football', 'futbol', 'Uzbekistan', 'academy', 'scout', 'player card', 'trials'],
-  alternates: { canonical: '/' },
-  openGraph: {
-    type: 'website',
-    siteName: 'FotSpot',
-    title: 'FotSpot — get seen',
-    description: DESCRIPTION,
-    url: '/',
-  },
-  twitter: { card: 'summary_large_image', title: 'FotSpot — get seen', description: DESCRIPTION },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, t } = await getServerT();
+
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: {
+      default: t.seo.title,
+      // The brand stays untranslated — it is a name, not a word.
+      template: '%s · FotSpot',
+    },
+    description: t.seo.description,
+    applicationName: 'FotSpot',
+    keywords: t.seo.keywords,
+    alternates: { canonical: '/' },
+    openGraph: {
+      type: 'website',
+      siteName: 'FotSpot',
+      title: t.seo.title,
+      description: t.seo.description,
+      locale: OG_LOCALE[locale],
+      url: '/',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t.seo.title,
+      description: t.seo.description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 export const viewport: Viewport = {
   // Draws behind the notch and the home indicator instead of letterboxing the

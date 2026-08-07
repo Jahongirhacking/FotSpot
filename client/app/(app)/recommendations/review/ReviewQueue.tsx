@@ -3,50 +3,48 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardCheck, Video, X } from 'lucide-react';
+import { Check, ClipboardCheck, TriangleAlert, Video, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { CoachReview, Media } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ClipTile } from '@/components/player/ClipTile';
 import { ClipModal } from '@/components/player/ClipModal';
-import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
+import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Textarea } from '@/components/ui/Field';
-import { ageBand, formatDate, initials } from '@/lib/utils';
-
-/** The eight the platform scores, in the order a coach reads them. */
-const ATTRIBUTES = [
-  'speed',
-  'dribbling',
-  'passing',
-  'finishing',
-  'physical',
-  'vision',
-  'leadership',
-  'discipline',
-] as const;
-
-type Attribute = (typeof ATTRIBUTES)[number];
-type Ratings = Record<Attribute, number>;
-
-const DEFAULT_RATINGS = Object.fromEntries(ATTRIBUTES.map((key) => [key, 50])) as Ratings;
+import { ageBand, formatDate } from '@/lib/utils';
 
 /**
  * A coach works through the players academies have sent them.
  *
- * ## The ratings are the point, not the verdict
+ * ## A coach is never told who recommended the player
  *
- * A player's own numbers are a claim; a coach's are evidence (§1.6), and this
- * screen is the only place the second kind gets written. So the clips come first
- * and the sliders sit under them — the coach is meant to watch, then score, then
- * decide, and the decision is the cheapest part of that.
+ * No scout name, no scout note, nothing that hints at one. The judgement asked
+ * of a coach is about the player — the clips, the numbers, the position — and
+ * knowing a Legendary Scout put somebody forward is a thumb on the scale before
+ * the first clip plays. It would also make the reputation system circular: a
+ * scout's standing summarises how their picks were judged, so letting it colour
+ * the judging is how a good record starts defending itself.
  *
- * Approving requires every attribute; rejecting does not. A coach declining has
- * still watched the player and their numbers are worth having, but making them
- * fill in eight fields to say no is how "reject" quietly stops being used.
+ * ## The clips are the question; the answer is one button
+ *
+ * An online review asks a coach whether this player is worth a real look. That
+ * is a yes or a no, and the evidence for it is the clips — which is why they
+ * fill the card and the two buttons sit under them.
+ *
+ * There are no attribute sliders. Requiring eight numbers to say yes made the
+ * cheap decision the expensive one, and a coach reading clips on a phone at the
+ * side of a pitch is exactly the person that cost falls on.
+ *
+ * ## Why both answers confirm
+ *
+ * Neither can be taken back. An accept commits the academy to inviting somebody
+ * to a real session; a reject ends the line for this academy and starts the
+ * scout's cooldown. So each opens a short warning that says what follows, and
+ * the coach confirms from there rather than from a press that could have been a
+ * mis-tap.
  */
 export function ReviewQueue({
   initialPending,
@@ -77,6 +75,7 @@ export function ReviewQueue({
       void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
     },
+    meta: { success: t.recommendations.reviewDecided },
   });
 
   return (
@@ -108,10 +107,10 @@ export function ReviewQueue({
               {(decided.data ?? []).map((review) => (
                 <li key={review.id} className="flex flex-wrap items-center gap-3 p-2">
                   <Link
-                    href={`/players/${review.recommendation.player.id}`}
+                    href={`/players/${review.player?.id ?? ''}`}
                     className="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
                   >
-                    {review.recommendation.player.firstName} {review.recommendation.player.lastName}
+                    {review.player?.firstName} {review.player?.lastName}
                   </Link>
                   <span className="text-muted text-xs">
                     {review.decidedAt && formatDate(review.decidedAt)}
@@ -141,15 +140,19 @@ function ReviewCard({
   onDecide: (body: Record<string, unknown>) => void;
 }) {
   const { t } = useI18n();
-  const player = review.recommendation.player;
-  const [ratings, setRatings] = React.useState<Ratings>(DEFAULT_RATINGS);
+  // The player hangs off the review, not the recommendation — a review the
+  // academy started itself has no recommendation, and the coach still has to see
+  // whose profile they are reading.
+  const player = review.player;
   const [note, setNote] = React.useState('');
   const [openClipId, setOpenClipId] = React.useState<string | null>(null);
+  const [confirming, setConfirming] = React.useState<'APPROVED' | 'REJECTED' | null>(null);
 
   // The clips are the evidence; without them the sliders are guesswork.
   const clips = useQuery({
-    queryKey: ['player-clips', player.id],
-    queryFn: () => browserFetch<Media[]>(`/media/player/${player.id}`),
+    queryKey: ['player-clips', player?.id],
+    queryFn: () => browserFetch<Media[]>(`/media/player/${player?.id}`),
+    enabled: Boolean(player?.id),
   });
 
   const openClip = (clips.data ?? []).find((clip) => clip.id === openClipId) ?? null;
@@ -160,32 +163,23 @@ function ReviewCard({
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
             <Link
-              href={`/players/${player.id}`}
+              href={`/players/${player?.id ?? ''}`}
               className="truncate text-base font-semibold hover:underline"
             >
-              {player.firstName} {player.lastName}
+              {player?.firstName} {player?.lastName}
             </Link>
             <p className="text-muted truncate text-xs">
-              {[player.primaryPosition, ageBand(player.birthDate), player.region]
+              {[
+                player?.primaryPosition,
+                player?.birthDate && ageBand(player.birthDate),
+                player?.region,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
-          <Badge variant="neutral">{review.academy.name}</Badge>
+          <Badge variant="neutral">{review.academy?.name}</Badge>
         </div>
-
-        <p className="text-muted mt-1 flex items-center gap-1.5 text-xs">
-          <Avatar
-            src={review.recommendation.scout.avatarUrl}
-            fallback={initials(
-              review.recommendation.scout.firstName ?? '',
-              review.recommendation.scout.lastName ?? '',
-            )}
-            className="size-5"
-          />
-          {review.recommendation.scout.firstName} {review.recommendation.scout.lastName}
-          {review.recommendation.note && ` — ${review.recommendation.note}`}
-        </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -203,33 +197,6 @@ function ReviewCard({
           </ul>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {ATTRIBUTES.map((attribute) => (
-            <div key={attribute} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <label htmlFor={`${review.id}-${attribute}`} className="font-medium">
-                  {t.attributes[attributeKey(attribute)]}
-                </label>
-                <span className="font-mono font-bold tabular-nums">{ratings[attribute]}</span>
-              </div>
-              <input
-                id={`${review.id}-${attribute}`}
-                type="range"
-                min={0}
-                max={100}
-                value={ratings[attribute]}
-                onChange={(event) =>
-                  setRatings((current) => ({
-                    ...current,
-                    [attribute]: Number(event.target.value),
-                  }))
-                }
-                className="accent-primary h-9 w-full"
-              />
-            </div>
-          ))}
-        </div>
-
         <Field label={t.recommendations.coachNote} htmlFor={`${review.id}-note`}>
           <Textarea
             id={`${review.id}-note`}
@@ -240,24 +207,56 @@ function ReviewCard({
           />
         </Field>
 
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button
-            variant="ghost"
-            className="text-danger"
-            disabled={pending}
-            onClick={() => onDecide({ decision: 'REJECTED', note: note.trim() || undefined })}
-          >
-            <X aria-hidden /> {t.recommendations.rejectPlayer}
-          </Button>
-          <Button
-            disabled={pending}
-            onClick={() =>
-              onDecide({ decision: 'APPROVED', note: note.trim() || undefined, ...ratings })
-            }
-          >
-            <Check aria-hidden /> {t.recommendations.approvePlayer}
-          </Button>
-        </div>
+        {confirming ? (
+          <Alert tone="warning">
+            <span className="flex items-start gap-2">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="space-y-2">
+                <span className="block font-medium">
+                  {confirming === 'APPROVED'
+                    ? t.recommendations.confirmApproveTitle
+                    : t.recommendations.confirmRejectTitle}
+                </span>
+                <span className="block text-sm">
+                  {confirming === 'APPROVED'
+                    ? t.recommendations.confirmApproveBody
+                    : t.recommendations.confirmRejectBody}
+                </span>
+                <span className="flex flex-wrap justify-end gap-2 pt-1">
+                  <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
+                    {t.common.cancel}
+                  </Button>
+                  <Button
+                    size="sm"
+                    loading={pending}
+                    onClick={() => {
+                      onDecide({ decision: confirming, note: note.trim() || undefined });
+                      setConfirming(null);
+                    }}
+                  >
+                    {confirming === 'APPROVED'
+                      ? t.recommendations.approvePlayer
+                      : t.recommendations.rejectPlayer}
+                  </Button>
+                </span>
+              </span>
+            </span>
+          </Alert>
+        ) : (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="ghost"
+              className="text-danger"
+              disabled={pending}
+              onClick={() => setConfirming('REJECTED')}
+            >
+              <X aria-hidden /> {t.recommendations.rejectPlayer}
+            </Button>
+            <Button disabled={pending} onClick={() => setConfirming('APPROVED')}>
+              <Check aria-hidden /> {t.recommendations.approvePlayer}
+            </Button>
+          </div>
+        )}
       </CardContent>
 
       {openClip && (
@@ -275,19 +274,4 @@ function ReviewCard({
       )}
     </Card>
   );
-}
-
-/** The assessment columns and the attribute dictionary spell two of these differently. */
-function attributeKey(attribute: Attribute) {
-  const map = {
-    speed: 'pace',
-    dribbling: 'dribbling',
-    passing: 'passing',
-    finishing: 'finishing',
-    physical: 'physical',
-    vision: 'vision',
-    leadership: 'leadership',
-    discipline: 'discipline',
-  } as const;
-  return map[attribute];
 }

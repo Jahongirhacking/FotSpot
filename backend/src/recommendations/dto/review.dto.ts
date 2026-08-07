@@ -1,12 +1,10 @@
 import {
+  IsDateString,
   IsIn,
-  IsInt,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 
@@ -22,35 +20,43 @@ export class AssignReviewDto {
   @IsOptional() @IsUUID() coachUserId?: string;
 }
 
-const ATTRIBUTE = { min: 0, max: 100 } as const;
-
 /**
- * The coach's verdict, and the ratings they watched the clips to arrive at.
+ * The coach's answer to an Online Coach Review: ACCEPT or REJECT, and why.
  *
- * Ratings are required on approval and optional on rejection: a coach saying no
- * has still watched the player and their numbers are worth recording, but making
- * them fill in eight fields to decline is how "reject" stops being used honestly.
+ * There are no attribute ratings on this DTO, and there must not be
+ * (TRIAL.md Rule 22). A review asks one question — is this player worth a look
+ * — and a screen that asks for eight numbers alongside it is a screen where the
+ * answer stops being the point. Scoring speed and dribbling is squad work,
+ * permitted only between a coach and a player who share a group (Rule 21,
+ * README §1.9); it goes through `POST /coaches/assessments`, which enforces
+ * exactly that.
  */
 export class ReviewDecisionDto {
   @IsIn(['APPROVED', 'REJECTED']) decision: 'APPROVED' | 'REJECTED';
 
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
-
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) speed?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) passing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) vision?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) dribbling?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) finishing?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) physical?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) leadership?: number;
-  @IsOptional() @IsInt() @Min(ATTRIBUTE.min) @Max(ATTRIBUTE.max) discipline?: number;
 }
 
-/** The manager's invitation, in the player's own notifications. */
+/**
+ * The manager's invitation to a private trial, in the player's own notifications.
+ *
+ * There is no `trialId`, deliberately. A private trial is not a thing that
+ * exists first and gets filled: it is a session for one named child, brought
+ * into being by this invitation and by nothing else (TRIAL.md §18). Asking the
+ * manager to pick one from a list meant creating an empty private trial first
+ * and hoping somebody eventually earned it — which is why the button used to
+ * read "no private trial to invite them to".
+ *
+ * So what the manager supplies is what an invitation actually needs: when,
+ * where, and what to bring. The trial is created around them.
+ */
 export class InvitePlayerDto {
-  /** The private trial to invite them to. It must be this academy's own. */
-  @IsUUID() trialId: string;
+  /** When to come. The trial is created for this moment. */
+  @IsDateString() date: string;
 
-  /** Where to be, when, what to bring — the invitation itself. */
+  /** Where to come. */
+  @IsString() @MinLength(1) @MaxLength(200) location: string;
+
+  /** What to bring, and anything else the family needs — the invitation itself. */
   @IsString() @MinLength(1) @MaxLength(1000) note: string;
 }

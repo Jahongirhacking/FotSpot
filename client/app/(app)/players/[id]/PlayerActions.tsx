@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Heart, Mail, Send, UserPlus } from 'lucide-react';
+import { Check, Heart, Mail, Send, UserPlus, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { Follow } from '@/lib/api/types';
+import type { Follow, MyCoachReview } from '@/lib/api/types';
 import { useSession } from '@/components/layout/SessionProvider';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/Dialog';
+import { InviteToPrivateTrialDialog } from '@/components/trials/InviteToPrivateTrialDialog';
 
 interface MyRecommendation {
   id: string;
@@ -42,6 +44,16 @@ interface AcademyState {
     note: string | null;
     coachUser: { id: string; firstName: string | null; lastName: string | null };
   } | null;
+  /** Set once this academy has invited them to a private trial. */
+  invitation: {
+    applicationId: string;
+    status: string;
+    trialId: string;
+    trialTitle: string;
+    date: string;
+  } | null;
+  /** False when the academy has endorsed nobody who could take a review. */
+  hasCoaches: boolean;
 }
 
 /**
@@ -63,6 +75,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
 
   const isScout = !isAuthenticated || activeRole === 'scout';
   const isManager = activeRole === 'academy_manager';
+  const isCoach = activeRole === 'coach';
 
   const { data: following } = useQuery({
     queryKey: ['follows', 'player'],
@@ -145,7 +158,9 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
 
-          {isManager && <ManagerAction playerId={playerId} />}
+          {isManager && <ManagerAction playerId={playerId} playerName={playerName} />}
+
+          {isCoach && <CoachReviewAction playerId={playerId} playerName={playerName} />}
         </CardContent>
       </Card>
 
@@ -211,11 +226,10 @@ function f2(template: string, value: string) {
  * send them to a coach directly; a scout's recommendation is how a player reaches
  * the *inbox*, not permission to look at them.
  */
-function ManagerAction({ playerId }: { playerId: string }) {
+function ManagerAction({ playerId, playerName }: { playerId: string; playerName: string }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [coachUserId, setCoachUserId] = React.useState('');
-  const [note, setNote] = React.useState('');
 
   const { data: state, isLoading } = useQuery({
     queryKey: ['academy-state', playerId],
@@ -248,15 +262,10 @@ function ManagerAction({ playerId }: { playerId: string }) {
         body: coachUserId ? { coachUserId } : {},
       }),
     onSuccess: refresh,
-  });
-
-  const invite = useMutation({
-    mutationFn: () =>
-      browserFetch(`/recommendations/players/${playerId}/invite`, {
-        method: 'POST',
-        body: { note: note.trim() },
-      }),
-    onSuccess: refresh,
+    // Said out loud by the shared handler. The panel does change — it becomes
+    // "waiting on a coach" — but that is a quiet swap two lines down, and
+    // somebody who pressed a button on a phone deserves to be told it worked.
+    meta: { success: t.recommendations.sentForReview },
   });
 
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
@@ -283,29 +292,35 @@ function ManagerAction({ playerId }: { playerId: string }) {
     );
   }
 
+  if (state.invitation) {
+    return (
+      <p className="text-success flex items-center gap-1.5 text-sm">
+        <Check className="size-4" aria-hidden /> {t.recommendations.invited} ·{' '}
+        {formatDate(state.invitation.date)}
+      </p>
+    );
+  }
+
   if (review?.status === 'APPROVED') {
     return (
       <div className="space-y-2">
         <p className="text-success flex items-center gap-1.5 text-sm">
           <Check className="size-4" aria-hidden /> {t.recommendations.coachApproved}
         </p>
-        <Field label={t.recommendations.inviteNote} htmlFor="invite-note">
-          <Textarea
-            id="invite-note"
-            value={note}
-            maxLength={1000}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder={t.placeholders.inviteNote}
-          />
-        </Field>
-        <Button
-          className="w-full"
-          loading={invite.isPending}
-          disabled={!note.trim()}
-          onClick={() => invite.mutate()}
-        >
-          <Mail aria-hidden /> {t.recommendations.sendInvite}
-        </Button>
+        {/* The same dialog the inbox opens. It used to be an inline note box here
+            that posted without a date or a location — which the API now refuses,
+            because sending an invitation is what creates the trial. */}
+        <InviteToPrivateTrialDialog
+          playerId={playerId}
+          playerName={playerName}
+          academyId={state.academy.id}
+          trigger={
+            <Button className="w-full">
+              <Mail aria-hidden /> {t.recommendations.invite}
+            </Button>
+          }
+          onInvited={refresh}
+        />
       </div>
     );
   }
@@ -315,24 +330,33 @@ function ManagerAction({ playerId }: { playerId: string }) {
       {review?.status === 'REJECTED' && (
         <p className="text-muted text-xs">{t.recommendations.rejectedByCoach}</p>
       )}
-      <Field label={t.recommendations.sendToCoach} htmlFor="review-coach">
-        <Select
-          id="review-coach"
-          value={coachUserId}
-          onChange={(event) => setCoachUserId(event.target.value)}
-        >
-          <option value="">{t.recommendations.anyCoach}</option>
-          {(coaches.data ?? []).map((row) => (
-            <option key={row.userId} value={row.userId}>
-              {[row.user?.firstName, row.user?.lastName].filter(Boolean).join(' ') ||
-                row.userId.slice(0, 8)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Button className="w-full" loading={assign.isPending} onClick={() => assign.mutate()}>
-        <Send aria-hidden /> {t.recommendations.sendForReview}
-      </Button>
+      {/* The reason instead of the button. `assignReview` refuses with exactly
+          this, and an error that explains a control should not have been there
+          is a worse answer than not offering it. */}
+      {!state.hasCoaches ? (
+        <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
+      ) : (
+        <>
+          <Field label={t.recommendations.sendToCoach} htmlFor="review-coach">
+            <Select
+              id="review-coach"
+              value={coachUserId}
+              onChange={(event) => setCoachUserId(event.target.value)}
+            >
+              <option value="">{t.recommendations.anyCoach}</option>
+              {(coaches.data ?? []).map((row) => (
+                <option key={row.userId} value={row.userId}>
+                  {[row.user?.firstName, row.user?.lastName].filter(Boolean).join(' ') ||
+                    row.userId.slice(0, 8)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Button className="w-full" loading={assign.isPending} onClick={() => assign.mutate()}>
+            <Send aria-hidden /> {t.recommendations.sendForReview}
+          </Button>
+        </>
+      )}
     </div>
   );
 }
@@ -369,6 +393,7 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
         },
       }),
     onSuccess: () => setOpen(false),
+    meta: { success: t.recommendations.recommendationSent },
   });
 
   return (
@@ -389,8 +414,6 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
         </DialogHeader>
 
         <DialogBody className="space-y-4">
-          {recommend.isError && <Alert tone="danger">{(recommend.error as Error).message}</Alert>}
-
           <Field label={t.recommendations.chooseAcademy} htmlFor="academyId" required>
             <Select
               id="academyId"
@@ -431,5 +454,98 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The coach's Accept/Reject, on the profile they are actually reading.
+ *
+ * ## Why it belongs here
+ *
+ * An online review asks a coach to judge a profile — the clips, the numbers, the
+ * position. That is this page. Sending them to a queue to answer a question they
+ * have already answered in their head is a round trip for no reason, so the two
+ * buttons sit where the evidence is.
+ *
+ * ## Why it is usually absent
+ *
+ * It renders only when an academy has actually handed this coach this player.
+ * That is the rule, not a nicety: a coach may judge nobody they were not given
+ * (TRIAL.md §33, Rule 16). `myReviewFor` returns null otherwise, and the decision
+ * endpoint checks the same assignment again before writing — so a coach who
+ * forges the request gains nothing.
+ *
+ * Accepting needs all eight ratings, which do not fit here, so an accept sends
+ * them to the full screen. A rejection needs none, and can be given from here.
+ */
+function CoachReviewAction({ playerId, playerName }: { playerId: string; playerName: string }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+
+  const review = useQuery({
+    queryKey: ['my-review', playerId],
+    queryFn: () =>
+      browserFetch<MyCoachReview | null>(`/recommendations/player/${playerId}/my-review`),
+  });
+
+  const decide = useMutation({
+    mutationFn: (reviewId: string) =>
+      browserFetch(`/recommendations/reviews/${reviewId}/decision`, {
+        method: 'POST',
+        body: { decision: 'REJECTED' },
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['my-review', playerId] });
+      void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+    },
+  });
+
+  if (review.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
+
+  // Nobody gave this coach this player. Nothing to offer, and saying so would
+  // only advertise a door they cannot open.
+  if (!review.data) return null;
+
+  const { id, status, academy } = review.data;
+
+  if (status !== 'PENDING') {
+    return (
+      <Alert tone={status === 'APPROVED' ? 'success' : 'info'}>
+        {status === 'APPROVED' ? t.recommendations.approved : t.recommendations.rejected}
+        {academy?.name ? ` · ${academy.name}` : ''}
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="border-border space-y-2 rounded-lg border p-3">
+      <p className="text-sm font-medium">{t.trials.onlineCoachReview}</p>
+      <p className="text-muted text-xs">
+        {academy?.name} · {t.recommendations.reviewAskedOf}
+      </p>
+
+      <div className="flex flex-wrap gap-2">
+        {/* An accept writes eight ratings, which do not belong in a sidebar —
+            the full screen is where a coach scores what they watched. */}
+        <Button asChild size="sm" className="flex-1">
+          <Link href={`/recommendations/review#${id}`}>
+            <Check aria-hidden /> {t.recommendations.approvePlayer}
+          </Link>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-danger flex-1"
+          loading={decide.isPending}
+          onClick={() => {
+            if (window.confirm(t.recommendations.confirmReject.replace('{name}', playerName))) {
+              decide.mutate(id);
+            }
+          }}
+        >
+          <X aria-hidden /> {t.recommendations.rejectPlayer}
+        </Button>
+      </div>
+    </div>
   );
 }

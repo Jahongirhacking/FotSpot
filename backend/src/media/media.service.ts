@@ -16,6 +16,7 @@ import {
   playerPosterKey,
 } from '../storage/storage.keys';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { GroupsService } from '../academies/groups.service';
 import {
   ConfirmUploadDto,
   FeedDto,
@@ -122,6 +123,7 @@ export class MediaService {
     private prisma: PrismaService,
     private storage: StorageService,
     private redis: RedisService,
+    private groups: GroupsService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -470,9 +472,11 @@ export class MediaService {
    * coach correcting a player's 90 to a 60 does not leave two numbers on screen
    * for the reader to choose between — it leaves one, marked as a coach's.
    *
-   * Only a verified coach, for the same reason only a verified coach can file an
-   * assessment: the whole value of the distinction is that it cannot be
-   * self-awarded (§1.6).
+   * Only a verified coach **from the player's own group**, for the same reason
+   * only such a coach can file an assessment (README §1.9, TRIAL.md Rule 21): a
+   * number on a clip is an attribute judgement like any other, and the whole
+   * value of the distinction is that it cannot be self-awarded (§1.6) — or
+   * awarded by a stranger who happens to hold the coach role.
    *
    * The previous value is written to `RatingRevision` first. A coach lowering a
    * fourteen-year-old's own number is exactly the edit somebody may ask about
@@ -490,6 +494,8 @@ export class MediaService {
     if (media.category === 'MATCH_HIGHLIGHTS') {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
+
+    await this.groups.assertCoachesPlayer(userId, media.playerId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.ratingRevision.create({

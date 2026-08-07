@@ -31,6 +31,7 @@ export function MyTrialInvitations() {
   const respond = useMutation({
     mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
       browserFetch(`/trials/applications/${id}/respond`, { method: 'POST', body: { accept } }),
+    meta: { success: t.trials.answerSent },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['my-trial-applications'] });
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });

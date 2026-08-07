@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
+import { NoteEditor } from '@/components/trials/NoteEditor';
+import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
 
 /** `datetime-local` wants `YYYY-MM-DDTHH:mm` in local time, not an ISO string in UTC. */
 function toLocalInput(iso: string) {
@@ -45,10 +47,14 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
   const [editing, setEditing] = React.useState(false);
 
   const archived = trial.status === 'ARCHIVED';
+  /** Null until edited, so the stored note shows through unchanged. */
+  const [typedNote, setTypedNote] = React.useState<string | null>(null);
+  const note = typedNote ?? htmlToMarkdown(trial.note);
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       browserFetch<Trial>(`/trials/${trial.id}`, { method: 'PATCH', body }),
+    meta: { success: t.trials.trialUpdated },
     onSuccess: () => {
       setEditing(false);
       router.refresh();
@@ -62,6 +68,8 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
       date: new Date(String(form.get('date'))).toISOString(),
+      applyDeadline: new Date(String(form.get('applyDeadline'))).toISOString(),
+      note: note.trim() ? sanitizeNote(markdownToHtml(note)) : '',
       ageRangeMin: Number(form.get('ageMin')),
       ageRangeMax: Number(form.get('ageMax')),
       positions: String(form.get('positions') ?? '')
@@ -115,13 +123,35 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
               <Field label={t.trials.location} htmlFor="edit-location" required>
                 <Input id="edit-location" name="location" required defaultValue={trial.location} />
               </Field>
-              <Field label={t.trials.date} htmlFor="edit-date" required>
+              <Field
+                label={t.trials.examDate}
+                htmlFor="edit-date"
+                hint={t.trials.moveDateWarning}
+                required
+              >
                 <Input
                   id="edit-date"
                   name="date"
                   type="datetime-local"
                   required
                   defaultValue={toLocalInput(trial.date)}
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label={t.trials.applyDeadline}
+                htmlFor="edit-deadline"
+                hint={t.trials.applyDeadlineHint}
+                required
+              >
+                <Input
+                  id="edit-deadline"
+                  name="applyDeadline"
+                  type="datetime-local"
+                  required
+                  defaultValue={toLocalInput(trial.applyDeadline ?? trial.date)}
                 />
               </Field>
             </div>
@@ -135,7 +165,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   min={6}
                   max={21}
                   required
-                  defaultValue={trial.ageRangeMin}
+                  defaultValue={trial.ageRangeMin ?? undefined}
                 />
               </Field>
               <Field label={t.trials.ageMax} htmlFor="edit-age-max" required>
@@ -146,7 +176,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   min={6}
                   max={21}
                   required
-                  defaultValue={trial.ageRangeMax}
+                  defaultValue={trial.ageRangeMax ?? undefined}
                 />
               </Field>
             </div>
@@ -165,6 +195,10 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
 
             <Field label={t.trials.requirements} htmlFor="edit-req">
               <Textarea id="edit-req" name="requirements" defaultValue={trial.requirements ?? ''} />
+            </Field>
+
+            <Field label={t.notes.playerNote} htmlFor="edit-note" hint={t.notes.playerNoteHint}>
+              <NoteEditor id="edit-note" value={note} onChange={setTypedNote} />
             </Field>
 
             {/* Narrowing the age range can strand somebody who has already

@@ -58,6 +58,15 @@ export class UpdateAcademyDto {
   @IsOptional() @IsString() region?: string;
   @IsOptional() @IsString() district?: string;
   @IsOptional() @IsString() description?: string;
+
+  /**
+   * The note this academy puts on every trial unless it says otherwise.
+   *
+   * HTML from the note editor, sanitised server-side before storage. It is a
+   * *default*, copied into a trial at creation — editing it later does not
+   * rewrite the notes of trials that have already happened.
+   */
+  @IsOptional() @IsString() @MaxLength(20_000) defaultTrialNote?: string;
 }
 
 /**

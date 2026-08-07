@@ -26,7 +26,22 @@ export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
 /** In the order it moves — see the Prisma enum for what each one means. */
 export type TrialApplicationStatus =
-  'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INVITED' | 'CONFIRMED' | 'REJECTED' | 'ACCEPTED';
+  | 'APPLIED'
+  | 'SCREENING'
+  | 'SHORTLISTED'
+  | 'INVITED'
+  | 'CONFIRMED'
+  | 'PASSED'
+  | 'FAILED'
+  | 'REJECTED'
+  | 'ACCEPTED';
+
+/**
+ * A coach's verdict after testing the player in person.
+ *
+ * Never ACCEPT/REJECT — those are the online review's words. See TRIAL.md §36.
+ */
+export type TrialVerdict = 'PASS' | 'FAIL';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
   'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
@@ -325,6 +340,8 @@ export interface AcademyProfile {
   region?: string | null;
   district?: string | null;
   description?: string | null;
+  /** Sanitised HTML this academy starts every trial note from. */
+  defaultTrialNote?: string | null;
   status: VerificationStatus;
   members?: AcademyMemberRef[];
   createdAt: string;
@@ -430,6 +447,20 @@ export interface InboxReview {
 
 /** A settled recommendation: invited, or turned down. */
 export interface AcademyHistoryRow {
+  /**
+   * The private trial this player was invited to, if one exists.
+   *
+   * An invitation is what takes a player out of the queue even though the
+   * recommendation is not settled — the trial answers that later — so it is the
+   * history row's own field rather than something derived from `status`.
+   */
+  invitation: {
+    applicationId: string;
+    status: TrialApplicationStatus;
+    trialId: string;
+    trialTitle: string;
+    date: string;
+  } | null;
   recommendationId: string;
   status: 'ACCEPTED' | 'REJECTED';
   decidedAt: string;
@@ -456,17 +487,14 @@ export interface CoachReview {
   assignedAt: string;
   decidedAt: string | null;
   academy: { id: string; name: string };
-  recommendation: {
-    id: string;
-    note: string | null;
-    scout: {
-      id: string;
-      firstName: string | null;
-      lastName: string | null;
-      avatarUrl: string | null;
-    };
-    player: NonNullable<RankedRecommendation['player']>;
-  };
+  /**
+   * Who is being judged. The only person on this shape.
+   *
+   * There is deliberately no scout and no recommendation: a coach is never told
+   * who put the player forward — see `RecommendationsService.listMyReviews` for
+   * why that would put a thumb on the scale.
+   */
+  player: NonNullable<RankedRecommendation['player']>;
 }
 
 export type TrialStatus = 'OPEN' | 'ARCHIVED';
@@ -478,17 +506,51 @@ export interface Trial {
   id: string;
   academyId: string;
   title: string;
-  ageRangeMin: number;
-  ageRangeMax: number;
+  /**
+   * Who may apply. Null on a private trial, which is open to nobody — it exists
+   * for one named child who was already chosen.
+   */
+  ageRangeMin: number | null;
+  ageRangeMax: number | null;
   positions: string[];
   location: string;
+  /** When the examination happens — the day the player is tested. */
   date: string;
+  /**
+   * Last moment somebody may apply. Null only on trials written before
+   * deadlines existed; those stay open until their exam date.
+   */
+  applyDeadline?: string | null;
   requirements?: string | null;
+  /** What the player reads, as sanitised HTML. Render through `<TrialNote>`. */
+  note?: string | null;
   /** ARCHIVED keeps the applicants and refuses new ones. There is no delete. */
   status: TrialStatus;
   type: TrialType;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A trial as its coach sees it, with the size of the job attached.
+ *
+ * `awaitingVerdict` is the number that matters: a trial nobody is still waiting
+ * on is finished however recent it is, and one with players outstanding is work
+ * however long ago the date was.
+ */
+/** This coach's own review of one player — see RecommendationsService.myReviewFor. */
+export interface MyCoachReview {
+  id: string;
+  status: ReviewStatus;
+  note: string | null;
+  assignedAt: string;
+  decidedAt: string | null;
+  academy: { id: string; name: string };
+}
+
+export interface CoachTrial extends Trial {
+  applicantCount: number;
+  awaitingVerdict: number;
 }
 
 export interface TrialApplication {
@@ -498,12 +560,24 @@ export interface TrialApplication {
   status: TrialApplicationStatus;
   /** What the academy wrote when inviting — private trials only. */
   inviteNote?: string | null;
-  /** Where Process A got to, when the row came from a screen that includes it. */
+  /**
+   * The *online* screening, when the row came from a screen that includes it.
+   *
+   * Private trials only — a general trial is never screened online (Rule 5).
+   */
   review?: {
     id: string;
     status: ReviewStatus;
     note: string | null;
     decidedAt: string | null;
+    coachUser: { id: string; firstName: string | null; lastName: string | null };
+  } | null;
+  /** What the coach said after testing them in person. Both trial types. */
+  result?: {
+    id: string;
+    verdict: TrialVerdict;
+    note: string | null;
+    decidedAt: string;
     coachUser: { id: string; firstName: string | null; lastName: string | null };
   } | null;
   /** Joined on the player's own list so they can read what they were invited to. */
@@ -529,18 +603,35 @@ export interface CoachAssessment {
 
 export type NotificationEvent =
   | 'REVIEW_ASSIGNED'
+  | 'REVIEW_DECIDED'
   | 'ACADEMY_INVITATION'
   | 'ACADEMY_JOIN_INVITATION'
   | 'ACADEMY_JOIN_ANSWER'
   | 'RECOMMENDATION_ACCEPTED'
   | 'RECOMMENDATION_REJECTED'
   | 'TRIAL_INVITATION'
+  | 'TRIAL_RESCHEDULED'
   | 'TRIAL_RESULT'
+  | 'SQUAD_PLACEMENT'
   | 'VERIFICATION_RESULT';
 
 export interface AppNotification {
   id: string;
   userId: string;
+  /**
+   * Who caused this, and in what capacity. Null for events nobody triggered.
+   *
+   * `actorRole` is what the actor was *acting as*, not everything they are: a
+   * scout who is also a coach rejecting a player did it as a coach.
+   */
+  actor: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string | null;
+    avatarUrl: string | null;
+  } | null;
+  actorRole: string | null;
   event: NotificationEvent;
   payload: Record<string, unknown>;
   read: boolean;

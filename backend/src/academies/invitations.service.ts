@@ -63,7 +63,8 @@ export class InvitationsService {
     // An academy cannot make somebody a player by listing them as one. The role
     // is the person's, and it is granted where roles are granted.
     const holdsRole = target.roles.some((held) => held.role.name === dto.role.toLowerCase());
-    if (!holdsRole) throw new BadRequestException(`That account is not a ${dto.role.toLowerCase()}`);
+    if (!holdsRole)
+      throw new BadRequestException(`That account is not a ${dto.role.toLowerCase()}`);
     if (dto.role === 'COACH' && target.coachProfile?.status !== 'VERIFIED') {
       throw new BadRequestException('That coach is not verified yet');
     }
@@ -80,7 +81,8 @@ export class InvitationsService {
       where: { academyId, userId: dto.userId, status: 'PENDING' },
       select: { id: true },
     });
-    if (open) throw new ConflictException('They have already been invited — waiting on their answer');
+    if (open)
+      throw new ConflictException('They have already been invited — waiting on their answer');
 
     const academy = await this.prisma.academyProfile.findUnique({
       where: { id: academyId },
@@ -100,13 +102,18 @@ export class InvitationsService {
 
     // The payload carries the academy's name so the notification reads like a
     // sentence without the client having to fetch anything to render it.
-    await this.notifications.notify(dto.userId, 'ACADEMY_JOIN_INVITATION', {
-      invitationId: invitation.id,
-      academyId: academy.id,
-      academyName: academy.name,
-      role: dto.role,
-      ...(invitation.note ? { note: invitation.note } : {}),
-    });
+    await this.notifications.notify(
+      dto.userId,
+      'ACADEMY_JOIN_INVITATION',
+      {
+        invitationId: invitation.id,
+        academyId: academy.id,
+        academyName: academy.name,
+        role: dto.role,
+        ...(invitation.note ? { note: invitation.note } : {}),
+      },
+      { userId, role: 'academy_manager' },
+    );
 
     await this.audit.record(userId, AuditAction.ACADEMY_INVITATION_SENT, {
       academyId,
@@ -277,13 +284,19 @@ export class InvitationsService {
     invitation: { academyId: string; userId: string; role: string; academy: { name: string } },
     accepted: boolean,
   ) {
-    await this.notifications.notify(managerUserId, 'ACADEMY_JOIN_ANSWER', {
-      academyId: invitation.academyId,
-      academyName: invitation.academy.name,
-      userId: invitation.userId,
-      role: invitation.role,
-      accepted,
-    });
+    await this.notifications.notify(
+      managerUserId,
+      'ACADEMY_JOIN_ANSWER',
+      {
+        academyId: invitation.academyId,
+        academyName: invitation.academy.name,
+        userId: invitation.userId,
+        role: invitation.role,
+        accepted,
+      },
+      // The person answering, in the capacity they were invited in.
+      { userId: invitation.userId, role: invitation.role.toLowerCase() },
+    );
   }
 
   private async assertManager(userId: string, academyId: string) {

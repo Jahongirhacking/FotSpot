@@ -1,11 +1,7 @@
+import { PipelineCanvas } from '@/components/landing/PipelineCanvas';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import {
-  BootAndBall,
-  FootballBall,
-  PitchBackdrop,
-  TrophyArt,
-} from '@/components/shared/FootballArt';
+import { FootballBall, PitchBackdrop } from '@/components/shared/FootballArt';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { HeroBanner } from '@/components/shared/HeroBanner';
 import { HeroVideo } from '@/components/shared/HeroVideo';
@@ -123,10 +119,38 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        {/* Who this is for, in their own terms. Three roles arrive on this page
+            with three different questions, and one paragraph aimed at all of
+            them answers none of them. */}
+        <section className="mx-auto max-w-6xl px-4 pb-14">
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold">{t.landing.valueTitle}</h2>
+            <p className="text-muted text-sm">{t.landing.valueBody}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <RoleValue icon={Users} {...t.landing.value.players} />
+            <RoleValue icon={Search} {...t.landing.value.scouts} />
+            <RoleValue icon={Building2} {...t.landing.value.academies} />
+          </div>
+        </section>
+
+        {/* The pipeline, drawn.
+            The thing a first-time visitor cannot work out from any amount of
+            prose is the *order* — that a recommendation gets nobody in, that a
+            coach reads the profile before anybody is invited, and that the only
+            step reaching a squad is somebody standing on a pitch. */}
+        <section className="mx-auto max-w-6xl px-4 pb-14">
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold">{t.landing.pipelineTitle}</h2>
+            <p className="text-muted text-sm">{t.landing.pipelineBody}</p>
+          </div>
+          <PipelineCanvas />
+        </section>
+
         {/* Live counts — an empty marketplace is the honest early state, so these
             only render once there is something to show. */}
         {(recent.total > 0 || academyList.length > 0 || trialList.length > 0) && (
-          <section className="mx-auto max-w-6xl px-4 pb-4">
+          <section className="mx-auto max-w-6xl px-4 pb-8">
             <dl className="grid grid-cols-3 gap-3">
               <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
               <Stat icon={Building2} label={t.landing.statAcademies} value={academyList.length} />
@@ -134,26 +158,6 @@ export default async function LandingPage() {
             </dl>
           </section>
         )}
-
-        <section className="mx-auto max-w-6xl px-4 py-14">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Pillar
-              art={<BootAndBall className="h-16" />}
-              title={t.landing.pillar1Title}
-              body={t.landing.pillar1Body}
-            />
-            <Pillar
-              art={<TrophyArt className="h-16" />}
-              title={t.landing.pillar2Title}
-              body={t.landing.pillar2Body}
-            />
-            <Pillar
-              art={<FootballBall className="h-16" />}
-              title={t.landing.pillar3Title}
-              body={t.landing.pillar3Body}
-            />
-          </div>
-        </section>
 
         {/* Real player media, not stock imagery. Poster-frame tiles only — playback
             happens on the player's own page (§21.6). */}
@@ -318,13 +322,40 @@ function Stat({
   );
 }
 
-function Pillar({ art, title, body }: { art: React.ReactNode; title: string; body: string }) {
+/**
+ * One role's case for being here: a claim, and the three things behind it.
+ *
+ * A list rather than a paragraph because the points are independent — a scout
+ * scanning this wants "does my reputation mean anything here", not a narrative —
+ * and because a reader on a phone scans bullets and skips prose.
+ */
+function RoleValue({
+  icon: Icon,
+  title,
+  body,
+  points,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body: string;
+  points: string[];
+}) {
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="mb-3">{art}</div>
+        <div className="bg-primary/10 text-primary mb-3 grid size-9 place-items-center rounded-lg">
+          <Icon className="size-5" />
+        </div>
         <h3 className="font-semibold">{title}</h3>
         <p className="text-muted mt-1.5 text-sm">{body}</p>
+        <ul className="mt-3 space-y-1.5">
+          {points.map((point) => (
+            <li key={point} className="text-muted flex gap-2 text-sm">
+              <ShieldCheck className="text-primary mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );

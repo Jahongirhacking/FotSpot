@@ -159,6 +159,29 @@ export class PlayersService {
     return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0 };
   }
 
+  /**
+   * Whether this viewer works for an academy, and may therefore read a hidden
+   * profile.
+   *
+   * The private switch exists so a fourteen-year-old is not in a public
+   * directory — not to hide them from the people whose job is to look at
+   * players. A manager receives them in an inbox and a coach is handed them to
+   * judge; neither can do that against a 404.
+   *
+   * Checked against membership rather than the JWT's role list: the claims are a
+   * snapshot taken at login (backend/CLAUDE.md §7) and say what somebody *is*,
+   * while this asks whether they currently work somewhere — which is the thing
+   * that should stop being true the day they leave.
+   */
+  private async isAcademyStaff(viewer?: AuthUser): Promise<boolean> {
+    if (!viewer) return false;
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId: viewer.userId, role: { in: ['MANAGER', 'COACH'] }, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    return !!membership;
+  }
+
   /** Read-heavy, slow-changing (1.19) - cached, invalidated by every write below. */
   /**
    * A player's public card.
@@ -179,8 +202,9 @@ export class PlayersService {
     const isSelf = viewer?.userId === owner.userId;
     const isAdmin = !!viewer?.roles.some((role) => role === 'admin' || role === 'super_admin');
     // 404 rather than 403: "you may not see this" confirms the player exists.
-    if (owner.user.isPrivate && !isSelf && !isAdmin)
+    if (owner.user.isPrivate && !isSelf && !isAdmin && !(await this.isAcademyStaff(viewer))) {
       throw new NotFoundException('Player not found');
+    }
 
     const profile = await this.redis.wrap(
       RedisKeys.playerProfile(playerId),
@@ -267,11 +291,7 @@ export class PlayersService {
           : {}),
         ...(dto.maxAge !== undefined
           ? {
-              gt: new Date(
-                today.getFullYear() - dto.maxAge - 1,
-                today.getMonth(),
-                today.getDate(),
-              ),
+              gt: new Date(today.getFullYear() - dto.maxAge - 1, today.getMonth(), today.getDate()),
             }
           : {}),
       };

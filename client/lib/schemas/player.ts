@@ -86,15 +86,23 @@ export const recommendationSchema = z.object({
 });
 export type RecommendationValues = z.infer<typeof recommendationSchema>;
 
+/**
+ * Mirrors `CreateAssessmentDto` — the only path that writes attributes.
+ *
+ * 0–100, the scale every consumer reads (card stars, the §21.2 bars, a clip's
+ * coach rating). Accepted only from a coach who shares the player's squad group
+ * (TRIAL.md Rule 21); the online review and the trial verdict take no ratings at
+ * all (Rule 22).
+ */
 export const assessmentSchema = z.object({
-  speed: z.coerce.number().int().min(1).max(10),
-  passing: z.coerce.number().int().min(1).max(10),
-  vision: z.coerce.number().int().min(1).max(10),
-  dribbling: z.coerce.number().int().min(1).max(10),
-  finishing: z.coerce.number().int().min(1).max(10),
-  physical: z.coerce.number().int().min(1).max(10),
-  leadership: z.coerce.number().int().min(1).max(10),
-  discipline: z.coerce.number().int().min(1).max(10),
+  speed: z.coerce.number().int().min(0).max(100),
+  passing: z.coerce.number().int().min(0).max(100),
+  vision: z.coerce.number().int().min(0).max(100),
+  dribbling: z.coerce.number().int().min(0).max(100),
+  finishing: z.coerce.number().int().min(0).max(100),
+  physical: z.coerce.number().int().min(0).max(100),
+  leadership: z.coerce.number().int().min(0).max(100),
+  discipline: z.coerce.number().int().min(0).max(100),
   notes: z.string().trim().max(2000).optional(),
 });
 export type AssessmentValues = z.infer<typeof assessmentSchema>;

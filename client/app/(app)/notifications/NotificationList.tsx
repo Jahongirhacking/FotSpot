@@ -1,19 +1,23 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
+import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { browserFetch } from '@/lib/api/browser';
 import type { AppNotification, NotificationEvent } from '@/lib/api/types';
-import { cn, relativeTime } from '@/lib/utils';
+import { cn, formatDateTime, initials, relativeTime } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
   BellOff,
   Building2,
   CalendarCheck,
+  CheckCheck,
   ClipboardCheck,
+  PartyPopper,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -25,7 +29,7 @@ import Link from 'next/link';
 const FALLBACK = { icon: Bell, title: '', tone: 'text-muted' } as const;
 
 export function NotificationList({ initial }: { initial: AppNotification[] }) {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
 
   const EVENT_META: Record<
     NotificationEvent,
@@ -56,11 +60,29 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       title: t.notifications.academyInvitation,
       tone: 'text-primary',
     },
+    /*
+     * Straight to the player, not to the queue.
+     *
+     * A coach told "you have a player to look at" wants the player — the clips,
+     * the numbers, the profile they are being asked to judge. The queue is a
+     * list they would then have to find the same person in. The decision screen
+     * is reachable from their Trials menu either way.
+     */
     REVIEW_ASSIGNED: {
       icon: ClipboardCheck,
       title: t.notifications.reviewAssigned,
       tone: 'text-primary',
-      href: '/recommendations/review',
+      href: '/players',
+      idKey: 'playerId',
+    },
+    // The manager's half: a coach accepted somebody, and the invitation is
+    // theirs to send. Only acceptances are sent — see RecommendationsService.
+    REVIEW_DECIDED: {
+      icon: ThumbsUp,
+      title: t.notifications.reviewAccepted,
+      tone: 'text-success',
+      href: '/players',
+      idKey: 'playerId',
     },
     RECOMMENDATION_ACCEPTED: {
       icon: ThumbsUp,
@@ -79,7 +101,24 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       href: '/trials',
       idKey: 'trialId',
     },
+    // Straight to the trial: the first thing a family asks is "when is it now",
+    // and that answer is on the page rather than in the notification.
+    TRIAL_RESCHEDULED: {
+      icon: CalendarCheck,
+      title: t.notifications.trialRescheduled,
+      tone: 'text-warning',
+      href: '/trials',
+      idKey: 'trialId',
+    },
     TRIAL_RESULT: { icon: Building2, title: t.notifications.trialResult, tone: 'text-info' },
+    // The good news, and it goes to the squad screen where the invitation to
+    // join is waiting to be answered.
+    SQUAD_PLACEMENT: {
+      icon: PartyPopper,
+      title: t.notifications.squadPlacement,
+      tone: 'text-success',
+      href: '/invitations?action=JOIN_ACADEMY',
+    },
     VERIFICATION_RESULT: {
       icon: ShieldCheck,
       title: t.notifications.verificationResult,
@@ -103,6 +142,13 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
+  const markAllRead = useMutation({
+    mutationFn: () => browserFetch('/notifications/read-all', { method: 'PATCH' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  const unread = (data ?? []).filter((notification) => !notification.read).length;
+
   if (!data || data.length === 0) {
     return (
       <EmptyState
@@ -114,65 +160,127 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
   }
 
   return (
-    <ul className="space-y-2">
-      {data.map((notification) => {
-        // A notification the client does not know about is still news worth
-        // showing — falling through to `undefined` here used to crash the page.
-        const meta = EVENT_META[notification.event] ?? {
-          ...FALLBACK,
-          title: t.notifications.title,
-        };
-        const Icon = meta.icon;
-        const href = meta.href
-          ? meta.idKey
-            ? `${meta.href}/${notification.payload?.[meta.idKey]}`
-            : meta.href
-          : null;
+    <div className="space-y-3">
+      {/* Only when there is something to clear. A button that does nothing is a
+          button somebody presses twice to check. */}
+      {unread > 0 && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            loading={markAllRead.isPending}
+            onClick={() => markAllRead.mutate()}
+          >
+            <CheckCheck aria-hidden /> {f(t.notifications.markAllRead, { count: unread })}
+          </Button>
+        </div>
+      )}
 
-        const detail = [notification.payload?.academyName, notification.payload?.note]
-          .filter((part): part is string => typeof part === 'string' && part.length > 0)
-          .join(' · ');
+      <ul className="space-y-2">
+        {data.map((notification) => {
+          // A notification the client does not know about is still news worth
+          // showing — falling through to `undefined` here used to crash the page.
+          const meta = EVENT_META[notification.event] ?? {
+            ...FALLBACK,
+            title: t.notifications.title,
+          };
+          const Icon = meta.icon;
+          const href = meta.href
+            ? meta.idKey
+              ? `${meta.href}/${notification.payload?.[meta.idKey]}`
+              : meta.href
+            : null;
 
-        const card = (
-          <Card className={cn(!notification.read && 'border-primary/30 bg-primary/[0.03]')}>
-            <CardContent className="flex items-start gap-3 p-4">
-              <Icon className={cn('mt-0.5 size-5 shrink-0', meta.tone)} aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{meta.title}</p>
-                {detail && <p className="text-muted mt-0.5 truncate text-sm">{detail}</p>}
-                <p className="text-muted mt-0.5 text-xs">{relativeTime(notification.createdAt)}</p>
-              </div>
-              {!notification.read && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    markRead.mutate(notification.id);
-                    event.stopPropagation();
-                  }}
-                  className="text-primary shrink-0 text-xs font-medium hover:underline"
+          const detail = [notification.payload?.academyName, notification.payload?.note]
+            .filter((part): part is string => typeof part === 'string' && part.length > 0)
+            .join(' · ');
+
+          /*
+           * Who did this, in what capacity.
+           *
+           * "A coach accepted you" and "the academy accepted you" are read very
+           * differently, and until now a notification said neither. Null for the
+           * events nobody triggered — a rule firing on its own — and the row then
+           * simply has no byline rather than an empty one.
+           */
+          const actorName =
+            [notification.actor?.firstName, notification.actor?.lastName]
+              .filter(Boolean)
+              .join(' ') ||
+            notification.actor?.username ||
+            null;
+          const actorRole = notification.actorRole
+            ? (t.roles[notification.actorRole as keyof typeof t.roles] ?? notification.actorRole)
+            : null;
+
+          const card = (
+            <Card className={cn(!notification.read && 'border-primary/30 bg-primary/[0.03]')}>
+              <CardContent className="flex items-start gap-3 p-4">
+                <Icon className={cn('mt-0.5 size-5 shrink-0', meta.tone)} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{meta.title}</p>
+
+                  {actorName && (
+                    <p className="text-muted mt-0.5 flex items-center gap-1.5 truncate text-sm">
+                      <Avatar
+                        src={notification.actor?.avatarUrl ?? null}
+                        fallback={initials(
+                          notification.actor?.firstName ?? '',
+                          notification.actor?.lastName ?? '',
+                        )}
+                        className="size-4"
+                      />
+                      <span className="truncate">
+                        {actorName}
+                        {actorRole ? ` · ${actorRole}` : ''}
+                      </span>
+                    </p>
+                  )}
+
+                  {detail && <p className="text-muted mt-0.5 truncate text-sm">{detail}</p>}
+
+                  {/* The exact moment as well as the friendly one: "2 days ago" is
+                    easier to read and useless for working out which morning. */}
+                  <p className="text-muted mt-0.5 text-xs">
+                    <time dateTime={notification.createdAt}>
+                      {formatDateTime(notification.createdAt)}
+                    </time>
+                    {' · '}
+                    {relativeTime(notification.createdAt)}
+                  </p>
+                </div>
+                {!notification.read && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      markRead.mutate(notification.id);
+                      event.stopPropagation();
+                    }}
+                    className="text-primary shrink-0 text-xs font-medium hover:underline"
+                  >
+                    {t.notifications.markRead}
+                  </button>
+                )}
+              </CardContent>
+            </Card>
+          );
+
+          return (
+            <li key={notification.id}>
+              {href ? (
+                <Link
+                  href={href}
+                  onClick={() => !notification.read && markRead.mutate(notification.id)}
                 >
-                  {t.notifications.markRead}
-                </button>
+                  {card}
+                </Link>
+              ) : (
+                card
               )}
-            </CardContent>
-          </Card>
-        );
-
-        return (
-          <li key={notification.id}>
-            {href ? (
-              <Link
-                href={href}
-                onClick={() => !notification.read && markRead.mutate(notification.id)}
-              >
-                {card}
-              </Link>
-            ) : (
-              card
-            )}
-          </li>
-        );
-      })}
-    </ul>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
