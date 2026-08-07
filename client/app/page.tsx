@@ -360,15 +360,3 @@ function RoleValue({
     </Card>
   );
 }
-
-function Pillar({ art, title, body }: { art: React.ReactNode; title: string; body: string }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="mb-3">{art}</div>
-        <h3 className="font-semibold">{title}</h3>
-        <p className="text-muted mt-1.5 text-sm">{body}</p>
-      </CardContent>
-    </Card>
-  );
-}
