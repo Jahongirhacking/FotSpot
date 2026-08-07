@@ -41,22 +41,23 @@ export const en: Dictionary = {
     language: 'Language',
   },
 
+
   nav: {
     squad: 'Squad',
     groups: 'Groups',
-    myGroup: 'My group',
+    myGroup: 'My Group',
     reserve: 'Reserve',
     home: 'Home',
     feed: 'Feed',
-    myCard: 'My card',
-    myAcademy: 'My academy',
-    recommendedPlayers: 'Recommended players',
+    myCard: 'My Card',
+    myAcademy: 'My Academy',
+    recommendedPlayers: 'Recommended Players',
     players: 'Players',
-    findPlayers: 'Find players',
+    findPlayers: 'Find Players',
     academies: 'Academies',
     trials: 'Trials',
-    myPicks: 'My picks',
-    inbox: 'Inbox',
+    myPicks: 'My Recommendations',
+    inbox: 'Recommendations',
     verification: 'Verification',
     moderation: 'Moderation',
     users: 'Users',
@@ -1032,31 +1033,100 @@ export const en: Dictionary = {
   },
 
   landing: {
-    heroTitle: "The best young player in your mahalla shouldn't go unseen.",
+    heroTitle: 'Let local talent reach the academy.',
     heroBody:
-      'Professional football profiles for players. Smarter scouting for academies. FotSpot connects talent with opportunity.',
-    createCard: 'Create your player card',
-    browsePlayers: 'Browse players',
-    freeForever: 'Free for players, parents and scouts — permanently.',
-    getStarted: 'Get started',
-    pillar1Title: 'More than a CV. A verified football profile',
-    pillar1Body:
-      'Position, playing style, performance metrics, and short highlight videos—all in one place. Every stat is backed by a trusted source, giving academies the confidence to evaluate talent',
-    pillar2Title: 'A Trusted Scout Network',
-    pillar2Body:
-      'Anyone can recommend talent, but credibility is earned through academy-approved recommendations. FotSpot builds reputation based on real results',
-    pillar3Title: 'Smarter Talent Discovery',
-    pillar3Body:
-      'Find players by age, position, location, and playing style in seconds. FotSpot helps academies identify the right talent faster, without relying on large open tryouts',
-    recentlyJoined: 'Recently joined',
-    viewMyCard: 'View my card',
-    watchHighlights: 'Watch highlights',
-    latestClips: 'Latest clips',
-    latestClipsBody: 'Players showing what they can do — in 60 seconds.',
-    noClipsYet: 'No clips uploaded yet. Be the first.',
+      'Professional profiles for Players. Trusted recommendations for Scouts. Faster talent discovery for Academies.',
+    createCard: 'Create Your Player Card',
+    browsePlayers: 'Browse Players',
+    freeForever: 'Free forever for Players, parents, and Scouts.',
+    getStarted: 'Get Started',
+
+    pillar1Title: 'Not a CV — a football profile',
+    pillar1Body: 'Position, playing style, stats, and video proof in one profile.',
+
+    pillar2Title: 'Reputation earned through results',
+    pillar2Body: 'Scout ratings are based on outcomes, not the number of recommendations.',
+
+    pillar3Title: 'Faster talent screening for Academies',
+    pillar3Body: 'Find the right Players by age, position, location, and playing style.',
+
+    recentlyJoined: 'Recently Joined',
+    viewMyCard: 'View My Card',
+    watchHighlights: 'Watch Videos',
+    latestClips: 'Latest Videos',
+    latestClipsBody: 'Players showcase their skills in short videos.',
+    noClipsYet: 'No videos yet. Be the first.',
     statPlayers: 'Players',
     statAcademies: 'Academies',
-    statTrials: 'Open trials',
+    statTrials: 'Open Trials',
+
+    pipelineBypass:
+      'Open trial: players apply directly — no online review or recommendation required.',
+
+    pipelineTitle: 'How a Player reaches an Academy',
+
+    pipelineBody:
+      'A clear path from discovery to the squad. Only a real on-field trial can lead to squad placement.',
+
+    pipeline: {
+      discovered: {
+        title: 'Discovered',
+        body: 'The Player builds a profile with video proof. Any Scout can discover their talent.',
+      },
+
+      recommended: {
+        title: 'Recommended',
+        body: 'A Scout recommends the Player to an Academy. The outcome affects the Scout’s reputation.',
+      },
+
+      review: {
+        title: 'Online Coach Review',
+        body: 'The Coach reviews the profile and accepts or rejects the Player. Open Trials skip this step.',
+      },
+
+      trial: {
+        title: 'Trial — On the Field',
+        body: 'The real test. The Coach evaluates the Player in person and records a pass or fail.',
+      },
+
+      squad: {
+        title: 'Squad',
+        body: 'Players who pass the Trial can be added to the Squad by the Academy Manager.',
+      },
+    },
+    valueTitle: 'Bridging the Gap in Football',
+    valueBody: 'Connecting talent, recommendations, and opportunities in one place.',
+    value: {
+      players: {
+        title: 'For Players',
+        body: 'If your talent is unseen, opportunities can pass you by.',
+        points: [
+          'A professional profile built around video proof',
+          'Apply directly to open trials',
+          'Private by default under 18 — always free',
+        ],
+      },
+
+      scouts: {
+        title: 'For Scouts',
+        body: 'Reputation should be earned through results, not volume.',
+        points: [
+          'Discover and recommend promising players',
+          'Build your Success Rating through real outcomes',
+          'Build professional relationships with academies',
+        ],
+      },
+
+      academies: {
+        title: 'For Academies',
+        body: 'Find the right players faster and save valuable time.',
+        points: [
+          'Search by age, position, and location',
+          'Coaches screen players online before the trial',
+          'Manage trials and squads in one place',
+        ],
+      },
+    },
     safetyTitle: 'Built for under-18s, carefully.',
     safetyBody:
       'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',

@@ -45,22 +45,23 @@ export const uz = {
     language: 'Til',
   },
 
+
   nav: {
     squad: 'Tarkib',
     groups: 'Guruhlar',
-    myGroup: 'Mening guruhim',
+    myGroup: 'Guruhim',
     reserve: 'Zaxira',
     home: 'Bosh sahifa',
     feed: 'Lenta',
-    myCard: 'Mening kartam',
-    myAcademy: 'Mening akademiyam',
-    recommendedPlayers: 'Tavsiya etilgan o‘yinchilar',
+    myCard: 'Kartam',
+    myAcademy: 'Akademiyam',
+    recommendedPlayers: 'Tavsiya etilganlar',
     players: 'Futbolchilar',
     findPlayers: 'Futbolchi topish',
     academies: 'Akademiyalar',
     trials: 'Sinovlar',
-    myPicks: 'Mening tavsiyalarim',
-    inbox: 'Kelgan tavsiyalar',
+    myPicks: 'Tavsiyalarim',
+    inbox: 'Tavsiyalar',
     verification: 'Tasdiqlash',
     moderation: 'Moderatsiya',
     users: 'Foydalanuvchilar',
@@ -1059,31 +1060,100 @@ export const uz = {
   },
 
   landing: {
-    heroTitle: 'Mahallangizdagi eng yaxshi yosh futbolchi e’tibordan chetda qolmasligi shart.',
+    heroTitle: 'Mahalladagi iste’dod akademiyagacha yetib borsin.',
     heroBody:
-      "Futbolchilar uchun professional profil. Akademiyalar uchun aqlli skauting. FotSpot iste'dod va imkoniyatni bir joyda uchrashtiradi",
+      'Futbolchilar uchun professional profil. Skautlar uchun ishonchli tavsiyalar. Akademiyalar uchun tezkor saralash.',
     createCard: 'Futbolchi kartangizni yarating',
     browsePlayers: 'Futbolchilarni ko‘rish',
     freeForever: 'Futbolchilar, ota-onalar va skautlar uchun — doim bepul.',
     getStarted: 'Boshlash',
-    pillar1Title: 'CV emas, tasdiqlangan futbol profili',
-    pillar1Body:
-      "Pozitsiya, o'yin uslubi, statistikalar va qisqa videolar — barchasi bitta joyda. Har bir ko'rsatkich ishonchli manba bilan tasdiqlanadi, shunda akademiyalar iste'dodni ishonch bilan baholay oladi",
-    pillar2Title: "Ishonchli skautlar tarmog'i",
-    pillar2Body:
-      "Har kim iste'dodni tavsiya qilishi mumkin. Ammo skautning ishonchliligi faqat akademiyalar tasdiqlagan tavsiyalar asosida shakllanadi. FotSpot obro'ni natija bilan o'lchaydi",
-    pillar3Title: 'Akademiyalar uchun aqlli saralash',
-    pillar3Body:
-      "Yosh, pozitsiya, hudud va o'yin uslubi bo'yicha iste'dodlarni bir necha soniyada toping. FotSpot akademiyalarga vaqtni tejash va eng munosib futbolchilarni tezroq aniqlash imkonini beradi",
+
+    pillar1Title: 'CV emas — futbol profili',
+    pillar1Body: 'Pozitsiya, o‘yin uslubi, statistika va video-isbotlar bitta profilda.',
+
+    pillar2Title: 'Obro‘ natija bilan',
+    pillar2Body: 'Skaut reytingi tavsiyalar soniga emas, ular bergan natijaga asoslanadi.',
+
+    pillar3Title: 'Akademiya uchun tezkor saralash',
+    pillar3Body: 'Yosh, pozitsiya, hudud va o‘yin uslubi bo‘yicha kerakli futbolchini tez toping.',
+
     recentlyJoined: 'Yaqinda qo‘shilganlar',
     viewMyCard: 'Kartamni ko‘rish',
     watchHighlights: 'Videoni ko‘rish',
     latestClips: 'Yangi videolar',
-    latestClipsBody: 'Futbolchilar o‘z mahoratini ko‘rsatadi — 60 soniyada.',
-    noClipsYet: 'Hali video yuklanmagan. Birinchi bo‘ling.',
+    latestClipsBody: 'Futbolchilar mahoratini qisqa videolarda namoyish etadi.',
+    noClipsYet: 'Hali video yo‘q. Birinchi bo‘ling.',
     statPlayers: 'Futbolchilar',
     statAcademies: 'Akademiyalar',
     statTrials: 'Ochiq sinovlar',
+
+    pipelineBypass:
+      'Ochiq sinov: futbolchi to‘g‘ridan-to‘g‘ri ariza beradi — onlayn ko‘rik ham, tavsiya ham kerak emas.',
+
+    pipelineTitle: 'Futbolchi akademiyaga qanday yetib boradi',
+
+    pipelineBody:
+      'Kashfiyotdan tarkibgacha aniq yo‘l. Faqat maydondagi haqiqiy sinov futbolchini tarkibga olib boradi.',
+
+    pipeline: {
+      discovered: {
+        title: 'Kashf qilindi',
+        body: 'Futbolchi profil va video-isbotlarini yaratadi. Istalgan skaut uni topishi mumkin.',
+      },
+
+      recommended: {
+        title: 'Tavsiya qilindi',
+        body: 'Skaut futbolchini akademiyaga tavsiya qiladi. Natija uning obro‘siga ta’sir qiladi.',
+      },
+
+      review: {
+        title: 'Onlayn murabbiy ko‘rigi',
+        body: 'Murabbiy profilni ko‘rib, qabul qiladi yoki rad etadi. Ochiq sinovda bu bosqich bo‘lmaydi.',
+      },
+
+      trial: {
+        title: 'Sinov — maydonda',
+        body: 'Haqiqiy imtihon. Murabbiy futbolchini maydonda sinaydi va o‘tdi yoki o‘tmadi deb baholaydi.',
+      },
+
+      squad: {
+        title: 'Tarkib',
+        body: 'Sinovdan o‘tgan futbolchini akademiya menejeri tarkibga qo‘shadi.',
+      },
+    },
+    valueTitle: 'Futboldagi bo‘shliqni to‘ldiramiz',
+    valueBody: 'Iste’dod, tavsiya va imkoniyatni bir joyda bog‘laymiz.',
+    value: {
+      players: {
+        title: 'Futbolchilar uchun',
+        body: 'Iste’dodingiz ko‘rinmasa, imkoniyat ham kelmaydi.',
+        points: [
+          'Video-isbotga asoslangan professional profil',
+          'Ochiq sinovlarga bevosita ariza bering',
+          '18 yoshgacha profil yopiq va platforma bepul',
+        ],
+      },
+
+      scouts: {
+        title: 'Skautlar uchun',
+        body: 'Obro‘ tavsiyalar soni bilan emas, natija bilan o‘lchanadi.',
+        points: [
+          'Iste’dodlarni toping va tavsiya qiling',
+          'Muvaffaqiyat reytingingiz real natijalar asosida oshadi',
+          'Akademiyalar bilan professional aloqalar yarating',
+        ],
+      },
+
+      academies: {
+        title: 'Akademiyalar uchun',
+        body: 'Kerakli futbolchini tezroq toping, vaqtni tejang.',
+        points: [
+          'Yosh, pozitsiya va hudud bo‘yicha tezkor qidiruv',
+          'Murabbiy onlayn saralaydi — keyin futbolchi sinovga keladi',
+          'Sinovlar va tarkiblarni yagona tizimda boshqaring',
+        ],
+      },
+    },
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
     safetyBody:
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',
