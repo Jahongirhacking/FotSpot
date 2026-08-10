@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { homeHrefForRole } from '@/components/layout/nav';
+import { ACTIVE_ROLE_COOKIE, resolveActiveRole } from '@/lib/roles';
 
 /**
  * Route protection.
@@ -26,6 +28,19 @@ const PROTECTED_PREFIXES = [
 
 const AUTH_ROUTES = ['/login', '/register'];
 
+const ROLES_COOKIE = 'fs_roles';
+
+/** Mirrors `lib/session.ts`'s reader — the cookie holds a JSON array of names. */
+function parseRoles(value: string | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((role): role is string => typeof role === 'string') : [];
+  } catch {
+    return value.split(',').filter(Boolean);
+  }
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get('fs_access')?.value);
@@ -37,9 +52,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  // Someone already signed in has no use for the login screen.
+  // Someone already signed in has no use for the login screen — send them where
+  // their current role begins, not to a fixed `/dashboard` that half the roles do
+  // not have in their menu at all.
   if (hasSession && AUTH_ROUTES.some((route) => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const roles = parseRoles(request.cookies.get(ROLES_COOKIE)?.value);
+    const activeRole = resolveActiveRole(roles, request.cookies.get(ACTIVE_ROLE_COOKIE)?.value);
+    return NextResponse.redirect(new URL(homeHrefForRole(activeRole), request.url));
   }
 
   // The app layout forces an admin-generated password to be replaced before

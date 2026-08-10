@@ -11,6 +11,7 @@ import {
   SetUserActiveDto,
   SetUserRoleDto,
 } from './dto/admin.dto';
+import { SetUserPlanDto } from '../tariffs/dto/tariff.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth('bearer')
@@ -65,6 +66,19 @@ export class AdminController {
   @Patch('users/:id/roles')
   setUserRole(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetUserRoleDto) {
     return this.adminService.setUserRole(user.userId, id, dto.role, dto.grant);
+  }
+
+  /**
+   * Move an account onto another tariff — **super admin only**.
+   *
+   * The only way a plan ever changes: there is no self-serve upgrade, so a user
+   * cannot raise their own ceiling and a plain admin cannot raise somebody
+   * else's. The limits each tier carries are edited on `/tariff-plans`.
+   */
+  @Roles('super_admin')
+  @Patch('users/:id/plan')
+  setUserPlan(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetUserPlanDto) {
+    return this.adminService.setUserPlan(user.userId, id, dto.tier);
   }
 
   @Get('audit-logs')

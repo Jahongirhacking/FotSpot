@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api/client';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
+import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
 import { ageBand, formatDate } from '@/lib/utils';
 import type { Metadata } from 'next';
@@ -168,7 +169,15 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {summary && <RecommendationSummary summary={summary} t={t} />}
+        {summary && (
+          <RecommendationSummary
+            summary={summary}
+            // A coach reads this list to know a player was vouched for, never to
+            // weigh who did the vouching — see mayViewScoutProfile.
+            linkScouts={mayViewScoutProfile(session?.activeRole ?? null)}
+            t={t}
+          />
+        )}
 
         <Card>
           <CardHeader>

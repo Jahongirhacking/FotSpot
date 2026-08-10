@@ -1,27 +1,32 @@
-import { Trophy } from 'lucide-react';
-import type { ScoutStats } from '@/lib/api/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import type { Dictionary } from '@/lib/i18n';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import type { Quota } from '@/lib/api/resources';
+import type { ScoutStats } from '@/lib/api/types';
+import { interpolate, type Dictionary } from '@/lib/i18n';
+import { nextScoutTier, scoutTier } from '@/lib/scout-tiers';
+import { Trophy } from 'lucide-react';
 
 /**
- * Scout reputation — README §1.5.
+ * Scout reputation — README §1.5, plus how much of the plan's allowance is spoken
+ * for.
  *
- * The tiers and weights are mirrored from `backend/src/recommendations/scout-level.util.ts`.
- * They are frozen there; if they ever change, this table changes in the same PR.
+ * The pending count sits on the reputation card rather than beside the
+ * "recommend" button because it is the same story the rest of the card tells:
+ * this is your record, and this is what you may still do with it. A scout who
+ * finds out at the point of filing has already picked the player.
  */
-const TIERS = [
-  { level: 1, name: 'Observer', minRecommendations: 0, minSuccessRate: 0, weight: 1 },
-  { level: 2, name: 'Spotter', minRecommendations: 5, minSuccessRate: 10, weight: 3 },
-  { level: 3, name: 'Talent Hunter', minRecommendations: 20, minSuccessRate: 20, weight: 8 },
-  { level: 4, name: 'Elite Scout', minRecommendations: 50, minSuccessRate: 30, weight: 20 },
-  { level: 5, name: 'Master Scout', minRecommendations: 100, minSuccessRate: 40, weight: 50 },
-  { level: 6, name: 'Legendary Scout', minRecommendations: 250, minSuccessRate: 50, weight: 125 },
-] as const;
-
-export function ScoutLevelCard({ stats, t }: { stats: ScoutStats; t: Dictionary }) {
-  const tier = TIERS.find((t) => t.level === stats.level) ?? TIERS[0];
-  const next = TIERS.find((t) => t.level === stats.level + 1);
+export function ScoutLevelCard({
+  stats,
+  pending,
+  t,
+}: {
+  stats: ScoutStats;
+  /** Undefined where the caller has no quota to show (an older cached read). */
+  pending?: Quota;
+  t: Dictionary;
+}) {
+  const tier = scoutTier(stats.level);
+  const next = nextScoutTier(stats.level);
 
   const recsToGo = next ? Math.max(0, next.minRecommendations - stats.totalRecommendations) : 0;
   const rateToGo = next ? Math.max(0, next.minSuccessRate - stats.successRate) : 0;
@@ -30,7 +35,7 @@ export function ScoutLevelCard({ stats, t }: { stats: ScoutStats; t: Dictionary 
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Trophy className="text-primary size-4" aria-hidden /> Your reputation
+          <Trophy className="text-primary size-4" aria-hidden /> {t.recommendations.yourReputation}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -42,10 +47,32 @@ export function ScoutLevelCard({ stats, t }: { stats: ScoutStats; t: Dictionary 
         </div>
 
         <dl className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Sent" value={stats.totalRecommendations} />
+          <Stat label={t.scouts.sent} value={stats.totalRecommendations} />
           <Stat label={t.profile.accepted} value={stats.acceptedRecommendations} />
           <Stat label={t.profile.successRate} value={`${Math.round(stats.successRate)}%`} />
         </dl>
+
+        {pending && (
+          <div
+            className={
+              pending.exceeded
+                ? 'border-warning/40 bg-warning/10 rounded-lg border p-3 text-xs'
+                : 'bg-surface-2 rounded-lg p-3 text-xs'
+            }
+          >
+            <p className="flex items-center justify-between gap-2 font-medium">
+              <span>{t.scouts.pending}</span>
+              <span className="font-mono">
+                {interpolate(t.plans.usedOf, { used: pending.used, limit: pending.limit })}
+              </span>
+            </p>
+            <p className="text-muted mt-1">
+              {pending.exceeded
+                ? t.plans.recommendationsNone
+                : interpolate(t.plans.recommendationsLeft, { count: pending.remaining })}
+            </p>
+          </div>
+        )}
 
         {next ? (
           <div className="bg-surface-2 space-y-1.5 rounded-lg p-3 text-xs">

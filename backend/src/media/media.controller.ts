@@ -32,10 +32,13 @@ import {
 export class MediaController {
   constructor(private mediaService: MediaService) {}
 
-  /** Whether uploads can be accepted, so the UI can say so before recording. */
+  /**
+   * Whether uploads can be accepted and how many clips the caller has left in
+   * their plan's window, so the UI can say so before recording.
+   */
   @Get('storage-status')
-  storageStatus() {
-    return this.mediaService.storageStatus();
+  storageStatus(@CurrentUser() user: AuthUser) {
+    return this.mediaService.storageStatus(user.userId);
   }
 
   @Post('upload-url')

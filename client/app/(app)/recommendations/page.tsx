@@ -2,9 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Award, Globe, Search } from 'lucide-react';
-import { recommendations } from '@/lib/api/resources';
+import { recommendations, type Quota } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import type { MyRecommendation, ScoutStats } from '@/lib/api/types';
+
+/** Reputation plus the plan's pending allowance — what `myScoutStats` answers. */
+type MyScoutStats = ScoutStats & { pending: Quota };
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -26,12 +29,12 @@ export default async function MyRecommendationsPage() {
       .catch(() => [] as MyRecommendation[]),
     recommendations
       .myScoutStats({ token: session.accessToken, cache: 'no-store' })
-      .catch(() => null as ScoutStats | null),
+      .catch(() => null as MyScoutStats | null),
   ]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside>{stats && <ScoutLevelCard stats={stats} t={t} />}</aside>
+      <aside>{stats && <ScoutLevelCard stats={stats} pending={stats.pending} t={t} />}</aside>
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">

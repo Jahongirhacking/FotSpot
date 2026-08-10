@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { Award, Building2, Inbox, Search, TrendingUp } from 'lucide-react';
-import { recommendations, follows } from '@/lib/api/resources';
+import { recommendations, follows, type Quota } from '@/lib/api/resources';
 import type { MyRecommendation, ScoutStats } from '@/lib/api/types';
+
+/** Reputation plus the plan's pending allowance — what `myScoutStats` answers. */
+type MyScoutStats = ScoutStats & { pending: Quota };
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -12,7 +15,10 @@ import type { Dictionary } from '@/lib/i18n';
 
 export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) {
   const [stats, mine, followerAcademies] = await Promise.all([
-    safe<ScoutStats | null>(() => recommendations.myScoutStats({ token, cache: 'no-store' }), null),
+    safe<MyScoutStats | null>(
+      () => recommendations.myScoutStats({ token, cache: 'no-store' }),
+      null,
+    ),
     safe<MyRecommendation[]>(() => recommendations.listMine({ token, cache: 'no-store' }), []),
     safe(() => follows.academiesFollowingMe({ token, cache: 'no-store' }), []),
   ]);
@@ -22,7 +28,7 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="space-y-6">
-        {stats && <ScoutLevelCard stats={stats} t={t} />}
+        {stats && <ScoutLevelCard stats={stats} pending={stats.pending} t={t} />}
 
         {/* The reward loop from §1.5.2 — a volunteer coach seeing "3 academies follow
             my recommendations" is real status, and it costs nothing to give. */}

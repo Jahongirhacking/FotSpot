@@ -104,3 +104,34 @@ export function isAdminActing(activeRole: Role | null): boolean {
 export function isSuperAdminActing(activeRole: Role | null): boolean {
   return activeRole === 'super_admin';
 }
+
+/**
+ * Roles that may open a scout's reputation page.
+ *
+ * `coach` is missing on purpose. A coach answers "is this player worth a look"
+ * from the clips in front of them (README §1.9, TRIAL.md Rule 22); putting the
+ * recommending scout's level beside that question turns the review into a
+ * judgement of the scout's record instead of the player's football.
+ *
+ * `scout` is missing too — a scout reaches their own page as themselves, and
+ * nothing in the product asks one scout to weigh another's record.
+ *
+ * The backend refuses the same set in `RecommendationsService.getScoutProfile`.
+ * This copy only decides whether to render a link: hiding one is a courtesy, and
+ * the refusal is the rule.
+ */
+const SCOUT_PROFILE_VIEWERS: readonly Role[] = ['player', 'academy_manager', 'admin', 'super_admin'];
+
+/**
+ * Whether to link a scout's name to their profile.
+ *
+ * `selfUserId`/`scoutUserId` cover the one case the role list cannot: a scout
+ * looking at themselves, who is always allowed.
+ */
+export function mayViewScoutProfile(
+  activeRole: Role | null,
+  ids?: { viewerUserId?: string | null; scoutUserId?: string | null },
+): boolean {
+  if (ids?.viewerUserId && ids.viewerUserId === ids.scoutUserId) return true;
+  return !!activeRole && SCOUT_PROFILE_VIEWERS.includes(activeRole);
+}

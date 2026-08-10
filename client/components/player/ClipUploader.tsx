@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { browserFetch } from '@/lib/api/browser';
+import type { ClipQuota } from '@/lib/api/resources';
 import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleStop, Plus, Trophy, Upload, Video, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export function ClipUploader({
   onUploaded: (media: Media) => void;
   onCancel: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
   const router = useRouter();
 
   const [file, setFile] = React.useState<File | null>(null);
@@ -58,7 +59,8 @@ export function ClipUploader({
   // store video *after* filming a minute of it is the worst possible moment.
   const { data: storage } = useQuery({
     queryKey: ['media-storage-status'],
-    queryFn: () => browserFetch<{ configured: boolean }>('/media/storage-status'),
+    queryFn: () =>
+      browserFetch<{ configured: boolean; quota: ClipQuota | null }>('/media/storage-status'),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -163,6 +165,33 @@ export function ClipUploader({
             {t.clips.storageOffHint}
           </Alert>
         )}
+
+        {/*
+         * How many clips are left, said before recording rather than after.
+         *
+         * The upload is the expensive part — on a prepaid connection a refused
+         * minute of video is real money — so a player who is out of clips should
+         * learn it here, not from a red box after the file has gone up.
+         */}
+        {storage?.quota &&
+          (storage.quota.exceeded ? (
+            <Alert tone="warning" title={t.plans.limitReached}>
+              {t.plans.clipsNone}
+              {storage.quota.resetsAt && (
+                <>
+                  {' '}
+                  {f(t.plans.clipsResetOn, { date: formatDate(storage.quota.resetsAt) })}
+                </>
+              )}
+            </Alert>
+          ) : (
+            <p className="text-muted text-xs">
+              {f(t.plans.clipsLeft, {
+                count: storage.quota.remaining,
+                days: storage.quota.windowDays,
+              })}
+            </p>
+          ))}
 
         {!file ? (
           <div className="space-y-3">

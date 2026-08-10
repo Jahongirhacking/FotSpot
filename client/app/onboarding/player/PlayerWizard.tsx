@@ -8,6 +8,7 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { homeHrefForRole } from '@/components/layout/nav';
 import {
   PLAYING_STYLES,
   POSITIONS,
@@ -274,8 +275,9 @@ function FootballStep({
       await setActiveRoleCookie('player');
 
       // Land on the card they just created — that is the payoff (§21.6: the card is
-      // the player's home screen).
-      window.location.assign('/dashboard');
+      // the player's home screen). Resolved through the menu rather than written
+      // out, so it follows the player's first entry if that ever moves.
+      window.location.assign(homeHrefForRole('player'));
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Could not create your profile.');
     }

@@ -1,6 +1,85 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/tariff-plans": {
+      "get": {
+        "operationId": "tariffs_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/me": {
+      "get": {
+        "operationId": "tariffs_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own plan and how much of it they have used.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/{tier}": {
+      "patch": {
+        "operationId": "tariffs_update",
+        "parameters": [
+          {
+            "name": "tier",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PlanTier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
     "/api/v1/auth/register/request-code": {
       "post": {
         "operationId": "auth_requestRegistrationCode",
@@ -632,7 +711,7 @@
             "bearer": []
           }
         ],
-        "summary": "Whether uploads can be accepted, so the UI can say so before recording.",
+        "summary": "Whether uploads can be accepted and how many clips the caller has left in\ntheir plan's window, so the UI can say so before recording.",
         "tags": [
           "media"
         ]
@@ -3778,6 +3857,35 @@
         ]
       }
     },
+    "/api/v1/recommendations/scouts/{scoutId}": {
+      "get": {
+        "operationId": "recommendations_scoutProfile",
+        "parameters": [
+          {
+            "name": "scoutId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One scout's reputation page.\n\nVisible to players and academies, and refused to coaches — a coach answers\nfor the player in front of them, and knowing which scout is asking is\npressure rather than information. See `getScoutProfile` for the full\nreasoning; the rule is enforced there so a direct request is refused too,\nnot merely un-linked in the UI.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/trials/academy/{academyId}": {
       "post": {
         "operationId": "trials_create",
@@ -4704,6 +4812,45 @@
         ]
       }
     },
+    "/api/v1/admin/users/{id}/plan": {
+      "patch": {
+        "operationId": "admin_setUserPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Move an account onto another tariff — **super admin only**.\n\nThe only way a plan ever changes: there is no self-serve upgrade, so a user\ncannot raise their own ceiling and a plain admin cannot raise somebody\nelse's. The limits each tier carries are edited on `/tariff-plans`.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/audit-logs": {
       "get": {
         "operationId": "admin_listAuditLogs",
@@ -4954,6 +5101,10 @@
       "description": "User directory, roles, permissions and audit logs."
     },
     {
+      "name": "tariffs",
+      "description": "The three plan tiers and their limits. Reading is open to any account; editing a tier, and moving an account between tiers, are super-admin only."
+    },
+    {
       "name": "insights",
       "description": "Weekly recruiting activity and per-academy counters. Never exposed to players — see InsightsController."
     }
@@ -4974,6 +5125,49 @@
       }
     },
     "schemas": {
+      "PlanTier": {
+        "type": "string",
+        "enum": [
+          "FREE",
+          "PRO",
+          "PREMIUM"
+        ]
+      },
+      "UpdateTariffPlanDto": {
+        "type": "object",
+        "properties": {
+          "clipLimit": {
+            "type": "number",
+            "description": "A — clips a player may upload per window.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "clipWindowDays": {
+            "type": "number",
+            "description": "B — the length of that window, in days. At least one; a zero-day window\n would refuse every upload forever.",
+            "minimum": 1,
+            "maximum": 365
+          },
+          "pendingRecommendationLimit": {
+            "type": "number",
+            "description": "C — recommendations a scout may have awaiting a verdict at once.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxCoaches": {
+            "type": "number",
+            "description": "D — coaches an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxGroups": {
+            "type": "number",
+            "description": "E — squad groups an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        }
+      },
       "RequestRegistrationCodeDto": {
         "type": "object",
         "properties": {
@@ -6335,6 +6529,21 @@
         "required": [
           "role",
           "grant"
+        ]
+      },
+      "SetUserPlanDto": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlanTier"
+              }
+            ]
+          }
+        },
+        "required": [
+          "tier"
         ]
       },
       "AssignAdminDto": {

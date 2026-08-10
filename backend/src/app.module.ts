@@ -20,6 +20,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RbacModule } from './rbac/rbac.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { RedisModule } from './redis/redis.module';
+import { TariffsModule } from './tariffs/tariffs.module';
 import { TrialsModule } from './trials/trials.module';
 import { UsersModule } from './users/users.module';
 
@@ -38,6 +39,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     RateLimitModule,
     AuditModule,
     RbacModule,
+    TariffsModule,
     AuthModule,
     UsersModule,
     PlayersModule,

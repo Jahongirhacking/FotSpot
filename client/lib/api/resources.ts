@@ -340,6 +340,69 @@ export const insights = {
     apiFetch<AcademySummary>(`/insights/academy/${academyId}`, opts),
 };
 
+// ---------- Tariff plans ----------
+
+export const PLAN_TIERS = ['FREE', 'PRO', 'PREMIUM'] as const;
+export type PlanTier = (typeof PLAN_TIERS)[number];
+
+/** One tier's limits — the five numbers a super admin edits. */
+export interface TariffPlan {
+  tier: PlanTier;
+  /** A — clips a player may upload per window. */
+  clipLimit: number;
+  /** B — the length of that window, in days. */
+  clipWindowDays: number;
+  /** C — recommendations a scout may have awaiting a verdict at once. */
+  pendingRecommendationLimit: number;
+  /** D — coaches an academy manager may create. */
+  maxCoaches: number;
+  /** E — squad groups an academy manager may create. */
+  maxGroups: number;
+  updatedAt: string;
+}
+
+/**
+ * A ceiling, what is used, and whether there is room.
+ *
+ * Whole rather than a bare boolean so a screen can say "9 of 10" *before* the
+ * user tries — a limit only feels fair when it is visible in advance.
+ */
+export interface Quota {
+  limit: number;
+  used: number;
+  remaining: number;
+  exceeded: boolean;
+}
+
+export interface ClipQuota extends Quota {
+  windowDays: number;
+  /** When the oldest clip in the window ages out. Null while under the limit. */
+  resetsAt: string | null;
+}
+
+/** The caller's own plan and headroom. Nulls where a role makes it meaningless. */
+export interface MyPlanUsage {
+  plan: TariffPlan;
+  academyId: string | null;
+  clips: ClipQuota | null;
+  recommendations: Quota | null;
+  coaches: Quota | null;
+  groups: Quota | null;
+}
+
+export const tariffs = {
+  /** All three tiers. Readable by anyone signed in — a limit nobody can look up
+   *  reads as a bug when it bites. */
+  list: (opts: Opts = {}) => apiFetch<TariffPlan[]>('/tariff-plans', opts),
+
+  /** My plan and how much of it I have used. */
+  mine: (opts: Opts = {}) => apiFetch<MyPlanUsage>('/tariff-plans/me', opts),
+
+  /** Super admin only: edit one tier's numbers. Partial — send what changed. */
+  update: (tier: PlanTier, body: Partial<Omit<TariffPlan, 'tier' | 'updatedAt'>>, opts: Opts = {}) =>
+    apiFetch<TariffPlan>(`/tariff-plans/${tier}`, { method: 'PATCH', body, ...opts }),
+};
+
 // ---------- Admin console ----------
 
 export interface AdminUser {
@@ -353,6 +416,8 @@ export interface AdminUser {
   avatarUrl: string | null;
   createdAt: string;
   roles: string[];
+  /** The tariff this account is on. Only a super admin can move it. */
+  planTier?: PlanTier;
   /** False for super admins — the bootstrap account must stay reachable. */
   revocable?: boolean;
 }
@@ -422,6 +487,19 @@ export const admin = {
     apiFetch<{ roles: string[] }>(`/admin/users/${userId}/roles`, {
       method: 'PATCH',
       body: { role, grant },
+      ...opts,
+    }),
+
+  /**
+   * Move an account onto another tariff — super admin only.
+   *
+   * The only way a plan ever changes: nobody upgrades themselves, so this is
+   * both the sales desk and the support desk for every limit in the product.
+   */
+  setUserPlan: (userId: string, tier: PlanTier, opts: Opts = {}) =>
+    apiFetch<{ id: string; planTier: PlanTier }>(`/admin/users/${userId}/plan`, {
+      method: 'PATCH',
+      body: { tier },
       ...opts,
     }),
 
@@ -597,6 +675,33 @@ export interface CreateAssessmentBody {
 // ---------- Recommendations ----------
 
 /**
+ * A scout's public reputation page.
+ *
+ * Deliberately no list of the players they put forward: that is a list of
+ * minors, ranked by how promising somebody thinks they are (README §11.3,
+ * §21.5). Counts and endorsements say what a reader needs about the scout's
+ * record without publishing an index of children.
+ */
+export interface ScoutProfile {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  isActive: boolean;
+  stats: {
+    level: number;
+    weight: number;
+    successRate: number;
+    totalRecommendations: number;
+    acceptedRecommendations: number;
+    pendingRecommendations: number;
+  };
+  endorsements: { academyId: string; academy: { id: string; name: string } }[];
+}
+
+/**
  * README §1.5.3. GLOBAL is addressed to nobody and open to any scout; SPECIFIC
  * names academies that have endorsed the caller (following one is not enough).
  */
@@ -657,7 +762,17 @@ export const recommendations = {
   getPlayerSummary: (playerId: string, opts: Opts = {}) =>
     apiFetch<PlayerRecommendationSummary>(`/recommendations/player/${playerId}`, opts),
 
-  myScoutStats: (opts: Opts = {}) => apiFetch<ScoutStats>('/recommendations/scout-stats/me', opts),
+  myScoutStats: (opts: Opts = {}) =>
+    apiFetch<ScoutStats & { pending: Quota }>('/recommendations/scout-stats/me', opts),
+
+  /**
+   * One scout's reputation page.
+   *
+   * 403 for a coach, by design — see `mayViewScoutProfile`. The backend refuses
+   * it too, so a coach who types the URL is told no rather than shown the page.
+   */
+  scoutProfile: (scoutId: string, opts: Opts = {}) =>
+    apiFetch<ScoutProfile>(`/recommendations/scouts/${scoutId}`, opts),
 };
 
 // ---------- Trials ----------
@@ -828,9 +943,15 @@ export const media = {
   listRecent: (limit?: number, opts: Opts = {}) =>
     apiFetch<RecentClip[]>(`/media/recent${toQuery({ limit })}`, opts),
 
-  /** Whether the server can accept uploads at all — asked before recording. */
+  /**
+   * Whether the server can accept uploads at all, and how many clips this
+   * player has left in their plan's window — asked before recording.
+   *
+   * `quota` is null for an account with no player profile: there is nothing to
+   * limit, and a zero would read as "you have used them all".
+   */
   storageStatus: (opts: Opts = {}) =>
-    apiFetch<{ configured: boolean }>('/media/storage-status', opts),
+    apiFetch<{ configured: boolean; quota: ClipQuota | null }>('/media/storage-status', opts),
 
   requestUpload: (
     body: {
