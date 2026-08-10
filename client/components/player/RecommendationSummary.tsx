@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Megaphone, TrendingUp } from 'lucide-react';
 import type { PlayerRecommendationSummary } from '@/lib/api/resources';
 import type { Dictionary } from '@/lib/i18n';
@@ -15,12 +16,20 @@ import { initials, relativeTime } from '@/lib/utils';
  *
  * Which academies a scout named is shown, because that a scout vouched for a
  * player to a particular academy is the scout's own public act.
+ *
+ * Each scout is a link to their record when the reader is allowed one. "Who
+ * vouched for me" is only half an answer without "and are they any good" —
+ * §1.5 exists precisely so that a name carries a track record. `linkScouts` is
+ * false for coaches, who must judge the player and not the messenger; see
+ * `mayViewScoutProfile`.
  */
 export function RecommendationSummary({
   summary,
+  linkScouts = false,
   t,
 }: {
   summary: PlayerRecommendationSummary;
+  linkScouts?: boolean;
   t: Dictionary;
 }) {
   return (
@@ -49,14 +58,16 @@ export function RecommendationSummary({
           <ul className="divide-border divide-y">
             {summary.scouts.map(({ id, name, avatarUrl, recommendation }) => (
               <li key={recommendation.id} className="flex items-start gap-3 py-3">
-                <Avatar
-                  src={avatarUrl}
-                  fallback={initials(...splitName(name))}
-                  className="size-9"
+                <ScoutIdentity
+                  id={id}
+                  name={name}
+                  avatarUrl={avatarUrl}
+                  linked={linkScouts}
+                  label={t.scouts.viewProfile}
                 />
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{name || id.slice(0, 8)}</p>
+                  <ScoutName id={id} name={name} linked={linkScouts} />
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <Badge variant={recommendation.type === 'SPECIFIC' ? 'primary' : 'neutral'}>
                       {recommendation.type === 'SPECIFIC'
@@ -84,6 +95,56 @@ export function RecommendationSummary({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The avatar, wrapped in a link only when the reader may follow it.
+ *
+ * Rendered as a plain span otherwise rather than a disabled link: a link that
+ * goes nowhere is a worse answer than no link, and a coach is not being denied
+ * anything they were told about.
+ */
+function ScoutIdentity({
+  id,
+  name,
+  avatarUrl,
+  linked,
+  label,
+}: {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  linked: boolean;
+  label: string;
+}) {
+  const avatar = (
+    <Avatar src={avatarUrl} fallback={initials(...splitName(name))} className="size-9" />
+  );
+
+  if (!linked) return avatar;
+
+  return (
+    <Link
+      href={`/scouts/${id}`}
+      aria-label={label}
+      className="focus-visible:ring-primary shrink-0 rounded-full focus-visible:ring-2 focus-visible:outline-none"
+    >
+      {avatar}
+    </Link>
+  );
+}
+
+function ScoutName({ id, name, linked }: { id: string; name: string; linked: boolean }) {
+  const label = name || id.slice(0, 8);
+  if (!linked) return <p className="truncate text-sm font-medium">{label}</p>;
+
+  return (
+    <p className="truncate text-sm font-medium">
+      <Link href={`/scouts/${id}`} className="hover:text-primary hover:underline">
+        {label}
+      </Link>
+    </p>
   );
 }
 

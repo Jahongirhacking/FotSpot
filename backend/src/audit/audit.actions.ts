@@ -32,6 +32,8 @@ export const AuditAction = {
   ENDORSEMENT_REVOKED: 'endorsement.revoked',
   USER_ENABLED: 'user.enabled',
   USER_DISABLED: 'user.disabled',
+  USER_PLAN_CHANGED: 'user.plan_changed',
+  TARIFF_PLAN_UPDATED: 'tariff_plan.updated',
   REPORT_RESOLVED: 'report.resolved',
   MEDIA_TAKEN_DOWN: 'media.taken_down',
 } as const;

@@ -14,6 +14,7 @@ import {
   type ManagerChoice,
 } from '@/components/shared/ManagerFields';
 import { CredentialsPanel } from '@/components/shared/CredentialsPanel';
+import { PlanQuotaNote } from '@/components/shared/PlanQuotaNote';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Field, Textarea } from '@/components/ui/Field';
@@ -94,6 +95,9 @@ export function AddCoach({
         {open && (
           <CardContent className="space-y-3">
             <p className="text-muted text-sm">{t.academy.addCoachHint}</p>
+
+            {/* Before the form, not after a minted account is refused. */}
+            <PlanQuotaNote kind="coaches" />
 
             <ManagerFields value={choice} onChange={setChoice} />
 

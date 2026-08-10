@@ -156,4 +156,18 @@ export class RecommendationsController {
   myStats(@CurrentUser() user: AuthUser) {
     return this.recommendationsService.getScoutStats(user.userId);
   }
+
+  /**
+   * One scout's reputation page.
+   *
+   * Visible to players and academies, and refused to coaches — a coach answers
+   * for the player in front of them, and knowing which scout is asking is
+   * pressure rather than information. See `getScoutProfile` for the full
+   * reasoning; the rule is enforced there so a direct request is refused too,
+   * not merely un-linked in the UI.
+   */
+  @Get('scouts/:scoutId')
+  scoutProfile(@CurrentUser() user: AuthUser, @Param('scoutId') scoutId: string) {
+    return this.recommendationsService.getScoutProfile(scoutId, user);
+  }
 }

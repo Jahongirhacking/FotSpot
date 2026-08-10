@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Clapperboard,
   ClipboardCheck,
+  Gauge,
   Home,
   Inbox,
   Search,
@@ -96,11 +97,23 @@ export function navForRole(role: Role | null): NavItem[] {
       ];
 
     case 'admin':
+      return [
+        { href: '/dashboard', label: 'home', icon: Home },
+        { href: '/admin/academies', label: 'academies', icon: Building2 },
+        { href: '/admin/users', label: 'users', icon: Users },
+        { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
+        { href: '/players', label: 'players', icon: Search },
+      ];
+
+    // Tariff plans only for the super admin: §1.2 keeps platform-wide settings
+    // out of a plain admin's hands, and a menu entry leading to a screen that
+    // refuses is worse than no entry.
     case 'super_admin':
       return [
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/admin/academies', label: 'academies', icon: Building2 },
         { href: '/admin/users', label: 'users', icon: Users },
+        { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
         { href: '/players', label: 'players', icon: Search },
       ];

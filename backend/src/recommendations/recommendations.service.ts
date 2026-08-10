@@ -14,17 +14,29 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ProcessAService } from './process-a.service';
 import { cooldownEndsAt } from './recommendation-cooldown.util';
 import { ageAt } from '../common/age.util';
+import { AuthUser } from '../common/decorators/current-user.decorator';
 import { richTextToPlain, sanitizeRichText } from '../common/rich-text.util';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
+import { TariffsService } from '../tariffs/tariffs.service';
 
 import {
   computeRecommendationCredibility,
   computeScoutLevel,
   computeSuccessRate,
 } from './scout-level.util';
+
+/**
+ * Roles that may read a scout's profile.
+ *
+ * `coach` is absent by design, not by omission — see
+ * `RecommendationsService.getScoutProfile`. `scout` is absent too: a scout's
+ * own page is reachable as themselves, and nothing in the product asks one scout
+ * to weigh another's record.
+ */
+const ALLOWED_SCOUT_VIEWERS = ['player', 'academy_manager', 'admin', 'super_admin'];
 
 @Injectable()
 export class RecommendationsService {
@@ -35,6 +47,7 @@ export class RecommendationsService {
     private redis: RedisService,
     private endorsements: EndorsementsService,
     private processA: ProcessAService,
+    private tariffs: TariffsService,
   ) {}
 
   /**
@@ -87,6 +100,17 @@ export class RecommendationsService {
         );
       }
     }
+
+    /*
+     * The plan's ceiling on undecided picks, checked after the duplicate and
+     * cooldown rules above.
+     *
+     * Order matters for what the scout is told: a second attempt at a player
+     * they already recommended is a mistake about *that* player, and answering
+     * it with "you are out of slots" would send them off to chase academies for
+     * verdicts over a recommendation they did not need to file.
+     */
+    await this.tariffs.assertCanRecommend(scoutId);
 
     const targets = await this.resolveTargets(scoutId, dto);
 
@@ -1535,18 +1559,130 @@ export class RecommendationsService {
     return this.endorsements.listForUser(userId, EndorsementRole.SCOUT);
   }
 
+  /**
+   * A scout's public reputation page — who they are and how good their calls are.
+   *
+   * ## Not visible to coaches
+   *
+   * A coach's job is to answer "is this player worth a look" from the player's
+   * clips and nothing else (§1.9, TRIAL.md Rule 22). Letting them open the
+   * profile of the scout who filed the recommendation puts a Legendary badge
+   * beside the request, and a coach who knows a Level 6 scout is asking is no
+   * longer answering the same question — the review starts measuring the scout's
+   * reputation instead of the player's football. That is exactly the pressure
+   * this refusal removes, and it is why the rule is a refusal rather than a
+   * hidden link: a coach who reaches the URL directly must be told no too.
+   *
+   * Players and academies are the audiences it exists for. A player wants to
+   * know who put them forward; an academy weighs the recommendation by the record
+   * of whoever made it, which is the whole point of §1.5.
+   *
+   * ## No list of players
+   *
+   * Counts and endorsements, never the names. A scout's picks are a list of
+   * minors, and publishing one would be a public index of children assembled by
+   * how promising somebody thinks they are (§11.3, §21.5).
+   */
+  async getScoutProfile(scoutUserId: string, viewer: AuthUser) {
+    this.assertMaySeeScout(scoutUserId, viewer);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: scoutUserId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        avatarKey: true,
+        createdAt: true,
+        isActive: true,
+        isPrivate: true,
+        roles: { select: { role: { select: { name: true } } } },
+      },
+    });
+    if (!user || !user.roles.some((entry) => entry.role.name === 'scout')) {
+      throw new NotFoundException('Scout not found');
+    }
+
+    // A private account is unlisted for everyone but itself and admins — the same
+    // rule UsersService.findPublicProfile applies, kept identical on purpose.
+    const isSelf = viewer.userId === scoutUserId;
+    const isAdmin = viewer.roles.some((role) => role === 'admin' || role === 'super_admin');
+    if (user.isPrivate && !isSelf && !isAdmin) throw new NotFoundException('Scout not found');
+
+    const [stats, endorsements, pendingCount] = await Promise.all([
+      this.getScoutStats(scoutUserId),
+      this.endorsements.listForUser(scoutUserId, EndorsementRole.SCOUT),
+      this.prisma.recommendation.count({
+        where: {
+          scoutId: scoutUserId,
+          clearedAt: null,
+          targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } },
+        },
+      }),
+    ]);
+
+    const { avatarKey, isPrivate, roles, ...identity } = user;
+    return {
+      ...identity,
+      avatarUrl: this.storage.publicUrlOrNull(avatarKey),
+      stats: {
+        level: stats.level,
+        weight: stats.weight,
+        successRate: stats.successRate,
+        totalRecommendations: stats.totalRecommendations,
+        acceptedRecommendations: stats.acceptedRecommendations,
+        pendingRecommendations: pendingCount,
+      },
+      endorsements,
+    };
+  }
+
+  /**
+   * Who may open a scout's profile. Keyed on the **active** role, so a coach who
+   * is also a manager must be acting as the manager — same rule as everywhere
+   * else (JwtStrategy.validate).
+   */
+  private assertMaySeeScout(scoutUserId: string, viewer: AuthUser) {
+    if (viewer.userId === scoutUserId) return;
+
+    const acting = viewer.roles;
+    if (acting.includes('coach') && !acting.some((role) => ALLOWED_SCOUT_VIEWERS.includes(role))) {
+      throw new ForbiddenException(
+        'A coach reviews the player, not the scout who put them forward. Scout profiles are not shown here.',
+      );
+    }
+    if (!acting.some((role) => ALLOWED_SCOUT_VIEWERS.includes(role))) {
+      throw new ForbiddenException('Scout profiles are visible to players and academies');
+    }
+  }
+
+  /**
+   * The scout's reputation, plus how much of their plan's pending allowance is
+   * spoken for.
+   *
+   * The quota travels with the stats because the two are read by the same card
+   * and answer the same question — "how am I doing, and can I file another one".
+   * Split across two requests, the screen would keep showing a live "recommend"
+   * button to a scout whose next attempt is going to be refused.
+   */
   async getScoutStats(userId: string) {
-    const stats = await this.prisma.scoutStats.findUnique({ where: { userId } });
-    return (
-      stats ?? {
+    const [stats, pending] = await Promise.all([
+      this.prisma.scoutStats.findUnique({ where: { userId } }),
+      this.tariffs.pendingRecommendationQuota(userId),
+    ]);
+
+    return {
+      ...(stats ?? {
         userId,
         totalRecommendations: 0,
         acceptedRecommendations: 0,
         successRate: 0,
         level: 1,
         weight: 1,
-      }
-    );
+      }),
+      pending,
+    };
   }
 
   /**

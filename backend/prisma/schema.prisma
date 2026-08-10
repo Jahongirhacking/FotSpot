@@ -48,6 +48,57 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
+// ---------- TARIFF PLANS ----------
+
+enum PlanTier {
+  FREE
+  PRO
+  PREMIUM
+}
+
+/**
+ * What one tier of account is allowed to do, in numbers a super admin can edit.
+ *
+ * Exactly three rows, seeded and never created or deleted through the API: the
+ * tier *is* the identity, so `tier` is the primary key rather than a uuid with a
+ * unique constraint beside it. A fourth tier is a schema change and a product
+ * decision, not a row somebody adds on a Tuesday.
+ *
+ * The limits live here rather than in environment variables because they are
+ * product levers, not deployment configuration — the person who decides that Pro
+ * gets thirty clips a week is not the person with shell access, and a redeploy
+ * is the wrong unit of change for a number that sells the plan.
+ *
+ * Every limit is a plain count with no "unlimited" sentinel. A very large number
+ * says the same thing and needs no branch at every call site that reads one;
+ * inventing `0 = unlimited` would make the most permissive plan look like the
+ * most restrictive one on the screen that edits it.
+ */
+model TariffPlan {
+  tier PlanTier @id
+
+  /// A — clips a player may upload per window.
+  clipLimit                 Int @default(10)
+  /// B — the length of that window, in days. Rolling, not calendar: a limit that
+  /// resets at midnight on the 1st is a limit everybody hits on the 2nd.
+  clipWindowDays            Int @default(7)
+  /// C — how many of a scout's recommendations may be awaiting a verdict at once.
+  ///
+  /// A cap on *undecided* work, not on lifetime output: a scout whose picks keep
+  /// being answered can keep filing forever, and one who files fifty and waits is
+  /// asked to let the first ones land first. This is what makes the number a
+  /// quality lever rather than a quota.
+  pendingRecommendationLimit Int @default(10)
+  /// D — coaches an academy manager may create.
+  maxCoaches                Int @default(5)
+  /// E — squad groups an academy manager may create.
+  maxGroups                 Int @default(5)
+
+  users User[]
+
+  updatedAt DateTime @updatedAt @default(now())
+}
+
 // ---------- USERS / AUTH (1.3) ----------
 
 enum VerificationStatus {
@@ -95,6 +146,16 @@ model User {
   /// created it knows that password, so it must not stay valid indefinitely on an
   /// account with access to children's profiles.
   mustChangePassword Boolean @default(false)
+
+  /// Which tariff this account is on. One per account, not one per role: a
+  /// person who scouts and also has a player card is one customer, and two
+  /// plans on one account would mean two answers to "what may I do today".
+  ///
+  /// Only a super admin moves it (§1.2) — there is no self-serve upgrade, so a
+  /// column rather than a subscription table is the honest shape: there is no
+  /// billing period, no payment and no history to keep yet.
+  planTier      PlanTier @default(FREE)
+  plan          TariffPlan @relation(fields: [planTier], references: [tier])
 
   roles         UserRole[]
   sessions      Session[]
@@ -571,6 +632,13 @@ model RatingRevision {
   mediaId   String
   media     Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
+  /// 0–100, like every rating on the platform. Enforced by a database CHECK
+  /// (`rating_revision_rating_range`) as well as the DTOs, because a revision is
+  /// written by the service rather than posted by a client: nothing would have
+  /// caught a bug here, and a history row holding 4200 silently poisons the chart
+  /// it exists to explain.
+  ///
+  /// `previousRating` is null only for a clip that had no rating before.
   previousRating     Int?
   previousReportedBy RatingSource
   rating             Int
@@ -626,6 +694,11 @@ model Media {
   /// Null for MATCH_HIGHLIGHTS, which evidences no single attribute. The newest
   /// ACTIVE clip per category carries the current rating; older rows are kept so
   /// the bar has a history rather than just a value.
+  ///
+  /// The range is a database CHECK (`media_rating_range`) and not only a DTO
+  /// rule: the bars are drawn as a percentage of 100, so a value outside it does
+  /// not render wrongly — it renders as a bar longer than its track, on every
+  /// screen that reads the row, forever.
   rating      Int?
 
   /// Who put `rating` there.

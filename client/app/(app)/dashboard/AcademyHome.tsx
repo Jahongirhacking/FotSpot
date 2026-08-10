@@ -248,6 +248,9 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
             <Row
               key={scout.id}
               rank={index + 1}
+              // A manager weighs a recommendation by the record of whoever made
+              // it (§1.5), so the name on this board opens that record.
+              href={`/scouts/${scout.id}`}
               avatarUrl={scout.avatarUrl}
               name={
                 [scout.firstName, scout.lastName].filter(Boolean).join(' ') || scout.id.slice(0, 8)

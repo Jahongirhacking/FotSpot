@@ -3,6 +3,7 @@ import { GroupsService } from './groups.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { StorageService } from '../storage/storage.service';
 import type { AuditService } from '../audit/audit.service';
+import type { TariffsService } from '../tariffs/tariffs.service';
 
 /**
  * The rule under test is TRIAL.md Rule 21 / README §1.9:
@@ -32,6 +33,9 @@ function build() {
     prisma as unknown as PrismaService,
     {} as unknown as StorageService,
     {} as unknown as AuditService,
+    // Unused by assertCoachesPlayer — plan limits gate creating a group, not
+    // reading who coaches whom.
+    {} as unknown as TariffsService,
   );
 
   return { service, prisma };

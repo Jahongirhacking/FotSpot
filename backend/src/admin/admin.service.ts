@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PlanTier, Prisma } from '@prisma/client';
 import { AcademiesService } from '../academies/academies.service';
 import { AuditAction } from '../audit/audit.actions';
 import { AuditService } from '../audit/audit.service';
@@ -14,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
+import { TariffsService } from '../tariffs/tariffs.service';
 
 @Injectable()
 export class AdminService {
@@ -27,6 +28,7 @@ export class AdminService {
     private academiesService: AcademiesService,
     private notifications: NotificationsService,
     private audit: AuditService,
+    private tariffs: TariffsService,
   ) {}
 
   // ---- Admin (1.2: Verify coaches, Verify academies, Moderate) ----
@@ -97,6 +99,7 @@ export class AdminService {
           phone: true,
           avatarKey: true,
           createdAt: true,
+          planTier: true,
           roles: { select: { role: { select: { name: true } } } },
         },
         skip: (page - 1) * pageSize,
@@ -163,6 +166,7 @@ export class AdminService {
         avatarKey: true,
         isActive: true,
         createdAt: true,
+        planTier: true,
         roles: { select: { role: { select: { name: true } } } },
         playerProfile: {
           select: {
@@ -265,6 +269,18 @@ export class AdminService {
     }
 
     return this.rbac.getEffectiveAccess(userId);
+  }
+
+  /**
+   * Move an account onto another tariff — **super admin only**.
+   *
+   * A thin pass-through to `TariffsService`, which owns the audit entry and the
+   * "user not found" answer. It is exposed here because the screen that changes
+   * a plan is the same one that grants roles and disables accounts, and a caller
+   * should not have to know that plans live in a different module.
+   */
+  async setUserPlan(actorId: string, userId: string, tier: PlanTier) {
+    return this.tariffs.setUserPlan(actorId, userId, tier);
   }
 
   async listAuditLogs(take = 100) {

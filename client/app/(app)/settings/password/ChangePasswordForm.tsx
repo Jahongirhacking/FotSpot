@@ -6,6 +6,8 @@ import { useMutation } from '@tanstack/react-query';
 import { KeyRound } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { homeHrefForRole } from '@/components/layout/nav';
+import { useSession } from '@/components/layout/SessionProvider';
 import { Button } from '@/components/ui/Button';
 import { Field, PasswordInput } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
@@ -27,6 +29,7 @@ const MIN_LENGTH = 8;
 export function ChangePasswordForm({ forced }: { forced: boolean }) {
   const { t } = useI18n();
   const router = useRouter();
+  const { activeRole } = useSession();
 
   const [current, setCurrent] = React.useState('');
   const [next, setNext] = React.useState('');
@@ -46,7 +49,10 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
       // The role/claims snapshot is unaffected, but the server just revoked the
       // other sessions — re-render so anything stale re-reads.
       router.refresh();
-      if (forced) router.push('/dashboard');
+      // Out of the forced-change screen and into wherever this account actually
+      // works: a coach sent to `/dashboard` arrives on a page absent from their
+      // own menu, having just been made to change a password.
+      if (forced) router.push(homeHrefForRole(activeRole));
     },
     onError: (err: Error) => setError(err.message),
   });

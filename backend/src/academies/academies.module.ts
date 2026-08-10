@@ -6,9 +6,11 @@ import { InvitationsService } from './invitations.service';
 import { AcademiesController } from './academies.controller';
 import { RbacModule } from '../rbac/rbac.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TariffsModule } from '../tariffs/tariffs.module';
 
 @Module({
-  imports: [RbacModule, NotificationsModule],
+  // TariffsModule for the plan's caps on coaches and squad groups.
+  imports: [RbacModule, NotificationsModule, TariffsModule],
   controllers: [AcademiesController],
   providers: [AcademiesService, EndorsementsService, GroupsService, InvitationsService],
   exports: [AcademiesService, EndorsementsService, GroupsService, InvitationsService],

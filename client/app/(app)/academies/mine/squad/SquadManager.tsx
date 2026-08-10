@@ -15,6 +15,7 @@ import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { MemberRow } from '@/components/academy/MemberRows';
 import { CandidatePicker } from '@/components/academy/CandidatePicker';
+import { PlanQuotaNote } from '@/components/shared/PlanQuotaNote';
 import {
   EMPTY_FILTERS,
   filterMembers,
@@ -214,6 +215,9 @@ export function SquadManager({
         </CardHeader>
 
         <CardContent className="space-y-2 p-2">
+          {/* Before the button, not after the refusal — see PlanQuotaNote. */}
+          <PlanQuotaNote kind="groups" />
+
           <Button
             size="sm"
             variant={creatingGroup ? 'ghost' : 'primary'}

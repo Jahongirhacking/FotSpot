@@ -34,6 +34,11 @@ export const API_TAGS = [
   { name: 'moderation', description: 'Reports and their resolution.' },
   { name: 'admin', description: 'User directory, roles, permissions and audit logs.' },
   {
+    name: 'tariffs',
+    description:
+      'The three plan tiers and their limits. Reading is open to any account; editing a tier, and moving an account between tiers, are super-admin only.',
+  },
+  {
     name: 'insights',
     description:
       'Weekly recruiting activity and per-academy counters. Never exposed to players — see InsightsController.',

@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
+import { TariffsService } from '../tariffs/tariffs.service';
 import {
   CreateGroupDto,
   ListCandidatesDto,
@@ -40,6 +41,7 @@ export class GroupsService {
     private prisma: PrismaService,
     private storage: StorageService,
     private audit: AuditService,
+    private tariffs: TariffsService,
   ) {}
 
   async list(academyId: string) {
@@ -127,6 +129,9 @@ export class GroupsService {
 
   async create(userId: string, academyId: string, dto: CreateGroupDto) {
     await this.assertManager(userId, academyId);
+    // The reserve is not a group and costs nothing (see the class note), so this
+    // counts exactly the squads the manager cut by hand.
+    await this.tariffs.assertCanCreateGroup(userId, academyId);
 
     try {
       const group = await this.prisma.academyGroup.create({

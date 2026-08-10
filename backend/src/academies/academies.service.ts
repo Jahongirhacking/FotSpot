@@ -15,6 +15,7 @@ import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
+import { TariffsService } from '../tariffs/tariffs.service';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
   CreateCoachDto,
@@ -41,6 +42,7 @@ export class AcademiesService {
     private redis: RedisService,
     private audit: AuditService,
     private storage: StorageService,
+    private tariffs: TariffsService,
   ) {}
 
   /**
@@ -504,6 +506,9 @@ export class AcademiesService {
    */
   async createCoach(actorId: string, academyId: string, dto: CreateCoachDto) {
     await this.assertManager(actorId, academyId);
+    // Checked before anything is minted: a plan refusal must not leave behind a
+    // half-created account with credentials nobody will ever be shown.
+    await this.tariffs.assertCanAddCoach(actorId, academyId);
 
     if (!dto.userId === !dto.newCoach) {
       throw new BadRequestException('Give either an existing user or the details for a new one');

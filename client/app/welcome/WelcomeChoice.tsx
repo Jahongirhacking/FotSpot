@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
 import { refreshSession } from '@/lib/api/session-refresh';
 import { cn } from '@/lib/utils';
+import { homeHrefForRole } from '@/components/layout/nav';
 import { useI18n } from '@/components/layout/I18nProvider';
 
 /**
@@ -37,7 +38,7 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
     if (intent === 'player') {
       if (alreadyPlayer) {
         await persist({ role: 'player', onboarded: true });
-        router.push('/dashboard');
+        router.push(homeHrefForRole('player'));
         return;
       }
       // The role arrives with the profile; the wizard is the next step.
@@ -54,7 +55,11 @@ export function WelcomeChoice({ alreadyPlayer }: { alreadyPlayer: boolean }) {
       await refreshSession();
       await persist({ role: 'scout', onboarded: true });
       // Hard navigation: the server layout must re-read the new roles cookie.
-      window.location.assign('/dashboard');
+      //
+      // To where the scout role begins, which is the feed — not `/dashboard`,
+      // which is not in a scout's menu at all. Somebody who just chose "I spot
+      // talent" landed on a page with nothing highlighted and no next move.
+      window.location.assign(homeHrefForRole('scout'));
     } catch (err) {
       setBusy(null);
       setError(err instanceof Error ? err.message : 'That did not work. Please try again.');

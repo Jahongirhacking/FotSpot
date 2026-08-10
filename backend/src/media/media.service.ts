@@ -17,6 +17,7 @@ import {
 } from '../storage/storage.keys';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { GroupsService } from '../academies/groups.service';
+import { TariffsService } from '../tariffs/tariffs.service';
 import {
   ConfirmUploadDto,
   FeedDto,
@@ -124,6 +125,7 @@ export class MediaService {
     private storage: StorageService,
     private redis: RedisService,
     private groups: GroupsService,
+    private tariffs: TariffsService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -132,10 +134,24 @@ export class MediaService {
     return profile;
   }
 
-  /** Whether uploads can be accepted at all — surfaced so the UI can say so
-   *  before a player records a video. */
-  storageStatus() {
-    return { configured: this.storage.isConfigured };
+  /**
+   * Whether uploads can be accepted at all, and how many this player has left —
+   * surfaced so the UI can say so before a player records a video.
+   *
+   * The quota rides along with the storage flag because both answer the same
+   * question from the uploader's point of view: "can I add a clip right now".
+   * Two requests to answer one question is how a screen ends up showing the
+   * upload button to somebody who cannot use it.
+   */
+  async storageStatus(userId: string) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    return {
+      configured: this.storage.isConfigured,
+      quota: player ? await this.tariffs.clipQuota(userId) : null,
+    };
   }
 
   /**
@@ -147,6 +163,11 @@ export class MediaService {
    */
   async requestUpload(userId: string, dto: RequestUploadDto) {
     const profile = await this.ownPlayerProfile(userId);
+    // Checked before the ticket is signed, so a player on a phone is told they
+    // are out of uploads *before* spending their data on the video rather than
+    // after. It is checked again in `confirmUpload`, which is the boundary that
+    // actually counts: a signed ticket outlives this call and could be replayed.
+    await this.tariffs.assertCanUploadClip(userId);
     const storageKey = playerMediaKey(profile.id, dto.filename);
 
     // Both tickets in one round trip. The browser captures the cover frame from
@@ -176,6 +197,8 @@ export class MediaService {
    */
   async confirmUpload(userId: string, dto: ConfirmUploadDto) {
     const profile = await this.ownPlayerProfile(userId);
+    // The row is what the plan limits, so this is the check that matters.
+    await this.tariffs.assertCanUploadClip(userId);
     const isAttribute = ATTRIBUTE_CATEGORIES.includes(dto.category as MediaCategory);
 
     if (isAttribute && dto.rating === undefined) {

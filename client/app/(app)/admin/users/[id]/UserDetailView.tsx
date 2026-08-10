@@ -1,11 +1,13 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { Ban, CheckCircle2, Lock } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { UserDetail } from '@/lib/api/resources';
+import { PLAN_TIERS, type PlanTier, type UserDetail } from '@/lib/api/resources';
+import { planLabel } from '@/lib/plans';
 import { ROLES, type Role } from '@/lib/roles';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
@@ -35,6 +37,13 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
   const setRole = useMutation({
     mutationFn: ({ role, grant }: { role: string; grant: boolean }) =>
       browserFetch(`/admin/users/${user.id}/roles`, { method: 'PATCH', body: { role, grant } }),
+    onSuccess: () => router.refresh(),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const setPlan = useMutation({
+    mutationFn: (tier: PlanTier) =>
+      browserFetch(`/admin/users/${user.id}/plan`, { method: 'PATCH', body: { tier } }),
     onSuccess: () => router.refresh(),
     onError: (err: Error) => setError(err.message),
   });
@@ -103,6 +112,49 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
             <p className="text-muted flex items-center gap-1.5 text-xs">
               <Lock className="size-3.5" aria-hidden /> {t.admin.superAdminProtected}
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/*
+       * The tariff, which is the only place it can be changed.
+       *
+       * Nobody upgrades themselves, so this card is both the sales desk and the
+       * support desk for every limit in the product — "why can't I upload" is
+       * answered here.
+       */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.plans.title}</CardTitle>
+          {!canEdit && <CardDescription>{t.plans.onlySuperAdmin}</CardDescription>}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={user.planTier === 'FREE' ? 'neutral' : 'primary'}>
+              {planLabel(user.planTier ?? 'FREE', t)}
+            </Badge>
+            <Link href="/admin/tariff-plans" className="text-muted text-xs hover:underline">
+              {t.plans.title}
+            </Link>
+          </div>
+
+          {canEdit && (
+            <div className="border-border flex flex-wrap gap-2 border-t pt-3">
+              {PLAN_TIERS.map((tier) => {
+                const current = (user.planTier ?? 'FREE') === tier;
+                return (
+                  <Button
+                    key={tier}
+                    size="sm"
+                    variant={current ? 'primary' : 'outline'}
+                    disabled={current || setPlan.isPending}
+                    onClick={() => setPlan.mutate(tier)}
+                  >
+                    {planLabel(tier, t)}
+                  </Button>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
