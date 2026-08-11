@@ -15,6 +15,7 @@ import { ProcessAService } from './process-a.service';
 import { cooldownEndsAt } from './recommendation-cooldown.util';
 import { ageAt } from '../common/age.util';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { richTextToPlain, sanitizeRichText } from '../common/rich-text.util';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
@@ -229,10 +230,15 @@ export class RecommendationsService {
    * academy, which stopped being true when GLOBAL recommendations landed (§1.5.3):
    * those carry `academyId: null` and no targets at all.
    */
-  async listMine(scoutId: string) {
+  async listMine(scoutId: string, dto: PaginationDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const total = await this.prisma.recommendation.count({ where: { scoutId } });
+
     const rows = await this.prisma.recommendation.findMany({
       where: { scoutId },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
       include: {
         player: { select: { id: true, firstName: true, lastName: true } },
         academy: { select: { id: true, name: true } },
@@ -242,7 +248,7 @@ export class RecommendationsService {
       },
     });
 
-    return rows.map((row) => ({
+    const items = rows.map((row) => ({
       id: row.id,
       type: row.type,
       status: row.status,
@@ -261,6 +267,8 @@ export class RecommendationsService {
             ? [{ ...row.academy, status: row.status }]
             : [],
     }));
+
+    return pageOf(items, total, { page, pageSize });
   }
 
   /**
@@ -1635,6 +1643,60 @@ export class RecommendationsService {
         pendingRecommendations: pendingCount,
       },
       endorsements,
+    };
+  }
+
+  /**
+   * Where this scout stands with the academy the viewer runs.
+   *
+   * Returned inside the profile rather than from a route of its own, because the
+   * screen cannot draw its one button without it: "invite", "waiting on them"
+   * and "endorse" are the same control in three states, and fetching the state
+   * separately would render the wrong one first and then swap it under the
+   * manager's finger.
+   *
+   * Null for anybody who does not manage an academy — which is most readers of
+   * this page, including the scout themselves.
+   */
+  private async academyStandingFor(viewer: AuthUser, scoutUserId: string) {
+    if (!viewer.roles.includes('academy_manager')) return null;
+
+    const managed = await this.prisma.academyMember.findFirst({
+      where: { userId: viewer.userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { academyId: true, academy: { select: { name: true, status: true } } },
+    });
+    if (!managed) return null;
+
+    const [member, invitation, endorsement] = await Promise.all([
+      this.prisma.academyMember.findUnique({
+        where: { academyId_userId: { academyId: managed.academyId, userId: scoutUserId } },
+        select: { role: true, status: true },
+      }),
+      this.prisma.academyInvitation.findFirst({
+        where: { academyId: managed.academyId, userId: scoutUserId, status: 'PENDING' },
+        select: { id: true, createdAt: true },
+      }),
+      this.prisma.academyEndorsement.findFirst({
+        where: {
+          academyId: managed.academyId,
+          userId: scoutUserId,
+          role: EndorsementRole.SCOUT,
+          status: 'ACTIVE',
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      academyId: managed.academyId,
+      academyName: managed.academy.name,
+      /// Only a verified academy's scouts get the private-profile access that
+      /// membership grants, so the screen has to be able to say why not.
+      verified: managed.academy.status === 'VERIFIED',
+      // RELEASED is "we are done with them", which reads as not on the books.
+      isMember: !!member && member.status !== 'RELEASED',
+      invitationPending: !!invitation,
+      isEndorsed: !!endorsement,
     };
   }
 

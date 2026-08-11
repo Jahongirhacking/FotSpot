@@ -5,6 +5,7 @@ import { academies, recommendations, trials } from '@/lib/api/resources';
 import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MyTrialInvitations } from './MyTrialInvitations';
+import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
@@ -41,6 +42,7 @@ export default async function TrialsPage() {
 
     return (
       <div className="space-y-6">
+        {session && <MarkTrialsSeen />}
         <header>
           <h1 className="text-xl font-bold">{t.nav.trials}</h1>
           <p className="text-muted text-sm">{t.trials.coachTrialsHint}</p>
@@ -74,6 +76,8 @@ export default async function TrialsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Guests have no badge to clear, so it is only mounted for a session. */}
+      {session && <MarkTrialsSeen />}
       <header>
         <h1 className="text-xl font-bold">{t.trials.openTrials}</h1>
         <p className="text-muted text-sm">{t.trials.openTrialsHint}</p>

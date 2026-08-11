@@ -1,9 +1,9 @@
+import { AppHeader } from '@/components/layout/AppHeader';
+import { users } from '@/lib/api/resources';
+import { getSession } from '@/lib/session';
+import { initials } from '@/lib/utils';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { getSession } from '@/lib/session';
-import { users } from '@/lib/api/resources';
-import { initials } from '@/lib/utils';
 
 /** Reachable while `mustChangePassword` is set — the password screen itself, and
  *  the way out. Anything else redirects. */
@@ -58,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
       <footer className="text-muted border-border mt-auto border-t px-4 py-6 text-center text-xs">
-        FotSpot · Grassroots → Academy → Professional
+        FotSpot · Grassroots → Academy
       </footer>
     </>
   );

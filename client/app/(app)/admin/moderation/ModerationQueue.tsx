@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ShieldOff, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import type { Page } from '@/lib/api/client';
 import type { Report } from '@/lib/api/resources';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
@@ -21,7 +22,8 @@ export function ModerationQueue({ initial }: { initial: Report[] }) {
 
   const { data: reports } = useQuery({
     queryKey: ['reports'],
-    queryFn: () => browserFetch<Report[]>('/moderation/reports/pending'),
+    queryFn: () =>
+      browserFetch<Page<Report>>('/moderation/reports/pending').then((page) => page.items),
     initialData: initial,
   });
 

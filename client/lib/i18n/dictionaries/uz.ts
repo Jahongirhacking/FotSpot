@@ -213,10 +213,11 @@ export const uz = {
     playerCta: 'Kartamni sozlash',
     scoutTitle: 'Men iste’dod izlayman',
     scoutPoint1: 'Akademiyalarga futbolchi tavsiya qiling',
-    scoutPoint2: 'Skautlik obro‘si to‘plang',
+    scoutPoint2: 'Skautlik unvoni to‘plang',
     scoutPoint3: 'Futbolchi va akademiyalarni kuzating',
     scoutCta: 'Skautlikni boshlash',
     decideLater: 'Keyinroq hal qilaman',
+    subtitleLong: 'Bugun sizga mos keladiganini tanlang. Ikkinchisini keyin ham qo‘shishingiz mumkin.',
     settingUp: 'Sozlanmoqda…',
   },
 
@@ -227,6 +228,8 @@ export const uz = {
     stepFootball: 'Futbol',
     progress: 'Jarayon',
     whoIsPlaying: 'Kim o‘ynaydi?',
+    optionalHint: 'Hammasi ixtiyoriy — keyinroq ham to‘ldirsangiz bo‘ladi. Har biri kartangizni kuchaytiradi.',
+    tipLabel: 'Maslahat',
     whoIsPlayingHint:
       'Hozircha faqat asosiy ma’lumot. Tug‘ilgan sana qaysi yosh guruhida taqqoslanishingizni belgilaydi — biz hech qachon yosh guruhlari o‘rtasida taqqoslamaymiz.',
     dateOfBirth: 'Tug‘ilgan sana',
@@ -248,6 +251,8 @@ export const uz = {
     otherPosition: 'Boshqa pozitsiya',
     notSureYet: 'Hali aniq emas',
     playingStyle: 'O‘yin uslubi',
+    styleLikeWho: 'Masalan',
+    positionPickHint: 'Maydonda o‘z pozitsiyangizni bosing.',
     playingStyleHint: 'Qayerda emas, qanday o‘ynashingiz. Akademiyalar shuni qidiradi.',
     pickLater: 'Keyinroq tanlayman',
     strongFoot: 'Kuchli oyoq',
@@ -290,7 +295,7 @@ export const uz = {
     noPlayerCardHint: 'Futbolchi kartasi sizga akademiyalar oldida ko‘rinish beradi.',
     becomeScout: 'Skaut ham bo‘lasizmi?',
     becomeScoutHint:
-      'Boshqa futbolchilarni akademiyalarga tavsiya qiling. Obro‘ eng quyi darajadan boshlanadi.',
+      'Boshqa futbolchilarni akademiyalarga tavsiya qiling. Unvon eng quyi darajadan boshlanadi.',
     becomeScoutCta: 'Skaut bo‘lish',
     title: 'Profil',
     editProfile: 'Profilni tahrirlash',
@@ -628,6 +633,12 @@ export const uz = {
     recommendToAcademy: 'Akademiyaga tavsiya qilish',
     yourClips: 'Sizning videolaringiz',
     noClips: 'Hali video yo‘q. 60 soniyalik video har qanday tavsifdan qimmatliroq.',
+    checkPosition: 'Pozitsiya tanlandi',
+    checkStyle: 'O‘yin uslubi tanlandi',
+    checkRegion: 'Hudud ko‘rsatildi',
+    checkMeasurements: 'Bo‘y va vazn',
+    checkClip: 'Kamida bitta klip',
+    completionDone: '{done} / {total} bajarildi',
     makeCardStronger: 'Kartangizni kuchaytiring',
     doneOf: '{done} / {total} bajarildi',
     positionPicked: 'Pozitsiya tanlangan',
@@ -780,6 +791,11 @@ export const uz = {
     ageMin: 'Eng kichik yosh',
     ageMax: 'Eng katta yosh',
     positions: 'Pozitsiyalar',
+    ageRange: 'Yosh oralig‘i',
+    ageRangeHint: 'Sinov kunidagi yosh bo‘yicha hisoblanadi.',
+    positionsPickHint: 'Maydonda kerakli pozitsiyalarni belgilang. Mos futbolchilarga xabar boradi.',
+    positionsNoneChosen: 'Hech qanday pozitsiya tanlanmagan',
+    newBadge: 'yangi',
     positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
     requirements: 'Talablar',
     open: 'Ochiq',
@@ -801,6 +817,8 @@ export const uz = {
     ageCheckedNote: 'Akademiya yoshingizni {min}–{max} oralig‘iga avtomatik tekshiradi.',
     needsCard: 'Ariza berish uchun futbolchi kartasi kerak',
     needsCardBody: 'Bu bir daqiqa vaqt oladi va akademiya arizangiz bilan kartangizni ko‘radi.',
+    browseOpen: '{count} ta ochiq sinovni ko‘rish',
+    trial: 'Sinov',
     yourTrials: 'Sizning sinovlaringiz',
     noApplications: 'Siz hali hech qaysi sinovga ariza bermagansiz.',
     browseCount: '{count} ta ochiq sinovni ko‘rish',
@@ -867,7 +885,7 @@ export const uz = {
     everyPlayer: 'Siz taklif qilgan har bir futbolchi',
     nothingYet: 'Hali hech narsa yo‘q',
     nothingYetHint:
-      'Akademiyaga futbolchi tavsiya qiling. Obro‘ingizni faqat qabul qilingan tavsiyalar oshiradi.',
+      'Akademiyaga futbolchi tavsiya qiling. Unvoningizni faqat qabul qilingan tavsiyalar oshiradi.',
     searchPlayers: 'Futbolchilarni qidirish',
     inbox: 'Kelgan tavsiyalar',
     rankedByCredibility: 'Ishonchlilik bo‘yicha saralangan',
@@ -882,12 +900,12 @@ export const uz = {
     reject: 'Rad etish',
     recommendTitle: '{name}ni tavsiya qilish',
     recommendSubtitle:
-      'Obro‘ingiz faqat akademiya qabul qilganda o‘sadi. Hammani tavsiya qilish ko‘rsatkichingizni tushiradi — diqqat bilan tanlang.',
+      'Unvoningiz faqat akademiya qabul qilganda o‘sadi. Hammani tavsiya qilish ko‘rsatkichingizni tushiradi — diqqat bilan tanlang.',
     chooseAcademy: 'Akademiyani tanlang…',
     whyThisPlayer: 'Nega aynan shu futbolchi?',
     whyHint: 'Ixtiyoriy, lekin aniq izoh o‘qiladi. Siz nimani ko‘rdingiz?',
     sendRecommendation: 'Tavsiyani yuborish',
-    yourReputation: 'Sizning darajangiz',
+    yourReputation: 'Sizning unvoningiz',
     nextLevel: 'Keyingi daraja',
     moreRecommendations: 'yana {count} ta tavsiya',
     enoughRecommendations: '✓ tavsiyalar yetarli',
@@ -997,6 +1015,75 @@ export const uz = {
   },
 
   /** Tariflar — super admin tahrirlaydi, qolganlar faqat ko‘radi. */
+  /** Pozitsiya guruhlari — o'yin uslublari ro'yxatida sarlavha sifatida. */
+  positionGroups: {
+    Goalkeeper: 'Darvozabon',
+    Defence: 'Himoya',
+    Midfield: 'Yarim himoya',
+    Forward: 'Hujum',
+    Unknown: 'Belgilanmagan',
+  },
+
+  /** Har bir o'yin uslubining bir qatorlik izohi (§21.3). */
+  playingStyles: {
+    POACHER: 'Jarima maydonchasida yashaydi va eng qisqa imkoniyatni gol qiladi.',
+    TARGET_MAN: 'Uzun uzatmalarni ushlab turadi, havoda kuchli va sheriklarini o‘yinga qo‘shadi.',
+    DEEP_LYING_FORWARD: 'Pastga tushib o‘yin quradi — ham gol uradi, ham gol keltiradi.',
+    WIDE_THREAT: 'Qanotdan tezlik bilan kiradi va markazga burilib zarba beradi.',
+    BOX_TO_BOX: 'Ikkala jarima maydonchasi orasida to‘xtovsiz ishlaydi — himoya ham, hujum ham.',
+    PLAYMAKER: 'Oxirgi uzatmani ko‘radi va beradi; hujumning ijodkori.',
+    DESTROYER: 'To‘pni qaytarib oladi va darhol o‘zidan kuchliroq sherigiga beradi.',
+    ORCHESTRATOR: 'Jamoaning sur‘atini belgilaydi; sodda va aniq uzatmalar bilan o‘yinni boshqaradi.',
+    BALL_PLAYING_DEFENDER: 'Himoyada ishonchli, to‘p bilan orqadan o‘yin quradi.',
+    STOPPER: 'Old markaziy himoyachi — kuchli, qat‘iy va yakkama-yakka kurashda ustun.',
+    OVERLAPPING_FULL_BACK: 'Qanot bo‘ylab yuqoriga chiqadi, uzatma beradi va orqaga qaytadi.',
+    SWEEPER: 'Himoya orqasini o‘qiydi va xavfni yuzaga kelgunicha to‘xtatadi.',
+    OFFENSIVE_KEEPER: 'Darvozadan uzoqda o‘ynaydi, oyog‘i bilan ishonchli — o‘n birinchi o‘yinchi.',
+    DEFENSIVE_KEEPER: 'Darvozasida qoladi: reaksiya, joylashuv va jarima maydonchasi ustunligi.',
+  },
+
+  /**
+   * Har bir klip turi uchun qisqa yo'riqnoma.
+   *
+   * Futbolchi kamerani yoqishdan oldin nimani ko'rsatishni bilishi kerak:
+   * "TEXNIKA" so'zi o'zi hech narsa demaydi, va noto'g'ri suratga olingan klip
+   * qayta yuklanadi — bu esa tarif chegarasidan yana bitta o'rin oladi.
+   */
+  clipTips: {
+    camera:
+      'Maslahat: kamerani qimirlatmang, yorug‘lik yaxshi bo‘lsin, butun gavdangiz va to‘p kadrda ko‘rinib tursin.',
+    playerLabel: 'Futbolchi',
+    goalkeeperLabel: 'Darvozabon',
+    PACE: {
+      player: 'Startdagi tezlik, 20–30 m masofada yugurish, to‘p bilan tezlashish va yo‘nalish o‘zgartirishni ko‘rsating.',
+      goalkeeper: 'Darvoza oldidagi reaksiya tezligi, chiqish va to‘pgacha yetib borish tezligini ko‘rsating.',
+    },
+    DRIBBLING: {
+      player: 'Tor joyda to‘pni olib yurish, aldash harakatlari, himoyachidan o‘tib ketish va to‘pni nazorat qilishni ko‘rsating.',
+      goalkeeper: 'Bosim ostida to‘pni oyoq bilan olib chiqish va raqibdan qutulishni ko‘rsating.',
+    },
+    PASSING: {
+      player: 'Qisqa va uzun uzatmalar, aniqlik, ikki oyoqda uzatish va harakatdagi sherikka uzatishni ko‘rsating.',
+      goalkeeper: 'Qo‘l va oyoq bilan to‘p tarqatish, uzun uzatma va tez hujum boshlashni ko‘rsating.',
+    },
+    FINISHING: {
+      player: 'Jarima maydonchasi ichida va tashqarisidan zarbalar, ikki oyoqda va bosh bilan gol urishni ko‘rsating.',
+      goalkeeper: 'Penalti va 1v1 holatlarda zarbani to‘xtatishni ko‘rsating.',
+    },
+    PHYSICAL: {
+      player: 'Kuch, muvozanat, yakkama-yakka kurash, sakrash balandligi va chidamlilikni ko‘rsating.',
+      goalkeeper: 'Sakrash, cho‘zilish, jarima maydonchasida jismoniy ustunlik va tez o‘rnidan turishni ko‘rsating.',
+    },
+    TECHNIQUE: {
+      player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
+      goalkeeper: 'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
+    },
+    MATCH_HIGHLIGHTS: {
+      player: 'Haqiqiy o‘yindan eng yaxshi lahzalar: gol, uzatma, muhim harakatlar. Boshqalar orasida o‘zingiz ko‘rinib turing.',
+      goalkeeper: 'Haqiqiy o‘yindan to‘xtatishlar, chiqishlar va jamoani boshqarish lahzalari.',
+    },
+  },
+
   plans: {
     title: 'Tariflar',
     hint: 'Har bir tarif nimaga ruxsat berishini belgilang. Barcha yangi hisoblar Bepul tarifda boshlanadi.',
@@ -1039,7 +1126,7 @@ export const uz = {
   /** Skaut profili — futbolchilar va akademiyalar ko‘radi, murabbiylar emas. */
   scouts: {
     profile: 'Skaut profili',
-    reputation: 'Obro‘',
+    reputation: 'Unvon',
     level: 'Daraja',
     weight: 'Vazn',
     sent: 'Yuborilgan',
@@ -1052,6 +1139,15 @@ export const uz = {
     notFound: 'Bunday skaut topilmadi',
     hiddenFromCoaches:
       'Murabbiy futbolchini baholaydi, uni tavsiya qilgan skautni emas. Bu sahifa murabbiylarga ko‘rinmaydi.',
+    inviteToSquad: 'Tarkibga taklif qilish',
+    inviteHint: 'Skaut taklifni qabul qilsa, akademiyangiz tarkibiga qo‘shiladi.',
+    inviteWarning:
+      '{name}ni tarkibga taklif qilasizmi? Qabul qilsa, u akademiyangiz nomidan tavsiya bera oladi va tasdiqlangan akademiyada yopiq futbolchilar profilini ko‘ra oladi.',
+    invitePending: 'Taklif yuborildi — javob kutilmoqda',
+    acceptedInvite: 'Taklifni qabul qildi',
+    inSquad: 'Tarkibingizda',
+    academyNotVerified:
+      'Akademiyangiz hali tasdiqlanmagan, shuning uchun bu skaut yopiq profillarni ko‘ra olmaydi.',
     viewProfile: 'Skaut profilini ko‘rish',
   },
 
@@ -1153,7 +1249,7 @@ export const uz = {
     pillar1Title: 'CV emas — futbol profili',
     pillar1Body: 'Pozitsiya, o‘yin uslubi, statistika va video-isbotlar bitta profilda.',
 
-    pillar2Title: 'Obro‘ natija bilan',
+    pillar2Title: 'Unvon natija bilan',
     pillar2Body: 'Skaut reytingi tavsiyalar soniga emas, ular bergan natijaga asoslanadi.',
 
     pillar3Title: 'Akademiya uchun tezkor saralash',
@@ -1185,7 +1281,7 @@ export const uz = {
 
       recommended: {
         title: 'Tavsiya qilindi',
-        body: 'Skaut futbolchini akademiyaga tavsiya qiladi. Natija uning obro‘siga ta’sir qiladi.',
+        body: 'Skaut futbolchini akademiyaga tavsiya qiladi. Natija uning unvoniga ta’sir qiladi.',
       },
 
       review: {
@@ -1218,7 +1314,7 @@ export const uz = {
 
       scouts: {
         title: 'Skautlar uchun',
-        body: 'Obro‘ tavsiyalar soni bilan emas, natija bilan o‘lchanadi.',
+        body: 'Unvon tavsiyalar soni bilan emas, natija bilan o‘lchanadi.',
         points: [
           'Iste’dodlarni toping va tavsiya qiling',
           'Muvaffaqiyat reytingingiz real natijalar asosida oshadi',

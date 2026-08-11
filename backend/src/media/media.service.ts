@@ -5,29 +5,46 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { MediaCategory, Prisma } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
+import { GroupsService } from '../academies/groups.service';
+import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
-import { StorageService } from '../storage/storage.service';
+import { RedisService } from '../redis/redis.service';
 import {
   assertKeyUnder,
   playerMediaKey,
   playerMediaPrefix,
   playerPosterKey,
 } from '../storage/storage.keys';
-import { AuthUser } from '../common/decorators/current-user.decorator';
-import { GroupsService } from '../academies/groups.service';
+import { StorageService } from '../storage/storage.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import {
   ConfirmUploadDto,
-  FeedDto,
-  RateMediaDto,
   CreateMediaCommentDto,
+  FeedDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
+  RateMediaDto,
   RequestUploadDto,
   UpdateMediaDto,
 } from './dto/media.dto';
+import {
+  FINALISE_ATTEMPTS,
+  FINALISE_BACKOFF_MS,
+  FINALISE_CLIP_JOB,
+  MEDIA_QUEUE,
+  type FinaliseClipJob,
+} from './media-processing.constants';
+
+/**
+ * How long one viewer stays counted for one clip.
+ *
+ * A day: long enough that a page refresh, a re-watch or a second tab is the
+ * same view, short enough that genuinely coming back later still registers.
+ */
+const VIEW_DEDUPE_SECONDS = 24 * 60 * 60;
 
 /** Highlights show off a performance; every other category evidences one bar. */
 const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
@@ -93,6 +110,60 @@ const FEED_FRESHNESS_TERM = 1.5;
 /** One week, in seconds — the half-life of the freshness term. */
 const FEED_HALF_LIFE_SECONDS = 7 * 24 * 60 * 60;
 
+/**
+ * How hard a clip the viewer has already watched is pushed down.
+ *
+ * Large enough to outweigh every positive term combined: the strongest possible
+ * signal that a clip is not worth this viewer's next sixty seconds is that they
+ * have already spent sixty seconds on it. A feed that keeps re-showing the same
+ * video is the complaint this answers, and a gentle nudge would not fix it —
+ * a clip with a Legendary Scout behind it would still climb straight back.
+ */
+const FEED_SEEN_PENALTY = 12;
+
+/**
+ * How long a watched clip stays fully suppressed.
+ *
+ * An hour, then the penalty tapers off. Not permanent exclusion: a scout does
+ * come back to a player they are weighing up, and a clip they saw last week is
+ * a legitimate thing to surface again — just not the thing to open with.
+ */
+const FEED_SEEN_COOLDOWN_SECONDS = 60 * 60;
+
+/**
+ * A liked clip is done with, more so than a watched one.
+ *
+ * Liking is the most deliberate signal the product has: the viewer looked, made
+ * up their mind and said so. Showing it again asks a question they have already
+ * answered. It still counts *toward* what they are shown next — see the affinity
+ * term, which is built entirely from likes.
+ */
+const FEED_LIKED_PENALTY = 20;
+
+/**
+ * Weight on "this looks like the clips you have liked".
+ *
+ * Affinity is measured by category, which is the one axis of similarity the data
+ * actually carries: every clip is filed under the attribute it evidences (§21.1),
+ * so a viewer who keeps liking FINISHING clips is telling us what they are
+ * scouting for. Normalised against their own like count, so it says "what
+ * fraction of your likes were this kind" rather than rewarding heavy users.
+ *
+ * Deliberately smaller than the earned-weight term: it should colour the order,
+ * not narrow the feed to one attribute and hide every other player from view.
+ */
+const FEED_AFFINITY_TERM = 1.8;
+
+/**
+ * Extra lift for an unseen clip from somebody the viewer follows.
+ *
+ * On top of the flat follow bonus, and conditional on *unseen*: "a new video
+ * from someone I follow" is the single most reliable thing a feed can offer, and
+ * separating it from the plain follow term is what stops an old clip from a
+ * followed player crowding out their new one.
+ */
+const FEED_FOLLOWED_UNSEEN_TERM = 2.5;
+
 /** One row of the feed query, before URLs are signed onto it. */
 interface FeedRow {
   id: string;
@@ -116,6 +187,8 @@ interface FeedRow {
   views: number;
   likedByMe: boolean;
   following: boolean;
+  /** Whether this viewer has already watched it — drives the seen penalty. */
+  seenByMe: boolean;
 }
 
 @Injectable()
@@ -126,6 +199,7 @@ export class MediaService {
     private redis: RedisService,
     private groups: GroupsService,
     private tariffs: TariffsService,
+    @InjectQueue(MEDIA_QUEUE) private queue: Queue<FinaliseClipJob>,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -226,10 +300,35 @@ export class MediaService {
         rating: isAttribute ? dto.rating : null,
         title: dto.title ?? null,
         description: dto.description ?? null,
+        // PROCESSING by the column default — this call is the *client's word*
+        // that an upload happened, and the worker is what checks. See
+        // MediaProcessor.
       },
     });
-    // PlayersService.getPublicProfile embeds active media, so its cache is now stale.
-    await this.redis.del(RedisKeys.playerProfile(profile.id));
+
+    /*
+     * The job that decides whether this clip is real.
+     *
+     * `jobId` is the media id, so BullMQ deduplicates: a double-tapped confirm,
+     * or a retry from a flaky connection, cannot queue two workers racing to
+     * finalise the same row.
+     *
+     * Enqueued after the row exists, deliberately — a worker that started first
+     * would look up a media id that had not been written yet.
+     */
+    await this.queue.add(
+      FINALISE_CLIP_JOB,
+      { mediaId: media.id, storageKey: media.storageKey, posterKey: media.posterKey },
+      {
+        jobId: media.id,
+        attempts: FINALISE_ATTEMPTS,
+        backoff: { type: 'exponential', delay: FINALISE_BACKOFF_MS },
+      },
+    );
+
+    // No cache invalidation here any more: the clip is not visible yet, so there
+    // is nothing stale to clear. The worker does it at the moment the clip
+    // actually appears.
     return toMediaResponse(media, this.storage);
   }
 
@@ -240,14 +339,40 @@ export class MediaService {
    * so a guest looking at a profile still sees "pace 85, backed by a clip". The
    * footage itself needs `GET /media/:id/url` and an authorized caller.
    */
-  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}) {
-    const items = await this.prisma.media.findMany({
-      where: { playerId, status: 'ACTIVE', ...(dto.category ? { category: dto.category } : {}) },
-      orderBy: { createdAt: 'desc' },
-    });
+  async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}, viewerUserId?: string) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+
+    /*
+     * The owner sees their own clips while they are still being finalised.
+     *
+     * Everyone else sees only ACTIVE, which is what makes PROCESSING meaningful:
+     * a clip is not evidence until the worker has found it in the bucket. But
+     * hiding it from the uploader too would mean pressing upload and watching
+     * nothing appear — indistinguishable from a failure, and the moment they
+     * would upload it again.
+     */
+    const owner = viewerUserId
+      ? await this.prisma.playerProfile.findFirst({
+          where: { id: playerId, userId: viewerUserId },
+          select: { id: true },
+        })
+      : null;
+
+    const where: Prisma.MediaWhereInput = {
+      playerId,
+      status: owner ? { in: ['ACTIVE', 'PROCESSING', 'FAILED'] } : 'ACTIVE',
+      ...(dto.category ? { category: dto.category } : {}),
+    };
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.media.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.media.count({ where }),
+    ]);
+
     // Signing is local HMAC — no network — so a page of tiles costs microseconds,
     // not a round trip each.
-    return Promise.all(items.map((item) => toMediaResponse(item, this.storage)));
+    const items = await Promise.all(rows.map((item) => toMediaResponse(item, this.storage)));
+    return pageOf(items, total, { page, pageSize });
   }
 
   /**
@@ -300,21 +425,49 @@ export class MediaService {
    *
    * A scout opening the app should see the clips most worth their next sixty
    * seconds, and the platform's own answer to "who is worth watching" already
-   * exists: `PlayerRecommendationWeight.globalWeight`, the decaying sum of what
-   * scouts have staked on that player (§1.5). The feed leans on it rather than
+   * exists: `PlayerRecommendationWeight.globalWeight`, the sum of what scouts
+   * have staked on that player (§1.5). The feed leans on it rather than
    * inventing a second, competing notion of merit.
    *
-   * Four terms, in order of how much they move the result:
+   * ## What the viewer has already done outranks everything else
    *
+   * The two strongest signals in the score are negative, because the loudest
+   * complaint a feed can produce is "why am I being shown this again". A clip
+   * the viewer has **watched** is suppressed for an hour and demoted after that;
+   * a clip they have **liked** is demoted harder still and effectively does not
+   * come back. Liking is the most deliberate judgement the product offers — the
+   * viewer looked, decided, and said so — and re-showing it asks a question they
+   * have already answered.
+   *
+   * Those likes are not discarded, they change direction: they become the
+   * affinity term, which is how "more like the ones you liked" is expressed.
+   *
+   * ## The terms, in order of how much they move the result
+   *
+   * - **Seen penalty** (negative). Full strength within the hour after viewing,
+   *   tapering afterwards, so a clip can eventually resurface without being the
+   *   thing the feed opens with.
+   * - **Liked penalty** (negative), flat and larger. No cooldown: a decided clip
+   *   stays decided.
    * - **Earned weight**, `ln(1 + globalWeight)`. Logarithmic on purpose: the
    *   weights are geometric (1, 3, 8, 20, 50, 125), so untransformed they would
    *   let a handful of Legendary Scout picks own the feed outright and bury every
    *   player nobody has recommended yet — which is precisely the child this
    *   product exists to surface.
-   * - **Following**, a flat bonus. Asked for directly: a scout who followed a
-   *   player wants that player's new clip near the top, and a flat term does that
-   *   without letting one follow outrank all merit.
-   * - **Likes**, `ln(1 + likes)`, damped for the same reason as weight.
+   * - **New from a followed player**. A follow bonus, plus an extra lift when the
+   *   clip is also unseen — which is what makes "somebody I follow posted
+   *   something new" the reliable top of the feed rather than the same followed
+   *   clip every visit.
+   * - **Affinity**, the share of the viewer's own likes that fell in this clip's
+   *   category. Category is the one axis of similarity the data really carries:
+   *   every clip is filed under the attribute it evidences (§21.1), so a viewer
+   *   who keeps liking FINISHING clips has said what they are scouting for.
+   *   Normalised by their like count, so it is a proportion rather than a reward
+   *   for volume, and weighted below earned merit so it colours the order instead
+   *   of narrowing the feed to a single attribute.
+   * - **Likes**, `ln(1 + likes)`, damped for the same reason as weight. With the
+   *   seen penalty beside it this is what surfaces *popular clips the viewer has
+   *   not watched yet*.
    * - **Freshness**, an exponential decay with a one-week half-life. Without it a
    *   good clip from March outranks everything uploaded since, forever.
    *
@@ -344,7 +497,8 @@ export class MediaService {
         COALESCE(l.likes, 0)::int AS likes,
         COALESCE(v.views, 0)::int AS views,
         (ml."userId" IS NOT NULL) AS "likedByMe",
-        (f.id IS NOT NULL) AS following
+        (f.id IS NOT NULL) AS following,
+        (mv."lastViewedAt" IS NOT NULL) AS "seenByMe"
       FROM "Media" m
       JOIN "PlayerProfile" p ON p.id = m."playerId"
       JOIN "User" u ON u.id = p."userId"
@@ -356,13 +510,50 @@ export class MediaService {
       LEFT JOIN "MediaLike" ml ON ml."mediaId" = m.id AND ml."userId" = ${viewerUserId}
       LEFT JOIN "Follow" f
         ON f."followerId" = ${viewerUserId} AND f."targetType" = 'PLAYER' AND f."targetId" = p.id
+      -- When this viewer last watched this clip. MediaView is an event log with
+      -- a row per viewing, so the *most recent* one is what the cooldown reads.
+      LEFT JOIN (
+        SELECT "mediaId", MAX("createdAt") AS "lastViewedAt"
+        FROM "MediaView"
+        WHERE "userId" = ${viewerUserId}
+        GROUP BY "mediaId"
+      ) mv ON mv."mediaId" = m.id
+      -- What share of this viewer's likes fell in each category. One pass over
+      -- their own likes, joined by category rather than per row.
+      LEFT JOIN (
+        SELECT lm.category,
+               COUNT(*)::float / NULLIF(SUM(COUNT(*)) OVER (), 0) AS affinity
+        FROM "MediaLike" lk
+        JOIN "Media" lm ON lm.id = lk."mediaId"
+        WHERE lk."userId" = ${viewerUserId}
+        GROUP BY lm.category
+      ) aff ON aff.category = m.category
       WHERE m.status = 'ACTIVE' AND m.type = 'VIDEO' AND u."isPrivate" = false
       ORDER BY
         ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
         + ${FEED_FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
+        -- "Something new from someone I follow" — the follow bonus only counts
+        -- twice while the clip is still unwatched.
+        + ${FEED_FOLLOWED_UNSEEN_TERM}
+          * (CASE WHEN f.id IS NOT NULL AND mv."lastViewedAt" IS NULL THEN 1 ELSE 0 END)
+        + ${FEED_AFFINITY_TERM} * COALESCE(aff.affinity, 0)
         + ${FEED_LIKES_TERM} * ln(1 + COALESCE(l.likes, 0))
         + ${FEED_FRESHNESS_TERM}
           * exp(-EXTRACT(EPOCH FROM (now() - m."createdAt")) / ${FEED_HALF_LIFE_SECONDS})
+        -- Already watched: full penalty for the first hour, then decaying, so a
+        -- clip can resurface later without ever opening the feed.
+        - ${FEED_SEEN_PENALTY}
+          * (CASE
+               WHEN mv."lastViewedAt" IS NULL THEN 0
+               WHEN now() - mv."lastViewedAt"
+                    < make_interval(secs => ${FEED_SEEN_COOLDOWN_SECONDS}) THEN 1
+               ELSE exp(
+                 -(EXTRACT(EPOCH FROM (now() - mv."lastViewedAt")) - ${FEED_SEEN_COOLDOWN_SECONDS})
+                 / ${FEED_HALF_LIFE_SECONDS}
+               )
+             END)
+        -- Already liked: decided, and it stays decided.
+        - ${FEED_LIKED_PENALTY} * (CASE WHEN ml."userId" IS NULL THEN 0 ELSE 1 END)
         DESC,
         m."createdAt" DESC
       LIMIT ${pageSize} OFFSET ${skip}
@@ -606,11 +797,45 @@ export class MediaService {
    * Not pushed over WebSocket by deliberate design - 1.17 lists views among the
    * high-volume, low-value events that must never hit the notification channel.
    */
-  async recordView(mediaId: string, userId?: string) {
+  /**
+   * Counts one view, at most once per viewer per clip per hour.
+   *
+   * ## Why this is deduplicated at all, when a view is an event
+   *
+   * `MediaView` is deliberately not unique per (media, user) — a view is
+   * something that happens, not a state, which is what makes "watched three
+   * times this week" answerable. That reasoning still holds; what it never
+   * accounted for is that the endpoint takes no token and writes a row, so an
+   * anonymous loop can grow the largest table in the database without limit and
+   * inflate any player's numbers to whatever it likes.
+   *
+   * An hour-long claim keeps both properties: repeat viewing on different days
+   * still registers as separate events, and a script gets one row an hour per
+   * address instead of one per request. `ThrottleGuard` bounds the request rate;
+   * this bounds what the requests can *write*, which is the part that persists.
+   *
+   * The claim fails closed when Redis is down — an outage drops views rather
+   * than reopening unbounded insertion, and a lost view counter is recoverable
+   * while a table full of fabricated rows is not.
+   */
+  async recordView(mediaId: string, viewer: { userId?: string; ipAddress?: string }) {
     const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
     if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
 
-    await this.prisma.mediaView.create({ data: { mediaId, userId: userId ?? null } });
+    // The account when there is one, so the same person is counted once whatever
+    // network they are on; the address otherwise, which is all a guest offers.
+    const identity = viewer.userId ?? (viewer.ipAddress ? `ip:${viewer.ipAddress}` : null);
+    if (!identity) return { recorded: false };
+
+    const fresh = await this.redis.claimOnce(
+      RedisKeys.mediaViewClaim(mediaId, identity),
+      VIEW_DEDUPE_SECONDS,
+    );
+    if (!fresh) return { recorded: false };
+
+    await this.prisma.mediaView.create({
+      data: { mediaId, userId: viewer.userId ?? null },
+    });
     return { recorded: true };
   }
 

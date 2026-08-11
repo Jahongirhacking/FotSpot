@@ -19,7 +19,7 @@ import { RecommendationsService } from '../recommendations/recommendations.servi
 import { InvitationsService } from '../academies/invitations.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
-import { ageAt } from '../common/age.util';
+import { ageAt, birthDateForAge } from '../common/age.util';
 import { sanitizeRichText } from '../common/rich-text.util';
 
 @Injectable()
@@ -42,12 +42,152 @@ export class TrialsService {
       throw new BadRequestException('Applications cannot close after the trial has happened');
     }
 
-    return this.prisma.trial.create({
+    const trial = await this.prisma.trial.create({
       // Sanitised here rather than trusted from the client: the editor cleans as
       // a convenience for the person typing, but this endpoint is reachable
       // without it.
       data: { academyId, ...dto, date, applyDeadline, note: sanitizeRichText(dto.note) },
     });
+
+    await this.announceToMatchingPlayers(trial, userId);
+    return trial;
+  }
+
+  /**
+   * Tells the players a new trial is actually for.
+   *
+   * ## Matched, not broadcast
+   *
+   * A notification that does not apply to you is how somebody learns to ignore
+   * the ones that do. So this reaches only players whose **primary or secondary
+   * position** is one the academy asked for and whose **age on the day of the
+   * trial** falls inside the stated range — the same two fields the manager
+   * filled in, which makes the message true by construction rather than by a
+   * ranking anybody has to trust.
+   *
+   * Age is computed against the trial date rather than today, because that is
+   * the rule `apply` enforces: a boy who turns 14 the week before a U14 morning
+   * is eligible, and telling him about it and then refusing his application
+   * would be worse than staying quiet.
+   *
+   * ## Private trials say nothing
+   *
+   * A private trial is a session for one named child (TRIAL.md §18) and carries
+   * no positions or age range at all. Announcing one would tell a stranger that
+   * child is being looked at.
+   */
+  private async announceToMatchingPlayers(
+    trial: {
+      id: string;
+      academyId: string;
+      title: string;
+      date: Date;
+      type: string;
+      positions: string[];
+      ageRangeMin: number | null;
+      ageRangeMax: number | null;
+    },
+    actorUserId: string,
+  ) {
+    if (trial.type !== 'GENERAL' || trial.positions.length === 0) return;
+
+    /*
+     * Age is filtered as a birth-date window, in the query.
+     *
+     * The alternative — read every player and compute ages in memory — is a full
+     * table scan of a table that grows with every signup, run inside the request
+     * that creates a trial. Ages become dates once, here, and the database uses
+     * its index on the column.
+     */
+    const bounds: { gte?: Date; lte?: Date } = {};
+    // Oldest allowed: born no earlier than (trial date − maxAge − 1 year + 1 day).
+    if (trial.ageRangeMax != null) bounds.gte = birthDateForAge(trial.date, trial.ageRangeMax + 1);
+    // Youngest allowed: born no later than (trial date − minAge).
+    if (trial.ageRangeMin != null) bounds.lte = birthDateForAge(trial.date, trial.ageRangeMin);
+
+    const matches = await this.prisma.playerProfile.findMany({
+      where: {
+        OR: [
+          { primaryPosition: { in: trial.positions } },
+          { secondaryPosition: { in: trial.positions } },
+        ],
+        ...(bounds.gte || bounds.lte ? { birthDate: bounds } : {}),
+        // A private account has asked not to be found; an unannounced trial is
+        // part of what that buys.
+        user: { isPrivate: false, isActive: true },
+      },
+      select: { userId: true },
+    });
+
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: trial.academyId },
+      select: { name: true },
+    });
+
+    for (const match of matches) {
+      await this.notifications.notify(
+        match.userId,
+        'TRIAL_PUBLISHED',
+        {
+          trialId: trial.id,
+          trialTitle: trial.title,
+          academyId: trial.academyId,
+          academyName: academy?.name ?? null,
+          date: trial.date,
+          positions: trial.positions,
+        },
+        { userId: actorUserId, role: 'academy_manager' },
+      );
+    }
+  }
+
+  /**
+   * How far the trials list has moved since this account last looked.
+   *
+   * Drives the badge on the Trials menu entry. Counted per role, because "a
+   * trial worth knowing about" is a different set for each: a player is offered
+   * open general trials they could apply to, while academy staff are told about
+   * their own academy's new ones and nobody else's.
+   */
+  async unseenCount(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { trialsSeenAt: true },
+    });
+    // Null means never opened — everything currently open is new to them.
+    const since = user?.trialsSeenAt ?? undefined;
+    const now = new Date();
+
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, role: { in: ['MANAGER', 'COACH'] }, status: 'ACTIVE' },
+      select: { academyId: true },
+    });
+
+    // Staff see their own academy's; everybody else sees the public list. A
+    // coach who is also a player gets the staff answer, matching the menu they
+    // are looking at.
+    const where = membership
+      ? { academyId: membership.academyId, status: 'OPEN' as const }
+      : {
+          status: 'OPEN' as const,
+          type: 'GENERAL' as const,
+          date: { gte: now },
+          // Only ones they could still act on: a closed deadline is not news.
+          OR: [{ applyDeadline: null }, { applyDeadline: { gte: now } }],
+        };
+
+    const count = await this.prisma.trial.count({
+      where: { ...where, ...(since ? { createdAt: { gt: since } } : {}) },
+    });
+
+    return { count, since: since ?? null };
+  }
+
+  /** Clears the badge. Called when the trials list is opened. */
+  async markSeen(userId: string) {
+    const seenAt = new Date();
+    await this.prisma.user.update({ where: { id: userId }, data: { trialsSeenAt: seenAt } });
+    return { seenAt };
   }
 
   /**

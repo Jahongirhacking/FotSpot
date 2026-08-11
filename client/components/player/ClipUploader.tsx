@@ -281,6 +281,8 @@ export function ClipUploader({
               </div>
             </fieldset>
 
+            {category && <ClipTips category={category} />}
+
             {category && !isHighlight && (
               <Field
                 label={`${t.clips.yourRating}: ${rating}`}
@@ -486,6 +488,48 @@ function LiveRecorder({
           <Video aria-hidden /> {t.clips.recordNow}
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * What to actually film, once a category is chosen.
+ *
+ * The category names are the six card attributes (§21.1), and on their own they
+ * are a label rather than an instruction: "Technique" does not tell a
+ * thirteen-year-old whether to juggle, dribble or shoot, and a clip that shows
+ * the wrong thing gets re-recorded — which under the plan limits costs them one
+ * of their uploads for the week.
+ *
+ * Split by player and goalkeeper because for a keeper almost every category
+ * means something different: "Passing" is distribution, "Finishing" is stopping
+ * one. Both are shown rather than guessing from the player's position, since the
+ * position is optional on the profile and wrong guidance is worse than two lines.
+ *
+ * The camera note is last and shared: it applies to every clip, and it is the
+ * single most common reason a clip is unusable.
+ */
+function ClipTips({ category }: { category: Category }) {
+  const { t } = useI18n();
+  const tips = t.clipTips[category as keyof typeof t.clipTips];
+
+  // MATCH_HIGHLIGHTS and the six attributes all have entries; this guards a
+  // category added to the enum before its copy is written.
+  if (!tips || typeof tips === 'string') return null;
+
+  return (
+    <div className="border-border bg-surface-2 space-y-2 rounded-lg border p-3">
+      <p className="text-xs leading-snug">
+        <span className="font-semibold">{t.clipTips.playerLabel}:</span>{' '}
+        <span className="text-muted">{tips.player}</span>
+      </p>
+      <p className="text-xs leading-snug">
+        <span className="font-semibold">{t.clipTips.goalkeeperLabel}:</span>{' '}
+        <span className="text-muted">{tips.goalkeeper}</span>
+      </p>
+      <p className="text-muted border-border border-t pt-2 text-xs leading-snug">
+        {t.clipTips.camera}
+      </p>
     </div>
   );
 }

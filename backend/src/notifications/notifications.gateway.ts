@@ -9,6 +9,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { corsOptions } from '../common/security.config';
 
 /**
  * Notifications-only gateway per README 1.17 (NOT used for likes/views/visits).
@@ -17,7 +18,9 @@ import { ConfigService } from '@nestjs/config';
  * build to keep infra minimal; the client contract below does not change.
  */
 @Injectable()
-@WebSocketGateway({ cors: true, namespace: 'notifications' })
+// Same allowlist as the REST surface — a socket that any origin may open is a
+// socket any page can open in a visitor's browser. See common/security.config.ts.
+@WebSocketGateway({ cors: corsOptions(), namespace: 'notifications' })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 

@@ -1,6 +1,6 @@
 # FotSpot
 
-**Grassroots → Academy → Professional pipeline for Uzbek football.**
+**Grassroots → Academy pipeline for Uzbek football.**
 
 Technical Specification (TZ) + Technical Solution (TY) · Version 2.0
 
@@ -196,6 +196,33 @@ An Observer's weight of **1** is correct as an absolute floor: level 1 has _no_ 
 requirement, so an Observer's success rate is unknown and their recommendation carries no
 evidence beyond "somebody looked".
 
+**When reputation is recalculated.** On an outcome, and only on an outcome. Three events
+settle a recommendation, and each one recomputes `success_rate` — and therefore the level and
+weight — of **every scout who recommended that player**:
+
+| Event                                | Counts the recommendation as |
+| ------------------------------------ | ---------------------------- |
+| Coach rejects the player at online review | rejected                 |
+| Coach **fails** the player at a trial     | rejected                 |
+| Coach **passes** the player at a trial    | accepted                 |
+
+A player rarely arrives on one scout's word, so a single verdict moves every scout backing
+them at once: they were all making the same call and the outcome answers all of it.
+
+Two consequences worth stating, because both were once specified the other way:
+
+- **Nothing is on a timer.** There is no decay, no inactivity penalty and no scheduled
+  adjustment. A scout who stops filing keeps the record they earned — the number describes the
+  calls they made, not how recently they were active.
+- **It is a recomputation, not a delta.** Each event recounts the scout's settled
+  recommendations from scratch rather than adding or subtracting. That makes it idempotent: a
+  retry, a double-fire or a backfill all land on the same number, which a running total cannot
+  promise across the three separate places an outcome can arrive from.
+
+> Implemented in `RecommendationsService.recalculateScoutStats`, reached from `decideReview`
+> (online review) and `settleTrialBackings` (trial pass and fail). The formula and tiers
+> themselves are frozen — see `scout-level.util.ts`.
+
 ### 1.5.1. Aggregating multiple recommendations
 
 Weight alone is not enough — summing it linearly means 125 fake Observers still equal one
@@ -264,8 +291,10 @@ endorsement is the academy choosing.
 #### How weight accrues
 
 A recommendation is stamped with the scout's §1.5 weight **at the moment of
-filing** — evidence about a point in time. Later promotion doesn't retroactively
-reweight everything they ever said, and the decay job needs a stable number.
+filing** — evidence about a point in time. A scout's weight moves every time one
+of their recommendations is answered (§1.5), so a live lookup would let a single
+acceptance silently reweight every player they have ever put forward, including
+ones already settled.
 
 ```
 global_weight(player)        += scout_weight          # every recommendation
@@ -295,20 +324,23 @@ lesser scout can never outrank an untargeted one from a better scout.
 
 #### Why `global_weight` is stored separately
 
-It is a materialised column, not a sum computed on read, because **a scheduled job
-will decay it**. Without decay, weight is pure accumulation and the top of every
-search belongs permanently to whoever joined first — a 13-year-old recommended last
-week could never surface above a 19-year-old recommended fifty times over three
-years. Since discovery of new talent is the entire product (§1.1), that failure
-mode is fatal rather than cosmetic.
+It is a materialised column, not a sum computed on read, because of how the two
+sides are used. It changes only when a recommendation is filed or settled — a few
+times a month for an active player — and it is read by search, the feed and every
+academy inbox, on every request. Recomputing it per read would join four tables to
+answer a question whose answer almost never changes.
 
-Decay is half-life shaped (default 180 days) and continuous, so running the job
-nightly or weekly produces the same curve and a late run doesn't over-penalise.
-Per-academy extras are not decayed: they are one academy's private working record,
-not a discovery ranking.
+**Nothing decays it on a timer.** Weight moves when a recommendation is *answered*
+and at no other time; see §1.5's recalculation rule. There is no scheduled job, no
+half-life and no `last_decayed_at` bookmark.
 
-> Implemented in `recommendation-weight.util.ts` and unit-tested. The job itself is
-> not scheduled yet — no BullMQ workers exist (§1.18).
+That leaves accumulation to be handled where it is actually visible — in ranking
+rather than in the stored number. The feed applies its own freshness decay at read
+time (`§1.14`), which keeps a well-recommended clip from March out of today's top
+slot without rewriting the record of who vouched for that player.
+
+Per-academy extras are separate for a different reason: they are one academy's
+private working record, not a discovery ranking (§21.5).
 
 ### 1.6. Player profile
 
@@ -605,7 +637,8 @@ what makes it the default state and what makes "shares a group" the assessment g
 
 Also implemented: `academy_endorsements` (§1.5.3, the only academy→person link with functional
 consequences) · `player_recommendation_weights` and `player_academy_recommendation_weights`
-(§1.5.1 discoverability, stored rather than derived so a cron can decay them) ·
+(§1.5.1 discoverability, stored because they are read on every search and written
+only when a recommendation is filed or settled) ·
 `rating_revisions` (what a clip's rating was before somebody changed it, and who changed it) ·
 `sessions`, `verification_codes`, `registration_codes`, `password_reset_codes` (§1.3/§1.21).
 
@@ -847,6 +880,17 @@ Points are _cumulative_ along the outcome path.
 Maximum lifetime value of one correct recommendation: **14 points**. This is the single
 source of truth for §5's `total_score`.
 
+> **Open question, to settle before this is built.** The two retention rows are the only
+> place left in the spec where a scout's standing moves on a timer rather than on somebody's
+> decision. §1.5 and §12.2 now say the opposite: success rate, level and weight are
+> recalculated when a recommendation is *answered* — an online-review rejection, or a trial
+> pass or fail — and at no other time.
+>
+> The two are reconcilable, because `total_score` here is a separate Phase 2 currency from the
+> §1.5 success rate and does not feed it. But if retention points are ever meant to reach
+> level or weight, that reopens scheduled reputation changes and §1.5 has to be revisited
+> first. Phase 2, deferred (§9) — nothing in the MVP reads this table.
+
 ---
 
 ## 9. SCOPE: MVP vs PHASE 1.5 / PHASE 2
@@ -954,8 +998,12 @@ Rules that surround the frozen §1.5 formula:
 - **Rate limit:** max _N_ recommendations per scout per academy per rolling 7 days.
 - **Deduplication:** the same (player, academy) pair cannot be re-recommended while a prior
   recommendation is open, or within 90 days of a rejection.
-- **Reputation decay:** inactivity for 6 months decays weight by one level — reputation is a
-  measure of _current_ judgment.
+- **Reputation is recalculated on every outcome, never on a timer.** A scout's success rate —
+  and through it their level and weight — is recomputed the moment one of their recommendations
+  is answered: a coach rejecting the player at online review, or passing or failing them at a
+  trial. There is no inactivity decay and no scheduled adjustment; a scout who stops filing
+  keeps the record they earned, because the record describes calls they made rather than how
+  recently they were active. See §1.5.
 - **Collusion detection:** flag scout↔academy pairs with an anomalously high acceptance rate
   and low volume elsewhere; flag clusters of accounts sharing devices/IPs (§1.21 already
   tracks both).
@@ -1208,7 +1256,7 @@ matters, which is whether one region reached liquidity.
 | **Video cost outruns revenue**                                      | Severe      | 60 s cap, aggressive transcode, R2 (free egress), lifecycle expiry of unviewed media         |
 | **Academies won't pay**                                             | Severe      | Validate with 10 pilot academies _before_ building billing; price against a wasted trial day |
 | **Regulatory (personal-data localisation, minors)**                 | Severe      | Local legal review pre-launch; in-country/compliant hosting; export & deletion built in      |
-| **Scout reputation gaming**                                         | Moderate    | §12.2 rate limits, decay, collusion detection                                                |
+| **Scout reputation gaming**                                         | Moderate    | §12.2 rate limits, per-outcome recalculation, collusion detection                            |
 | **Key-person / single-market dependence**                           | Moderate    | Document everything (this repo's CLAUDE.md files); design region-agnostic from the start     |
 
 ---

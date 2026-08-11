@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
+import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class ModerationService {
@@ -29,12 +30,27 @@ export class ModerationService {
     });
   }
 
-  /** Admin-only. */
-  async listPending() {
-    return this.prisma.report.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'asc' },
-    });
+  /**
+   * Admin-only, oldest first — a queue, so the front of it is what matters.
+   *
+   * Paginated because the length of this list is set by *reporters*, not by the
+   * platform: a single motivated account can file thousands, and the screen that
+   * has to be usable during exactly that incident is this one.
+   */
+  async listPending(dto: PaginationDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.report.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take,
+      }),
+      this.prisma.report.count({ where: { status: 'PENDING' } }),
+    ]);
+
+    return pageOf(items, total, { page, pageSize });
   }
 
   /** Admin-only: resolves a report, optionally taking down reported media. */

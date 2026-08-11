@@ -10,6 +10,7 @@ import {
   VerifyDto,
   SetUserActiveDto,
   SetUserRoleDto,
+  SearchUsersDto,
 } from './dto/admin.dto';
 import { SetUserPlanDto } from '../tariffs/dto/tariff.dto';
 
@@ -36,14 +37,16 @@ export class AdminController {
     return this.adminService.listAdmins();
   }
 
-  /** Find a user to promote or endorse, instead of pasting a UUID. */
+  /**
+   * Find a user to promote or endorse, instead of pasting a UUID.
+   *
+   * A DTO rather than three raw `@Query` strings coerced with `Number()`: that
+   * version accepted `?pageSize=999999` and answered with every account on the
+   * platform, since nothing on the path validated it.
+   */
   @Get('users')
-  searchUsers(
-    @Query('query') query = '',
-    @Query('page') page = '1',
-    @Query('pageSize') pageSize = '20',
-  ) {
-    return this.adminService.searchUsers(query, Number(page) || 1, Number(pageSize) || 20);
+  searchUsers(@Query() dto: SearchUsersDto) {
+    return this.adminService.searchUsers(dto);
   }
 
   /** Read-only, any admin. Mutations below are super-admin only. */

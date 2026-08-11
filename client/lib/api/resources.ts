@@ -50,6 +50,18 @@ import type {
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
 
+/**
+ * Paging arguments every paginated wrapper takes.
+ *
+ * The API caps `pageSize` at 100 and ignores anything larger, so a caller asking
+ * for more gets a validation error rather than the whole table — see
+ * `backend/src/common/dto/pagination.dto.ts`.
+ */
+export interface PageParams {
+  page?: number;
+  pageSize?: number;
+}
+
 // ---------- Users ----------
 
 export const users = {
@@ -521,7 +533,9 @@ export const admin = {
       ...opts,
     }),
 
-  pendingReports: (opts: Opts = {}) => apiFetch<Report[]>('/moderation/reports/pending', opts),
+  /** Paginated: the length of this queue is set by reporters, not by us. */
+  pendingReports: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<Report>>(`/moderation/reports/pending${toQuery({ ...params })}`, opts),
 
   resolveReport: (
     reportId: string,
@@ -655,8 +669,11 @@ export const coaches = {
   assess: (body: CreateAssessmentBody, opts: Opts = {}) =>
     apiFetch<CoachAssessment>('/coaches/assessments', { method: 'POST', body, ...opts }),
 
-  assessmentsForPlayer: (playerId: string, opts: Opts = {}) =>
-    apiFetch<CoachAssessment[]>(`/coaches/assessments/player/${playerId}`, opts),
+  assessmentsForPlayer: (playerId: string, params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<CoachAssessment>>(
+      `/coaches/assessments/player/${playerId}${toQuery({ ...params })}`,
+      opts,
+    ),
 };
 
 export interface CreateAssessmentBody {
@@ -699,6 +716,20 @@ export interface ScoutProfile {
     pendingRecommendations: number;
   };
   endorsements: { academyId: string; academy: { id: string; name: string } }[];
+  /**
+   * Where this scout stands with the academy the *viewer* runs, or null when the
+   * viewer runs none. Sent with the profile so the one action on the page can be
+   * drawn in the right state on first paint.
+   */
+  viewerAcademy: {
+    academyId: string;
+    academyName: string;
+    /** Only a verified academy's scouts reach private profiles. */
+    verified: boolean;
+    isMember: boolean;
+    invitationPending: boolean;
+    isEndorsed: boolean;
+  } | null;
 }
 
 /**
@@ -723,7 +754,8 @@ export const recommendations = {
       opts,
     ),
 
-  listMine: (opts: Opts = {}) => apiFetch<MyRecommendation[]>('/recommendations/mine', opts),
+  listMine: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<MyRecommendation>>(`/recommendations/mine${toQuery({ ...params })}`, opts),
 
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
@@ -812,6 +844,19 @@ export const reviews = {
 };
 
 export const trials = {
+  /**
+   * How many trials have appeared since this account last opened the list.
+   *
+   * Drives the badge on the Trials menu entry — see `markTrialsSeen`, which
+   * clears it.
+   */
+  unseenCount: (opts: Opts = {}) =>
+    apiFetch<{ count: number; since: string | null }>('/trials/unseen-count', opts),
+
+  /** Clears the badge. Sent when the trials list is opened. */
+  markSeen: (opts: Opts = {}) =>
+    apiFetch<{ seenAt: string }>('/trials/seen', { method: 'POST', ...opts }),
+
   /** GET /trials — @Public(), returns upcoming trials. */
   listUpcoming: (opts: Opts = {}) => apiFetch<Trial[]>('/trials', opts),
 
@@ -933,8 +978,12 @@ export const media = {
     apiFetch<SuggestedPlayer[]>(`/media/feed/suggested-players${toQuery({ limit })}`, opts),
 
   /** `category` narrows to one attribute's claim history. */
-  listForPlayer: (playerId: string, category?: MediaCategory, opts: Opts = {}) =>
-    apiFetch<Media[]>(`/media/player/${playerId}${toQuery({ category })}`, opts),
+  listForPlayer: (
+    playerId: string,
+    category?: MediaCategory,
+    params: PageParams = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<Media>>(`/media/player/${playerId}${toQuery({ category, ...params })}`, opts),
 
   /**
    * Newest clips platform-wide, each carrying its player. One request for the

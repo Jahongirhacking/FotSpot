@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { Eye, Heart, Play, TriangleAlert, Volume2, VolumeX } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { FeedClip, FeedPage } from '@/lib/api/types';
@@ -150,6 +150,35 @@ function FeedCard({
   const { t } = useI18n();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const attribute = CATEGORY_ATTRIBUTE[clip.category];
+
+  /*
+   * Optimistic, and deliberately *not* invalidating the feed on success.
+   *
+   * A like now carries a large negative weight in the ranking (see
+   * MediaService.feed), so refetching would pull the card the user just liked
+   * out from under their finger and reshuffle everything below it. The heart
+   * updates here; the new order is what they get on their next visit, which is
+   * when "don't show me this again" is what they actually want.
+   */
+  const [liked, setLiked] = React.useState(clip.likedByMe);
+  const [likes, setLikes] = React.useState(clip.likes);
+
+  const like = useMutation({
+    mutationFn: (next: boolean) =>
+      browserFetch(`/media/${clip.id}/like`, { method: next ? 'POST' : 'DELETE' }),
+    onError: () => {
+      // Put the heart back; the server said no.
+      setLiked(clip.likedByMe);
+      setLikes(clip.likes);
+    },
+  });
+
+  function toggleLike() {
+    const next = !liked;
+    setLiked(next);
+    setLikes((current) => current + (next ? 1 : -1));
+    like.mutate(next);
+  }
   const label =
     clip.category === 'MATCH_HIGHLIGHTS'
       ? t.attributes.highlights
@@ -252,10 +281,27 @@ function FeedCard({
 
       <footer className="space-y-1 p-3">
         <p className="text-muted flex items-center gap-3 text-xs">
-          <span className={cn('flex items-center gap-1', clip.likedByMe && 'text-danger')}>
-            <Heart className={cn('size-3.5', clip.likedByMe && 'fill-current')} aria-hidden />
-            {clip.likes}
-          </span>
+          {/*
+            A button, not a label. The heart was the only place in the product
+            that showed a like without accepting one — a scout had to open the
+            full-screen viewer to say what they already knew from the grid.
+            `min-h-8` and the padding are there because this is a real hit target
+            on a phone, not a 14px icon.
+          */}
+          <button
+            type="button"
+            onClick={toggleLike}
+            aria-pressed={liked}
+            aria-label={t.clips.likeOnce}
+            className={cn(
+              '-mx-1 flex min-h-8 items-center gap-1 rounded-md px-1 transition-colors',
+              'hover:text-danger focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
+              liked && 'text-danger',
+            )}
+          >
+            <Heart className={cn('size-3.5', liked && 'fill-current')} aria-hidden />
+            {likes}
+          </button>
           <span className="flex items-center gap-1">
             <Eye className="size-3.5" aria-hidden />
             {clip.views}

@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
+import { RangeSlider } from '@/components/ui/RangeSlider';
+import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
 import { formatDate } from '@/lib/utils';
 import { TrialHistory } from './TrialHistory';
 import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
@@ -41,6 +43,10 @@ import type { AcademyProfile } from '@/lib/api/types';
  * trial" presented them as equal choices and let a manager mint one before any
  * coach had looked at anybody — the shortcut Rule 6 exists to close.
  */
+/** Youth football, both ends inclusive — the same bounds the old number inputs carried. */
+const TRIAL_AGE_MIN = 6;
+const TRIAL_AGE_MAX = 21;
+
 export function AcademyTrials({
   academyId,
   academyName,
@@ -53,6 +59,13 @@ export function AcademyTrials({
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  /*
+   * The age range and the wanted positions are controlled, unlike the rest of
+   * the form, because both are now pickers rather than text. They reset with the
+   * dialog so a second trial does not inherit the first one's answers.
+   */
+  const [ageRange, setAgeRange] = React.useState<[number, number]>([12, 14]);
+  const [positions, setPositions] = React.useState<Position[]>([]);
   const [trials, setTrials] = React.useState(initial);
   /** Null until the manager edits — the academy's default shows through. */
   const [typedNote, setTypedNote] = React.useState<string | null>(null);
@@ -89,14 +102,12 @@ export function AcademyTrials({
       location: String(form.get('location') ?? '').trim(),
       date: new Date(String(form.get('date'))).toISOString(),
       applyDeadline: new Date(String(form.get('applyDeadline'))).toISOString(),
-      ageRangeMin: Number(form.get('ageMin')),
-      ageRangeMax: Number(form.get('ageMax')),
-      // Comma-separated, because a manager listing "GK, CB, LB" should not have
-      // to meet a multi-select first.
-      positions: String(form.get('positions') ?? '')
-        .split(',')
-        .map((value) => value.trim().toUpperCase())
-        .filter(Boolean),
+      // Both come from controlled inputs now — the age range from a slider and
+      // the positions from the pitch — so they are read from state rather than
+      // from the form. A typed list of codes was a place to mistype "CV".
+      ageRangeMin: ageRange[0],
+      ageRangeMax: ageRange[1],
+      positions,
       requirements: String(form.get('requirements') ?? '').trim() || undefined,
       // Sanitised on the way out as well as the way in: the server cleans it
       // again, but sending markup it would strip means saving something that
@@ -162,40 +173,50 @@ export function AcademyTrials({
               </Field>
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label={t.trials.ageMin} htmlFor="trial-age-min" required>
-                  <Input
-                    id="trial-age-min"
-                    name="ageMin"
-                    type="number"
-                    min={6}
-                    max={21}
-                    defaultValue={12}
-                    required
-                  />
-                </Field>
-                <Field label={t.trials.ageMax} htmlFor="trial-age-max" required>
-                  <Input
-                    id="trial-age-max"
-                    name="ageMax"
-                    type="number"
-                    min={6}
-                    max={21}
-                    defaultValue={14}
-                    required
-                  />
-                </Field>
               </div>
 
+              {/* One control for what is one decision. Two number boxes let a
+                  manager save a range whose ends are the wrong way round; the
+                  slider clamps instead, and still carries the boxes for anyone
+                  who already knows the exact ages they want. */}
+              <Field label={t.trials.ageRange} htmlFor="trial-age-range" hint={t.trials.ageRangeHint}>
+                <RangeSlider
+                  min={TRIAL_AGE_MIN}
+                  max={TRIAL_AGE_MAX}
+                  value={ageRange}
+                  onChange={setAgeRange}
+                  labelFrom={t.trials.ageMin}
+                  labelTo={t.trials.ageMax}
+                />
+              </Field>
+
+              {/* Pressed on a pitch rather than typed as "GK, CB, LB": the typed
+                  version accepted anything, and a mistyped code silently
+                  narrowed who the trial was announced to. */}
               <Field
                 label={t.trials.positions}
                 htmlFor="trial-positions"
-                hint={t.trials.positionsHint}
+                hint={t.trials.positionsPickHint}
               >
-                <Input
-                  id="trial-positions"
-                  name="positions"
-                  placeholder={t.placeholders.positions}
-                />
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+                  <PitchPositionPicker
+                    mode="multi"
+                    label={t.trials.positions}
+                    value={positions}
+                    onChange={setPositions}
+                  />
+                  <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
+                    {positions.length === 0 ? (
+                      <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
+                    ) : (
+                      positions.map((position) => (
+                        <Badge key={position} variant="primary">
+                          {position}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
               </Field>
 
               <Field label={t.trials.requirements} htmlFor="trial-req">

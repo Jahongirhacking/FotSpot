@@ -1,0 +1,13 @@
+-- Reputation is event-driven, so there is no decay pass to bookmark.
+--
+-- `lastDecayedAt` existed for a scheduled job that would age a player's
+-- discoverability weight down over time. That job was never written, and the
+-- rule it belonged to is gone: a scout's standing — and through it the weight
+-- their recommendations carry — now moves only when an academy answers an online
+-- review, or a coach passes or fails the player at a trial. See
+-- RecommendationsService.recalculateScoutStats.
+--
+-- Dropping rather than leaving it unused: a nullable column that nothing writes
+-- reads as "the job has not run yet" to whoever finds it next, and invites
+-- somebody to write the job.
+ALTER TABLE "PlayerRecommendationWeight" DROP COLUMN "lastDecayedAt";

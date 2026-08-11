@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { AcademyScoutFollowState, FollowTargetType } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class CreateFollowDto {
   @ApiProperty({ enum: FollowTargetType, enumName: 'FollowTargetType' })
@@ -13,24 +13,12 @@ export class CreateFollowDto {
   targetId: string;
 }
 
-export class ListFollowsDto {
+export class ListFollowsDto extends PaginationDto {
   @ApiPropertyOptional({ enum: FollowTargetType, enumName: 'FollowTargetType' })
   @IsOptional()
   @ApiPropertyOptional({ enum: FollowTargetType, enumName: 'FollowTargetType' })
   @IsEnum(FollowTargetType)
   targetType?: FollowTargetType;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  pageSize?: number = 20;
 }
 
 /** Academy -> scout trust (README 1.5.2). */

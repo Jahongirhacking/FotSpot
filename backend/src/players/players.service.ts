@@ -173,10 +173,37 @@ export class PlayersService {
    * while this asks whether they currently work somewhere — which is the thing
    * that should stop being true the day they leave.
    */
+  /**
+   * Whether this viewer works for an academy, and may therefore see a private
+   * profile.
+   *
+   * ## Scouts count, but only through a verified academy
+   *
+   * A private profile is hidden from search and from the public web; the people
+   * it is *not* hidden from are the ones doing the recruiting the player joined
+   * to be found by. Managers and coaches have always been in that set. Scouts are
+   * now too — but only while they hold an ACTIVE membership at an academy an
+   * admin has VERIFIED, which is a far narrower door than "holds the scout role".
+   *
+   * The narrowness is the point. `scout` is the one role anybody may grant
+   * themselves (§1.5), so keying on the role alone would mean a private profile
+   * is one button-press away from public — which is not a privacy setting, it is
+   * a delay. Membership is granted by a manager and revocable by one, and the
+   * academy behind it has been checked by an admin, so there is a named
+   * institution accountable for every person who can see a hidden child.
+   *
+   * A pending or archived academy grants nothing: verification is what makes the
+   * accountability real rather than asserted.
+   */
   private async isAcademyStaff(viewer?: AuthUser): Promise<boolean> {
     if (!viewer) return false;
     const membership = await this.prisma.academyMember.findFirst({
-      where: { userId: viewer.userId, role: { in: ['MANAGER', 'COACH'] }, status: 'ACTIVE' },
+      where: {
+        userId: viewer.userId,
+        role: { in: ['MANAGER', 'COACH', 'SCOUT'] },
+        status: 'ACTIVE',
+        academy: { status: 'VERIFIED' },
+      },
       select: { id: true },
     });
     return !!membership;

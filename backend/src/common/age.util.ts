@@ -15,3 +15,22 @@ export function ageAt(birthDate: Date, atDate: Date): number {
   if (!hasHadBirthday) age -= 1;
   return age;
 }
+
+/**
+ * The birth date of somebody turning exactly `age` on `atDate` — `ageAt` run
+ * backwards.
+ *
+ * Exists so an age range can be asked of the database as a birth-date window
+ * instead of by reading every player and computing ages in memory. `ageAt`
+ * cannot appear in a `where` clause; a date comparison against an indexed column
+ * can, and the two must agree exactly or a player is told about a trial they
+ * will then be refused from.
+ *
+ * Read it as a boundary rather than a person's birthday: for a maximum age of
+ * 16, everyone eligible was born strictly after `birthDateForAge(date, 17)`.
+ */
+export function birthDateForAge(atDate: Date, age: number): Date {
+  const born = new Date(atDate);
+  born.setFullYear(born.getFullYear() - age);
+  return born;
+}

@@ -664,6 +664,7 @@
             "bearer": []
           }
         ],
+        "summary": "The \"who am I here\" block behind the avatar menu — see UsersService.summary.\n\nNot `@Public()`, though it was. `@CurrentUser()` reads `request.user`, which\nthe auth guard leaves unset on a public route, so an unauthenticated call\nreached Prisma with `userId: undefined` and answered 500. There is nothing\nfor a guest here in any case: every field describes an account.",
         "tags": [
           "users"
         ]
@@ -893,6 +894,27 @@
             }
           },
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
             "name": "category",
             "required": false,
             "in": "query",
@@ -903,17 +925,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -1256,6 +1268,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "default": 20,
               "type": "number"
             }
@@ -2756,6 +2769,27 @@
         "operationId": "players_search",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
             "name": "playingStyle",
             "required": false,
             "in": "query",
@@ -2806,26 +2840,6 @@
             "schema": {
               "minimum": 0,
               "maximum": 60,
-              "type": "number"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 20,
               "type": "number"
             }
           }
@@ -3055,6 +3069,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -3133,14 +3168,6 @@
         "operationId": "follows_listMine",
         "parameters": [
           {
-            "name": "targetType",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/FollowTargetType"
-            }
-          },
-          {
             "name": "page",
             "required": false,
             "in": "query",
@@ -3156,8 +3183,17 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "targetType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/FollowTargetType"
             }
           }
         ],
@@ -3372,7 +3408,29 @@
     "/api/v1/recommendations/mine": {
       "get": {
         "operationId": "recommendations_listMine",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3795,7 +3853,7 @@
             "bearer": []
           }
         ],
-        "summary": "A player's recommendation record: who vouched for them, with what weight, and\nthe decayable public `globalWeight`. Per-academy extras stay in the inbox.",
+        "summary": "A player's recommendation record: who vouched for them, with what weight, and\nthe public `globalWeight`. Per-academy extras stay in the inbox.",
         "tags": [
           "recommendations"
         ]
@@ -3945,6 +4003,46 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/unseen-count": {
+      "get": {
+        "operationId": "trials_unseenCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How many trials have appeared since this account last opened the list.\n\nDeclared before `:id`, since Nest matches in declaration order — otherwise\n\"unseen-count\" is read as a trial id.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
+    "/api/v1/trials/seen": {
+      "post": {
+        "operationId": "trials_markSeen",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clears the badge. Sent when the trials list is opened.",
         "tags": [
           "trials"
         ]
@@ -4483,7 +4581,29 @@
     "/api/v1/moderation/reports/pending": {
       "get": {
         "operationId": "moderation_listPending",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -4690,7 +4810,38 @@
     "/api/v1/admin/users": {
       "get": {
         "operationId": "admin_searchUsers",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -4701,7 +4852,7 @@
             "bearer": []
           }
         ],
-        "summary": "Find a user to promote or endorse, instead of pasting a UUID.",
+        "summary": "Find a user to promote or endorse, instead of pasting a UUID.\n\nA DTO rather than three raw `@Query` strings coerced with `Number()`: that\nversion accepted `?pageSize=999999` and answered with every account on the\nplatform, since nothing on the path validated it.",
         "tags": [
           "admin"
         ]

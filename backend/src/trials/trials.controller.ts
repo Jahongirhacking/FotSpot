@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -27,6 +37,24 @@ export class TrialsController {
     @Body() dto: CreateTrialDto,
   ) {
     return this.trialsService.create(user.userId, academyId, dto);
+  }
+
+  /**
+   * How many trials have appeared since this account last opened the list.
+   *
+   * Declared before `:id`, since Nest matches in declaration order — otherwise
+   * "unseen-count" is read as a trial id.
+   */
+  @Get('unseen-count')
+  unseenCount(@CurrentUser() user: AuthUser) {
+    return this.trialsService.unseenCount(user.userId);
+  }
+
+  /** Clears the badge. Sent when the trials list is opened. */
+  @HttpCode(HttpStatus.OK)
+  @Post('seen')
+  markSeen(@CurrentUser() user: AuthUser) {
+    return this.trialsService.markSeen(user.userId);
   }
 
   @Public()

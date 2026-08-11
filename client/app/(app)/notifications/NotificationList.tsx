@@ -39,6 +39,8 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       tone: string;
       href?: string;
       idKey?: string;
+      /** Overrides `href` from the payload; falls back when it returns undefined. */
+      hrefFor?: (payload: Record<string, unknown> | null | undefined) => string | undefined;
     }
   > = {
     // Answering this is the point of it, so it opens the screen where the answer
@@ -49,11 +51,24 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       tone: 'text-primary',
       href: '/invitations?action=JOIN_ACADEMY',
     },
+    /*
+     * A yes from a scout opens their profile, not the squad list.
+     *
+     * The manager's next act is on that page — endorsing them — and landing on
+     * a roster of forty names and asking them to find the one who just answered
+     * is the kind of small friction that stops the second step happening at all.
+     * Everybody else still goes to the squad, where their row is the thing to
+     * look at.
+     */
     ACADEMY_JOIN_ANSWER: {
       icon: Users,
       title: t.notifications.joinAnswer,
       tone: 'text-info',
       href: '/academies/mine/squad',
+      hrefFor: (payload) =>
+        payload?.role === 'SCOUT' && typeof payload.userId === 'string'
+          ? `/scouts/${payload.userId}`
+          : undefined,
     },
     ACADEMY_INVITATION: {
       icon: Building2,
@@ -185,11 +200,13 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
             title: t.notifications.title,
           };
           const Icon = meta.icon;
-          const href = meta.href
-            ? meta.idKey
-              ? `${meta.href}/${notification.payload?.[meta.idKey]}`
-              : meta.href
-            : null;
+          const href =
+            meta.hrefFor?.(notification.payload) ??
+            (meta.href
+              ? meta.idKey
+                ? `${meta.href}/${notification.payload?.[meta.idKey]}`
+                : meta.href
+              : null);
 
           const detail = [notification.payload?.academyName, notification.payload?.note]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)

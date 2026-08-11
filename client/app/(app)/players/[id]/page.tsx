@@ -127,18 +127,24 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   const assessments = session
     ? await coaches
-        .assessmentsForPlayer(playerId, { token: session.accessToken, cache: 'no-store' })
+        .assessmentsForPlayer(playerId, {}, { token: session.accessToken, cache: 'no-store' })
+        .then((page) => page.items)
         .catch(() => [] as CoachAssessment[])
     : [];
 
   // Fetched rather than read off `player.media` so the clip list and the bars
   // are built from exactly the same rows.
+  //
+  // The first page is what the board draws: the bars are built from the newest
+  // clip per category, and the six of those are always in the newest page.
   const clips = await media
     .listForPlayer(
       playerId,
       undefined,
+      {},
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
     )
+    .then((page) => page.items)
     .catch(() => [] as Media[]);
 
   return (

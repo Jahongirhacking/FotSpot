@@ -19,7 +19,10 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
       () => recommendations.myScoutStats({ token, cache: 'no-store' }),
       null,
     ),
-    safe<MyRecommendation[]>(() => recommendations.listMine({ token, cache: 'no-store' }), []),
+    safe<MyRecommendation[]>(
+      () => recommendations.listMine({}, { token, cache: 'no-store' }).then((p) => p.items),
+      [],
+    ),
     safe(() => follows.academiesFollowingMe({ token, cache: 'no-store' }), []),
   ]);
 

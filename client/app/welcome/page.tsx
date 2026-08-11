@@ -21,6 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WelcomePage() {
   const session = await getSession();
   if (!session) redirect('/login?next=/welcome');
+  const { t } = await getServerT();
 
   // Asked once per account, never per device. Someone who already answered lands
   // on their dashboard instead of being interrogated again on a second phone.
@@ -39,11 +40,10 @@ export default async function WelcomePage() {
         <div className="mb-8 text-center">
           <FotSpotMark className="mx-auto mb-4 size-12" />
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            What brings you to FotSpot?
+            {t.welcome.title}
           </h1>
           <p className="text-muted mx-auto mt-2 max-w-md text-sm">
-            Pick the one that fits you today. You can add the other later, and plenty of people are
-            both.
+            {t.welcome.subtitleLong}
           </p>
         </div>
 

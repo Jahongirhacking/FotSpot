@@ -25,7 +25,8 @@ export default async function MyRecommendationsPage() {
 
   const [mine, stats] = await Promise.all([
     recommendations
-      .listMine({ token: session.accessToken, cache: 'no-store' })
+      .listMine({}, { token: session.accessToken, cache: 'no-store' })
+      .then((page) => page.items)
       .catch(() => [] as MyRecommendation[]),
     recommendations
       .myScoutStats({ token: session.accessToken, cache: 'no-store' })

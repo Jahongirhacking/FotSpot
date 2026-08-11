@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ClipboardCheck, TriangleAlert, Video, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import type { Page } from '@/lib/api/client';
 import type { CoachReview, Media } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ClipTile } from '@/components/player/ClipTile';
@@ -151,7 +152,10 @@ function ReviewCard({
   // The clips are the evidence; without them the sliders are guesswork.
   const clips = useQuery({
     queryKey: ['player-clips', player?.id],
-    queryFn: () => browserFetch<Media[]>(`/media/player/${player?.id}`),
+    // Paginated now; the review panel wants the newest page, which is what the
+    // bars are drawn from anyway.
+    queryFn: () =>
+      browserFetch<Page<Media>>(`/media/player/${player?.id}`).then((page) => page.items),
     enabled: Boolean(player?.id),
   });
 

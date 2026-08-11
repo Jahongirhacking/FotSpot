@@ -1,6 +1,11 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { isPublicKey } from './storage.keys';
 
@@ -198,6 +203,41 @@ export class StorageService {
   async readUrlOrNull(storageKey: string | null | undefined): Promise<string | null> {
     if (!storageKey || !this.client) return null;
     return (await this.createReadUrl(storageKey)).url;
+  }
+
+  /**
+   * What the bucket actually holds at `storageKey`, or null if nothing does.
+   *
+   * The one question the upload flow could never answer. A presigned PUT goes
+   * from the browser straight to R2, so the API only ever hears about it second
+   * hand: `confirmUpload` is the client saying "I uploaded that", and a client
+   * that crashed, lost signal or simply lied produced a `Media` row pointing at
+   * an object that was never written. This is how the media worker checks
+   * (see MediaProcessor).
+   *
+   * Distinguishes "not there" from "could not ask": a missing object answers
+   * null, and anything else — credentials, network, a bucket policy — throws, so
+   * the worker retries instead of condemning a clip that may be perfectly fine.
+   */
+  async describeObject(
+    storageKey: string,
+  ): Promise<{ size: number; contentType?: string; lastModified?: Date } | null> {
+    const client = this.require();
+    try {
+      const head = await client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      );
+      return {
+        size: head.ContentLength ?? 0,
+        contentType: head.ContentType,
+        lastModified: head.LastModified,
+      };
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata
+        ?.httpStatusCode;
+      if (status === 404 || (error as { name?: string })?.name === 'NotFound') return null;
+      throw error;
+    }
   }
 
   private require(): S3Client {

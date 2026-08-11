@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
+import { ScoutSquadActions } from './ScoutSquadActions';
 import { formatDate, initials } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Scout' };
@@ -102,6 +103,16 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
           </p>
         </div>
       </header>
+
+      {/* A manager's one action on this page — invite, or the state that follows.
+          Null for everybody who does not run an academy. */}
+      {scout.viewerAcademy && (
+        <ScoutSquadActions
+          scoutId={scout.id}
+          scoutName={name || scout.username || t.scouts.profile}
+          standing={scout.viewerAcademy}
+        />
+      )}
 
       <Card>
         <CardHeader>

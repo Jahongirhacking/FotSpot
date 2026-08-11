@@ -147,6 +147,19 @@ model User {
   /// account with access to children's profiles.
   mustChangePassword Boolean @default(false)
 
+  /**
+   * When this account last opened the trials list.
+   *
+   * The badge on the Trials menu counts what has appeared since. A timestamp
+   * rather than a join table of seen trial ids: the question is "anything new?",
+   * which a single comparison answers, and a row per user per trial would grow
+   * without bound to store something nobody ever reads individually.
+   *
+   * Null means never opened, so everything currently open counts as new — which
+   * is the right welcome for somebody who has not looked yet.
+   */
+  trialsSeenAt  DateTime?
+
   /// Which tariff this account is on. One per account, not one per role: a
   /// person who scouts and also has a player card is one customer, and two
   /// plans on one account would mean two answers to "what may I do today".
@@ -652,8 +665,25 @@ model RatingRevision {
   @@index([mediaId, createdAt])
 }
 
+/**
+ * `PROCESSING` is where every clip now starts.
+ *
+ * A presigned PUT goes from the browser straight to R2, so the API never sees
+ * the bytes: `confirmUpload` is the client's word that the upload happened. A
+ * row written as ACTIVE on that word alone is a clip that appears on a card, in
+ * search and in the feed whether or not anything was ever stored — and a
+ * fourteen-year-old's evidence for a rating they claimed is exactly the thing
+ * that must not be imaginary.
+ *
+ * So a clip is PROCESSING until the media worker has looked in the bucket and
+ * found the object (see MediaProcessor). `FAILED` is the answer when it is not
+ * there after every retry, and it is kept rather than deleted so the player is
+ * told what happened instead of watching their upload silently vanish.
+ */
 enum MediaStatus {
+  PROCESSING
   ACTIVE
+  FAILED
   FLAGGED
   REMOVED
 }
@@ -684,7 +714,27 @@ model Media {
   /// decode) and a clip without a cover is far better than a refused upload.
   posterKey  String?
 
-  status     MediaStatus @default(ACTIVE)
+  /**
+   * Starts at PROCESSING, not ACTIVE — see the enum. Only the media worker
+   * promotes a clip, and only after finding its object in the bucket.
+   */
+  status     MediaStatus @default(PROCESSING)
+
+  /// Bytes, as the bucket reports them. Recorded by the worker, so it is
+  /// evidence the object exists rather than a number the uploader supplied.
+  sizeBytes  Int?
+
+  /**
+   * Why processing gave up, in words a player can act on.
+   *
+   * Null unless `status` is FAILED. Kept on the row rather than only in the
+   * job's log because the person who needs it is the uploader, and they cannot
+   * read a queue.
+   */
+  failureReason String?
+
+  /// When the worker last answered about this clip, whichever way it went.
+  processedAt DateTime?
 
   title       String?
   description String?
@@ -845,10 +895,15 @@ model AcademyEndorsement {
 /**
  * A player's discoverability weight, accumulated from every recommendation.
  *
- * Stored rather than computed on read for one specific reason: a scheduled job
- * will decay it, so that a player recommended two years ago doesn't outrank a
- * 13-year-old recommended last week purely by accumulation. A derived-on-read sum
- * has nowhere to put that decay. `lastDecayedAt` is the cron's bookmark.
+ * Stored rather than computed on read because it is written by the same
+ * transaction that files or settles a recommendation, and read by search and the
+ * feed on every request — a sum recomputed per read would join four tables to
+ * answer a question that changes a few times a month.
+ *
+ * There is no `lastDecayedAt` and no scheduled decay. Weight moves when somebody
+ * *answers* a recommendation — an academy, or a coach at a trial — and at no
+ * other time. `lastRecommendedAt` is kept because the feed's freshness term
+ * reads it, not as a job's bookmark.
  */
 model PlayerRecommendationWeight {
   playerId            String   @id
@@ -857,7 +912,6 @@ model PlayerRecommendationWeight {
   globalWeight        Float    @default(0)
   recommendationCount Int      @default(0)
   lastRecommendedAt   DateTime?
-  lastDecayedAt       DateTime?
   updatedAt           DateTime @updatedAt
 
   @@index([globalWeight])
@@ -1079,9 +1133,11 @@ model Recommendation {
 
   /**
    * The scout's §1.5 weight at the moment of filing, not a live lookup.
-   * A recommendation is evidence about a point in time: if the scout later climbs
-   * to Legendary, that shouldn't retroactively reweight everything they ever said,
-   * and the future decay cron needs a stable number to decay.
+   *
+   * A recommendation is evidence about a point in time. The scout's weight moves
+   * every time one of their recommendations is answered (§1.5), so a live lookup
+   * would mean a single acceptance silently reweighting every player they have
+   * ever put forward — including ones already settled.
    */
   scoutWeight Int @default(1)
 
@@ -1445,6 +1501,16 @@ enum NotificationEvent {
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
   TRIAL_INVITATION
+  /**
+   * A new open trial matches this player's position and age.
+   *
+   * Sent on creation to players the trial is actually for, never to everybody:
+   * a notification that does not apply to you teaches you to ignore the ones
+   * that do. Matching is on the same two fields the academy filled in — the
+   * wanted positions and the age range — so the message is true by construction
+   * rather than by a ranking somebody has to trust.
+   */
+  TRIAL_PUBLISHED
   /**
    * The exam moved. Sent to everybody already holding an application.
    *
