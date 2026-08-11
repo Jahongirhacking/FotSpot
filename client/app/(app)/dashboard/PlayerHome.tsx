@@ -62,7 +62,11 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
     safe(() => trials.myApplications({ token, cache: 'no-store' }), []),
     safe(() => trials.listUpcoming({ revalidate: 300 }), []),
   ]);
-  const completion = cardCompletion(profile, t);
+  // A clip that failed to process is not a clip the player has. Counted from the
+  // first page, which is newest-first and holds twenty — plenty to answer
+  // "is there at least one".
+  const usableClips = clips.filter((clip) => clip.status !== 'FAILED').length;
+  const completion = cardCompletion(profile, t, usableClips);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">

@@ -133,9 +133,39 @@ export class PlayersService {
     return this.getPublicProfile(user.playerProfile.id);
   }
 
+  /**
+   * Creates the player card, and adopts the name onto the account if it has none.
+   *
+   * ## One name, asked once
+   *
+   * The account carries the name (`User.firstName`/`lastName`); the card carries
+   * its own copy because a card is a football record and can outlive a rename.
+   * The wizard therefore only asks when the account has no name yet — and when
+   * it does ask, that answer is the *account's* name from then on, not a value
+   * that lives on the card alone.
+   *
+   * Without this the two drifted in the one case that matters: somebody who
+   * signed up by phone has no name, types it into the card, and still shows up
+   * as a blank account everywhere else in the product — the avatar menu, the
+   * squad list, the notification that says who accepted.
+   *
+   * Only ever fills a blank. A user who already has a name keeps it: the wizard
+   * shows it read-only rather than asking, and renaming belongs on the profile
+   * screen where it is one deliberate act instead of a side effect of building
+   * a card.
+   */
   async createProfile(userId: string, dto: CreatePlayerProfileDto) {
     const existing = await this.prisma.playerProfile.findUnique({ where: { userId } });
     if (existing) throw new ConflictException('Player profile already exists');
+
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+
+    const adopt: { firstName?: string; lastName?: string } = {};
+    if (!account?.firstName?.trim() && dto.firstName.trim()) adopt.firstName = dto.firstName.trim();
+    if (!account?.lastName?.trim() && dto.lastName.trim()) adopt.lastName = dto.lastName.trim();
 
     // Player is an "additional role" per README 1.2, granted on profile creation.
     // Both halves commit together: a profile without the role leaves the user
@@ -144,6 +174,9 @@ export class PlayersService {
       const profile = await tx.playerProfile.create({
         data: { userId, ...dto, birthDate: new Date(dto.birthDate) },
       });
+      if (Object.keys(adopt).length > 0) {
+        await tx.user.update({ where: { id: userId }, data: adopt });
+      }
       await this.rbac.assignRole(userId, 'player', tx);
       return profile;
     });

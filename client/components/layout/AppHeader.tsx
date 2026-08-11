@@ -56,6 +56,24 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
     staleTime: 5 * 60 * 1000,
   });
 
+  /*
+   * The Inbox badge: players nobody has been asked about yet.
+   *
+   * Only fetched while acting as a manager, since Inbox is only in that menu —
+   * asking as a player would be a request whose answer is always zero.
+   */
+  const { data: inbox } = useQuery({
+    queryKey: ['inbox-awaiting-review'],
+    queryFn: () => browserFetch<{ count: number }>('/recommendations/inbox/awaiting-review-count'),
+    enabled: isAuthenticated && activeRole === 'academy_manager',
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  /** Which menu entries carry a count, so the two lists below stay in step. */
+  const badgeFor = (label: string) =>
+    label === 'trials' ? unseenTrials?.count : label === 'inbox' ? inbox?.count : undefined;
+
   return (
     <header className="bg-surface/85 border-border sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-2 py-2.5 sm:gap-2 sm:px-4">
@@ -85,7 +103,7 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
               label={t.nav[item.label]}
               icon={item.icon}
               active={isActive(pathname, item.href)}
-              badge={item.label === 'trials' ? unseenTrials?.count : undefined}
+              badge={badgeFor(item.label)}
             />
           ))}
         </nav>

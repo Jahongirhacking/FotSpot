@@ -1123,6 +1123,50 @@ export class RecommendationsService {
     return { items: rows, total: rows.length };
   }
 
+  /**
+   * How many players are sitting in the inbox that nobody has been asked about.
+   *
+   * Drives the badge on the manager's Inbox entry. "New" means *not yet sent for
+   * online review* rather than unread: the inbox is a queue of work, and the
+   * work is handing a player to a coach. A player a coach is already looking at
+   * has been dealt with as far as the manager is concerned, even though the
+   * verdict has not come back.
+   *
+   * Counted the same way `listRankedForAcademy` builds its list — distinct
+   * players with an undecided target for this academy — so the badge and the
+   * screen behind it can never disagree. `RecommendationReview` is unique on
+   * (player, academy), so "has been sent" is one row either existing or not.
+   *
+   * The academy is resolved from the caller rather than taken as a parameter:
+   * the header drawing this badge knows who is signed in and nothing else.
+   */
+  async inboxAwaitingReviewCount(userId: string) {
+    const managed = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { academyId: true },
+    });
+    if (!managed) return { count: 0, academyId: null };
+
+    const targets = await this.prisma.recommendationTarget.findMany({
+      where: { academyId: managed.academyId, status: { in: ['PENDING', 'REVIEWING'] } },
+      select: { recommendation: { select: { playerId: true } } },
+    });
+
+    const playerIds = [...new Set(targets.map((target) => target.recommendation.playerId))];
+    if (playerIds.length === 0) return { count: 0, academyId: managed.academyId };
+
+    const reviewed = await this.prisma.recommendationReview.findMany({
+      where: { academyId: managed.academyId, playerId: { in: playerIds } },
+      select: { playerId: true },
+    });
+    const sent = new Set(reviewed.map((review) => review.playerId));
+
+    return {
+      count: playerIds.filter((playerId) => !sent.has(playerId)).length,
+      academyId: managed.academyId,
+    };
+  }
+
   /** Which of these players this academy has an open private trial for. */
   private async invitedPlayerIds(academyId: string, playerIds: string[]) {
     if (playerIds.length === 0) return new Set<string>();

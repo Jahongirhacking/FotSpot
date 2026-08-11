@@ -70,7 +70,12 @@ export interface Media {
   playerId: string;
   type: MediaType;
   category: MediaCategory;
-  status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
+  /**
+   * A clip starts PROCESSING and is promoted by the media worker once it has
+   * found the object in the bucket; FAILED means it never arrived. Only the
+   * owner is served anything but ACTIVE — see MediaService.listForPlayer.
+   */
+  status: 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'FLAGGED' | 'REMOVED';
   title?: string | null;
   description?: string | null;
   /** The 0–100 rating this clip evidences. Null for highlights. */

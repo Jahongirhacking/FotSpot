@@ -205,7 +205,7 @@ export function deriveAttributes(
  * How complete the card is. Drives the progression nudge (§21.4) — progress is
  * always framed against the player's own past self, never against other children.
  */
-export function cardCompletion(player: PlayerProfile, t: Dictionary) {
+export function cardCompletion(player: PlayerProfile, t: Dictionary, clipCount: number) {
   /*
    * Only things the player can do themselves.
    *
@@ -216,13 +216,22 @@ export function cardCompletion(player: PlayerProfile, t: Dictionary) {
    * failed rather than one you have not done yet. Being assessed still matters —
    * it is what turns a claim into evidence (§1.6) — but it belongs in the panel
    * that explains verification, not in a progress bar about filling in a profile.
+   *
+   * ## `clipCount` is passed in, not read off the player
+   *
+   * This used to check `player.media?.length`, and `/players/me` has never
+   * embedded media — so the clip step could not be completed by uploading a
+   * clip, only by never noticing. Embedding the list to fix it would ship every
+   * clip on every profile read to answer one boolean, which is what paginating
+   * them was meant to stop. The screen already holds the clips; it passes the
+   * number.
    */
   const checks = [
     { label: t.player.checkPosition, done: Boolean(player.primaryPosition) },
     { label: t.player.checkStyle, done: Boolean(player.playingStyle) },
     { label: t.player.checkRegion, done: Boolean(player.region) },
     { label: t.player.checkMeasurements, done: Boolean(player.height && player.weight) },
-    { label: t.player.checkClip, done: (player.media?.length ?? 0) > 0 },
+    { label: t.player.checkClip, done: clipCount > 0 },
   ];
 
   const done = checks.filter((check) => check.done).length;

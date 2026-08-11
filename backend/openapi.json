@@ -3446,6 +3446,33 @@
         ]
       }
     },
+    "/api/v1/recommendations/inbox/awaiting-review-count": {
+      "get": {
+        "operationId": "recommendations_inboxAwaitingReviewCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players in this manager's inbox that no coach has been asked about yet.\n\nDeclared before `academy/:academyId`, since Nest matches in declaration\norder and would otherwise read \"inbox\" as an academy id.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/academy/{academyId}": {
       "get": {
         "operationId": "recommendations_listForAcademy",
