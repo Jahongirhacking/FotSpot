@@ -236,7 +236,7 @@ owner's request, not by scope drift:
 ## Running it
 
 ```bash
-cp .env.example .env        # fill in DATABASE_URL at minimum
+cp .env.example .env        # fill in DATABASE_URL and DIRECT_URL at minimum
 npm install
 npm run prisma:migrate      # creates tables
 npm run seed                # default roles + a super_admin bootstrap account
@@ -245,6 +245,45 @@ npm run start:dev
 
 API is served under `/api/v1`. WebSocket notifications connect to the
 `/notifications` namespace with `{ auth: { token: <accessToken> } }`.
+
+### Managed Postgres and Redis in production
+
+Nothing in the application changes for either — both are ordinary Postgres and
+ordinary Redis over the wire. What changes is which endpoint each URL names, and
+both providers hand you the wrong one first.
+
+**Neon** gives one `DATABASE_URL`, against the `-pooler` host. That is the right
+endpoint for the running API — many short-lived queries, which is what a
+transaction-mode pooler is for — and the wrong one for migrations. `migrate
+deploy` takes an advisory lock to stop two deploys migrating at once, and an
+advisory lock has to outlive a single transaction to mean anything. So:
+
+```bash
+DATABASE_URL="postgresql://…@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://…@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"   # no -pooler
+```
+
+Neon labels the second `DATABASE_URL_UNPOOLED` and comments it out with a note
+that it is only needed below Prisma 5.10. Set it regardless: it is free at
+runtime, since `directUrl` is read by the CLI and never by the running client,
+and `DIRECT_URL` is required by the schema in any case.
+
+**Upstash** shows `UPSTASH_REDIS_REST_URL` and a REST token, and a snippet using
+`@upstash/redis`. Do not use either here. That client speaks HTTP
+request/response, and this app's queue is built on blocking commands — a BullMQ
+worker holds `BZPOPMIN` open on a live socket until a job arrives, which HTTP
+cannot express. Installing it would leave clips stuck in `PROCESSING` forever.
+
+Use Upstash's **TCP** endpoint instead, which is plain Redis and needs no code
+change. The REST token doubles as the password:
+
+```bash
+REDIS_URL="rediss://default:<UPSTASH_REDIS_REST_TOKEN>@<name>.upstash.io:6379"
+```
+
+`rediss://` (two s) is TLS, which Upstash requires; ioredis reads the scheme and
+configures itself. Worth knowing that Upstash bills per command and a BullMQ
+worker polls whether or not there is work, so an idle queue is not a free queue.
 
 ## API reference
 
