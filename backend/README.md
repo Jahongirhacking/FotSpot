@@ -111,23 +111,32 @@ editing the JSON.
 
 Object keys are split into two tiers (`src/storage/storage.keys.ts`):
 
-- `public/avatars/…` and `public/players/…` — avatars and player clips. Both are
-  meant to be watched, cached and hotlinked, and **a clip stays reachable until
-  its player deletes it**: no signature, no expiry. The consequence is worth
-  stating rather than discovering — a clip URL that has been seen once keeps
-  working for anyone until the object is removed.
-- `private/…` — reachable only through a short-lived signed URL the API issues
-  after an authorization check. Nothing uses it today; it is kept for the §12.1
-  age and identity documents, where a permanent link would be the wrong answer.
+- `public/avatars/…` and `public/academies/…` — the faces an account chose to
+  publish. Served straight from the CDN origin: cacheable, hotlinkable, no
+  signature and no expiry.
+- `private/players/…` — player clips and their cover frames, plus the §12.1 age
+  and identity documents. Reachable **only** through a signature this API mints
+  per read, so removing the row genuinely ends access.
 
-So the bucket needs **public read access on `public/`** — via an r2.dev domain or
-a custom domain on the bucket.
+The split is the difference between a thumbnail somebody chose as their avatar
+and a minute of video of a child at a training ground. A permanent public address
+for the second is an address nobody can revoke: once it is in a message, a cache
+or a scraper's index, deleting the row does not take it back.
 
-**`R2_PUBLIC_BASE_URL` is needed for avatars only.** Clips and their covers are
-served by presigned URL against the S3 endpoint, so they work with nothing but the
-R2 credentials — no public bucket access, no custom domain. Avatars still come
-from the public origin, and without it they resolve to `null` and fall back to
-initials.
+So the bucket needs **public read access scoped to `public/`** — via an r2.dev
+domain or a custom domain — and *not* on the bucket as a whole. The prefix
+declares intent; the bucket grants permission, and only the second is
+enforcement. With public access left open on the whole bucket,
+`private/players/…` is fetchable at `R2_PUBLIC_BASE_URL` whatever the code
+intends.
+
+**`R2_PUBLIC_BASE_URL` is needed for the public tier only** — avatars and academy
+imagery. Clips and their covers are served by presigned URL against the S3
+endpoint, so they work with nothing but the R2 credentials: no public bucket
+access, no custom domain. Without the base URL, avatars resolve to `null` and
+fall back to initials, and `buildPublicUrl` throws outright if ever handed a
+`private/` key, which is what stops a clip acquiring a permanent address by
+accident.
 
 Clip URLs carry the seven-day SigV4 maximum and are re-minted on every read, so a
 clip stays reachable for as long as it exists — deletion, not time, ends it. The

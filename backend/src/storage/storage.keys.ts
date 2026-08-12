@@ -14,22 +14,22 @@ import * as crypto from 'crypto';
  * So the prefix does not *protect* anything; it *declares* intent, and the bucket
  * is configured to serve only `public/` over the CDN. Two visible tiers:
  *
- * - `public/`  — avatars, and player clips.
- * - `private/` — nothing yet; kept for the age and identity documents of §12.1.
+ * - `public/`  — avatars and academy imagery: things an account chose to publish
+ *                as its face, served straight from the CDN.
+ * - `private/` — player clips, and the age and identity documents of §12.1.
+ *                Reachable only through a signature this API mints.
  *
- * ## The prefix is a namespace, not a serving policy
+ * ## The prefix declares intent; the bucket enforces it
  *
- * It stopped being one when clips moved to presigned URLs. **Avatars** are served
- * from the CDN origin and are genuinely public. **Clips** are served by signature
- * (`StorageService.readUrlOrNull`) — permanently reachable because the signature
- * is re-minted on every read, but never composed from a public hostname, which is
- * why they work with no public bucket access configured at all.
+ * **Avatars** and **academy imagery** are served from the CDN origin and are
+ * genuinely public — `buildPublicUrl` composes them from `R2_PUBLIC_BASE_URL`.
+ * **Clips** are served by signature (`StorageService.readUrlOrNull`), and
+ * `buildPublicUrl` throws rather than compose a public address for one.
  *
- * The consequence worth knowing: if public read access is switched on for the
- * whole bucket, `public/players/…` becomes directly fetchable and the signing
- * stops being the only way in. That is not harmful — clips are meant to stay
- * reachable until deleted either way — but if signing should be the *only* route,
- * scope public access to `public/avatars/` rather than the bucket.
+ * That refusal is the code's half of the bargain. The other half is the bucket:
+ * public read access must be scoped to `public/`, or `private/…` is fetchable at
+ * the CDN host whatever this file intends. A prefix is a declaration, not a
+ * permission.
  *
  * Pure and DI-free (backend/CLAUDE.md §2), so the traversal and ownership rules
  * below are unit-testable without a bucket or a Nest container.
@@ -68,13 +68,27 @@ export function avatarKey(userId: string, filename: string): string {
 /**
  * Directory a player's clips live in.
  *
- * Public: clips are the point of the profile and are meant to be watched,
- * embedded and cached. Serving them through signed URLs cost a round trip before
- * every play, expired mid-session, and made them uncacheable by the CDN — for
- * content whose whole purpose is to be shown to scouts.
+ * **Private.** A clip is a video of a child, and the difference between that and
+ * an avatar is the difference between a thumbnail somebody chose to publish and
+ * a minute of footage taken at a training ground. A permanent public address for
+ * the second kind is an address nobody can revoke: once it is in a message, a
+ * cache or a scraper's index, deleting the row does not take it back.
+ *
+ * These were briefly public, for real reasons — signing costs a round trip
+ * before playback and makes CDN caching harder. Both are true and both are worth
+ * paying: `createReadUrl` signs for the seven-day maximum and re-mints on every
+ * read, so a clip stays watchable for as long as it exists, and the signature is
+ * stable within an hour so a rewatch still comes from the browser cache.
+ *
+ * ## This only holds if the bucket agrees
+ *
+ * The prefix declares intent; the bucket enforces it. If R2 public access is
+ * enabled for the whole of `fotspot-media`, `private/players/…` is fetchable at
+ * `R2_PUBLIC_BASE_URL` regardless of what this file says. Scope the public
+ * development URL (or the custom domain) to `public/` — see backend/README.
  */
 export function playerMediaPrefix(playerId: string): string {
-  return `${PUBLIC_PREFIX}players/${playerId}/`;
+  return `${PRIVATE_PREFIX}players/${playerId}/`;
 }
 
 export function playerMediaKey(playerId: string, filename: string): string {
