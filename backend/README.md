@@ -285,6 +285,35 @@ REDIS_URL="rediss://default:<UPSTASH_REDIS_REST_TOKEN>@<name>.upstash.io:6379"
 configures itself. Worth knowing that Upstash bills per command and a BullMQ
 worker polls whether or not there is work, so an idle queue is not a free queue.
 
+Then **turn eviction off** — Upstash → Database → Configuration → Eviction. New
+databases default to `optimistic-volatile`, and BullMQ says so at boot:
+
+```
+IMPORTANT! Eviction policy is optimistic-volatile. It should be "noeviction"
+```
+
+It is worth doing rather than silencing. A cache may drop keys under memory
+pressure because everything in it can be rebuilt; a queue holds the only record
+that work is outstanding, and an evicted job is a clip that stays `PROCESSING`
+for ever with nothing to say why. It cannot be set from code — Upstash refuses
+`CONFIG SET maxmemory-policy`.
+
+### Development stays local
+
+`backend/.env` points at the docker-compose Postgres and Redis and should keep
+pointing there. Production credentials in the file a dev run loads means one
+stray `prisma migrate dev`, seed, or test reaches the real database — and the
+damage is done before the mistake is noticed.
+
+Production values belong in the host's own environment (Render, Railway, Fly, a
+systemd unit). `backend/.env.production` is a gitignored reference copy of them;
+nothing loads it. For a one-off command against production, pass the variables
+explicitly instead of editing `.env`:
+
+```bash
+DATABASE_URL="…-pooler…" DIRECT_URL="…" npx prisma migrate deploy
+```
+
 ## API reference
 
 ```bash
