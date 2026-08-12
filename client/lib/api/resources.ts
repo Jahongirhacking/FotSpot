@@ -192,6 +192,8 @@ export interface MyProfileResponse extends MeResponse {
 
 export interface PlayerSearchParams {
   region?: string;
+  /** Only meaningful with a region — the API cannot resolve one without it. */
+  district?: string;
   position?: string;
   playingStyle?: PlayingStyle;
   query?: string;

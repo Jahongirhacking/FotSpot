@@ -3035,6 +3035,15 @@
             }
           },
           {
+            "name": "district",
+            "required": false,
+            "in": "query",
+            "description": "Only meaningful with a region — a district alone cannot be resolved.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "position",
             "required": false,
             "in": "query",

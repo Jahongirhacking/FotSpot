@@ -7,6 +7,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import {
+  isValidRegionDistrict,
+  normaliseDistrict,
+  normaliseRegion,
+} from '../common/uzbekistan';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
@@ -293,8 +298,51 @@ export class PlayersService {
    * log with the value it replaced. Neither stops a determined player editing it;
    * both mean nobody can later claim the platform did not notice.
    */
+  /**
+   * Checks the region/district pair as the update would *leave* the row.
+   *
+   * The DTO validator sees only the request, so a PATCH sending one half of the
+   * pair slips past it — `{ region: 'Namangan viloyati' }` on a player stored in
+   * `Xiva` is two individually-valid values that together name a place that does
+   * not exist. Merging with the stored row is the only way to see it.
+   *
+   * Returns the canonical spellings so an ASCII apostrophe typed by hand is
+   * stored the same way the picker would have stored it — two spellings of one
+   * district would split the same place in search.
+   */
+  private resolveRegionDistrict(
+    stored: { region: string | null; district: string | null },
+    dto: { region?: string; district?: string },
+  ): { region?: string | null; district?: string | null } {
+    const nextRegion = dto.region !== undefined ? dto.region : stored.region;
+    const nextDistrict = dto.district !== undefined ? dto.district : stored.district;
+
+    if (!isValidRegionDistrict(nextRegion, nextDistrict)) {
+      const canonical = normaliseRegion(nextRegion);
+      throw new BadRequestException(
+        canonical
+          ? `"${nextDistrict}" is not a district of ${canonical}`
+          : `"${nextRegion}" is not a region of Uzbekistan`,
+      );
+    }
+
+    // Only the fields the caller actually sent are written back, so an untouched
+    // half is not rewritten just because the other one moved.
+    const patch: { region?: string | null; district?: string | null } = {};
+    const canonicalRegion = normaliseRegion(nextRegion);
+    if (dto.region !== undefined) patch.region = canonicalRegion;
+    if (dto.district !== undefined) {
+      patch.district = canonicalRegion ? normaliseDistrict(canonicalRegion, nextDistrict) : null;
+    }
+    return patch;
+  }
+
   async updateProfile(userId: string, dto: UpdatePlayerProfileDto) {
     const profile = await this.assertOwner(userId);
+
+    // The pair as the row would end up, not as the request happens to describe
+    // it — see resolveRegionDistrict.
+    const location = this.resolveRegionDistrict(profile, dto);
 
     if (dto.birthDate !== undefined) {
       const next = new Date(dto.birthDate);
@@ -315,7 +363,12 @@ export class PlayersService {
 
     const updated = await this.prisma.playerProfile.update({
       where: { userId },
-      data: { ...dto, ...(dto.birthDate ? { birthDate: new Date(dto.birthDate) } : {}) },
+      data: {
+        ...dto,
+        ...(dto.birthDate ? { birthDate: new Date(dto.birthDate) } : {}),
+        // Canonical spellings, after the merged pair was checked.
+        ...location,
+      },
     });
     await this.redis.del(RedisKeys.playerProfile(updated.id));
     return updated;
@@ -335,7 +388,22 @@ export class PlayersService {
     // A private account is absent from search, not merely unreadable when opened:
     // a hit that 404s still tells the searcher the person is here.
     const where: Prisma.PlayerProfileWhereInput = { user: { isPrivate: false } };
-    if (dto.region) where.region = dto.region;
+    /*
+     * Filters match the canonical spelling, not what was typed.
+     *
+     * A query string reaches here by hand as often as from the picker, and
+     * `Farg'ona viloyati` with an ASCII apostrophe would match nothing at all
+     * while looking perfectly correct in the URL. An unrecognised province
+     * narrows to nothing rather than being ignored — silently returning every
+     * player for a filter the caller believes is applied is the worse answer.
+     */
+    if (dto.region) where.region = normaliseRegion(dto.region) ?? '\u0000';
+    if (dto.district && dto.region) {
+      const canonicalRegion = normaliseRegion(dto.region);
+      where.district = canonicalRegion
+        ? (normaliseDistrict(canonicalRegion, dto.district) ?? '\u0000')
+        : '\u0000';
+    }
     if (dto.playingStyle) where.playingStyle = dto.playingStyle;
     if (dto.position) {
       where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];

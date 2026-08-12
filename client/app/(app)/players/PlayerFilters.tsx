@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
+import { districtsOf } from '@/lib/uzbekistan';
 import { humanizeEnum } from '@/lib/utils';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -43,6 +44,7 @@ export function PlayerFilters() {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = React.useState(searchParams.get('query') ?? '');
+  const selectedRegion = searchParams.get('region') ?? '';
   const [open, setOpen] = React.useState(false);
 
   function apply(next: Record<string, string>) {
@@ -132,7 +134,8 @@ export function PlayerFilters() {
             <Select
               aria-label={t.onboarding.region}
               value={searchParams.get('region') ?? ''}
-              onChange={(event) => apply({ region: event.target.value })}
+              // Changing province drops the district with it.
+              onChange={(event) => apply({ region: event.target.value, district: '' })}
               className="min-w-0 flex-1 basis-full sm:basis-44"
             >
               <option value="">{t.player.allRegions}</option>
@@ -142,6 +145,26 @@ export function PlayerFilters() {
                 </option>
               ))}
             </Select>
+
+            {/* Only once a province is chosen: a district filter with nothing to
+                scope it to would list 172 names, most of them irrelevant. The
+                region change clears it, since the old district is almost
+                certainly not in the new province. */}
+            {selectedRegion && (
+              <Select
+                aria-label={t.academy?.district}
+                value={searchParams.get('district') ?? ''}
+                onChange={(event) => apply({ district: event.target.value })}
+                className="min-w-0 flex-1 basis-full sm:basis-44"
+              >
+                <option value="">{t.academy?.district}</option>
+                {districtsOf(selectedRegion).map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </Select>
+            )}
 
             <Select
               aria-label={t.onboarding.mainPosition}

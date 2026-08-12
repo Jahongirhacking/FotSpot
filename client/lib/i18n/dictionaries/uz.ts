@@ -511,6 +511,7 @@ export const uz = {
     featuredHint: 'Tarkibdan tanlang. Tartib siz belgilagancha ko‘rinadi.',
     featuredFull: 'Chegaraga yetdingiz',
     editProfileTitle: 'Akademiya profili',
+    districtNeedsRegion: 'Avval viloyatni tanlang.',
     district: 'Tuman',
     about: 'Akademiya haqida',
     aboutHint: 'Yosh guruhlari, mashg‘ulot maydoni, nimani qidirasiz.',

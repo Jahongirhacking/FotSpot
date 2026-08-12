@@ -37,7 +37,7 @@ export interface ClipTutorial {
   poster?: string;
 }
 
-const tutorialPath = 'videos/clip-tutorials';
+const tutorialPath = 'videos/tutorials';
 
 const CATEGORIES: MediaCategory[] = [
   'PACE',
@@ -48,6 +48,21 @@ const CATEGORIES: MediaCategory[] = [
   'TECHNIQUE',
   'MATCH_HIGHLIGHTS',
 ];
+
+const getTutorialPath = (category: MediaCategory) => {
+  switch (category) {
+    case 'PACE':
+      return 'tutorial_dribbling.mp4';
+    case 'DRIBBLING':
+      return 'tutorial_dribbling.mp4';
+    case 'PASSING':
+      return 'tutorial_passing.mp4';
+    case 'FINISHING':
+      return 'tutorial_shooting.mp4';
+    case 'PHYSICAL':
+      return 'tutorial_dribbling.mp4';
+  }
+};
 
 /**
  * One entry per category, in the order the uploader lists them.

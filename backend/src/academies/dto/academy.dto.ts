@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsRegionDistrictPair } from '../../common/validators/region-district.validator';
 import { AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
@@ -43,8 +44,8 @@ export class NewManagerDto {
  */
 export class CreateAcademyDto {
   @IsString() name: string;
-  @IsOptional() @IsString() region?: string;
-  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
   @IsOptional() @IsString() description?: string;
 
   @IsOptional() @IsUUID() managerUserId?: string;
@@ -61,8 +62,8 @@ export class SetManagerDto {
 
 export class UpdateAcademyDto {
   @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() region?: string;
-  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
   @IsOptional() @IsString() description?: string;
 
   /**

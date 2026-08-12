@@ -482,6 +482,7 @@ export const ru: Dictionary = {
     featuredHint: 'Выберите из состава. Порядок задаёте вы.',
     featuredFull: 'Достигнут предел',
     editProfileTitle: 'Профиль академии',
+    districtNeedsRegion: 'Сначала выберите регион.',
     district: 'Район',
     about: 'Об академии',
     aboutHint: 'Возрастные группы, поле, кого вы ищете.',

@@ -484,6 +484,7 @@ export const en: Dictionary = {
     featuredHint: 'Pick from your squad. They appear in the order you set.',
     featuredFull: 'Limit reached',
     editProfileTitle: 'Academy profile',
+    districtNeedsRegion: 'Choose a region first.',
     district: 'District',
     about: 'About the academy',
     aboutHint: 'Age groups, training ground, what you look for.',

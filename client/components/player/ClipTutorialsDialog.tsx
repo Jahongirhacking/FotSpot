@@ -1,7 +1,5 @@
 'use client';
 
-import * as React from 'react';
-import { GraduationCap, Trophy } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import {
   Dialog,
@@ -12,10 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/Dialog';
-import { tutorialFor } from '@/lib/clip-tutorials';
 import type { MediaCategory } from '@/lib/api/types';
+import { tutorialFor } from '@/lib/clip-tutorials';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { cn } from '@/lib/utils';
+import { GraduationCap, Trophy } from 'lucide-react';
+import * as React from 'react';
 
 /**
  * "Watch tutorials" — one short vertical clip per skill, with the written tips
@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 export function ClipTutorialsDialog({ trigger }: { trigger: React.ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
-  const [category, setCategory] = React.useState<MediaCategory>('TECHNIQUE');
+  const [category, setCategory] = React.useState<MediaCategory>('PACE');
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
