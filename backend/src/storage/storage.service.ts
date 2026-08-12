@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -279,6 +280,21 @@ export class StorageService {
   async readUrlOrNull(storageKey: string | null | undefined): Promise<string | null> {
     if (!storageKey || !this.client) return null;
     return (await this.createReadUrl(storageKey)).url;
+  }
+
+  /**
+   * Removes an object. Succeeds whether or not it was there.
+   *
+   * S3 delete is idempotent by definition — a missing key answers 204 — so this
+   * throws only on something a caller should hear about: no credentials, no
+   * network, a bucket policy. Callers cleaning up after a *successful* database
+   * write should still not fail their request over it; see `UsersService`.
+   */
+  async deleteObject(storageKey: string): Promise<void> {
+    const client = this.require();
+    await client.send(
+      new DeleteObjectCommand({ Bucket: this.bucketFor(storageKey), Key: storageKey }),
+    );
   }
 
   /**
