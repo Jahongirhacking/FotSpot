@@ -11,8 +11,7 @@ import * as crypto from 'crypto';
  * reports, screenshots, support tickets — and a design where the key is the
  * secret is a design that has already failed by the time anyone notices.
  *
- * So the prefix does not *protect* anything; it *declares* intent, and the bucket
- * is configured to serve only `public/` over the CDN. Two visible tiers:
+ * So the prefix does not *protect* anything; it *declares* intent. Two tiers:
  *
  * - `public/`  — avatars and academy imagery: things an account chose to publish
  *                as its face, served straight from the CDN.
@@ -21,15 +20,21 @@ import * as crypto from 'crypto';
  *
  * ## The prefix declares intent; the bucket enforces it
  *
- * **Avatars** and **academy imagery** are served from the CDN origin and are
- * genuinely public — `buildPublicUrl` composes them from `R2_PUBLIC_BASE_URL`.
- * **Clips** are served by signature (`StorageService.readUrlOrNull`), and
- * `buildPublicUrl` throws rather than compose a public address for one.
+ * `StorageService` routes on that prefix: `public/` keys are written to and read
+ * from `R2_PUBLIC_BUCKET`, everything else from `R2_BUCKET`. So the declaration
+ * is also what puts the object somewhere, and the two cannot drift apart.
  *
- * That refusal is the code's half of the bargain. The other half is the bucket:
- * public read access must be scoped to `public/`, or `private/…` is fetchable at
- * the CDN host whatever this file intends. A prefix is a declaration, not a
- * permission.
+ * **Avatars** and **academy imagery** get a permanent CDN URL from
+ * `buildPublicUrl`. **Clips** are served by signature
+ * (`StorageService.readUrlOrNull`), and `buildPublicUrl` throws rather than
+ * compose a public address for one.
+ *
+ * That refusal is the code's half of the bargain; the bucket owes the other half.
+ * With two buckets it is kept by construction — the private bucket has no public
+ * access at all. In the single-bucket deployment (`R2_PUBLIC_BUCKET` unset) it
+ * has to be configured: public read must be scoped to `public/`, or `private/…`
+ * is fetchable at the CDN host whatever this file intends. `pnpm r2:check` tests
+ * exactly that, by writing a private probe and trying to fetch it anonymously.
  *
  * Pure and DI-free (backend/CLAUDE.md §2), so the traversal and ownership rules
  * below are unit-testable without a bucket or a Nest container.
@@ -82,10 +87,10 @@ export function avatarKey(userId: string, filename: string): string {
  *
  * ## This only holds if the bucket agrees
  *
- * The prefix declares intent; the bucket enforces it. If R2 public access is
- * enabled for the whole of `fotspot-media`, `private/players/…` is fetchable at
- * `R2_PUBLIC_BASE_URL` regardless of what this file says. Scope the public
- * development URL (or the custom domain) to `public/` — see backend/README.
+ * These keys land in `R2_BUCKET`, which must have no public access. If instead
+ * one bucket serves both tiers and its public read is not scoped to `public/`,
+ * `private/players/…` is anonymously fetchable at `R2_PUBLIC_BASE_URL`
+ * regardless of what this file says — see backend/README, and `pnpm r2:check`.
  */
 export function playerMediaPrefix(playerId: string): string {
   return `${PRIVATE_PREFIX}players/${playerId}/`;

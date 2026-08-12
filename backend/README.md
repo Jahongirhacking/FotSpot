@@ -123,12 +123,35 @@ and a minute of video of a child at a training ground. A permanent public addres
 for the second is an address nobody can revoke: once it is in a message, a cache
 or a scraper's index, deleting the row does not take it back.
 
-So the bucket needs **public read access scoped to `public/`** — via an r2.dev
-domain or a custom domain — and *not* on the bucket as a whole. The prefix
-declares intent; the bucket grants permission, and only the second is
-enforcement. With public access left open on the whole bucket,
-`private/players/…` is fetchable at `R2_PUBLIC_BASE_URL` whatever the code
-intends.
+The prefix is also what picks the bucket. `StorageService` routes on it, so a
+key's tier decides where the object is written *and* where it is read from:
+
+| Prefix     | Bucket             | Holds                              | Reached by            |
+| ---------- | ------------------ | ---------------------------------- | --------------------- |
+| `public/`  | `R2_PUBLIC_BUCKET` | avatars, academy logos and gallery | `R2_PUBLIC_BASE_URL`  |
+| `private/` | `R2_BUCKET`        | clips, cover frames, §12.1 docs    | presigned URL, 7 days |
+
+Two rules follow, and getting either wrong fails quietly:
+
+- **One API token must be authorized for both buckets.** A token scoped to one
+  fails only on uploads touching the other, which presents as "avatars are
+  broken", not as a permissions error.
+- **`R2_PUBLIC_BUCKET` and `R2_PUBLIC_BASE_URL` must name the same bucket.** If
+  the host serves a bucket the app never writes to, every upload succeeds, every
+  URL is well-formed, and every image 404s — with nothing in the logs, in a UI
+  that falls back to initials when an avatar is missing.
+
+`R2_PUBLIC_BUCKET` may be left empty, which falls back to `R2_BUCKET` and puts
+both tiers in one bucket. That still works, but then the prefix is only a
+declaration and the bucket has to enforce it: **public read access scoped to
+`public/`**, not on the bucket as a whole. Left open, `private/players/…` is
+anonymously fetchable at `R2_PUBLIC_BASE_URL` whatever the code intends.
+
+`pnpm r2:check` verifies all of it against the real buckets — it writes a probe
+object to each tier, fetches both back over the public host, confirms the public
+one is served and the private one is not, and deletes them. Run it after changing
+any R2 setting; it is the only thing that catches a mismatch, because every
+individual piece of configuration looks fine on its own.
 
 **`R2_PUBLIC_BASE_URL` is needed for the public tier only** — avatars and academy
 imagery. Clips and their covers are served by presigned URL against the S3
