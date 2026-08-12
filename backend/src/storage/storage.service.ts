@@ -39,11 +39,11 @@ const SIGNING_WINDOW_MS = 60 * 60 * 1000;
  *
  * ## Two buckets, and the key prefix picks between them
  *
- * - `R2_BUCKET` — **private**. Player clips and their cover frames. Nothing in it
- *   is reachable without a signature this API mints.
- * - `R2_PUBLIC_BUCKET` — **public**, served at `R2_PUBLIC_BASE_URL`. Avatars,
- *   academy logos and academy gallery images: things an account published as its
- *   own face.
+ * - `R2_PRIVATE_BUCKET` — player clips and their cover frames. Nothing in it is
+ *   reachable without a signature this API mints, and it has no public domain.
+ *   (`R2_BUCKET` is the former name and is still read.)
+ * - `R2_PUBLIC_BUCKET` — served at `R2_PUBLIC_BASE_URL`. Avatars, academy logos
+ *   and academy gallery images: things an account published as its own face.
  *
  * The `public/` prefix on a key is what routes it, so a key's tier decides which
  * bucket it is written to *and* read from, and the two can never disagree. Get
@@ -52,10 +52,15 @@ const SIGNING_WINDOW_MS = 60 * 60 * 1000;
  * public objects were being written to the private bucket and linked from the
  * public host. `pnpm r2:check` exists to catch that round trip.
  *
- * `R2_PUBLIC_BUCKET` falls back to `R2_BUCKET` for the single-bucket deployment,
- * where the same bucket holds both tiers and public read is scoped to `public/`.
- * That setup still works; it just needs the bucket policy to do the job the
- * second bucket does here.
+ * One API token must be authorized for **both** buckets. A token scoped to one
+ * presigns happily and fails at PUT time, in the browser, for whichever half it
+ * does not cover — so the symptom is "avatars are broken" rather than anything
+ * naming a permission.
+ *
+ * `R2_PUBLIC_BUCKET` falls back to the private bucket for the single-bucket
+ * deployment, where one bucket holds both tiers and public read is scoped to
+ * `public/`. That setup still works; it just needs the bucket policy to do the
+ * job the second bucket does here.
  *
  * ## Two kinds of URL, and only one of them is permanent
  *
@@ -88,13 +93,19 @@ export class StorageService {
     const accountId = config.get<string>('R2_ACCOUNT_ID');
     const accessKeyId = config.get<string>('R2_ACCESS_KEY_ID');
     const secretAccessKey = config.get<string>('R2_SECRET_ACCESS_KEY');
-    this.privateBucket = config.get<string>('R2_BUCKET') ?? '';
 
-    // `||`, not the `??` the style guide asks for: an empty bucket name is not a
-    // legitimate value the way an empty string or a zero port can be, and an
-    // `R2_PUBLIC_BUCKET=""` left behind in a .env should fall back rather than
-    // presign uploads against a bucket called "".
-    this.publicBucket = (config.get<string>('R2_PUBLIC_BUCKET') ?? '').trim() || this.privateBucket;
+    // `||` throughout, not the `??` the style guide asks for: an empty bucket
+    // name is not a legitimate value the way an empty string or a zero port can
+    // be, so an `R2_PUBLIC_BUCKET=""` left behind in a .env should fall through
+    // rather than presign uploads against a bucket called "".
+    const bucket = (key: string) => (config.get<string>(key) ?? '').trim();
+
+    // `R2_BUCKET` is the old name for the private bucket, from when there was
+    // only one and the tier lived in the key prefix alone. Still read, so an
+    // environment that has not been updated keeps working — but the pair of names
+    // now says which bucket is which, which is the whole difficulty here.
+    this.privateBucket = bucket('R2_PRIVATE_BUCKET') || bucket('R2_BUCKET');
+    this.publicBucket = bucket('R2_PUBLIC_BUCKET') || this.privateBucket;
     this.publicBaseUrl = (config.get<string>('R2_PUBLIC_BASE_URL') ?? '').replace(/\/+$/, '');
 
     // Now that clips are public too, this is not a cosmetic gap: every endpoint
@@ -147,7 +158,7 @@ export class StorageService {
       this.client = null;
       this.logger.warn(
         'R2 is not configured — uploads will be refused with 503. Set R2_ACCOUNT_ID, ' +
-          'R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET to enable them.',
+          'R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_PRIVATE_BUCKET to enable them.',
       );
     }
   }

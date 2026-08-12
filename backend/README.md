@@ -129,7 +129,7 @@ key's tier decides where the object is written *and* where it is read from:
 | Prefix     | Bucket             | Holds                              | Reached by            |
 | ---------- | ------------------ | ---------------------------------- | --------------------- |
 | `public/`  | `R2_PUBLIC_BUCKET` | avatars, academy logos and gallery | `R2_PUBLIC_BASE_URL`  |
-| `private/` | `R2_BUCKET`        | clips, cover frames, §12.1 docs    | presigned URL, 7 days |
+| `private/` | `R2_PRIVATE_BUCKET` | clips, cover frames, §12.1 docs    | presigned URL, 7 days |
 
 Two rules follow, and getting either wrong fails quietly:
 
@@ -141,7 +141,7 @@ Two rules follow, and getting either wrong fails quietly:
   URL is well-formed, and every image 404s — with nothing in the logs, in a UI
   that falls back to initials when an avatar is missing.
 
-`R2_PUBLIC_BUCKET` may be left empty, which falls back to `R2_BUCKET` and puts
+`R2_PUBLIC_BUCKET` may be left empty, which falls back to `R2_PRIVATE_BUCKET` and puts
 both tiers in one bucket. That still works, but then the prefix is only a
 declaration and the bucket has to enforce it: **public read access scoped to
 `public/`**, not on the bucket as a whole. Left open, `private/players/…` is

@@ -63,7 +63,6 @@ const missing = [
   'R2_ACCOUNT_ID',
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
-  'R2_BUCKET',
   'R2_PUBLIC_BASE_URL',
 ].filter((key) => !config[key]);
 if (missing.length) {
@@ -71,8 +70,16 @@ if (missing.length) {
   process.exit(1);
 }
 
-const privateBucket = config.R2_BUCKET;
+// `R2_BUCKET` is the former name for the private bucket, read here for the same
+// reason StorageService still reads it: an environment that has not been renamed
+// should keep working rather than fail a check that is about something else.
+const privateBucket = (config.R2_PRIVATE_BUCKET || config.R2_BUCKET || '').trim();
 const publicBucket = (config.R2_PUBLIC_BUCKET ?? '').trim() || privateBucket;
+
+if (!privateBucket) {
+  console.error('Cannot continue — R2_PRIVATE_BUCKET is unset.');
+  process.exit(1);
+}
 const publicBase = config.R2_PUBLIC_BASE_URL.replace(/\/+$/, '');
 
 const client = new S3Client({

@@ -10,7 +10,7 @@ function storage(overrides: Record<string, string> = {}) {
     R2_ACCOUNT_ID: 'acct',
     R2_ACCESS_KEY_ID: 'access-key',
     R2_SECRET_ACCESS_KEY: 'secret-key',
-    R2_BUCKET: PRIVATE_BUCKET,
+    R2_PRIVATE_BUCKET: PRIVATE_BUCKET,
     R2_PUBLIC_BUCKET: PUBLIC_BUCKET,
     R2_PUBLIC_BASE_URL: 'https://cdn.example',
     ...overrides,
@@ -65,6 +65,33 @@ describe('StorageService bucket routing', () => {
 
     const avatar = await service.createReadUrl(avatarKey('user-1', 'me.jpg'));
     expectBucket(avatar.url, PUBLIC_BUCKET, PRIVATE_BUCKET);
+  });
+
+  it('still reads R2_BUCKET, the old name for the private bucket', async () => {
+    // Renaming an env key is a deployment step somebody has to remember, and the
+    // failure mode if they do not is the whole media surface answering 503. The
+    // old name keeps working; the new pair only has to say which is which.
+    const service = new StorageService({
+      get: (key: string) =>
+        ({
+          R2_ACCOUNT_ID: 'acct',
+          R2_ACCESS_KEY_ID: 'access-key',
+          R2_SECRET_ACCESS_KEY: 'secret-key',
+          R2_BUCKET: PRIVATE_BUCKET,
+          R2_PUBLIC_BUCKET: PUBLIC_BUCKET,
+          R2_PUBLIC_BASE_URL: 'https://cdn.example',
+        })[key],
+    } as unknown as ConfigService);
+
+    expect(service.isConfigured).toBe(true);
+    const clip = await service.createUploadUrl(playerMediaKey('player-1', 'goal.mp4'));
+    expectBucket(clip.uploadUrl, PRIVATE_BUCKET, PUBLIC_BUCKET);
+  });
+
+  it('prefers R2_PRIVATE_BUCKET when both names are set', async () => {
+    const service = storage({ R2_BUCKET: 'stale-legacy-bucket' });
+    const clip = await service.createUploadUrl(playerMediaKey('player-1', 'goal.mp4'));
+    expectBucket(clip.uploadUrl, PRIVATE_BUCKET, 'stale-legacy-bucket');
   });
 
   it('falls back to the single bucket when no public bucket is named', async () => {

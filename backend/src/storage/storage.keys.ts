@@ -21,8 +21,10 @@ import * as crypto from 'crypto';
  * ## The prefix declares intent; the bucket enforces it
  *
  * `StorageService` routes on that prefix: `public/` keys are written to and read
- * from `R2_PUBLIC_BUCKET`, everything else from `R2_BUCKET`. So the declaration
- * is also what puts the object somewhere, and the two cannot drift apart.
+ * from `R2_PUBLIC_BUCKET`, everything else from `R2_PRIVATE_BUCKET`. So the
+ * declaration is also what puts the object somewhere, and the two cannot drift
+ * apart — an avatar is presigned against the public bucket *because* its key
+ * says `public/`, which is the same fact that lets `buildPublicUrl` address it.
  *
  * **Avatars** and **academy imagery** get a permanent CDN URL from
  * `buildPublicUrl`. **Clips** are served by signature
@@ -87,7 +89,7 @@ export function avatarKey(userId: string, filename: string): string {
  *
  * ## This only holds if the bucket agrees
  *
- * These keys land in `R2_BUCKET`, which must have no public access. If instead
+ * These keys land in `R2_PRIVATE_BUCKET`, which must have no public access. If instead
  * one bucket serves both tiers and its public read is not scoped to `public/`,
  * `private/players/…` is anonymously fetchable at `R2_PUBLIC_BASE_URL`
  * regardless of what this file says — see backend/README, and `pnpm r2:check`.

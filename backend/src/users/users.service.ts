@@ -12,15 +12,15 @@ import * as crypto from 'crypto';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
-import { StorageService } from '../storage/storage.service';
 import { assertKeyUnder, avatarKey, avatarPrefix } from '../storage/storage.keys';
-import { generateUsername, normaliseUsername, validateUsername } from './username.util';
+import { StorageService } from '../storage/storage.service';
 import {
   AvatarUploadUrlDto,
   RequestContactChangeDto,
   UpdateProfileDto,
   VerifyContactChangeDto,
 } from './dto/user.dto';
+import { generateUsername, normaliseUsername, validateUsername } from './username.util';
 
 const CONTACT_CODE_TTL_SECONDS = 600;
 
@@ -270,11 +270,16 @@ export class UsersService {
   }
 
   /**
-   * Presigned PUT for an avatar — the one public tier.
+   * Presigned PUT for an avatar, into the public bucket.
    *
    * Avatars are meant to be cached and hotlinked, so they keep a permanent public
    * URL. The key is minted here from the caller's own id; nothing the client
    * sends influences where the object lands.
+   *
+   * `avatarKey` puts it under `public/`, and that prefix is what sends the PUT to
+   * `R2_PUBLIC_BUCKET` — the same fact that makes `buildPublicUrl` willing to
+   * address it. The two cannot disagree, because they read the same key rather
+   * than each being told a bucket separately.
    */
   async avatarUploadUrl(userId: string, dto: AvatarUploadUrlDto) {
     const storageKey = avatarKey(userId, dto.filename);

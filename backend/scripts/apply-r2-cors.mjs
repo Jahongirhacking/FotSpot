@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Applies `r2-cors.json` to both R2 buckets — `R2_BUCKET` and `R2_PUBLIC_BUCKET`.
+ * Applies `r2-cors.json` to both R2 buckets — `R2_PRIVATE_BUCKET` and
+ * `R2_PUBLIC_BUCKET`.
  *
  * ## Why this is needed at all
  *
@@ -51,7 +52,7 @@ function env() {
 }
 
 const config = env();
-const missing = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'].filter(
+const missing = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'].filter(
   (key) => !config[key],
 );
 if (missing.length) {
@@ -71,7 +72,11 @@ const client = new S3Client({
 // Both tiers are uploaded to by the browser — clips to the private bucket, avatars
 // and academy imagery to the public one — so both need the policy. Deduped,
 // because the single-bucket deployment names the same bucket twice.
-const buckets = [...new Set([config.R2_BUCKET, config.R2_PUBLIC_BUCKET].filter(Boolean))];
+const buckets = [
+  ...new Set(
+    [config.R2_PRIVATE_BUCKET ?? config.R2_BUCKET, config.R2_PUBLIC_BUCKET].filter(Boolean),
+  ),
+];
 const checkOnly = process.argv.includes('--check');
 
 let failed = false;
