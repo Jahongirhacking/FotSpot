@@ -119,17 +119,30 @@ export class StorageService {
         credentials: { accessKeyId, secretAccessKey },
       });
 
-      // Worth a line at boot, because the two-bucket and one-bucket setups fail
-      // in opposite directions and the logs are where you find out which you are
-      // running: two buckets need one API token authorized for *both*, one bucket
-      // needs public read scoped to `public/`.
-      this.logger.log(
-        this.publicBucket === this.privateBucket
-          ? `R2: single bucket "${this.privateBucket}" for both tiers — public read must be ` +
-              'scoped to public/, or private/ is fetchable over the CDN.'
-          : `R2: private "${this.privateBucket}", public "${this.publicBucket}" at ` +
-              `${this.publicBaseUrl || '(no public base URL)'}`,
-      );
+      // Worth saying at boot, because the two setups fail in opposite directions
+      // and the logs are where you find out which one you are running: two
+      // buckets need an API token authorized for *both*, one bucket needs public
+      // read scoped to `public/`.
+      if (this.publicBucket !== this.privateBucket) {
+        this.logger.log(
+          `R2: private "${this.privateBucket}", public "${this.publicBucket}" at ` +
+            `${this.publicBaseUrl || '(no public base URL)'}`,
+        );
+      } else {
+        // A warning, not a note. One bucket serving both tiers is a legitimate
+        // deployment, but it is also exactly what an unset R2_PUBLIC_BUCKET looks
+        // like — and the two are indistinguishable from here. Both readings have
+        // a consequence somebody needs to have decided on, so neither is allowed
+        // to pass quietly.
+        this.logger.warn(
+          `R2: one bucket "${this.privateBucket}" is serving both tiers, because ` +
+            'R2_PUBLIC_BUCKET is unset. If that is deliberate, public read must be scoped to ' +
+            'public/ or every clip is anonymously downloadable at the CDN host. If it is not, ' +
+            'avatars and academy images are being written here and linked from ' +
+            `${this.publicBaseUrl || 'the public host'}, where they will 404. ` +
+            '`pnpm r2:check` settles which.',
+        );
+      }
     } else {
       this.client = null;
       this.logger.warn(
