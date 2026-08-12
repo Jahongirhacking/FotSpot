@@ -120,10 +120,10 @@ function TutorialPlayer({ category }: { category: MediaCategory }) {
     <video
       key={category}
       src={tutorial?.src}
-      poster={tutorial?.poster}
+      poster={tutorial?.poster || undefined}
       controls
       playsInline
-      preload="none"
+      preload="metadata"
       onError={() => setMissing((current) => new Set(current).add(category))}
       className="bg-surface-3 aspect-[9/16] w-full rounded-xl object-cover"
     />
