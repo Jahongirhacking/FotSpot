@@ -16,7 +16,13 @@ import type { Dictionary } from '@/lib/i18n';
 export type Provenance = 'combine' | 'coach' | 'self' | 'none';
 
 export type AttributeKey =
-  'pace' | 'dribbling' | 'passing' | 'finishing' | 'physical' | 'technique';
+  | 'pace'
+  | 'dribbling'
+  | 'passing'
+  | 'finishing'
+  | 'physical'
+  | 'technique'
+  | 'goalkeeping';
 
 /**
  * An attribute and the clip category that evidences it.
@@ -32,6 +38,7 @@ export const ATTRIBUTE_CATEGORY: Record<AttributeKey, MediaCategory> = {
   finishing: 'FINISHING',
   physical: 'PHYSICAL',
   technique: 'TECHNIQUE',
+  goalkeeping: 'GOALKEEPING',
 };
 
 export const ATTRIBUTE_KEYS = Object.keys(ATTRIBUTE_CATEGORY) as AttributeKey[];
@@ -150,10 +157,24 @@ const SOURCES: Record<
     coach: ['dribbling'],
     legacy: (p) => jugglingScore(p.jugglingRecord),
   },
+  /*
+   * No coach source, and that is the honest state rather than an oversight.
+   *
+   * `CoachAssessment` scores speed, passing, vision, dribbling, finishing,
+   * physical, leadership and discipline — all outfield. Nothing there measures
+   * shot-stopping, so borrowing one of them would put a number on this bar that
+   * was never about goalkeeping, and the card would call it coach-verified.
+   *
+   * An empty list makes `coachAverage` return null, so the bar falls through to
+   * the player's own clip and renders as self-reported (§1.6). That is true
+   * today, and it stays true until `CoachAssessment` gains a goalkeeping field —
+   * at which point this becomes `coach: ['goalkeeping']` and nothing else moves.
+   */
+  goalkeeping: { label: 'Goalkeeping', coach: [] },
 };
 
 /**
- * The six bars, each from the strongest source available.
+ * Every bar, each from the strongest source available.
  *
  * Precedence is **coach → clip → legacy self-reported number**, and it is not
  * arbitrary. A coach assessment is somebody else's judgement, which is the only
@@ -295,14 +316,29 @@ export interface CardEvidence {
 }
 
 /**
- * The denominator: six attributes at 100 each.
+ * Attributes every player can evidence, whatever position they play.
+ *
+ * Goalkeeping is the exception and therefore the reason this list exists: a
+ * striker has nothing to show for it and never will. Counting it in the
+ * denominator would have capped every outfield card at four stars — a
+ * regression they could not act on, caused by a category that is not about
+ * them.
+ */
+const UNIVERSAL_ATTRIBUTES = ATTRIBUTE_KEYS.filter((key) => key !== 'goalkeeping');
+
+/**
+ * The denominator: the universal attributes at 100 each.
  *
  * A player carrying only coach ratings can reach it. One carrying only their own
  * claims cannot — those are halved, so a perfect self-assessment reaches half of
  * it and three stars. That gap is the point: the star row is meant to pull towards
- * "get a coach to assess me", not towards typing 100 six times.
+ * "get a coach to assess me", not towards typing 100 into every bar.
+ *
+ * A keeper's goalkeeping evidence still counts *towards* the total — it is real
+ * evidence — it simply is not required to reach five stars. The clamp below
+ * absorbs the overflow that allows.
  */
-const EVIDENCE_MAX = Object.keys(ATTRIBUTE_CATEGORY).length * 100;
+const EVIDENCE_MAX = UNIVERSAL_ATTRIBUTES.length * 100;
 
 /** The most recent value a coach put on this attribute, or null. */
 function latestCoachRating(
@@ -369,9 +405,10 @@ export function cardEvidence(
     if (coach !== null && claim?.reportedBy !== 'COACH') coachSum += coach;
   }
 
-  // Clamped because the two halves can exceed the denominator together — a fully
-  // self-rated *and* fully coach-rated card scores 900 — and a card cannot show
-  // seven stars.
+  // Clamped because the numerator can exceed the denominator two ways: a card
+  // that is both fully self-rated and fully coach-rated, and a keeper whose
+  // goalkeeping evidence counts without being required. Neither should show
+  // more than five stars.
   const score = selfSum / 2 + coachSum;
   const stars = Math.max(0, Math.min(5, Math.round((score / EVIDENCE_MAX) * 5)));
 

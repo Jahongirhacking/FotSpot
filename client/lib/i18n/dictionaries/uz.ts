@@ -547,6 +547,7 @@ export const uz = {
     finishing: 'Zarba',
     physical: 'Jismoniy',
     technique: 'Texnika',
+    goalkeeping: 'Darvozabonlik',
     highlights: 'Eng yaxshi lahzalar',
   },
 
@@ -1127,6 +1128,12 @@ export const uz = {
       player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
+    },
+    GOALKEEPING: {
+      player:
+        'Bu bo‘lim darvozabonlar uchun. Maydon o‘yinchisi bo‘lsangiz, boshqa ko‘nikmani tanlang.',
+      goalkeeper:
+        'Cho‘zilib to‘xtatish, reaksiya, baland to‘plarda chiqish, 1v1 holatlar, penalti va oyoq bilan to‘p tarqatishni ko‘rsating.',
     },
     MATCH_HIGHLIGHTS: {
       player:

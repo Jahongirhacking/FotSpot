@@ -520,6 +520,7 @@ export const en: Dictionary = {
     finishing: 'Finishing',
     physical: 'Physical',
     technique: 'Technique',
+    goalkeeping: 'Goalkeeping',
     highlights: 'Highlights',
   },
 
@@ -1074,6 +1075,11 @@ export const en: Dictionary = {
       player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
       goalkeeper:
         'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
+    },
+    GOALKEEPING: {
+      player: 'This one is for keepers. If you play outfield, pick another skill.',
+      goalkeeper:
+        'Show diving saves, reactions, coming for high balls, 1v1s, penalties, and distribution with your feet.',
     },
     MATCH_HIGHLIGHTS: {
       player:

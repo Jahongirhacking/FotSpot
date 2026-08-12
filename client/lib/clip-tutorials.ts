@@ -46,10 +46,11 @@ const CATEGORIES: MediaCategory[] = [
   'FINISHING',
   'PHYSICAL',
   'TECHNIQUE',
+  'GOALKEEPING',
   'MATCH_HIGHLIGHTS',
 ];
 
-const getTutorialPath = (category: MediaCategory) => {
+const getTutorialPath = (category: MediaCategory): string | null => {
   switch (category) {
     case 'PACE':
       return 'tutorial_dribbling.mp4';
@@ -60,7 +61,15 @@ const getTutorialPath = (category: MediaCategory) => {
     case 'FINISHING':
       return 'tutorial_shooting.mp4';
     case 'PHYSICAL':
-      return 'tutorial_dribbling.mp4';
+      return 'tutorial_defense.mp4';
+    case 'TECHNIQUE':
+      return 'tutorial_juggling.mp4';
+    case 'GOALKEEPING':
+      return 'tutorial_goalkeeping.mp4';
+    // Highlights evidence no single skill, so there is nothing to demonstrate —
+    // "show your best moments from a real match" is the whole instruction.
+    case 'MATCH_HIGHLIGHTS':
+      return null;
   }
 };
 
@@ -72,11 +81,13 @@ const getTutorialPath = (category: MediaCategory) => {
  * the file either exists in the bucket or the entry renders as unavailable.
  */
 export const CLIP_TUTORIALS: ClipTutorial[] = CATEGORIES.map((category) => {
-  const slug = category.toLowerCase();
+  const file = getTutorialPath(category);
   return {
     category,
-    src: mediaAsset(`${tutorialPath}/${slug}.mp4`) ?? '',
-    poster: mediaAsset(`${tutorialPath}/${slug}.jpg`) ?? undefined,
+    // Empty rather than an interpolated `undefined`: `TutorialPlayer` reads a
+    // falsy `src` as "no tutorial for this skill" and says so, where a URL
+    // ending in "/undefined" would be a 404 dressed up as a broken player.
+    src: file ? (mediaAsset(`${tutorialPath}/${file}`) ?? '') : '',
   };
 });
 

@@ -45,7 +45,14 @@ export type TrialApplicationStatus =
 export type TrialVerdict = 'PASS' | 'FAIL';
 /** One value per card attribute (§21.1), plus highlights. */
 export type MediaCategory =
-  'PACE' | 'DRIBBLING' | 'PASSING' | 'FINISHING' | 'PHYSICAL' | 'TECHNIQUE' | 'MATCH_HIGHLIGHTS';
+  | 'PACE'
+  | 'DRIBBLING'
+  | 'PASSING'
+  | 'FINISHING'
+  | 'PHYSICAL'
+  | 'TECHNIQUE'
+  | 'MATCH_HIGHLIGHTS'
+  | 'GOALKEEPING';
 export type MediaType = 'IMAGE' | 'VIDEO';
 export type FollowTargetType = 'PLAYER' | 'ACADEMY';
 export type AcademyScoutFollowState = 'FOLLOWING' | 'MUTED';

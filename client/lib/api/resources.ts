@@ -1065,7 +1065,7 @@ export const media = {
       storageKey: string;
       type: MediaType;
       category: MediaCategory;
-      /** Required for the six attribute categories, rejected for highlights. */
+      /** Required for every attribute category, rejected for highlights. */
       rating?: number;
       title?: string;
       description?: string;

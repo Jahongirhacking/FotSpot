@@ -690,6 +690,9 @@ enum MediaType {
 
 /// One value per player-card attribute (§21.1), plus highlights.
 ///
+/// GOALKEEPING is an attribute like the rest — a keeper's clips were otherwise
+/// filed under Technique and Passing, which is not what either bar claims.
+///
 /// Renamed from SPRINT/SHOOTING so a clip's category *is* the bar it evidences.
 /// When the two vocabularies differed, nothing could connect a video to the
 /// attribute it was uploaded to prove.
@@ -700,6 +703,7 @@ enum MediaCategory {
   FINISHING
   PHYSICAL
   TECHNIQUE
+  GOALKEEPING
   MATCH_HIGHLIGHTS
 }
 

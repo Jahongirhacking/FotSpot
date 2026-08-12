@@ -5889,6 +5889,7 @@
           "FINISHING",
           "PHYSICAL",
           "TECHNIQUE",
+          "GOALKEEPING",
           "MATCH_HIGHLIGHTS"
         ]
       },
@@ -5936,7 +5937,7 @@
           },
           "rating": {
             "type": "number",
-            "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for the six attribute categories and rejected for\nMATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
+            "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for every attribute category and rejected for MATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
             "minimum": 0,
             "maximum": 100
           },

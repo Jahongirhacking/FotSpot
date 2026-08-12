@@ -54,6 +54,7 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
   'FINISHING',
   'PHYSICAL',
   'TECHNIQUE',
+  'GOALKEEPING',
 ];
 
 /**
