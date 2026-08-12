@@ -4,10 +4,18 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { AttributeBars } from '@/components/player/AttributeBars';
 import { ClipModal } from '@/components/player/ClipModal';
 import { ClipTile } from '@/components/player/ClipTile';
+import { ClipTutorialsDialog } from '@/components/player/ClipTutorialsDialog';
 import { ClipUploader } from '@/components/player/ClipUploader';
 import { RatingHistoryChart } from '@/components/player/RatingHistoryChart';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/Feedback';
 import type { CoachAssessment, Media, MediaCategory, PlayerProfile } from '@/lib/api/types';
 import {
@@ -17,7 +25,7 @@ import {
   type AttributeKey,
 } from '@/lib/player-card';
 import { cn } from '@/lib/utils';
-import { Plus, Trophy, Video } from 'lucide-react';
+import { GraduationCap, Plus, Trophy, Video } from 'lucide-react';
 import * as React from 'react';
 
 type Filter = 'ALL' | MediaCategory;
@@ -99,24 +107,27 @@ export function AttributeBoard({
           <CardTitle className="flex items-center gap-2 text-base">
             <Video className="text-primary size-4" aria-hidden /> {t.clips.yourClips}
           </CardTitle>
-          {canUpload && !uploading && (
-            <Button size="sm" onClick={() => setUploading(true)}>
-              <Plus aria-hidden /> {t.clips.addClip}
-            </Button>
+          {/* Learn, then do — in that order, and both reachable without leaving
+              the clips they are about to add to. Tutorials are offered to
+              everybody looking at their own card, including before the first
+              upload, which is exactly when the question is loudest. */}
+          {canUpload && (
+            <div className="flex flex-wrap items-center gap-2">
+              <ClipTutorialsDialog
+                trigger={
+                  <Button size="sm" variant="outline">
+                    <GraduationCap aria-hidden /> {t.clips.watchTutorials}
+                  </Button>
+                }
+              />
+              <Button size="sm" onClick={() => setUploading(true)}>
+                <Plus aria-hidden /> {t.clips.addClip}
+              </Button>
+            </div>
           )}
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {uploading && (
-            <ClipUploader
-              onCancel={() => setUploading(false)}
-              onUploaded={(created) => {
-                setUploading(false);
-                setItems((current) => [created, ...current]);
-                setFilter(created.category);
-              }}
-            />
-          )}
 
           {/* Tabs double as the history index: every category the player has ever
               uploaded to keeps its full run of clips, not just the newest. */}
@@ -166,6 +177,38 @@ export function AttributeBoard({
       </Card>
 
       {selectedAttribute && <AttributeDetail attribute={selectedAttribute} clips={items} />}
+
+      {/*
+        The uploader is a dialog now, not a panel wedged above the grid.
+        Inline, it pushed the clips the player was looking at off the screen and
+        left the page scrolled to a form whose top they could not see; on a phone
+        the record button ended up below the fold of a card that was already
+        tall. A dialog is a bottom sheet there and a centred panel on a laptop —
+        one focus trap, one obvious way out.
+      */}
+      <Dialog open={uploading} onOpenChange={setUploading}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="text-primary size-5" aria-hidden /> {t.clips.addClip}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {/* Mounted only while open, so the camera hook and the storage query
+                do not run behind a closed dialog. */}
+            {uploading && (
+              <ClipUploader
+                onCancel={() => setUploading(false)}
+                onUploaded={(created) => {
+                  setUploading(false);
+                  setItems((current) => [created, ...current]);
+                  setFilter(created?.category);
+                }}
+              />
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
 
       {/* One modal, driven by which tile was pressed — twelve mounted dialogs
           would each hold their own queries and video element. */}

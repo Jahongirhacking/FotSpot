@@ -1,15 +1,15 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { getSession } from '@/lib/session';
-import { getServerT } from '@/lib/i18n/server';
-import { players } from '@/lib/api/resources';
-import type { PlayerProfile } from '@/lib/api/types';
-import { EditPlayerDetails } from './EditPlayerDetails';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
+import { players } from '@/lib/api/resources';
+import type { PlayerProfile } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { getSession } from '@/lib/session';
+import { ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { EditPlayerDetails } from './EditPlayerDetails';
 
 export const metadata: Metadata = { title: 'Player details' };
 

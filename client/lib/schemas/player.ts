@@ -1,15 +1,49 @@
-import { z } from 'zod';
 import { ageFrom } from '@/lib/utils';
+import { z } from 'zod';
 
 /** Mirrors `backend/src/players/dto/player.dto.ts`. */
 
 export const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST'] as const;
 
+export enum PlayingStyles {
+  GOAL_POACHER = 'GOAL_POACHER',
+  FOX_IN_THE_BOX = 'FOX_IN_THE_BOX',
+  DEEP_LYING_FORWARD = 'DEEP_LYING_FORWARD',
+  PROLIFIC_WINGER = 'PROLIFIC_WINGER',
+  CLASSIC_10 = 'CLASSIC_10',
+  BOX_TO_BOX = 'BOX_TO_BOX',
+  PLAYMAKER = 'PLAYMAKER',
+  ANCHOR_MAN = 'ANCHOR_MAN',
+  ORCHESTRATOR = 'ORCHESTRATOR',
+  DEFENSIVE_FULLBACK = 'DEFENSIVE_FULLBACK',
+  DESTROYER = 'DESTROYER',
+  OFFENSIVE_WINGBACK = 'OFFENSIVE_WINGBACK',
+  BUILD_UP = 'BUILD_UP',
+  OFFENSIVE_KEEPER = 'OFFENSIVE_KEEPER',
+  DEFENSIVE_KEEPER = 'DEFENSIVE_KEEPER',
+}
+
 export const PLAYING_STYLES = {
-  Forward: ['POACHER', 'TARGET_MAN', 'DEEP_LYING_FORWARD', 'WIDE_THREAT'],
-  Midfield: ['BOX_TO_BOX', 'PLAYMAKER', 'DESTROYER', 'ORCHESTRATOR'],
-  Defence: ['BALL_PLAYING_DEFENDER', 'STOPPER', 'OVERLAPPING_FULL_BACK', 'SWEEPER'],
-  Goalkeeper: ['OFFENSIVE_KEEPER', 'DEFENSIVE_KEEPER'],
+  Forward: [
+    PlayingStyles.GOAL_POACHER,
+    PlayingStyles.FOX_IN_THE_BOX,
+    PlayingStyles.DEEP_LYING_FORWARD,
+    PlayingStyles.PROLIFIC_WINGER,
+    PlayingStyles.CLASSIC_10,
+  ],
+  Midfield: [
+    PlayingStyles.BOX_TO_BOX,
+    PlayingStyles.PLAYMAKER,
+    PlayingStyles.ANCHOR_MAN,
+    PlayingStyles.ORCHESTRATOR,
+  ],
+  Defence: [
+    PlayingStyles.DEFENSIVE_FULLBACK,
+    PlayingStyles.OFFENSIVE_WINGBACK,
+    PlayingStyles.BUILD_UP,
+    PlayingStyles.DESTROYER,
+  ],
+  Goalkeeper: [PlayingStyles.DEFENSIVE_KEEPER, PlayingStyles.OFFENSIVE_KEEPER],
 } as const;
 
 export const ALL_PLAYING_STYLES = Object.values(PLAYING_STYLES).flat();

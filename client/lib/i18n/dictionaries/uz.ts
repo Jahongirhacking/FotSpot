@@ -1,3 +1,5 @@
+import { PlayingStyles } from '@/lib/schemas/player';
+
 /**
  * Uzbek (Latin) — the source dictionary.
  *
@@ -217,7 +219,8 @@ export const uz = {
     scoutPoint3: 'Futbolchi va akademiyalarni kuzating',
     scoutCta: 'Skautlikni boshlash',
     decideLater: 'Keyinroq hal qilaman',
-    subtitleLong: 'Bugun sizga mos keladiganini tanlang. Ikkinchisini keyin ham qo‘shishingiz mumkin.',
+    subtitleLong:
+      'Bugun sizga mos keladiganini tanlang. Ikkinchisini keyin ham qo‘shishingiz mumkin.',
     settingUp: 'Sozlanmoqda…',
   },
 
@@ -228,7 +231,8 @@ export const uz = {
     stepFootball: 'Futbol',
     progress: 'Jarayon',
     whoIsPlaying: 'Kim o‘ynaydi?',
-    optionalHint: 'Hammasi ixtiyoriy — keyinroq ham to‘ldirsangiz bo‘ladi. Har biri kartangizni kuchaytiradi.',
+    optionalHint:
+      'Hammasi ixtiyoriy — keyinroq ham to‘ldirsangiz bo‘ladi. Har biri kartangizni kuchaytiradi.',
     tipLabel: 'Maslahat',
     whoIsPlayingHint:
       'Hozircha faqat asosiy ma’lumot. Tug‘ilgan sana qaysi yosh guruhida taqqoslanishingizni belgilaydi — biz hech qachon yosh guruhlari o‘rtasida taqqoslamaymiz.',
@@ -544,6 +548,9 @@ export const uz = {
     play: 'Ijro etish',
     privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',
+    watchTutorials: 'Darsliklarni ko‘rish',
+    tutorialsHint: 'Har bir ko‘nikma uchun qisqa video — nimani va qanday suratga olishni ko‘rsatadi.',
+    tutorialUnavailable: 'Bu ko‘nikma uchun darslik hozircha yo‘q.',
     addClip: 'Lavha qo‘shish',
     all: 'Barchasi',
     dropHere: 'Videoni shu yerga tashlang',
@@ -793,7 +800,8 @@ export const uz = {
     positions: 'Pozitsiyalar',
     ageRange: 'Yosh oralig‘i',
     ageRangeHint: 'Sinov kunidagi yosh bo‘yicha hisoblanadi.',
-    positionsPickHint: 'Maydonda kerakli pozitsiyalarni belgilang. Mos futbolchilarga xabar boradi.',
+    positionsPickHint:
+      'Maydonda kerakli pozitsiyalarni belgilang. Mos futbolchilarga xabar boradi.',
     positionsNoneChosen: 'Hech qanday pozitsiya tanlanmagan',
     newBadge: 'yangi',
     positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
@@ -1026,20 +1034,35 @@ export const uz = {
 
   /** Har bir o'yin uslubining bir qatorlik izohi (§21.3). */
   playingStyles: {
-    POACHER: 'Jarima maydonchasida yashaydi va eng qisqa imkoniyatni gol qiladi.',
-    TARGET_MAN: 'Uzun uzatmalarni ushlab turadi, havoda kuchli va sheriklarini o‘yinga qo‘shadi.',
-    DEEP_LYING_FORWARD: 'Pastga tushib o‘yin quradi — ham gol uradi, ham gol keltiradi.',
-    WIDE_THREAT: 'Qanotdan tezlik bilan kiradi va markazga burilib zarba beradi.',
-    BOX_TO_BOX: 'Ikkala jarima maydonchasi orasida to‘xtovsiz ishlaydi — himoya ham, hujum ham.',
-    PLAYMAKER: 'Oxirgi uzatmani ko‘radi va beradi; hujumning ijodkori.',
-    DESTROYER: 'To‘pni qaytarib oladi va darhol o‘zidan kuchliroq sherigiga beradi.',
-    ORCHESTRATOR: 'Jamoaning sur‘atini belgilaydi; sodda va aniq uzatmalar bilan o‘yinni boshqaradi.',
-    BALL_PLAYING_DEFENDER: 'Himoyada ishonchli, to‘p bilan orqadan o‘yin quradi.',
-    STOPPER: 'Old markaziy himoyachi — kuchli, qat‘iy va yakkama-yakka kurashda ustun.',
-    OVERLAPPING_FULL_BACK: 'Qanot bo‘ylab yuqoriga chiqadi, uzatma beradi va orqaga qaytadi.',
-    SWEEPER: 'Himoya orqasini o‘qiydi va xavfni yuzaga kelgunicha to‘xtatadi.',
-    OFFENSIVE_KEEPER: 'Darvozadan uzoqda o‘ynaydi, oyog‘i bilan ishonchli — o‘n birinchi o‘yinchi.',
-    DEFENSIVE_KEEPER: 'Darvozasida qoladi: reaksiya, joylashuv va jarima maydonchasi ustunligi.',
+    [PlayingStyles.GOAL_POACHER]:
+      'Himoya chizig‘i ortiga yuguradi, bo‘sh joyga chiqadi va tez yakunlaydi',
+    [PlayingStyles.FOX_IN_THE_BOX]:
+      'Jarima maydonida bo‘sh joy topadi va imkoniyatni tezda golga aylantiradi.',
+    [PlayingStyles.DEEP_LYING_FORWARD]:
+      'Orqaroqqa tushib o‘yin quradi, pas beradi va hujumni qo‘llab-quvvatlaydi.',
+    [PlayingStyles.PROLIFIC_WINGER]:
+      'Qanotdan tezlik bilan kiradi va markazga burilib zarba beradi.',
+    [PlayingStyles.CLASSIC_10]:
+      'Hujum ortida erkin harakatlanib, o‘yinni quradi va jamoadoshlariga golga vaziyat yaratadi.',
+    [PlayingStyles.BOX_TO_BOX]:
+      'Maydon bo‘ylab faol harakatlanib, ham himoyada, ham hujumda jamoaga yordam beradi.',
+    [PlayingStyles.PLAYMAKER]:
+      'O‘yinni boshqaradi, aniq paslar beradi va jamoadoshlariga golga vaziyat yaratadi.',
+    [PlayingStyles.ANCHOR_MAN]:
+      'Himoya oldida pozitsiyani ushlab, raqib hujumlarini to‘xtatadi va o‘yinni xavfsiz quradi.',
+    [PlayingStyles.ORCHESTRATOR]:
+      'O‘yinning tempini boshqaradi, paslar orqali hujumlarni tashkil qiladi va jamoani oldinga olib chiqadi',
+    [PlayingStyles.DEFENSIVE_FULLBACK]:
+      'Himoyada ishonchli, pozitsiyani saqlaydi va to‘pni xavfsiz olib chiqadi.',
+    [PlayingStyles.DESTROYER]:
+      'Raqib hujumlarini buzadi, kuchli pressing qiladi va to‘pni qaytarib oladi.',
+    [PlayingStyles.OFFENSIVE_WINGBACK]:
+      'Qanot bo‘ylab faol hujum qiladi, uzatma beradi va himoyaga qaytadi.',
+    [PlayingStyles.BUILD_UP]: 'Orqadan o‘yinni quradi, to‘pni nazorat qiladi va hujumni boshlaydi.',
+    [PlayingStyles.OFFENSIVE_KEEPER]:
+      'Darvozadan uzoqda o‘ynaydi, oyog‘i bilan ishonchli — o‘n birinchi o‘yinchi.',
+    [PlayingStyles.DEFENSIVE_KEEPER]:
+      'Darvozasida qoladi: reaksiya, joylashuv va jarima maydonchasi ustunligi.',
   },
 
   /**
@@ -1055,31 +1078,41 @@ export const uz = {
     playerLabel: 'Futbolchi',
     goalkeeperLabel: 'Darvozabon',
     PACE: {
-      player: 'Startdagi tezlik, 20–30 m masofada yugurish, to‘p bilan tezlashish va yo‘nalish o‘zgartirishni ko‘rsating.',
-      goalkeeper: 'Darvoza oldidagi reaksiya tezligi, chiqish va to‘pgacha yetib borish tezligini ko‘rsating.',
+      player:
+        'Startdagi tezlik, 20–30 m masofada yugurish, to‘p bilan tezlashish va yo‘nalish o‘zgartirishni ko‘rsating.',
+      goalkeeper:
+        'Darvoza oldidagi reaksiya tezligi, chiqish va to‘pgacha yetib borish tezligini ko‘rsating.',
     },
     DRIBBLING: {
-      player: 'Tor joyda to‘pni olib yurish, aldash harakatlari, himoyachidan o‘tib ketish va to‘pni nazorat qilishni ko‘rsating.',
+      player:
+        'Tor joyda to‘pni olib yurish, aldash harakatlari, himoyachidan o‘tib ketish va to‘pni nazorat qilishni ko‘rsating.',
       goalkeeper: 'Bosim ostida to‘pni oyoq bilan olib chiqish va raqibdan qutulishni ko‘rsating.',
     },
     PASSING: {
-      player: 'Qisqa va uzun uzatmalar, aniqlik, ikki oyoqda uzatish va harakatdagi sherikka uzatishni ko‘rsating.',
-      goalkeeper: 'Qo‘l va oyoq bilan to‘p tarqatish, uzun uzatma va tez hujum boshlashni ko‘rsating.',
+      player:
+        'Qisqa va uzun uzatmalar, aniqlik, ikki oyoqda uzatish va harakatdagi sherikka uzatishni ko‘rsating.',
+      goalkeeper:
+        'Qo‘l va oyoq bilan to‘p tarqatish, uzun uzatma va tez hujum boshlashni ko‘rsating.',
     },
     FINISHING: {
-      player: 'Jarima maydonchasi ichida va tashqarisidan zarbalar, ikki oyoqda va bosh bilan gol urishni ko‘rsating.',
+      player:
+        'Jarima maydonchasi ichida va tashqarisidan zarbalar, ikki oyoqda va bosh bilan gol urishni ko‘rsating.',
       goalkeeper: 'Penalti va 1v1 holatlarda zarbani to‘xtatishni ko‘rsating.',
     },
     PHYSICAL: {
-      player: 'Kuch, muvozanat, yakkama-yakka kurash, sakrash balandligi va chidamlilikni ko‘rsating.',
-      goalkeeper: 'Sakrash, cho‘zilish, jarima maydonchasida jismoniy ustunlik va tez o‘rnidan turishni ko‘rsating.',
+      player:
+        'Kuch, muvozanat, yakkama-yakka kurash, sakrash balandligi va chidamlilikni ko‘rsating.',
+      goalkeeper:
+        'Sakrash, cho‘zilish, jarima maydonchasida jismoniy ustunlik va tez o‘rnidan turishni ko‘rsating.',
     },
     TECHNIQUE: {
       player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
-      goalkeeper: 'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
+      goalkeeper:
+        'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
     },
     MATCH_HIGHLIGHTS: {
-      player: 'Haqiqiy o‘yindan eng yaxshi lahzalar: gol, uzatma, muhim harakatlar. Boshqalar orasida o‘zingiz ko‘rinib turing.',
+      player:
+        'Haqiqiy o‘yindan eng yaxshi lahzalar: gol, uzatma, muhim harakatlar. Boshqalar orasida o‘zingiz ko‘rinib turing.',
       goalkeeper: 'Haqiqiy o‘yindan to‘xtatishlar, chiqishlar va jamoani boshqarish lahzalari.',
     },
   },

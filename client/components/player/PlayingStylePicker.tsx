@@ -133,7 +133,7 @@ function ExemplarCrest({
       <img
         src={imageUrl}
         alt={name}
-        className="size-12 shrink-0 rounded-lg object-contain"
+        className="size-20 shrink-0 rounded-lg object-contain"
         loading="lazy"
       />
     );

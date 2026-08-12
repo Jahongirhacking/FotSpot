@@ -1,3 +1,4 @@
+import { PlayingStyles } from '@/lib/schemas/player';
 import type { Dictionary } from './uz';
 
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
@@ -210,7 +211,8 @@ export const en: Dictionary = {
     stepFootball: 'Football',
     progress: 'Progress',
     whoIsPlaying: "Who's playing?",
-    optionalHint: 'All optional — you can fill these in later. Every one you add makes your card stronger.',
+    optionalHint:
+      'All optional — you can fill these in later. Every one you add makes your card stronger.',
     tipLabel: 'Tip',
     whoIsPlayingHint:
       "Just the basics for now. Your date of birth decides which age group you're compared in — we never compare across age groups.",
@@ -519,6 +521,9 @@ export const en: Dictionary = {
     play: 'Play',
     privateNote: 'This clip stays on your profile until you delete it.',
     yourClips: 'Clips',
+    watchTutorials: 'Watch tutorials',
+    tutorialsHint: 'A short video per skill, showing what to film and how.',
+    tutorialUnavailable: 'No tutorial for this skill yet.',
     addClip: 'Add a clip',
     all: 'All',
     dropHere: 'Drop a video here',
@@ -989,20 +994,34 @@ export const en: Dictionary = {
   },
 
   playingStyles: {
-    POACHER: 'Lives in the box and finishes the half-chance nobody else reaches.',
-    TARGET_MAN: 'Holds the long ball up, wins it in the air, brings others into play.',
-    DEEP_LYING_FORWARD: 'Drops in to build the move — scores and creates in equal measure.',
-    WIDE_THREAT: 'Attacks from the touchline at pace and cuts inside to shoot.',
-    BOX_TO_BOX: 'Covers both penalty areas without stopping — defends and attacks.',
-    PLAYMAKER: 'Sees the final pass and plays it; the invention in the attack.',
-    DESTROYER: 'Wins the ball back and gives it straight to somebody better.',
-    ORCHESTRATOR: 'Sets the tempo and controls the game through simple, exact passing.',
-    BALL_PLAYING_DEFENDER: 'Solid defensively and starts the attack with the ball at their feet.',
-    STOPPER: 'The front centre-back — strong, decisive and dominant one-on-one.',
-    OVERLAPPING_FULL_BACK: 'Runs the whole flank, delivers the cross, gets back to defend.',
-    SWEEPER: 'Reads the space behind the defence and kills the danger before it forms.',
-    OFFENSIVE_KEEPER: 'Plays high off the line and is trusted with the ball — the eleventh player.',
-    DEFENSIVE_KEEPER: 'Stays on the line: reflexes, positioning and command of the box.',
+    [PlayingStyles.GOAL_POACHER]:
+      'Runs behind the defensive line, finds space and finishes quickly.',
+    [PlayingStyles.FOX_IN_THE_BOX]:
+      'Finds space inside the penalty area and quickly turns chances into goals.',
+    [PlayingStyles.DEEP_LYING_FORWARD]:
+      'Drops deeper to build play, provide passes and support the attack.',
+    [PlayingStyles.PROLIFIC_WINGER]: 'Cuts inside from the wing with pace and takes shots on goal.',
+    [PlayingStyles.CLASSIC_10]:
+      'Roams freely behind the attack, builds play and creates scoring chances for teammates.',
+    [PlayingStyles.BOX_TO_BOX]:
+      'Covers the pitch actively, contributing in both defense and attack.',
+    [PlayingStyles.PLAYMAKER]:
+      'Controls the game, delivers accurate passes and creates scoring chances for teammates.',
+    [PlayingStyles.ANCHOR_MAN]:
+      'Holds position in front of the defense, stops attacks and safely builds play.',
+    [PlayingStyles.ORCHESTRATOR]:
+      'Controls the tempo, organizes attacks through passing and moves the team forward.',
+    [PlayingStyles.DEFENSIVE_FULLBACK]:
+      'Defends reliably, maintains position and safely moves the ball forward.',
+    [PlayingStyles.DESTROYER]:
+      'Disrupts opposition attacks, applies strong pressure and wins the ball back.',
+    [PlayingStyles.OFFENSIVE_WINGBACK]:
+      'Pushes forward along the wing, delivers crosses and tracks back to defend.',
+    [PlayingStyles.BUILD_UP]: 'Builds play from the back, controls possession and starts attacks.',
+    [PlayingStyles.OFFENSIVE_KEEPER]:
+      'Plays away from the goal, confident with the ball at his feet — an eleventh outfield player.',
+    [PlayingStyles.DEFENSIVE_KEEPER]:
+      'Stays in goal, relying on reactions, positioning and control of the penalty area.',
   },
 
   clipTips: {
@@ -1011,11 +1030,14 @@ export const en: Dictionary = {
     playerLabel: 'Player',
     goalkeeperLabel: 'Goalkeeper',
     PACE: {
-      player: 'Show your first few steps, a 20–30 m run, acceleration with the ball and a change of direction.',
-      goalkeeper: 'Show reaction speed off the line, how quickly you come out and how fast you reach the ball.',
+      player:
+        'Show your first few steps, a 20–30 m run, acceleration with the ball and a change of direction.',
+      goalkeeper:
+        'Show reaction speed off the line, how quickly you come out and how fast you reach the ball.',
     },
     DRIBBLING: {
-      player: 'Show close control in a tight space, feints, beating a defender and keeping the ball under pressure.',
+      player:
+        'Show close control in a tight space, feints, beating a defender and keeping the ball under pressure.',
       goalkeeper: 'Show carrying the ball out under pressure and escaping a press with your feet.',
     },
     PASSING: {
@@ -1032,10 +1054,12 @@ export const en: Dictionary = {
     },
     TECHNIQUE: {
       player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
-      goalkeeper: 'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
+      goalkeeper:
+        'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
     },
     MATCH_HIGHLIGHTS: {
-      player: 'Your best moments from a real match: goals, assists, decisive actions. Make sure you are identifiable.',
+      player:
+        'Your best moments from a real match: goals, assists, decisive actions. Make sure you are identifiable.',
       goalkeeper: 'Saves, claims and moments of organising the defence, from a real match.',
     },
   },

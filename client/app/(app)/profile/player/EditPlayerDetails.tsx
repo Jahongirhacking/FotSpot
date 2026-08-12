@@ -6,12 +6,14 @@ import { useMutation } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { PlayerProfile } from '@/lib/api/types';
-import { ALL_PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
+import { POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { PitchPositionPicker } from '@/components/player/PitchPositionPicker';
+import { PlayingStylePicker } from '@/components/player/PlayingStylePicker';
+import { positionGroup } from '@/lib/player-card';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
-import { humanizeEnum } from '@/lib/utils';
 
 /**
  * The card details a player can change afterwards.
@@ -91,51 +93,65 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
         />
       </Field>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t.onboarding.mainPosition} htmlFor="pos-1">
-          <Select
-            id="pos-1"
-            value={form.primaryPosition}
-            onChange={(event) => set('primaryPosition')(event.target.value)}
-          >
-            <option value="">{t.onboarding.notSureYet}</option>
-            {POSITIONS.map((position) => (
-              <option key={position} value={position}>
-                {position}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      {/*
+        The same two controls the wizard uses, for the same reason.
+        Somebody who picked their position on a pitch and their style from
+        explained cards should not meet two dropdowns of jargon the first time
+        they come back to change one — and a style chosen from a bare enum list
+        here would undo the point of explaining it there.
+      */}
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+        <PitchPositionPicker
+          mode="single"
+          label={t.onboarding.mainPosition}
+          value={form.primaryPosition ? [form.primaryPosition] : []}
+          onChange={(next) => set('primaryPosition')(next?.[0] ?? '')}
+        />
 
-        <Field label={t.onboarding.otherPosition} htmlFor="pos-2">
-          <Select
-            id="pos-2"
-            value={form.secondaryPosition}
-            onChange={(event) => set('secondaryPosition')(event.target.value)}
+        <div className="space-y-3">
+          <Field
+            label={t.onboarding.mainPosition}
+            htmlFor="pos-1"
+            hint={t.onboarding.positionPickHint}
           >
-            <option value="">{t.onboarding.notSureYet}</option>
-            {POSITIONS.map((position) => (
-              <option key={position} value={position}>
-                {position}
-              </option>
-            ))}
-          </Select>
-        </Field>
+            <Select
+              id="pos-1"
+              value={form.primaryPosition}
+              onChange={(event) => set('primaryPosition')(event.target.value)}
+            >
+              <option value="">{t.onboarding.notSureYet}</option>
+              {POSITIONS.map((position) => (
+                <option key={position} value={position}>
+                  {position}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label={t.onboarding.otherPosition} htmlFor="pos-2">
+            <Select
+              id="pos-2"
+              value={form.secondaryPosition}
+              onChange={(event) => set('secondaryPosition')(event.target.value)}
+            >
+              <option value="">{t.onboarding.notSureYet}</option>
+              {POSITIONS.map((position) => (
+                <option key={position} value={position}>
+                  {position}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </div>
 
       <Field label={t.onboarding.playingStyle} htmlFor="style" hint={t.onboarding.playingStyleHint}>
-        <Select
-          id="style"
+        <input type="hidden" id="style" value={form.playingStyle} readOnly />
+        <PlayingStylePicker
           value={form.playingStyle}
-          onChange={(event) => set('playingStyle')(event.target.value)}
-        >
-          <option value="">{t.onboarding.pickLater}</option>
-          {ALL_PLAYING_STYLES.map((style) => (
-            <option key={style} value={style}>
-              {humanizeEnum(style)}
-            </option>
-          ))}
-        </Select>
+          positionGroup={positionGroup(form.primaryPosition || null)}
+          onChange={(next) => set('playingStyle')(next)}
+        />
       </Field>
 
       <Field label={t.onboarding.strongFoot} htmlFor="foot">
