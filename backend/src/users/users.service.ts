@@ -246,6 +246,18 @@ export class UsersService {
     }
     if (dto.username !== undefined) await this.setUsername(userId, dto.username);
 
+    // Read only when the avatar is actually changing — every other profile edit
+    // would be paying for a round trip it has no use for.
+    const previousAvatarKey =
+      dto.avatarStorageKey !== undefined
+        ? ((
+            await this.prisma.user.findUnique({
+              where: { id: userId },
+              select: { avatarKey: true },
+            })
+          )?.avatarKey ?? null)
+        : null;
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -265,8 +277,61 @@ export class UsersService {
       },
     });
 
+    if (previousAvatarKey && previousAvatarKey !== user.avatarKey) {
+      await this.discardAvatar(userId, previousAvatarKey);
+    }
+
     const { avatarKey: key, ...rest } = user;
     return { ...rest, avatarUrl: this.storage.publicUrlOrNull(key) };
+  }
+
+  /**
+   * Deletes the avatar a user has just replaced.
+   *
+   * ## After the write, and never before it
+   *
+   * The row is updated first, so the only way to reach here is with the new
+   * avatar already the account's. Deleting first would mean a failed update
+   * leaves the profile pointing at an object that no longer exists — a broken
+   * picture the user cannot fix except by uploading again.
+   *
+   * ## And it does not fail the request
+   *
+   * DELIBERATE SWALLOW, and a narrow one. By this point the avatar has changed:
+   * the caller got what they asked for, and the only thing left is housekeeping.
+   * Throwing would report failure for an operation that succeeded, and the retry
+   * it invites uploads a *second* new object — so the response to a leaked object
+   * would be to leak another. The orphan costs a few kilobytes and is logged.
+   *
+   * ## Scoped to the caller's own directory
+   *
+   * `avatarKey` is only ever written by `updateProfile`, which checks the key is
+   * under this user's prefix before storing it, so this can only re-confirm what
+   * is already true. It is here because the operation is a delete: if a row ever
+   * does hold something unexpected — hand-edited, restored from an old backup,
+   * written by some future code path — the outcome should be a skipped cleanup
+   * and a log line, not an object of somebody else's removed on their behalf.
+   */
+  private async discardAvatar(userId: string, storageKey: string): Promise<void> {
+    try {
+      assertKeyUnder(storageKey, avatarPrefix(userId));
+    } catch {
+      this.logger.warn(
+        `Not deleting the previous avatar of ${userId}: "${storageKey}" is not in that ` +
+          'account’s own avatar directory. The new avatar is saved; this object was left alone.',
+      );
+      return;
+    }
+
+    try {
+      await this.storage.deleteObject(storageKey);
+    } catch (error) {
+      this.logger.warn(
+        `Replaced the avatar of ${userId} but could not delete the old object ` +
+          `"${storageKey}": ${(error as Error).message}. The profile is correct; the object ` +
+          'is orphaned in the bucket.',
+      );
+    }
   }
 
   /**

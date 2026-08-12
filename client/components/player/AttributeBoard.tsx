@@ -128,7 +128,6 @@ export function AttributeBoard({
         </CardHeader>
 
         <CardContent className="space-y-4">
-
           {/* Tabs double as the history index: every category the player has ever
               uploaded to keeps its full run of clips, not just the newest. */}
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
@@ -166,7 +165,7 @@ export function AttributeBoard({
                on a phone. A grid is for scanning — the clip that deserves a
                minute of someone's attention gets opened. */
             <ul className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:grid-cols-4">
-              {visible.map((clip) => (
+              {visible?.map((clip) => (
                 <li key={clip?.id}>
                   <ClipTile clip={clip} onOpen={() => setOpenId(clip?.id)} />
                 </li>
