@@ -1,10 +1,15 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
-import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
-import { deriveAttributes, PROVENANCE_META, type Attribute, type AttributeKey } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
+import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
+import {
+  deriveAttributes,
+  PROVENANCE_META,
+  type Attribute,
+  type AttributeKey,
+} from '@/lib/player-card';
 import { ageBand, cn } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
 
 /**
  * The six attribute bars with their provenance — README §21.1.
@@ -76,7 +81,7 @@ function AttributeRow({
 
   const body = (
     <>
-      <span className="w-20 shrink-0 text-left text-xs font-medium tracking-wide uppercase">
+      <span className="w-22 shrink-0 text-left text-xs font-medium tracking-wide uppercase">
         {label}
       </span>
 

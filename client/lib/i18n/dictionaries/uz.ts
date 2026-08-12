@@ -547,7 +547,7 @@ export const uz = {
     finishing: 'Zarba',
     physical: 'Jismoniy',
     technique: 'Texnika',
-    goalkeeping: 'Darvozabonlik',
+    goalkeeping: 'Darvozabon',
     highlights: 'Eng yaxshi lahzalar',
   },
 
@@ -568,7 +568,8 @@ export const uz = {
     privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',
     watchTutorials: 'Darsliklarni ko‘rish',
-    tutorialsHint: 'Har bir ko‘nikma uchun qisqa video — nimani va qanday suratga olishni ko‘rsatadi.',
+    tutorialsHint:
+      'Har bir ko‘nikma uchun qisqa video — nimani va qanday suratga olishni ko‘rsatadi.',
     tutorialUnavailable: 'Bu ko‘nikma uchun darslik hozircha yo‘q.',
     addClip: 'Lavha qo‘shish',
     all: 'Barchasi',

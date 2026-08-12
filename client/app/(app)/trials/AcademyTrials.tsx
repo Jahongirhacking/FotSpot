@@ -1,27 +1,25 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
-import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { Trial } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
+import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
+import { NoteEditor } from '@/components/trials/NoteEditor';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
-import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
-import { formatDate, localNowInput } from '@/lib/utils';
-import { TrialHistory } from './TrialHistory';
-import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
-import { NoteEditor } from '@/components/trials/NoteEditor';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyProfile, Trial } from '@/lib/api/types';
 import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-import { useQuery } from '@tanstack/react-query';
-import type { AcademyProfile } from '@/lib/api/types';
+import { formatDate, localNowInput } from '@/lib/utils';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
+import { TrialHistory } from './TrialHistory';
 
 /**
  * The manager's half of the trials screen, in the two lists they actually think
@@ -212,14 +210,17 @@ export function AcademyTrials({
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-              </div>
+              <div className="grid grid-cols-2 gap-3"></div>
 
               {/* One control for what is one decision. Two number boxes let a
                   manager save a range whose ends are the wrong way round; the
                   slider clamps instead, and still carries the boxes for anyone
                   who already knows the exact ages they want. */}
-              <Field label={t.trials.ageRange} htmlFor="trial-age-range" hint={t.trials.ageRangeHint}>
+              <Field
+                label={t.trials.ageRange}
+                htmlFor="trial-age-range"
+                hint={t.trials.ageRangeHint}
+              >
                 <RangeSlider
                   min={TRIAL_AGE_MIN}
                   max={TRIAL_AGE_MAX}
@@ -332,7 +333,7 @@ function TrialList({ trials }: { trials: Trial[] }) {
         <li key={trial?.id}>
           <Link
             href={`/trials/${trial?.id}`}
-            className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
+            className="hover:bg-surface-2 border-border flex flex-wrap items-center gap-3 rounded-lg border-1 border-dashed p-2"
           >
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
