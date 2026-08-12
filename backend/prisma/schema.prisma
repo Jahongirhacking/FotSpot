@@ -14,27 +14,27 @@ datasource db {
 // ---------- RBAC (1.4) ----------
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique // scout, player, coach, academy_manager, admin, super_admin
+  id          String           @id @default(uuid())
+  name        String           @unique // scout, player, coach, academy_manager, admin, super_admin
   description String?
   users       UserRole[]
   permissions RolePermission[]
-  createdAt   DateTime @default(now())
+  createdAt   DateTime         @default(now())
 }
 
 model Permission {
-  id        String   @id @default(uuid())
-  key       String   @unique // e.g. "coach:verify", "admin:manage_roles"
+  id          String           @id @default(uuid())
+  key         String           @unique // e.g. "coach:verify", "admin:manage_roles"
   description String?
-  roles     RolePermission[]
-  createdAt DateTime @default(now())
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
 }
 
 model UserRole {
   userId String
   roleId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
 }
@@ -58,17 +58,14 @@ enum PlanTier {
 
 /**
  * What one tier of account is allowed to do, in numbers a super admin can edit.
- *
  * Exactly three rows, seeded and never created or deleted through the API: the
  * tier *is* the identity, so `tier` is the primary key rather than a uuid with a
  * unique constraint beside it. A fourth tier is a schema change and a product
  * decision, not a row somebody adds on a Tuesday.
- *
  * The limits live here rather than in environment variables because they are
  * product levers, not deployment configuration — the person who decides that Pro
  * gets thirty clips a week is not the person with shell access, and a redeploy
  * is the wrong unit of change for a number that sells the plan.
- *
  * Every limit is a plain count with no "unlimited" sentinel. A very large number
  * says the same thing and needs no branch at every call site that reads one;
  * inventing `0 = unlimited` would make the most permissive plan look like the
@@ -78,10 +75,10 @@ model TariffPlan {
   tier PlanTier @id
 
   /// A — clips a player may upload per window.
-  clipLimit                 Int @default(10)
+  clipLimit                  Int @default(10)
   /// B — the length of that window, in days. Rolling, not calendar: a limit that
   /// resets at midnight on the 1st is a limit everybody hits on the 2nd.
-  clipWindowDays            Int @default(7)
+  clipWindowDays             Int @default(7)
   /// C — how many of a scout's recommendations may be awaiting a verdict at once.
   ///
   /// A cap on *undecided* work, not on lifetime output: a scout whose picks keep
@@ -90,13 +87,13 @@ model TariffPlan {
   /// quality lever rather than a quota.
   pendingRecommendationLimit Int @default(10)
   /// D — coaches an academy manager may create.
-  maxCoaches                Int @default(5)
+  maxCoaches                 Int @default(5)
   /// E — squad groups an academy manager may create.
-  maxGroups                 Int @default(5)
+  maxGroups                  Int @default(5)
 
   users User[]
 
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // ---------- USERS / AUTH (1.3) ----------
@@ -108,16 +105,16 @@ enum VerificationStatus {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  phone         String?  @unique
-  email         String?  @unique
+  id       String  @id @default(uuid())
+  phone    String? @unique
+  email    String? @unique
   /// Public handle, `colour-animal-football-number` by default (see
   /// username.util.ts). Every account gets one — it is how `/players/@handle`
   /// resolves and how someone signs in without remembering which email they used.
   ///
   /// Still nullable because accounts created before handles existed have none
   /// until `UsersService.findMe` backfills them on first read.
-  username      String?  @unique
+  username String? @unique
 
   /// When the address was proved, not merely typed. Null for accounts created
   /// before registration required a code, and for phone/OAuth signups that have
@@ -128,37 +125,35 @@ model User {
   /// Default false rather than true: an account nobody can find cannot be
   /// scouted, and being seen is what the platform is for. The switch exists
   /// because a fourteen-year-old's guardian may reasonably want it off.
-  isPrivate     Boolean  @default(false)
+  isPrivate Boolean @default(false)
 
-  emailVerifiedAt DateTime?
-  passwordHash  String?
-  firstName     String?
-  lastName      String?
+  emailVerifiedAt    DateTime?
+  passwordHash       String?
+  firstName          String?
+  lastName           String?
   /// R2 object key, never a URL — see src/storage/storage.keys.ts.
   ///
   /// A stored URL outlives every decision that produced it: change the CDN, the
   /// domain or the provider and every row is wrong, with a migration as the only
   /// fix. The public URL is built at read time instead. Avatars are the one
   /// public tier (`public/avatars/…`); everything else is private.
-  avatarKey     String?
-  isActive      Boolean  @default(true)
+  avatarKey          String?
+  isActive           Boolean   @default(true)
   /// True while the account still has its admin-generated password. The admin who
   /// created it knows that password, so it must not stay valid indefinitely on an
   /// account with access to children's profiles.
-  mustChangePassword Boolean @default(false)
+  mustChangePassword Boolean   @default(false)
 
   /**
    * When this account last opened the trials list.
-   *
    * The badge on the Trials menu counts what has appeared since. A timestamp
    * rather than a join table of seen trial ids: the question is "anything new?",
    * which a single comparison answers, and a row per user per trial would grow
    * without bound to store something nobody ever reads individually.
-   *
    * Null means never opened, so everything currently open counts as new — which
    * is the right welcome for somebody who has not looked yet.
    */
-  trialsSeenAt  DateTime?
+  trialsSeenAt DateTime?
 
   /// Which tariff this account is on. One per account, not one per role: a
   /// person who scouts and also has a player card is one customer, and two
@@ -167,32 +162,32 @@ model User {
   /// Only a super admin moves it (§1.2) — there is no self-serve upgrade, so a
   /// column rather than a subscription table is the honest shape: there is no
   /// billing period, no payment and no history to keep yet.
-  planTier      PlanTier @default(FREE)
-  plan          TariffPlan @relation(fields: [planTier], references: [tier])
+  planTier PlanTier   @default(FREE)
+  plan     TariffPlan @relation(fields: [planTier], references: [tier])
 
-  roles         UserRole[]
-  sessions      Session[]
-  playerProfile PlayerProfile?
-  coachProfile  CoachProfile?
-  academyMemberships AcademyMember[]
-  academyInvitations AcademyInvitation[] @relation("InvitationsReceived")
-  recommendationsMade Recommendation[] @relation("ScoutRecommendations")
-  coachAssessmentsMade CoachAssessment[] @relation("CoachAssessments")
-  notifications Notification[]
-  notificationsTriggered Notification[] @relation("NotificationActors")
-  otpCodes      OtpCode[]
-  verificationCodes VerificationCode[]
-  passwordResetCodes PasswordResetCode[]
-  auditLogs     AuditLog[]
-  reportsFiled  Report[] @relation("ReportsFiled")
-  follows       Follow[] @relation("UserFollows")
-  followedByAcademies AcademyScoutFollow[] @relation("AcademyScoutFollows")
-  academyEndorsements AcademyEndorsement[] @relation("AcademyEndorsements")
-  coachReviews  RecommendationReview[] @relation("CoachReviews")
-  reviewAssignments ReviewCoach[] @relation("ReviewAssignments")
-  trialCoaching TrialCoach[] @relation("TrialCoaching")
-  trialVerdicts TrialResult[] @relation("TrialVerdicts")
-  mediaComments MediaComment[]
+  roles                  UserRole[]
+  sessions               Session[]
+  playerProfile          PlayerProfile?
+  coachProfile           CoachProfile?
+  academyMemberships     AcademyMember[]
+  academyInvitations     AcademyInvitation[]    @relation("InvitationsReceived")
+  recommendationsMade    Recommendation[]       @relation("ScoutRecommendations")
+  coachAssessmentsMade   CoachAssessment[]      @relation("CoachAssessments")
+  notifications          Notification[]
+  notificationsTriggered Notification[]         @relation("NotificationActors")
+  otpCodes               OtpCode[]
+  verificationCodes      VerificationCode[]
+  passwordResetCodes     PasswordResetCode[]
+  auditLogs              AuditLog[]
+  reportsFiled           Report[]               @relation("ReportsFiled")
+  follows                Follow[]               @relation("UserFollows")
+  followedByAcademies    AcademyScoutFollow[]   @relation("AcademyScoutFollows")
+  academyEndorsements    AcademyEndorsement[]   @relation("AcademyEndorsements")
+  coachReviews           RecommendationReview[] @relation("CoachReviews")
+  reviewAssignments      ReviewCoach[]          @relation("ReviewAssignments")
+  trialCoaching          TrialCoach[]           @relation("TrialCoaching")
+  trialVerdicts          TrialResult[]          @relation("TrialVerdicts")
+  mediaComments          MediaComment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -205,9 +200,9 @@ model User {
  * this row's id as its `sid` claim, so rotation and revocation target one device.
  */
 model Session {
-  id               String   @id @default(uuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   refreshTokenHash String
   deviceId         String?
@@ -241,23 +236,22 @@ enum VerificationChannel {
 /**
  * Confirms ownership of a NEW phone number or email before it replaces the one on
  * the account.
- *
  * Separate from OtpCode, which authenticates a *login* against a phone that may not
  * belong to any user yet. This proves an already-authenticated user controls a
  * destination they are moving to — different lifecycle, different owner, and
  * reusing OtpCode would have meant stuffing an email address into a `phone` column.
  */
 model VerificationCode {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   channel     VerificationChannel
   destination String
   codeHash    String
   expiresAt   DateTime
-  consumed    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  consumed    Boolean             @default(false)
+  createdAt   DateTime            @default(now())
 
   @@index([userId, channel])
 }
@@ -265,7 +259,6 @@ model VerificationCode {
 /**
  * A code proving someone controls an email address **before** an account exists
  * for it.
- *
  * Separate from VerificationCode, which requires a `userId` because it confirms a
  * change to an account that is already there. At registration there is no user to
  * point at, and widening that relation to nullable would erase the invariant that
@@ -273,28 +266,27 @@ model VerificationCode {
  * phone and would mean storing an email in a column called `phone`.
  */
 model RegistrationCode {
-  id          String   @id @default(uuid())
-  email       String
-  codeHash    String
-  expiresAt   DateTime
-  consumed    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([email, consumed])
 }
 
 /**
  * A code that lets someone set a new password without knowing the old one.
- *
  * Its own table rather than another `VerificationCode` row: that model confirms a
  * *new* destination the user is moving to, while this authorises a credential
  * change on an address they already hold. Same shape, opposite meaning — and the
  * two have different lifecycles, since resetting also revokes every session.
  */
 model PasswordResetCode {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   codeHash  String
   expiresAt DateTime
@@ -339,40 +331,40 @@ enum PlayingStyle {
 }
 
 model PlayerProfile {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  firstName   String
-  lastName    String
-  birthDate   DateTime
-  gender      String
+  firstName String
+  lastName  String
+  birthDate DateTime
+  gender    String
 
-  height      Float?
-  weight      Float?
+  height Float?
+  weight Float?
 
-  dominantFoot     DominantFoot?
-  primaryPosition  String?
+  dominantFoot      DominantFoot?
+  primaryPosition   String?
   secondaryPosition String?
-  playingStyle     PlayingStyle?
+  playingStyle      PlayingStyle?
 
-  region      String?
-  district    String?
+  region   String?
+  district String?
 
-  matches      Int @default(0)
-  goals        Int @default(0)
-  assists      Int @default(0)
-  cleanSheets  Int @default(0)
-  sprintTime   Float?
+  matches        Int    @default(0)
+  goals          Int    @default(0)
+  assists        Int    @default(0)
+  cleanSheets    Int    @default(0)
+  sprintTime     Float?
   jugglingRecord Int?
 
-  media           Media[]
-  recommendations Recommendation[]
+  media                Media[]
+  recommendations      Recommendation[]
   recommendationWeight PlayerRecommendationWeight?
-  academyWeights  PlayerAcademyRecommendationWeight[]
-  coachAssessments CoachAssessment[]
-  trialApplications TrialApplication[]
-  reviews          RecommendationReview[]
+  academyWeights       PlayerAcademyRecommendationWeight[]
+  coachAssessments     CoachAssessment[]
+  trialApplications    TrialApplication[]
+  reviews              RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -398,14 +390,13 @@ model CoachProfile {
 // ---------- ACADEMY (1.10) ----------
 
 model AcademyProfile {
-  id       String @id @default(uuid())
-  name     String
-  region   String?
-  district String?
-  description String?
+  id               String             @id @default(uuid())
+  name             String
+  region           String?
+  district         String?
+  description      String?
   /**
    * What this academy writes on every trial unless it says otherwise.
-   *
    * Sanitised HTML, same as `Trial.note`. It exists because the note is largely
    * the same each time — the same pitch, the same kit, the same person to ask
    * for — and retyping it per trial is how it ends up half-written or missing.
@@ -414,20 +405,52 @@ model AcademyProfile {
    * whatever the academy's default says a year later.
    */
   defaultTrialNote String?
-  status   VerificationStatus @default(PENDING)
+  status           VerificationStatus @default(PENDING)
 
-  members  AcademyMember[]
-  groups   AcademyGroup[]
-  transfersOut MemberTransfer[] @relation("TransfersOut")
-  transfersIn  MemberTransfer[] @relation("TransfersIn")
-  invitations  AcademyInvitation[]
-  trials   Trial[]
-  recommendations Recommendation[]
-  scoutFollows AcademyScoutFollow[]
-  endorsements AcademyEndorsement[]
+  /**
+   * Where the academy actually is, as coordinates.
+   * `region`/`district` above are the search filters — the buckets an academy is
+   * listed under. These two are the place a parent has to drive their child to
+   * on a Saturday morning, which a district name does not answer.
+   * Nullable together and always written together: half a coordinate points at
+   * the Gulf of Guinea. Stored as Float rather than Decimal because six decimal
+   * places is roughly a tenth of a metre and nothing here needs better.
+   */
+  latitude  Float?
+  longitude Float?
+
+  /// R2 object key for the academy's logo, never a URL — see storage.keys.ts.
+  logoKey String?
+
+  /**
+   * Where to find the academy off the platform.
+   * Four fields rather than a Json blob: the set is fixed (§ the product allows
+   * Telegram, Facebook, Instagram and YouTube and nothing else), and four
+   * nullable columns are four things a query can filter on and a validator can
+   * check the host of. A blob would accept `{"myspace": "..."}` for ever.
+   * Full URLs, host-validated on write — a bare handle is ambiguous across
+   * platforms and unlinkable without guessing the prefix.
+   */
+  telegramUrl  String?
+  facebookUrl  String?
+  instagramUrl String?
+  youtubeUrl   String?
+
+  photos   AcademyPhoto[]
+  featured AcademyFeatured[]
+
+  members               AcademyMember[]
+  groups                AcademyGroup[]
+  transfersOut          MemberTransfer[]                    @relation("TransfersOut")
+  transfersIn           MemberTransfer[]                    @relation("TransfersIn")
+  invitations           AcademyInvitation[]
+  trials                Trial[]
+  recommendations       Recommendation[]
+  scoutFollows          AcademyScoutFollow[]
+  endorsements          AcademyEndorsement[]
   recommendationTargets RecommendationTarget[]
-  playerWeights PlayerAcademyRecommendationWeight[]
-  reviews      RecommendationReview[]
+  playerWeights         PlayerAcademyRecommendationWeight[]
+  reviews               RecommendationReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -442,7 +465,6 @@ enum AcademyMemberRole {
 
 /**
  * A membership is never deleted, only moved through these.
- *
  * `INACTIVE` is a coach who has stopped working with the academy but whose
  * assessments still have to mean something — deleting the row would orphan every
  * judgement they ever made. `RELEASED` is the academy saying "we are done, they
@@ -450,26 +472,24 @@ enum AcademyMemberRole {
  */
 /**
  * A named squad inside one academy — "U14", "First team", "Goalkeepers".
- *
  * Only the manager shapes these (§1.10): a coach works with the group they are
  * given, and letting them rename or re-cut squads would make "who is in my group"
  * a moving answer.
- *
  * There is no `Reserve` row. Reserve is the absence of a group, so a player who
  * joins an academy is in it by construction rather than by a job that has to
  * remember to put them there — see AcademyMember.groupId.
  */
 model AcademyGroup {
-  id          String @id @default(uuid())
-  academyId   String
-  academy     AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  id        String         @id @default(uuid())
+  academyId String
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
   name        String
   description String?
   /// R2 object key for the group photo, never a URL — see storage.keys.ts.
   imageKey    String?
 
-  members     AcademyMember[]
+  members AcademyMember[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -480,8 +500,64 @@ model AcademyGroup {
 }
 
 /**
+ * A photograph of the place — the pitch, the changing rooms, a squad line-up.
+ * Its own table rather than a string array on the academy, because a photo has
+ * an order the manager chose and a caption they wrote, and an array of keys can
+ * carry neither. Reordering is what makes the first one the cover.
+ */
+model AcademyPhoto {
+  id        String         @id @default(uuid())
+  academyId String
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  /// R2 object key, never a URL — see storage.keys.ts.
+  storageKey String
+  caption    String?
+  /// Position in the gallery. The lowest is the cover.
+  sortOrder  Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([academyId, sortOrder])
+}
+
+/**
+ * The people an academy chooses to show off — its top players, coaches and
+ * scouts.
+ * ## Picked, not computed
+ * The platform could rank these itself (assessed rating, assessments written,
+ * §1.5 level) and for a while that is what a derived list would do. But this is
+ * the academy's shop window: the eleven-year-old they are proudest of having
+ * signed is not necessarily the highest-rated one, and a wall the club cannot
+ * arrange is a wall it will not use.
+ * ## Rows point at a membership, not a user
+ * So that leaving the academy takes somebody off the wall automatically — the
+ * cascade does it, rather than a job that has to remember. Featuring a person
+ * who no longer works there is the specific embarrassment this avoids.
+ * The caps (ten, five, three) live in the service rather than the schema: they
+ * are a product decision that may change, and `@@id` on rank already stops two
+ * people holding the same slot.
+ */
+model AcademyFeatured {
+  academyId String
+  role      AcademyMemberRole
+  memberId  String
+  /// 1-based position within its role. Lower is more prominent.
+  rank      Int
+
+  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  member  AcademyMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([academyId, role, rank])
+  /// One person cannot occupy two slots in the same list.
+  @@unique([academyId, role, memberId])
+  @@index([memberId])
+}
+
+/**
  * One academy offering a member to another, and the other answering.
- *
  * Two-sided on purpose: a transfer that took effect the moment one manager
  * pressed a button would let any academy put a player on a rival's books without
  * asking. The receiving academy approves, and only then does the member move —
@@ -489,22 +565,22 @@ model AcademyGroup {
  * they belong in yet.
  */
 model MemberTransfer {
-  id            String @id @default(uuid())
-  memberId      String
-  member        AcademyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id       String        @id @default(uuid())
+  memberId String
+  member   AcademyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   fromAcademyId String
   fromAcademy   AcademyProfile @relation("TransfersOut", fields: [fromAcademyId], references: [id], onDelete: Cascade)
   toAcademyId   String
   toAcademy     AcademyProfile @relation("TransfersIn", fields: [toAcademyId], references: [id], onDelete: Cascade)
 
-  status        TransferStatus @default(PENDING)
-  note          String?
+  status TransferStatus @default(PENDING)
+  note   String?
 
   requestedByUserId String
   decidedByUserId   String?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   decidedAt DateTime?
 
   @@index([toAcademyId, status])
@@ -520,30 +596,28 @@ enum TransferStatus {
 
 /**
  * An academy asking somebody to join it, and their answer.
- *
  * A membership is a claim on a person's record — it decides who may assess them,
  * which squad they train with, and which club appears on their profile. So an
  * academy cannot simply write itself onto somebody: it asks, and the person
  * accepts. Only on acceptance does an AcademyMember row appear, in the reserve.
- *
  * Separate from MemberTransfer, which is two academies agreeing about somebody
  * who has already said yes to one of them. This is the first yes.
  */
 model AcademyInvitation {
-  id        String @id @default(uuid())
+  id        String         @id @default(uuid())
   academyId String
   academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
   userId    String
-  user      User @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  user      User           @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
 
   /// What they are being asked to join as. Never MANAGER — that is appointed.
   role   AcademyMemberRole
-  status InvitationStatus @default(PENDING)
+  status InvitationStatus  @default(PENDING)
   note   String?
 
   invitedByUserId String
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   decidedAt DateTime?
 
   @@index([userId, status])
@@ -564,15 +638,15 @@ enum AcademyMemberStatus {
 }
 
 model AcademyMember {
-  id         String @id @default(uuid())
-  academyId  String
-  userId     String
-  coachId    String?
-  role       AcademyMemberRole
-  status     AcademyMemberStatus @default(ACTIVE)
+  id        String              @id @default(uuid())
+  academyId String
+  userId    String
+  coachId   String?
+  role      AcademyMemberRole
+  status    AcademyMemberStatus @default(ACTIVE)
 
   /// Set when the academy releases the member for transfer, cleared on import.
-  releasedAt DateTime?
+  releasedAt        DateTime?
   /// Where they came from, so a transfer is a fact on the record rather than a
   /// row that quietly changed academies overnight.
   previousAcademyId String?
@@ -582,7 +656,7 @@ model AcademyMember {
   /// On the membership rather than on CoachProfile because it is a job at one
   /// academy, not a property of the person: the same coach can be a head coach at
   /// one club and a youth coach at another.
-  coachType  String?
+  coachType String?
 
   /// The squad they are in, or null for the academy's reserve.
   ///
@@ -590,15 +664,16 @@ model AcademyMember {
   /// making it the default state means no code has to remember to put them in it,
   /// and moving somebody to reserve is clearing a field rather than looking up a
   /// magic group by name.
-  groupId    String?
-  group      AcademyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId String?
+  group   AcademyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
-  transfers  MemberTransfer[]
-  joinedAt   DateTime @default(now())
+  transfers MemberTransfer[]
+  featured  AcademyFeatured[]
+  joinedAt  DateTime          @default(now())
 
-  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coach      CoachProfile? @relation(fields: [coachId], references: [id])
+  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coach   CoachProfile?  @relation(fields: [coachId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -627,7 +702,9 @@ enum MediaCategory {
   MATCH_HIGHLIGHTS
 }
 
-/** Whether a rating on a clip is the player's claim or a coach's judgement. */
+/**
+ * Whether a rating on a clip is the player's claim or a coach's judgement.
+ */
 enum RatingSource {
   SELF
   COACH
@@ -635,15 +712,14 @@ enum RatingSource {
 
 /**
  * What a rating was before someone changed it.
- *
  * A coach overwriting a fourteen-year-old's own number is exactly the kind of
  * edit that has to stay answerable later — "who lowered this, and from what" is a
  * question the player's guardian may reasonably ask.
  */
 model RatingRevision {
-  id        String @id @default(uuid())
-  mediaId   String
-  media     Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  mediaId String
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
   /// 0–100, like every rating on the platform. Enforced by a database CHECK
   /// (`rating_revision_rating_range`) as well as the DTOs, because a revision is
@@ -667,14 +743,12 @@ model RatingRevision {
 
 /**
  * `PROCESSING` is where every clip now starts.
- *
  * A presigned PUT goes from the browser straight to R2, so the API never sees
  * the bytes: `confirmUpload` is the client's word that the upload happened. A
  * row written as ACTIVE on that word alone is a clip that appears on a card, in
  * search and in the feed whether or not anything was ever stored — and a
  * fourteen-year-old's evidence for a rating they claimed is exactly the thing
  * that must not be imaginary.
- *
  * So a clip is PROCESSING until the media worker has looked in the bucket and
  * found the object (see MediaProcessor). `FAILED` is the answer when it is not
  * there after every retry, and it is kept rather than deleted so the player is
@@ -689,12 +763,12 @@ enum MediaStatus {
 }
 
 model Media {
-  id         String @id @default(uuid())
-  playerId   String
-  player     PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  id       String        @id @default(uuid())
+  playerId String
+  player   PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
-  type       MediaType
-  category   MediaCategory
+  type     MediaType
+  category MediaCategory
 
   /// R2 object key under `private/players/<playerId>/`. There is deliberately no
   /// `url` column: a clip of a child must never have a permanent public address,
@@ -712,21 +786,20 @@ model Media {
   ///
   /// Nullable: capture can fail (an unseekable file, a codec the browser will not
   /// decode) and a clip without a cover is far better than a refused upload.
-  posterKey  String?
+  posterKey String?
 
   /**
    * Starts at PROCESSING, not ACTIVE — see the enum. Only the media worker
    * promotes a clip, and only after finding its object in the bucket.
    */
-  status     MediaStatus @default(PROCESSING)
+  status MediaStatus @default(PROCESSING)
 
   /// Bytes, as the bucket reports them. Recorded by the worker, so it is
   /// evidence the object exists rather than a number the uploader supplied.
-  sizeBytes  Int?
+  sizeBytes Int?
 
   /**
    * Why processing gave up, in words a player can act on.
-   *
    * Null unless `status` is FAILED. Kept on the row rather than only in the
    * job's log because the person who needs it is the uploader, and they cannot
    * read a queue.
@@ -749,7 +822,7 @@ model Media {
   /// rule: the bars are drawn as a percentage of 100, so a value outside it does
   /// not render wrongly — it renders as a bar longer than its track, on every
   /// screen that reads the row, forever.
-  rating      Int?
+  rating Int?
 
   /// Who put `rating` there.
   ///
@@ -761,14 +834,14 @@ model Media {
   ///
   /// The previous value is not overwritten silently: `RatingRevision` keeps what
   /// it was, who changed it and when.
-  reportedBy  RatingSource @default(SELF)
+  reportedBy RatingSource @default(SELF)
 
-  revisions  RatingRevision[]
+  revisions RatingRevision[]
 
-  likes      MediaLike[]
-  views      MediaView[]
-  comments   MediaComment[]
-  reports    Report[] @relation("ReportedMedia")
+  likes    MediaLike[]
+  views    MediaView[]
+  comments MediaComment[]
+  reports  Report[]       @relation("ReportedMedia")
 
   createdAt DateTime @default(now())
 
@@ -792,10 +865,10 @@ model MediaLike {
  * not a state, unlike a like.
  */
 model MediaView {
-  id      String @id @default(uuid())
+  id      String  @id @default(uuid())
   mediaId String
   userId  String?
-  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -809,8 +882,8 @@ model MediaComment {
   media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  body    String
-  status  MediaStatus @default(ACTIVE)
+  body   String
+  status MediaStatus @default(ACTIVE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -825,7 +898,9 @@ enum FollowTargetType {
   ACADEMY
 }
 
-/** Scout -> player / academy following (1.2 Scout permissions). */
+/**
+ * Scout -> player / academy following (1.2 Scout permissions).
+ */
 model Follow {
   id         String @id @default(uuid())
   followerId String
@@ -845,7 +920,9 @@ enum AcademyScoutFollowState {
   MUTED
 }
 
-/** Who an academy can take on: a scout, or a coach. */
+/**
+ * Who an academy can take on: a scout, or a coach.
+ */
 enum EndorsementRole {
   SCOUT
   COACH
@@ -858,30 +935,27 @@ enum EndorsementStatus {
 
 /**
  * An academy has endorsed (hired / accredited) a scout or coach - README 1.5.3.
- *
  * This is the ONLY academy→person relationship with functional consequences, and
  * the distinction from `AcademyScoutFollow` is the point: following is social and
  * changes nothing, the way following someone on Instagram doesn't give them a job.
  * Endorsement does two things:
- *
- *   1. It is the gate for SPECIFIC recommendations — a scout may only address a
- *      recommendation to an academy that has endorsed them.
- *   2. It is what earns a specific recommendation its extra weight for that
- *      academy, because the academy has already staked its own judgement on the
- *      person making it.
- *
+ * 1. It is the gate for SPECIFIC recommendations — a scout may only address a
+ * recommendation to an academy that has endorsed them.
+ * 2. It is what earns a specific recommendation its extra weight for that
+ * academy, because the academy has already staked its own judgement on the
+ * person making it.
  * Revoked rather than deleted: an academy that drops a scout should not silently
  * rewrite the history of recommendations that scout already made for them.
  */
 model AcademyEndorsement {
-  id        String @id @default(uuid())
+  id        String            @id @default(uuid())
   academyId String
   userId    String
   role      EndorsementRole
   status    EndorsementStatus @default(ACTIVE)
 
-  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  user      User           @relation("AcademyEndorsements", fields: [userId], references: [id], onDelete: Cascade)
+  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user    User           @relation("AcademyEndorsements", fields: [userId], references: [id], onDelete: Cascade)
 
   note      String?
   createdAt DateTime  @default(now())
@@ -894,25 +968,23 @@ model AcademyEndorsement {
 
 /**
  * A player's discoverability weight, accumulated from every recommendation.
- *
  * Stored rather than computed on read because it is written by the same
  * transaction that files or settles a recommendation, and read by search and the
  * feed on every request — a sum recomputed per read would join four tables to
  * answer a question that changes a few times a month.
- *
  * There is no `lastDecayedAt` and no scheduled decay. Weight moves when somebody
  * *answers* a recommendation — an academy, or a coach at a trial — and at no
  * other time. `lastRecommendedAt` is kept because the feed's freshness term
  * reads it, not as a job's bookmark.
  */
 model PlayerRecommendationWeight {
-  playerId            String   @id
-  player              PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId String        @id
+  player   PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
-  globalWeight        Float    @default(0)
-  recommendationCount Int      @default(0)
+  globalWeight        Float     @default(0)
+  recommendationCount Int       @default(0)
   lastRecommendedAt   DateTime?
-  updatedAt           DateTime @updatedAt
+  updatedAt           DateTime  @updatedAt
 
   @@index([globalWeight])
 }
@@ -923,10 +995,10 @@ model PlayerRecommendationWeight {
  * a player, not a public score (README 21.5 — no public ranking of minors).
  */
 model PlayerAcademyRecommendationWeight {
-  playerId            String
-  academyId           String
-  player              PlayerProfile  @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  academy             AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  playerId  String
+  academyId String
+  player    PlayerProfile  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
   extraWeight         Float    @default(0)
   recommendationCount Int      @default(0)
@@ -947,10 +1019,10 @@ model AcademyScoutFollow {
   academyId String
   scoutId   String
 
-  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  scout     User           @relation("AcademyScoutFollows", fields: [scoutId], references: [id], onDelete: Cascade)
+  academy AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  scout   User           @relation("AcademyScoutFollows", fields: [scoutId], references: [id], onDelete: Cascade)
 
-  state     AcademyScoutFollowState @default(FOLLOWING)
+  state AcademyScoutFollowState @default(FOLLOWING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -962,32 +1034,30 @@ model AcademyScoutFollow {
 // ---------- SCOUT REPUTATION (1.5) ----------
 
 model ScoutStats {
-  id                     String @id @default(uuid())
-  userId                 String @unique
-  totalRecommendations   Int    @default(0)
-  acceptedRecommendations Int   @default(0)
-  successRate            Float  @default(0)
-  level                  Int    @default(1) // 1..6, see RecommendationsService.computeScoutLevel
-  weight                 Int    @default(1)
-  updatedAt              DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  totalRecommendations    Int      @default(0)
+  acceptedRecommendations Int      @default(0)
+  successRate             Float    @default(0)
+  level                   Int      @default(1) // 1..6, see RecommendationsService.computeScoutLevel
+  weight                  Int      @default(1)
+  updatedAt               DateTime @updatedAt
 }
 
 // ---------- RECOMMENDATIONS (1.8) ----------
 
 /**
  * A coach's verdict on a player an academy is considering.
- *
  * The academy manager does not judge football — that is what they employ coaches
  * for (§1.9). A recommendation therefore goes out for review before anyone is
  * invited, and the coach answers ACCEPT or REJECT.
- *
  * That is the whole answer. No attribute ratings are written here (TRIAL.md
  * Rule 22): the coach has watched clips, which is enough to say "worth a look"
  * and not enough to score somebody. Scoring belongs to CoachAssessment, gated on
  * the coach and the player sharing a squad group.
  */
 model RecommendationReview {
-  id               String @id @default(uuid())
+  id                 String  @id @default(uuid())
   /// The scout recommendation that prompted this, if one did.
   ///
   /// Nullable because an academy does not need permission to look at a player: a
@@ -995,10 +1065,9 @@ model RecommendationReview {
   /// recommendation is how a scout puts a player *in front of* an academy, not
   /// the only way one may be considered — tying review to it made scouts a gate
   /// on the academy's own judgement.
-  recommendationId String?
+  recommendationId   String?
   /**
    * The trial application that prompted this, if one did.
-   *
    * The other half of the same idea as `recommendationId`: a coach's job here is
    * "look at this player and say yes or no", and what put the player in front of
    * them — a scout, a trial, or the manager's own eye — is context rather than a
@@ -1007,31 +1076,30 @@ model RecommendationReview {
    */
   trialApplicationId String? @unique
   /// Who is being reviewed. Always present, unlike the recommendation.
-  playerId         String
-  academyId        String
+  playerId           String
+  academyId          String
   /**
    * Who answered — or, before anybody has, the first coach it was handed to.
-   *
    * The full list is `assignees`. This column is the one that ends up meaning
    * "who made this call", which is what an assessment has to be attributable to
    * and what every downstream read of a decided review wants.
    */
-  coachUserId      String
-  coachProfileId   String
+  coachUserId        String
+  coachProfileId     String
 
-  status           ReviewStatus @default(PENDING)
-  note             String?
+  status ReviewStatus @default(PENDING)
+  note   String?
 
-  recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+  recommendation   Recommendation?   @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
   trialApplication TrialApplication? @relation(fields: [trialApplicationId], references: [id], onDelete: SetNull)
-  player           PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  coachUser        User @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
+  player           PlayerProfile     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  academy          AcademyProfile    @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  coachUser        User              @relation("CoachReviews", fields: [coachUserId], references: [id], onDelete: Cascade)
 
   /// Every coach who may answer this. See ReviewCoach.
-  assignees        ReviewCoach[]
+  assignees ReviewCoach[]
 
-  assignedAt DateTime @default(now())
+  assignedAt DateTime  @default(now())
   decidedAt  DateTime?
 
   /// One live review per player per academy — two *decisions* about the same
@@ -1043,13 +1111,11 @@ model RecommendationReview {
 
 /**
  * A recommendation whose fate this trial decides.
- *
  * A player rarely arrives on one scout's word. One may have filed a GLOBAL
  * recommendation months ago and another a SPECIFIC one to this academy last
  * week; both were saying the same thing — *look at this player* — and the trial
  * answers both of them at once. So every backing scout gains when the player
  * signs, and every backing scout is turned down together when a coach says no.
- *
  * Snapshotted when the application is created rather than looked up at the end:
  * a scout who files after the trial was arranged did not help arrange it, and
  * counting them would make the success rate reward timing over judgement.
@@ -1058,10 +1124,10 @@ model TrialApplicationBacking {
   applicationId    String
   recommendationId String
 
-  application      TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  application    TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  recommendation Recommendation   @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@id([applicationId, recommendationId])
   @@index([recommendationId])
@@ -1069,7 +1135,6 @@ model TrialApplicationBacking {
 
 /**
  * A coach who may answer a review.
- *
  * A trial is worked by a staff, not by one person, and the profile should be in
  * front of everybody who will be on the pitch that morning. They share one
  * question, so the first to answer settles it — a second opinion recorded as a
@@ -1081,10 +1146,10 @@ model ReviewCoach {
   coachUserId    String
   coachProfileId String
 
-  review         RecommendationReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  coachUser      User @relation("ReviewAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
+  review    RecommendationReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  coachUser User                 @relation("ReviewAssignments", fields: [coachUserId], references: [id], onDelete: Cascade)
 
-  assignedAt     DateTime @default(now())
+  assignedAt DateTime @default(now())
 
   @@id([reviewId, coachUserId])
   @@index([coachUserId])
@@ -1105,11 +1170,11 @@ enum RecommendationStatus {
 
 /**
  * GLOBAL  - "this player is worth looking at", addressed to nobody. Any scout may
- *           file one. It raises the player's discoverability weight and has no
- *           accept/reject lifecycle, so it never counts toward success_rate.
+ * file one. It raises the player's discoverability weight and has no
+ * accept/reject lifecycle, so it never counts toward success_rate.
  * SPECIFIC- addressed to one or more academies that have ENDORSED this scout
- *           (README 1.5.3). Each target academy decides independently, and those
- *           decisions are what move the scout's reputation.
+ * (README 1.5.3). Each target academy decides independently, and those
+ * decisions are what move the scout's reputation.
  */
 enum RecommendationType {
   GLOBAL
@@ -1117,23 +1182,22 @@ enum RecommendationType {
 }
 
 model Recommendation {
-  id         String @id @default(uuid())
-  scoutId    String
-  playerId   String
-  type       RecommendationType @default(SPECIFIC)
+  id       String             @id @default(uuid())
+  scoutId  String
+  playerId String
+  type     RecommendationType @default(SPECIFIC)
 
   /**
    * Legacy single-academy column, kept for rows created before targets existed and
    * for the common one-academy case. GLOBAL recommendations leave it null; the
    * authoritative target list is `targets`.
    */
-  academyId  String?
-  status     RecommendationStatus @default(PENDING)
-  note       String?
+  academyId String?
+  status    RecommendationStatus @default(PENDING)
+  note      String?
 
   /**
    * The scout's §1.5 weight at the moment of filing, not a live lookup.
-   *
    * A recommendation is evidence about a point in time. The scout's weight moves
    * every time one of their recommendations is answered (§1.5), so a live lookup
    * would mean a single acceptance silently reweighting every player they have
@@ -1141,17 +1205,16 @@ model Recommendation {
    */
   scoutWeight Int @default(1)
 
-  scout      User @relation("ScoutRecommendations", fields: [scoutId], references: [id])
-  player     PlayerProfile @relation(fields: [playerId], references: [id])
-  academy    AcademyProfile? @relation(fields: [academyId], references: [id])
-  targets    RecommendationTarget[]
-  reviews    RecommendationReview[]
+  scout             User                      @relation("ScoutRecommendations", fields: [scoutId], references: [id])
+  player            PlayerProfile             @relation(fields: [playerId], references: [id])
+  academy           AcademyProfile?           @relation(fields: [academyId], references: [id])
+  targets           RecommendationTarget[]
+  reviews           RecommendationReview[]
   trialApplications TrialApplication[]
-  trialBackings TrialApplicationBacking[]
+  trialBackings     TrialApplicationBacking[]
 
   /**
    * When a coach turned this recommendation down.
-   *
    * Stored rather than derived from `updatedAt`, which moves for reasons that
    * have nothing to do with the answer. It is what the scout's cooldown counts
    * from: a rejection is a judgement about *this* recommendation, and filing the
@@ -1162,14 +1225,12 @@ model Recommendation {
 
   /**
    * When a trial PASS retired this from the player's live recommendations.
-   *
    * TRIAL.md §27 says a pass empties `Player.recommendations`. It cannot mean
    * *delete*, because the very next step in §8 is recalculating the success rate
    * of the scouts who filed them — a number computed from these rows. What is
    * cleared is the player's live backing: they have been placed, so nobody is
    * still vouching for them to be looked at, and the discoverability weight those
    * recommendations bought goes with them.
-   *
    * The row survives as the scout's record, which is what the reputation system
    * reads and what the scout sees under "everything I put forward".
    */
@@ -1184,7 +1245,6 @@ model Recommendation {
 
 /**
  * One target academy of a SPECIFIC recommendation, with its own decision.
- *
  * Separate status per academy because two academies can legitimately disagree
  * about the same player, and the scout's success rate has to reflect each verdict
  * rather than collapsing them into one.
@@ -1194,8 +1254,8 @@ model RecommendationTarget {
   academyId        String
   status           RecommendationStatus @default(PENDING)
 
-  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
-  academy          AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  academy        AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1208,12 +1268,10 @@ model RecommendationTarget {
 
 /**
  * A coach's ratings of a player they coach.
- *
  * Written **if and only if** the coach and the player share an AcademyGroup —
  * TRIAL.md Rule 21, README §1.9, enforced by `GroupsService.assertCoachesPlayer`.
  * The reserve (`AcademyMember.groupId = null`) is the absence of a group, so it
  * qualifies nobody.
- *
  * This is the one number a player cannot write about themselves (§12.4), and it
  * is worth that only if whoever wrote it has watched them train. So it is
  * deliberately unreachable from the two screens where a coach judges a stranger:
@@ -1221,14 +1279,14 @@ model RecommendationTarget {
  * neither writes a row here (Rule 22).
  */
 model CoachAssessment {
-  id       String @id @default(uuid())
-  coachUserId String
+  id             String @id @default(uuid())
+  coachUserId    String
   coachProfileId String
-  playerId String
+  playerId       String
 
-  coachUser  User @relation("CoachAssessments", fields: [coachUserId], references: [id])
-  coachProfile CoachProfile @relation("CoachProfileAssessments", fields: [coachProfileId], references: [id])
-  player     PlayerProfile @relation(fields: [playerId], references: [id])
+  coachUser    User          @relation("CoachAssessments", fields: [coachUserId], references: [id])
+  coachProfile CoachProfile  @relation("CoachProfileAssessments", fields: [coachProfileId], references: [id])
+  player       PlayerProfile @relation(fields: [playerId], references: [id])
 
   speed      Int
   passing    Int
@@ -1239,8 +1297,8 @@ model CoachAssessment {
   leadership Int
   discipline Int
 
-  notes      String?
-  mediaUrls  String[]
+  notes        String?
+  mediaUrls    String[]
   documentUrls String[]
 
   createdAt DateTime @default(now())
@@ -1249,60 +1307,55 @@ model CoachAssessment {
 // ---------- TRIALS (1.11) ----------
 
 model Trial {
-  id         String @id @default(uuid())
-  academyId  String
-  academy    AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  id        String         @id @default(uuid())
+  academyId String
+  academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
-  title       String
+  title         String
   /**
    * Who a trial is open to. Null on a private trial, which is open to nobody.
-   *
    * A range answers "may I apply?", and on a private trial nobody may: it exists
    * for one named child who was already chosen. Storing their exact age there
    * was a number that looked like a rule and was really a fact about one person
    * — and it was shown to them as a restriction they had passed.
    */
-  ageRangeMin Int?
-  ageRangeMax Int?
+  ageRangeMin   Int?
+  ageRangeMax   Int?
   /// Wanted positions. Empty on a private trial, for the same reason.
-  positions   String[]
-  location    String
+  positions     String[]
+  location      String
   /// When the examination itself happens — the day the player is tested.
-  date        DateTime
+  date          DateTime
   /**
    * Last moment a player may put themselves forward.
-   *
    * Separate from `date` because an academy needs the list closed before the
    * morning it runs: somebody has to book pitches, print sheets and tell coaches
    * how many are coming. Applications after that point are not late, they are
    * impossible.
-   *
    * Nullable only for trials created before deadlines existed — those stay open
    * until their exam date, which is how they already behaved. Every new trial
    * carries one.
    */
   applyDeadline DateTime?
-  requirements String?
+  requirements  String?
   /**
    * What the academy wants the player to read, as sanitised HTML.
-   *
    * Rich rather than plain because this is where an academy writes the things a
    * family actually needs — what to bring, where to park, who to ask for — and
    * those read as a list, not a paragraph. Stored already sanitised: it arrives
    * through `sanitizeRichText`, so nothing downstream has to remember to clean
    * it, and a row that somehow held a script tag could not have come from this
    * API.
-   *
    * Prefilled from `AcademyProfile.defaultTrialNote` at the screen, not here —
    * a default is a starting point for the person writing, not a value the
    * database should invent.
    */
-  note        String?
+  note          String?
 
   /// Archived trials keep their applicants and stop taking new ones.
-  status      TrialStatus @default(OPEN)
+  status TrialStatus @default(OPEN)
   /// GENERAL is public and self-serve; PRIVATE is by invitation only.
-  type        TrialType   @default(GENERAL)
+  type   TrialType   @default(GENERAL)
 
   applications TrialApplication[]
   /// The coaches who screen and assess for this trial. A private trial is
@@ -1310,12 +1363,11 @@ model Trial {
   coaches      TrialCoach[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 /**
  * A trial is never deleted, only closed.
- *
  * Every application attached to it is a decision somebody made about a child,
  * and a row that vanishes takes that record with it. Archiving hides the trial
  * from the public list and refuses new applications; the academy keeps the
@@ -1328,7 +1380,6 @@ enum TrialStatus {
 
 /**
  * Who a trial is for.
- *
  * GENERAL is the open day: any player may find it and apply, and screening
  * happens after they do. PRIVATE is the opposite motion — the academy (or a
  * scout, through a recommendation) picks somebody, has a coach screen them, and
@@ -1342,7 +1393,6 @@ enum TrialType {
 
 /**
  * A coach working a trial.
- *
  * Assignment is per trial rather than per academy: a club runs its U14 morning
  * and its goalkeeper session with different staff, and "every endorsed coach can
  * see every trial" makes the private ones public within the building.
@@ -1351,10 +1401,10 @@ model TrialCoach {
   trialId     String
   coachUserId String
 
-  trial       Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
-  coachUser   User  @relation("TrialCoaching", fields: [coachUserId], references: [id], onDelete: Cascade)
+  trial     Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  coachUser User  @relation("TrialCoaching", fields: [coachUserId], references: [id], onDelete: Cascade)
 
-  assignedAt  DateTime @default(now())
+  assignedAt DateTime @default(now())
 
   @@id([trialId, coachUserId])
   @@index([coachUserId])
@@ -1362,13 +1412,10 @@ model TrialCoach {
 
 /**
  * Where an application stands, in the order it moves.
- *
  * Two routes end at the same place, and only one of them is screened online
  * (TRIAL.md Rule 5):
- *
- *   general  APPLIED ─────────────────────────────→ PASSED / FAILED
- *   private  SCREENING → SHORTLISTED → INVITED → CONFIRMED → PASSED / FAILED
- *
+ * general  APPLIED ─────────────────────────────→ PASSED / FAILED
+ * private  SCREENING → SHORTLISTED → INVITED → CONFIRMED → PASSED / FAILED
  * `APPLIED`      a player put themselves forward (general trials only)
  * `SCREENING`    a coach has the profile — the online review is running
  * `SHORTLISTED`  the online review said ACCEPT; the academy's move is next
@@ -1378,8 +1425,7 @@ model TrialCoach {
  * `FAILED`       a coach tested them in person and failed them
  * `ACCEPTED`     the academy took them on — squad placement, after a PASS
  * `REJECTED`     the online review said REJECT, the academy said no, or the
- *                player declined the invitation
- *
+ * player declined the invitation
  * `PASSED`/`FAILED` are the *coach's* verdict and `ACCEPTED` is the *academy's*
  * administrative act on top of it. They are deliberately different words: §36
  * forbids reading a trial verdict as an accept/reject, and conflating the two is
@@ -1398,17 +1444,16 @@ enum TrialApplicationStatus {
 }
 
 model TrialApplication {
-  id       String @id @default(uuid())
+  id       String                 @id @default(uuid())
   trialId  String
   playerId String
   status   TrialApplicationStatus @default(APPLIED)
 
   /// What the academy wrote when inviting — where to be, when, what to bring.
   /// "You are invited" with nothing else is not something a family can act on.
-  inviteNote String?
+  inviteNote       String?
   /**
    * The recommendation that prompted this invitation, if one did.
-   *
    * The *whole* set of scouts whose reputation rides on the outcome is
    * `backings` — this is only the one the manager was looking at when they
    * decided to invite.
@@ -1417,19 +1462,18 @@ model TrialApplication {
   recommendation   Recommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
 
   /// Every scout whose call this trial will settle. See TrialApplicationBacking.
-  backings         TrialApplicationBacking[]
+  backings TrialApplicationBacking[]
   /**
    * The *online* coach review that screened this application, if one ran.
-   *
    * Private trials only. A general trial is not screened online at all
    * (TRIAL.md Rule 5) — the player applies and is tested on the day.
    */
-  review     RecommendationReview?
+  review   RecommendationReview?
   /// What the coach said after testing them in person. See TrialResult.
-  result     TrialResult?
+  result   TrialResult?
 
-  trial    Trial @relation(fields: [trialId], references: [id], onDelete: Cascade)
-  player   PlayerProfile @relation(fields: [playerId], references: [id])
+  trial  Trial         @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  player PlayerProfile @relation(fields: [playerId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1439,7 +1483,6 @@ model TrialApplication {
 
 /**
  * PASS or FAIL — TRIAL.md Rule 4.
- *
  * Never ACCEPT/REJECT. Those belong to the online review, which decides whether
  * a player is worth *looking at*; this decides whether they passed the football
  * examination, and only this one reaches a squad (Rule 8).
@@ -1451,28 +1494,26 @@ enum TrialVerdict {
 
 /**
  * A coach's verdict after physically testing a player at a trial.
- *
  * Its own row rather than a second decision on `RecommendationReview`, which is
  * what this used to be. Rule 19 forbids merging the two, and the merged version
  * had a concrete cost: reopening the review reset the online screening to
  * PENDING, so "what did the coach say about this player's profile" and "did they
  * pass the day" overwrote each other, and there was no way to hold both.
- *
  * One per application. A trial answers once — a second look is a second trial,
  * with its own application and its own row.
  */
 model TrialResult {
-  id            String @id @default(uuid())
-  applicationId String @unique
+  id            String           @id @default(uuid())
+  applicationId String           @unique
   application   TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   /// The coach who ran the test. Must be working this trial — see TrialCoach.
   coachUserId    String
   coachProfileId String
-  coachUser      User @relation("TrialVerdicts", fields: [coachUserId], references: [id], onDelete: Cascade)
+  coachUser      User   @relation("TrialVerdicts", fields: [coachUserId], references: [id], onDelete: Cascade)
 
-  verdict       TrialVerdict
-  note          String?
+  verdict TrialVerdict
+  note    String?
 
   decidedAt DateTime @default(now())
 
@@ -1486,7 +1527,6 @@ enum NotificationEvent {
   REVIEW_ASSIGNED
   /**
    * A coach accepted a player at online review, and the academy's move is next.
-   *
    * Only an ACCEPT is sent. A rejection asks nothing of the manager — the coach
    * has answered and the line is closed — whereas an acceptance leaves a player
    * waiting on an invitation only they can send.
@@ -1503,7 +1543,6 @@ enum NotificationEvent {
   TRIAL_INVITATION
   /**
    * A new open trial matches this player's position and age.
-   *
    * Sent on creation to players the trial is actually for, never to everybody:
    * a notification that does not apply to you teaches you to ignore the ones
    * that do. Matching is on the same two fields the academy filled in — the
@@ -1513,7 +1552,6 @@ enum NotificationEvent {
   TRIAL_PUBLISHED
   /**
    * The exam moved. Sent to everybody already holding an application.
-   *
    * A date is the one detail of a trial a family has arranged their week around,
    * so changing it silently is the one edit that can waste somebody's morning.
    */
@@ -1521,7 +1559,6 @@ enum NotificationEvent {
   TRIAL_RESULT
   /**
    * The academy has taken the player on after a trial they passed.
-   *
    * Separate from the join invitation the placement also sends: that one is
    * paperwork awaiting a yes, this one is the news. A child who passed a trial
    * should be told they passed and were wanted, not only handed a form.
@@ -1531,30 +1568,28 @@ enum NotificationEvent {
 }
 
 model Notification {
-  id      String @id @default(uuid())
-  userId  String
-  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /**
    * Who caused this, and in what capacity.
-   *
    * "A coach accepted a player" and "the academy accepted a player" are read
    * very differently by whoever gets the message, and until now a notification
    * said neither — only what happened. Nullable for the events nobody triggered:
    * a scheduled job, or a rule firing on its own.
-   *
    * `actorRole` is stored rather than derived because a user holds several roles
    * at once and only the caller knows which one was acting. A scout who is also
    * a coach rejecting a player did it as a coach, and the row should say so a
    * year later even if they have stopped being either.
    */
   actorUserId String?
-  actor       User? @relation("NotificationActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actor       User?   @relation("NotificationActors", fields: [actorUserId], references: [id], onDelete: SetNull)
   actorRole   String?
 
   event   NotificationEvent
   payload Json
-  read    Boolean @default(false)
+  read    Boolean           @default(false)
 
   createdAt DateTime @default(now())
 }
@@ -1575,20 +1610,20 @@ enum ReportStatus {
 }
 
 model Report {
-  id       String @id @default(uuid())
-  type     ReportType
-  reason   String
+  id     String     @id @default(uuid())
+  type   ReportType
+  reason String
 
   reporterId String
-  reporter   User @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reporter   User   @relation("ReportsFiled", fields: [reporterId], references: [id])
 
   targetUserId    String?
   targetMediaId   String?
   targetAcademyId String?
   targetCoachId   String?
-  targetMedia     Media? @relation("ReportedMedia", fields: [targetMediaId], references: [id])
+  targetMedia     Media?  @relation("ReportedMedia", fields: [targetMediaId], references: [id])
 
-  status   ReportStatus @default(PENDING)
+  status         ReportStatus @default(PENDING)
   resolutionNote String?
 
   createdAt DateTime @default(now())

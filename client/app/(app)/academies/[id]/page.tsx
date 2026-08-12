@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Building2, CalendarDays, MapPin, Users } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
-import { academies, trials } from '@/lib/api/resources';
+import { academies, academyRoster, trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
-import type { AcademyProfile, Trial } from '@/lib/api/types';
+import type { AcademyMember, AcademyProfile, Trial } from '@/lib/api/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import { getServerT } from '@/lib/i18n/server';
 import { RelationBadge } from '@/components/shared/RelationBadge';
 import { formatDate } from '@/lib/utils';
 import { FollowAcademyButton } from './FollowAcademyButton';
+import { AcademyProfileEditor } from './AcademyProfileEditor';
 
 export async function generateMetadata({
   params,
@@ -64,6 +65,20 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
       session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
     )
     .catch(() => [] as Trial[]);
+
+  /*
+   * Everything the manager owns about how this academy presents itself.
+   *
+   * The roster is fetched only for them, because it is what the featured
+   * pickers choose from — a visitor has no use for it and should not pay for
+   * the request.
+   */
+  const isManager = relation === 'MANAGER';
+  const roster = isManager
+    ? await academyRoster
+        .list(id, {}, { token: session!.accessToken, cache: 'no-store' })
+        .catch(() => [] as AcademyMember[])
+    : [];
 
   return (
     <div className="space-y-6">
@@ -147,6 +162,14 @@ export default async function AcademyDetailPage({ params }: { params: Promise<{ 
           </CardContent>
         </Card>
       </div>
+
+      {/* Only for the manager: the API refuses every one of these routes to
+          anybody else, so this is about not showing controls that would 403. */}
+      {isManager && (
+        <div className="lg:col-span-2">
+          <AcademyProfileEditor academy={academy} members={roster} />
+        </div>
+      )}
     </div>
   );
 }

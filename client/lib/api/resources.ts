@@ -7,6 +7,8 @@ import type {
   AcademyInvitation,
   MyInvitation,
   AcademyProfile,
+  AcademyPhoto,
+  AcademyFeatured,
   AcademyScoutFollow,
   AcademyScoutFollowState,
   AppNotification,
@@ -256,6 +258,42 @@ export interface UpdatePlayerStatsBody {
 // ---------- Academies ----------
 
 export const academies = {
+  /** The gallery, in the order the manager arranged it. */
+  photos: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyPhoto[]>(`/academies/${academyId}/photos`, opts),
+
+  addPhoto: (academyId: string, body: { storageKey: string; caption?: string }, opts: Opts = {}) =>
+    apiFetch<AcademyPhoto>(`/academies/${academyId}/photos`, { method: 'POST', body, ...opts }),
+
+  reorderPhotos: (academyId: string, ids: string[], opts: Opts = {}) =>
+    apiFetch<AcademyPhoto[]>(`/academies/${academyId}/photos/order`, {
+      method: 'PATCH',
+      body: { ids },
+      ...opts,
+    }),
+
+  removePhoto: (photoId: string, opts: Opts = {}) =>
+    apiFetch<{ removed: boolean }>(`/academies/photos/${photoId}`, { method: 'DELETE', ...opts }),
+
+  /** Presigned PUT for the logo or a gallery photo. Key minted server-side. */
+  imageUploadUrl: (academyId: string, filename: string, opts: Opts = {}) =>
+    apiFetch<{ uploadUrl: string; storageKey: string }>(`/academies/${academyId}/images/upload-url`, {
+      method: 'POST',
+      body: { filename },
+      ...opts,
+    }),
+
+  /** Who the academy features — top players, coaches and scouts. */
+  featured: (academyId: string, opts: Opts = {}) =>
+    apiFetch<AcademyFeatured[]>(`/academies/${academyId}/featured`, opts),
+
+  /** Replaces one role's list outright; ordering is the array order. */
+  setFeatured: (
+    academyId: string,
+    body: { role: 'PLAYER' | 'COACH' | 'SCOUT'; memberIds: string[] },
+    opts: Opts = {},
+  ) => apiFetch<AcademyFeatured[]>(`/academies/${academyId}/featured`, { method: 'PUT', body, ...opts }),
+
   listPublic: (region?: string, opts: Opts = {}) =>
     apiFetch<AcademyProfile[]>(`/academies${toQuery({ region })}`, opts),
 

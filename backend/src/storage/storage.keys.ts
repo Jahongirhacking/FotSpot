@@ -86,6 +86,21 @@ export function playerPosterKey(playerId: string): string {
   return `${playerMediaPrefix(playerId)}${objectName('poster.jpg')}`;
 }
 
+/**
+ * Directory an academy's own imagery lives in — logo and gallery.
+ *
+ * Public, like avatars and clips: an academy is an institution advertising
+ * itself, not a child. That is the whole difference from `playerMediaPrefix`,
+ * and it is why these two never share a directory.
+ */
+export function academyMediaPrefix(academyId: string): string {
+  return `${PUBLIC_PREFIX}academies/${academyId}/`;
+}
+
+export function academyMediaKey(academyId: string, filename: string): string {
+  return `${academyMediaPrefix(academyId)}${objectName(filename)}`;
+}
+
 export function isPublicKey(key: string): boolean {
   return key.startsWith(PUBLIC_PREFIX);
 }

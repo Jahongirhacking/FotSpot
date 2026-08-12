@@ -348,8 +348,43 @@ export interface AcademyProfile {
   /** Sanitised HTML this academy starts every trial note from. */
   defaultTrialNote?: string | null;
   status: VerificationStatus;
+
+  /** Where it is, as a point. Null together — one coordinate locates nothing. */
+  latitude?: number | null;
+  longitude?: number | null;
+
+  /** Built from `logoKey` server-side; the key itself never leaves the API. */
+  logoUrl?: string | null;
+
+  /** Host-validated on write — the icon has to go where it claims. */
+  telegramUrl?: string | null;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+
   members?: AcademyMemberRef[];
   createdAt: string;
+}
+
+/** One photo in an academy's gallery. The lowest `sortOrder` is the cover. */
+export interface AcademyPhoto {
+  id: string;
+  academyId: string;
+  caption?: string | null;
+  sortOrder: number;
+  url: string | null;
+  createdAt: string;
+}
+
+/** Somebody the academy chose to show off, in the order it chose. */
+export interface AcademyFeatured {
+  role: AcademyMemberRole;
+  rank: number;
+  memberId: string;
+  userId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
 }
 
 /** The trimmed membership embedded in an academy profile. */

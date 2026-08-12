@@ -1415,14 +1415,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -2537,6 +2530,241 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/images/upload-url": {
+      "post": {
+        "operationId": "academies_imageUploadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademyImageUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/photos": {
+      "get": {
+        "operationId": "academies_listPhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The gallery, in the order the manager arranged it. Public.",
+        "tags": [
+          "academies"
+        ]
+      },
+      "post": {
+        "operationId": "academies_addPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAcademyPhotoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/photos/order": {
+      "patch": {
+        "operationId": "academies_reorderPhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/photos/{photoId}": {
+      "delete": {
+        "operationId": "academies_removePhoto",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/{id}/featured": {
+      "get": {
+        "operationId": "academies_listFeatured",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who the academy features — its top players, coaches and scouts. Public.",
+        "tags": [
+          "academies"
+        ]
+      },
+      "put": {
+        "operationId": "academies_setFeatured",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeaturedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replaces one role's list outright — see `setFeatured` for why wholesale.",
         "tags": [
           "academies"
         ]
@@ -5837,6 +6065,17 @@
       "UpdateAcademyDto": {
         "type": "object",
         "properties": {
+          "latitude": {
+            "type": "number",
+            "description": "Where the academy is, as a point.\n\nSent together or not at all — the database refuses half a pair, because one\ncoordinate locates nothing. The bounds are checked here *and* by a CHECK\nconstraint: a swapped latitude/longitude is the classic way to end up in the\nGulf of Guinea, and it should fail at the edge rather than on a map.",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
           "name": {
             "type": "string"
           },
@@ -5853,6 +6092,27 @@
             "type": "string",
             "description": "The note this academy puts on every trial unless it says otherwise.\n\nHTML from the note editor, sanitised server-side before storage. It is a\n*default*, copied into a trial at creation — editing it later does not\nrewrite the notes of trials that have already happened.",
             "maxLength": 20000
+          },
+          "logoKey": {
+            "type": "string",
+            "description": "R2 object key from the upload ticket, re-checked server-side.",
+            "maxLength": 512
+          },
+          "telegramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "facebookUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "instagramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "youtubeUrl": {
+            "type": "string",
+            "maxLength": 300
           }
         }
       },
@@ -6006,6 +6266,81 @@
         },
         "required": [
           "memberId"
+        ]
+      },
+      "AcademyImageUploadDto": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      },
+      "AddAcademyPhotoDto": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "storageKey"
+        ]
+      },
+      "ReorderDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "AcademyMemberRole": {
+        "type": "string",
+        "enum": [
+          "MANAGER",
+          "COACH",
+          "SCOUT",
+          "PLAYER"
+        ]
+      },
+      "SetFeaturedDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AcademyMemberRole"
+              }
+            ]
+          },
+          "memberIds": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "memberIds"
         ]
       },
       "EndorsementRole": {
