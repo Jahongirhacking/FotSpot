@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // missing session is normal here — not a reason to redirect.
   // Only for the avatar monogram; a failure must not blank the whole app.
   const me = session
-    ? await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+    ? await users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null)
     : null;
 
   /*

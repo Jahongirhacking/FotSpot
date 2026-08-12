@@ -25,13 +25,13 @@ import { cn } from '@/lib/utils';
  */
 export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) {
   const { t } = useI18n();
-  const attribute = CATEGORY_ATTRIBUTE[clip.category];
-  const isHighlight = clip.category === 'MATCH_HIGHLIGHTS';
+  const attribute = CATEGORY_ATTRIBUTE[clip?.category];
+  const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
   const label = isHighlight
     ? t.attributes.highlights
     : attribute
       ? t.attributes[attribute]
-      : clip.category;
+      : clip?.category;
 
   // Reuses the card palette so a clip reads as belonging to the same player.
   const theme = CARD_THEME[positionGroup(null)];
@@ -40,12 +40,12 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`${label}${clip.rating != null ? ` ${clip.rating}` : ''} — ${t.clips.play}`}
+      aria-label={`${label}${clip?.rating != null ? ` ${clip?.rating}` : ''} — ${t.clips.play}`}
       className="group focus-visible:ring-ring relative block aspect-square w-full overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:outline-none"
     >
-      {clip.posterUrl ? (
+      {clip?.posterUrl ? (
         <img
-          src={clip.posterUrl}
+          src={clip?.posterUrl}
           alt=""
           referrerPolicy="no-referrer"
           className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -72,9 +72,9 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
             <span className="text-[11px] font-semibold tracking-wide uppercase opacity-90 drop-shadow">
               {label}
             </span>
-            {clip.rating != null && (
+            {clip?.rating != null && (
               <span className="font-mono text-3xl leading-none font-black drop-shadow-[0_2px_6px_rgba(0,0,0,.7)]">
-                {clip.rating}
+                {clip?.rating}
               </span>
             )}
           </>
@@ -89,9 +89,9 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
         <Play className="size-3" />
       </span>
 
-      {clip.title && (
+      {clip?.title && (
         <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pt-4 pb-1 text-left text-[11px] text-white/90">
-          {clip.title}
+          {clip?.title}
         </span>
       )}
     </button>

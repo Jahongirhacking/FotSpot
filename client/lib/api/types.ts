@@ -7,18 +7,19 @@
 export type DominantFoot = 'LEFT' | 'RIGHT' | 'BOTH';
 
 export type PlayingStyle =
-  | 'POACHER'
-  | 'TARGET_MAN'
+  | 'GOAL_POACHER'
+  | 'FOX_IN_THE_BOX'
   | 'DEEP_LYING_FORWARD'
-  | 'WIDE_THREAT'
+  | 'PROLIFIC_WINGER'
+  | 'CLASSIC_10'
   | 'BOX_TO_BOX'
   | 'PLAYMAKER'
-  | 'DESTROYER'
+  | 'ANCHOR_MAN'
   | 'ORCHESTRATOR'
-  | 'BALL_PLAYING_DEFENDER'
-  | 'STOPPER'
-  | 'OVERLAPPING_FULL_BACK'
-  | 'SWEEPER'
+  | 'DEFENSIVE_FULLBACK'
+  | 'DESTROYER'
+  | 'OFFENSIVE_WINGBACK'
+  | 'BUILD_UP'
   | 'OFFENSIVE_KEEPER'
   | 'DEFENSIVE_KEEPER';
 

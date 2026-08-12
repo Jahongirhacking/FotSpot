@@ -76,7 +76,7 @@ export function AcademyTrials({
   });
 
   // A default is a starting point, so the box opens with it already written.
-  const note = typedNote ?? htmlToMarkdown(academy.data?.defaultTrialNote);
+  const note = typedNote ?? htmlToMarkdown(academy?.data?.defaultTrialNote);
 
   const create = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -89,8 +89,8 @@ export function AcademyTrials({
     meta: { success: t.trials.trialCreated },
   });
 
-  const globalTrials = trials.filter((trial) => trial.type === 'GENERAL');
-  const privateTrials = trials.filter((trial) => trial.type === 'PRIVATE');
+  const globalTrials = trials?.filter((trial) => trial?.type === 'GENERAL');
+  const privateTrials = trials?.filter((trial) => trial?.type === 'PRIVATE');
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -288,33 +288,33 @@ function TrialList({ trials }: { trials: Trial[] }) {
 
   return (
     <ul className="divide-border divide-y">
-      {trials.map((trial) => (
-        <li key={trial.id}>
+      {trials?.map((trial) => (
+        <li key={trial?.id}>
           <Link
-            href={`/trials/${trial.id}`}
+            href={`/trials/${trial?.id}`}
             className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
           >
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium">{trial.title}</span>
-                {trial.status === 'ARCHIVED' && (
+                <span className="truncate text-sm font-medium">{trial?.title}</span>
+                {trial?.status === 'ARCHIVED' && (
                   <Badge variant="neutral">{t.trials.statusArchived}</Badge>
                 )}
               </span>
               <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                 <span className="flex items-center gap-1">
-                  <CalendarDays className="size-3" aria-hidden /> {formatDate(trial.date)}
+                  <CalendarDays className="size-3" aria-hidden /> {formatDate(trial?.date)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <MapPin className="size-3" aria-hidden /> {trial.location}
+                  <MapPin className="size-3" aria-hidden /> {trial?.location}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Users className="size-3" aria-hidden /> U{trial.ageRangeMax}
+                  <Users className="size-3" aria-hidden /> U{trial?.ageRangeMax}
                 </span>
               </span>
             </span>
             <Badge variant="primary" className="shrink-0">
-              {new Date(trial.date) > new Date() ? t.trials.open : t.trials.closed}
+              {new Date(trial?.date) > new Date() ? t.trials.open : t.trials.closed}
             </Badge>
           </Link>
         </li>

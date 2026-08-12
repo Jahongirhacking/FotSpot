@@ -54,7 +54,7 @@ export function AddCoach({
         body,
       }),
     onSuccess: (result) => {
-      setCredentials(result.credentials ?? null);
+      setCredentials(result?.credentials ?? null);
       setChoice(EMPTY_MANAGER);
       setBio('');
       setOpen(false);
@@ -68,8 +68,8 @@ export function AddCoach({
   function submit() {
     const body = managerBody(choice);
     create.mutate({
-      ...(body.managerUserId ? { userId: body.managerUserId } : {}),
-      ...(body.newManager ? { newCoach: body.newManager } : {}),
+      ...(body?.managerUserId ? { userId: body?.managerUserId } : {}),
+      ...(body?.newManager ? { newCoach: body?.newManager } : {}),
       ...(bio.trim() ? { bio: bio.trim() } : {}),
     });
   }

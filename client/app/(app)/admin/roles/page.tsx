@@ -16,12 +16,12 @@ export default async function RolesPage() {
   if (!session) redirect('/login?next=/admin/roles');
 
   const { t } = await getServerT();
-  if (!isSuperAdminActing(session.activeRole)) {
+  if (!isSuperAdminActing(session?.activeRole)) {
     return <Alert tone="warning">{t.dashboard.adminSubtitle}</Alert>;
   }
 
   const roles = await admin
-    .roles({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
+    .roles({ token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' })
     .catch(() => [] as RoleWithPermissions[]);
 
   return (

@@ -26,7 +26,7 @@ export default async function MyGroupPage() {
   const { t } = await getServerT();
 
   const mine = await groups
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => [] as GroupDetail[]);
 
   if (mine.length === 0) {
@@ -38,16 +38,16 @@ export default async function MyGroupPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       {mine.map((group) => (
-        <Card key={group.id}>
+        <Card key={group?.id}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{group.name}</CardTitle>
+            <CardTitle className="text-base">{group?.name}</CardTitle>
             <p className="text-muted text-sm">
-              {group.academy.name}
-              {group.description ? ` · ${group.description}` : ''}
+              {group?.academy.name}
+              {group?.description ? ` · ${group?.description}` : ''}
             </p>
           </CardHeader>
           <CardContent className="p-2">
-            <GroupMembers members={group.members} />
+            <GroupMembers members={group?.members} />
           </CardContent>
         </Card>
       ))}

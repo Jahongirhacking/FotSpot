@@ -98,12 +98,12 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
           {nav.map((item) => (
             <NavLink
-              key={item.href}
-              href={item.href}
-              label={t.nav[item.label]}
-              icon={item.icon}
-              active={isActive(pathname, item.href)}
-              badge={badgeFor(item.label)}
+              key={item?.href}
+              href={item?.href}
+              label={t.nav[item?.label]}
+              icon={item?.icon}
+              active={isActive(pathname, item?.href)}
+              badge={badgeFor(item?.label)}
             />
           ))}
         </nav>
@@ -141,11 +141,11 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         >
           {nav.map((item) => (
             <NavLink
-              key={item.href}
-              href={item.href}
-              label={t.nav[item.label]}
-              icon={item.icon}
-              active={isActive(pathname, item.href)}
+              key={item?.href}
+              href={item?.href}
+              label={t.nav[item?.label]}
+              icon={item?.icon}
+              active={isActive(pathname, item?.href)}
               mobile
             />
           ))}

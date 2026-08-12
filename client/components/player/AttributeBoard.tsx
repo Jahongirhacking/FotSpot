@@ -73,12 +73,12 @@ export function AttributeBoard({
   }
 
   const selectedAttribute = ATTRIBUTE_KEYS.find((key) => ATTRIBUTE_CATEGORY[key] === filter);
-  const visible = filter === 'ALL' ? items : items.filter((clip) => clip.category === filter);
+  const visible = filter === 'ALL' ? items : items?.filter((clip) => clip?.category === filter);
 
   const countFor = (category: MediaCategory) =>
-    items.filter((clip) => clip.category === category).length;
+    items?.filter((clip) => clip?.category === category).length;
 
-  const openClip = items.find((clip) => clip.id === openId) ?? null;
+  const openClip = items?.find((clip) => clip?.id === openId) ?? null;
 
   const select = (key: AttributeKey) => {
     const category = ATTRIBUTE_CATEGORY[key];
@@ -132,7 +132,7 @@ export function AttributeBoard({
           {/* Tabs double as the history index: every category the player has ever
               uploaded to keeps its full run of clips, not just the newest. */}
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-            <Tab active={filter === 'ALL'} onClick={() => setFilter('ALL')} count={items.length}>
+            <Tab active={filter === 'ALL'} onClick={() => setFilter('ALL')} count={items?.length}>
               {t.clips.all}
             </Tab>
             <Tab
@@ -167,8 +167,8 @@ export function AttributeBoard({
                minute of someone's attention gets opened. */
             <ul className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:grid-cols-4">
               {visible.map((clip) => (
-                <li key={clip.id}>
-                  <ClipTile clip={clip} onOpen={() => setOpenId(clip.id)} />
+                <li key={clip?.id}>
+                  <ClipTile clip={clip} onOpen={() => setOpenId(clip?.id)} />
                 </li>
               ))}
             </ul>
@@ -218,12 +218,12 @@ export function AttributeBoard({
           canEdit={canUpload}
           open
           onOpenChange={(next) => !next && setOpenId(null)}
-          onDeleted={(id) => setItems((rest) => rest.filter((entry) => entry.id !== id))}
+          onDeleted={(id) => setItems((rest) => rest.filter((entry) => entry?.id !== id))}
           onUpdated={(updated) =>
             setItems((rest) =>
               rest.map((entry) =>
-                entry.id === updated.id
-                  ? { ...entry, ...updated, posterUrl: entry.posterUrl }
+                entry?.id === updated.id
+                  ? { ...entry, ...updated, posterUrl: entry?.posterUrl }
                   : entry,
               ),
             )

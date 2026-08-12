@@ -46,16 +46,16 @@ export function RegisterForm() {
     const response = await fetch('/api/auth/register-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: values.email }),
+      body: JSON.stringify({ email: values?.email }),
     });
 
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setServerError(body.message ?? t.auth.couldNotCreate);
+    const body = await response?.json().catch(() => ({}));
+    if (!response?.ok) {
+      setServerError(body?.message ?? t.auth.couldNotCreate);
       return;
     }
 
-    setDevCode(body.devCode ?? null);
+    setDevCode(body?.devCode ?? null);
     setPending(values);
   }
 
@@ -170,12 +170,12 @@ function ConfirmEmailStep({
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'register', ...details, code: values.code }),
+      body: JSON.stringify({ mode: 'register', ...details, code: values?.code }),
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setServerError(body.message ?? t.auth.codeDidNotWork);
+    if (!response?.ok) {
+      const body = await response?.json().catch(() => ({}));
+      setServerError(body?.message ?? t.auth.codeDidNotWork);
       return;
     }
 
@@ -187,7 +187,7 @@ function ConfirmEmailStep({
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
       {serverError && <Alert tone="danger">{serverError}</Alert>}
 
-      <p className="text-muted text-sm">{f(t.auth.sentTo, { destination: details.email })}</p>
+      <p className="text-muted text-sm">{f(t.auth.sentTo, { destination: details?.email })}</p>
 
       {devCode && (
         <Alert tone="info" title={t.auth.devMode}>

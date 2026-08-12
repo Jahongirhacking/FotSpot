@@ -55,9 +55,9 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
    */
   let scout: ScoutProfile;
   try {
-    scout = await recommendations.scoutProfile(id, {
-      token: session.accessToken,
-      activeRole: session.activeRole,
+    scout = await recommendations?.scoutProfile(id, {
+      token: session?.accessToken,
+      activeRole: session?.activeRole,
       cache: 'no-store',
     });
   } catch (error) {
@@ -74,43 +74,43 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
     throw error;
   }
 
-  const tier = scoutTier(scout.stats.level);
-  const name = [scout.firstName, scout.lastName].filter(Boolean).join(' ');
+  const tier = scoutTier(scout?.stats.level);
+  const name = [scout?.firstName, scout?.lastName].filter(Boolean).join(' ');
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <header className="flex items-center gap-4">
         <Avatar
-          src={scout.avatarUrl}
-          fallback={initials(scout.firstName ?? '', scout.lastName ?? '')}
+          src={scout?.avatarUrl}
+          fallback={initials(scout?.firstName ?? '', scout?.lastName ?? '')}
           className="size-16"
         />
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold">
-            {name || scout.username || t.scouts.profile}
+            {name || scout?.username || t.scouts.profile}
           </h1>
           <p className="text-muted flex flex-wrap items-center gap-2 text-sm">
             <span className="inline-flex items-center gap-1">
-              <Trophy className="text-primary size-4" aria-hidden /> {tier.name}
+              <Trophy className="text-primary size-4" aria-hidden /> {tier?.name}
             </span>
             <Badge variant="outline">
-              {t.scouts.level} {tier.level} · {t.scouts.weight} {tier.weight}
+              {t.scouts.level} {tier?.level} · {t.scouts.weight} {tier?.weight}
             </Badge>
           </p>
           <p className="text-muted mt-1 flex items-center gap-1 text-xs">
             <CalendarDays className="size-3" aria-hidden /> {t.scouts.joined}{' '}
-            {formatDate(scout.createdAt)}
+            {formatDate(scout?.createdAt)}
           </p>
         </div>
       </header>
 
       {/* A manager's one action on this page — invite, or the state that follows.
           Null for everybody who does not run an academy. */}
-      {scout.viewerAcademy && (
+      {scout?.viewerAcademy && (
         <ScoutSquadActions
-          scoutId={scout.id}
-          scoutName={name || scout.username || t.scouts.profile}
-          standing={scout.viewerAcademy}
+          scoutId={scout?.id}
+          scoutName={name || scout?.username || t.scouts.profile}
+          standing={scout?.viewerAcademy}
         />
       )}
 
@@ -120,12 +120,12 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-            <Stat label={t.scouts.sent} value={scout.stats.totalRecommendations} />
-            <Stat label={t.scouts.accepted} value={scout.stats.acceptedRecommendations} />
-            <Stat label={t.scouts.pending} value={scout.stats.pendingRecommendations} />
+            <Stat label={t.scouts.sent} value={scout?.stats.totalRecommendations} />
+            <Stat label={t.scouts.accepted} value={scout?.stats.acceptedRecommendations} />
+            <Stat label={t.scouts.pending} value={scout?.stats.pendingRecommendations} />
             <Stat
               label={t.scouts.successRate}
-              value={`${Math.round(scout.stats.successRate)}%`}
+              value={`${Math.round(scout?.stats.successRate)}%`}
             />
           </dl>
         </CardContent>
@@ -138,13 +138,13 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {scout.endorsements.length === 0 ? (
+          {scout?.endorsements.length === 0 ? (
             <p className="text-muted text-sm">{t.scouts.noEndorsements}</p>
           ) : (
             <ul className="flex flex-wrap gap-2">
-              {scout.endorsements.map((endorsement) => (
-                <li key={endorsement.academyId}>
-                  <Badge variant="primary">{endorsement.academy.name}</Badge>
+              {scout?.endorsements.map((endorsement) => (
+                <li key={endorsement?.academyId}>
+                  <Badge variant="primary">{endorsement?.academy.name}</Badge>
                 </li>
               ))}
             </ul>

@@ -54,7 +54,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
       setCreating(false);
       setError(null);
       // Only present when an account was minted, and only this once.
-      if (result.credentials) setCredentials(result.credentials);
+      if (result?.credentials) setCredentials(result?.credentials);
       refresh();
     },
     onError: fail,
@@ -69,7 +69,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
     onSuccess: (result) => {
       setManagingId(null);
       setError(null);
-      if (result.credentials) setCredentials(result.credentials);
+      if (result?.credentials) setCredentials(result?.credentials);
       refresh();
     },
     onError: fail,
@@ -132,81 +132,81 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
       ) : (
         <ul className="space-y-3">
           {(academies ?? []).map((academy) =>
-            editingId === academy.id ? (
-              <li key={academy.id}>
+            editingId === academy?.id ? (
+              <li key={academy?.id}>
                 <AcademyForm
-                  title={academy.name}
+                  title={academy?.name}
                   submitLabel={t.common.save}
                   pending={update.isPending}
                   defaults={academy}
                   onCancel={() => setEditingId(null)}
-                  onSubmit={(values) => update.mutate({ id: academy.id, body: values })}
+                  onSubmit={(values) => update.mutate({ id: academy?.id, body: values })}
                 />
               </li>
             ) : (
-              <li key={academy.id}>
+              <li key={academy?.id}>
                 <Card>
                   <CardContent className="flex flex-wrap items-center gap-3 p-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate font-semibold">{academy.name}</p>
+                        <p className="truncate font-semibold">{academy?.name}</p>
                         <Badge
                           variant={
-                            academy.status === 'VERIFIED'
+                            academy?.status === 'VERIFIED'
                               ? 'success'
-                              : academy.status === 'REJECTED'
+                              : academy?.status === 'REJECTED'
                                 ? 'neutral'
                                 : 'warning'
                           }
                         >
-                          {academy.status === 'REJECTED'
+                          {academy?.status === 'REJECTED'
                             ? t.admin.archived
-                            : academy.status.toLowerCase()}
+                            : academy?.status.toLowerCase()}
                         </Badge>
                       </div>
                       <p className="text-muted mt-0.5 text-xs">
-                        {academy.region ?? '—'}
-                        {academy.district ? ` · ${academy.district}` : ''} ·{' '}
-                        {formatDate(academy.createdAt)} ·{' '}
-                        {academy.members?.length
-                          ? `${t.admin.manager}: ${academy.members[0].userId.slice(0, 8)}`
+                        {academy?.region ?? '—'}
+                        {academy?.district ? ` · ${academy?.district}` : ''} ·{' '}
+                        {formatDate(academy?.createdAt)} ·{' '}
+                        {academy?.members?.length
+                          ? `${t.admin.manager}: ${academy?.members[0].userId.slice(0, 8)}`
                           : t.admin.noManager}
                       </p>
                     </div>
 
                     <div className="flex w-full flex-wrap gap-1 sm:w-auto">
-                      <Button size="sm" variant="outline" onClick={() => setEditingId(academy.id)}>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(academy?.id)}>
                         <Pencil aria-hidden /> {t.admin.editAcademy}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setManagingId(managingId === academy.id ? null : academy.id)}
+                        onClick={() => setManagingId(managingId === academy?.id ? null : academy?.id)}
                       >
                         <UserCog aria-hidden /> {t.admin.manager}
                       </Button>
-                      {academy.members?.length ? (
+                      {academy?.members?.length ? (
                         <Button
                           size="sm"
                           variant="ghost"
                           disabled={resetPassword.isPending}
                           onClick={() => {
                             if (window.confirm(t.admin.confirmResetPassword)) {
-                              resetPassword.mutate(academy.id);
+                              resetPassword.mutate(academy?.id);
                             }
                           }}
                         >
                           <KeyRound aria-hidden /> {t.admin.resetPassword}
                         </Button>
                       ) : null}
-                      {academy.status !== 'REJECTED' && (
+                      {academy?.status !== 'REJECTED' && (
                         <Button
                           size="sm"
                           variant="ghost"
                           className="text-danger"
                           disabled={archive.isPending}
                           onClick={() => {
-                            if (window.confirm(t.admin.confirmArchive)) archive.mutate(academy.id);
+                            if (window.confirm(t.admin.confirmArchive)) archive.mutate(academy?.id);
                           }}
                         >
                           <Archive aria-hidden /> {t.admin.archive}
@@ -214,12 +214,12 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                       )}
                     </div>
 
-                    {managingId === academy.id && (
+                    {managingId === academy?.id && (
                       <div className="border-border w-full border-t pt-3">
                         <ManagerPanel
                           pending={setManager.isPending}
                           onCancel={() => setManagingId(null)}
-                          onSubmit={(body) => setManager.mutate({ id: academy.id, body })}
+                          onSubmit={(body) => setManager.mutate({ id: academy?.id, body })}
                         />
                       </div>
                     )}

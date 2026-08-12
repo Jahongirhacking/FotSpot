@@ -17,7 +17,7 @@ interface Coach {
 }
 
 const coachName = (coach: Coach) =>
-  [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.id.slice(0, 8);
+  [coach?.firstName, coach?.lastName].filter(Boolean).join(' ') || coach?.id.slice(0, 8);
 
 /**
  * The staff working a trial, and — on a private one — who is being looked at.
@@ -51,20 +51,20 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
   });
 
   const assigned = useQuery({
-    queryKey: ['trial-coaches', trial.id],
-    queryFn: () => browserFetch<Coach[]>(`/trials/${trial.id}/coaches`),
+    queryKey: ['trial-coaches', trial?.id],
+    queryFn: () => browserFetch<Coach[]>(`/trials/${trial?.id}/coaches`),
   });
 
   const assign = useMutation({
     mutationFn: (coachUserIds: string[]) =>
-      browserFetch(`/trials/${trial.id}/coaches`, { method: 'POST', body: { coachUserIds } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial-coaches', trial.id] }),
+      browserFetch(`/trials/${trial?.id}/coaches`, { method: 'POST', body: { coachUserIds } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial-coaches', trial?.id] }),
     meta: { success: t.trials.coachesUpdated },
   });
 
-  const coaches = (staff.data ?? []).map((row) => row.user ?? { id: row.userId });
+  const coaches = (staff.data ?? []).map((row) => row?.user ?? { id: row?.userId });
   const current = assigned.data ?? [];
-  const currentIds = new Set(current.map((coach) => coach.id));
+  const currentIds = new Set(current?.map((coach) => coach?.id));
 
   return (
     <Card>
@@ -76,14 +76,14 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {coaches.length === 0 ? (
+        {coaches?.length === 0 ? (
           <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
         ) : (
           <ul className="flex flex-wrap gap-2">
-            {coaches.map((coach) => {
-              const on = currentIds.has(coach.id);
+            {coaches?.map((coach) => {
+              const on = currentIds?.has(coach?.id);
               return (
-                <li key={coach.id}>
+                <li key={coach?.id}>
                   <Button
                     size="sm"
                     variant={on ? 'primary' : 'outline'}
@@ -91,8 +91,8 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
                     onClick={() =>
                       assign.mutate(
                         on
-                          ? [...currentIds].filter((id) => id !== coach.id)
-                          : [...currentIds, coach.id],
+                          ? [...currentIds].filter((id) => id !== coach?.id)
+                          : [...currentIds, coach?.id],
                       )
                     }
                   >

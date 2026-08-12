@@ -37,21 +37,21 @@ export default async function PlayersPage({
   const params = await searchParams;
   const { t, f } = await getServerT();
   const session = await getSession();
-  const page = Number(params.page ?? 1) || 1;
+  const page = Number(params?.page ?? 1) || 1;
 
   const result = await players
     .search(
       {
-        query: params.query,
-        region: params.region,
-        position: params.position,
-        playingStyle: params.playingStyle as PlayingStyle | undefined,
-        minAge: params.minAge ? Number(params.minAge) : undefined,
-        maxAge: params.maxAge ? Number(params.maxAge) : undefined,
+        query: params?.query,
+        region: params?.region,
+        position: params?.position,
+        playingStyle: params?.playingStyle as PlayingStyle | undefined,
+        minAge: params?.minAge ? Number(params?.minAge) : undefined,
+        maxAge: params?.maxAge ? Number(params?.maxAge) : undefined,
         page,
         pageSize: 12,
       },
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 60 },
     )
     .catch(() => ({ items: [], total: 0, page, pageSize: 12 }));
 
@@ -59,25 +59,25 @@ export default async function PlayersPage({
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-bold">{t.player.findPlayers}</h1>
-        <p className="text-muted text-sm">{f(t.player.searchSubtitle, { count: result.total })}</p>
+        <p className="text-muted text-sm">{f(t.player.searchSubtitle, { count: result?.total })}</p>
       </header>
 
       <PlayerFilters />
 
-      {result.items.length === 0 ? (
+      {result?.items.length === 0 ? (
         <EmptyState icon={Users} title={t.player.noMatches} description={t.player.noMatchesHint} />
       ) : (
         <>
           {/* Cards are portrait, so more of them fit per row than the old list
               rows did — four across on a laptop, two on a phone. */}
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {result.items.map((player) => (
-              <li key={player.id}>
+            {result?.items.map((player) => (
+              <li key={player?.id}>
                 <PlayerResultCard player={player} />
               </li>
             ))}
           </ul>
-          <Pagination page={result.page} pageSize={result.pageSize} total={result.total} />
+          <Pagination page={result?.page} pageSize={result?.pageSize} total={result?.total} />
         </>
       )}
     </div>

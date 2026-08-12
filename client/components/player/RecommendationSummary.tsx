@@ -46,18 +46,18 @@ export function RecommendationSummary({
             <TrendingUp className="size-3" aria-hidden /> {t.recommendations.globalWeight}
           </p>
           <p className="text-primary text-2xl leading-tight font-bold">
-            {Math.round(summary.globalWeight * 10) / 10}
+            {Math.round(summary?.globalWeight * 10) / 10}
           </p>
         </div>
       </CardHeader>
 
       <CardContent>
-        {summary.scouts.length === 0 ? (
+        {summary?.scouts.length === 0 ? (
           <p className="text-muted text-sm">{t.recommendations.noRecommendationsYet}</p>
         ) : (
           <ul className="divide-border divide-y">
-            {summary.scouts.map(({ id, name, avatarUrl, recommendation }) => (
-              <li key={recommendation.id} className="flex items-start gap-3 py-3">
+            {summary?.scouts.map(({ id, name, avatarUrl, recommendation }) => (
+              <li key={recommendation?.id} className="flex items-start gap-3 py-3">
                 <ScoutIdentity
                   id={id}
                   name={name}
@@ -69,15 +69,15 @@ export function RecommendationSummary({
                 <div className="min-w-0 flex-1">
                   <ScoutName id={id} name={name} linked={linkScouts} />
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant={recommendation.type === 'SPECIFIC' ? 'primary' : 'neutral'}>
-                      {recommendation.type === 'SPECIFIC'
+                    <Badge variant={recommendation?.type === 'SPECIFIC' ? 'primary' : 'neutral'}>
+                      {recommendation?.type === 'SPECIFIC'
                         ? t.recommendations.specificType
                         : t.recommendations.globalType}
                     </Badge>
-                    <span className="text-muted text-xs">{relativeTime(recommendation.date)}</span>
+                    <span className="text-muted text-xs">{relativeTime(recommendation?.date)}</span>
                   </div>
-                  {recommendation.note && (
-                    <p className="text-muted mt-1.5 text-xs italic">“{recommendation.note}”</p>
+                  {recommendation?.note && (
+                    <p className="text-muted mt-1.5 text-xs italic">“{recommendation?.note}”</p>
                   )}
                 </div>
 
@@ -87,7 +87,7 @@ export function RecommendationSummary({
                   className="text-muted shrink-0 font-mono text-sm"
                   title={t.recommendations.globalWeight}
                 >
-                  +{recommendation.weight}
+                  +{recommendation?.weight}
                 </span>
               </li>
             ))}

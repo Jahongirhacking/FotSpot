@@ -119,8 +119,8 @@ function TutorialPlayer({ category }: { category: MediaCategory }) {
   return (
     <video
       key={category}
-      src={tutorial.src}
-      poster={tutorial.poster}
+      src={tutorial?.src}
+      poster={tutorial?.poster}
       controls
       playsInline
       preload="none"

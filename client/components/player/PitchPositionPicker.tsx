@@ -62,17 +62,17 @@ export function PitchPositionPicker({
     if (mode === 'single') {
       // Pressing the chosen one again clears it: "actually, not sure" is a real
       // answer, and every position on this form is optional.
-      onChange(selected.has(position) ? [] : [position]);
+      onChange(selected?.has(position) ? [] : [position]);
       return;
     }
 
     const next = new Set(selected);
-    if (next.has(position)) next.delete(position);
-    else next.add(position);
+    if (next?.has(position)) next?.delete(position);
+    else next?.add(position);
     // Ordered by POSITIONS rather than by click order, so the stored value is
     // stable — "GK, CB" and "CB, GK" are the same answer and should not produce
     // two different rows.
-    onChange(POSITIONS.filter((code) => next.has(code)));
+    onChange(POSITIONS.filter((code) => next?.has(code)));
   }
 
   return (
@@ -86,7 +86,7 @@ export function PitchPositionPicker({
 
         {POSITIONS.map((position) => {
           const spot = POSITION_COORDS[position];
-          const isSelected = selected.has(position);
+          const isSelected = selected?.has(position);
 
           return (
             <button

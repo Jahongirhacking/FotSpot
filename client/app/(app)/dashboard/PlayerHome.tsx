@@ -20,7 +20,7 @@ import Link from 'next/link';
 export async function PlayerHome({ token, t }: { token: string; t: Dictionary }) {
   let profile: PlayerProfile | null = null;
   try {
-    profile = await players.getMine({ token, cache: 'no-store' });
+    profile = await players?.getMine({ token, cache: 'no-store' });
   } catch (error) {
     // A player role without a profile is a real state (role granted, profile
     // deleted) — recover into the wizard rather than erroring.
@@ -59,13 +59,13 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
           .then((p) => p.items),
       [],
     ),
-    safe(() => trials.myApplications({ token, cache: 'no-store' }), []),
-    safe(() => trials.listUpcoming({ revalidate: 300 }), []),
+    safe(() => trials?.myApplications({ token, cache: 'no-store' }), []),
+    safe(() => trials?.listUpcoming({ revalidate: 300 }), []),
   ]);
   // A clip that failed to process is not a clip the player has. Counted from the
   // first page, which is newest-first and holds twenty — plenty to answer
   // "is there at least one".
-  const usableClips = clips.filter((clip) => clip.status !== 'FAILED').length;
+  const usableClips = clips?.filter((clip) => clip?.status !== 'FAILED').length;
   const completion = cardCompletion(profile, t, usableClips);
 
   return (
@@ -98,22 +98,22 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">{completion.percent}%</span>
+              <span className="text-2xl font-bold">{completion?.percent}%</span>
               <span className="text-muted text-xs">
                 {interpolate(t.player.completionDone, {
-                  done: completion.done,
-                  total: completion.total,
+                  done: completion?.done,
+                  total: completion?.total,
                 })}
               </span>
             </div>
             <div className="bg-surface-3 h-2 overflow-hidden rounded-full">
               <div
                 className="bg-primary h-full rounded-full"
-                style={{ width: `${completion.percent}%` }}
+                style={{ width: `${completion?.percent}%` }}
               />
             </div>
             <ul className="space-y-1.5 text-sm">
-              {completion.checks.map((check) => (
+              {completion?.checks.map((check) => (
                 <li key={check.label} className="flex items-center gap-2">
                   <span
                     className={
@@ -137,7 +137,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {applications.length === 0 ? (
+            {applications?.length === 0 ? (
               <>
                 <p className="text-muted text-sm">{t.trials.noApplications}</p>
                 <Button asChild variant="outline" size="sm" className="w-full">
@@ -148,19 +148,19 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
               </>
             ) : (
               <ul className="space-y-2">
-                {applications.slice(0, 5).map((application) => (
+                {applications?.slice(0, 5).map((application) => (
                   <li
-                    key={application.id}
+                    key={application?.id}
                     className="flex items-center justify-between gap-2 text-sm"
                   >
                     <Link
-                      href={`/trials/${application.trialId}`}
+                      href={`/trials/${application?.trialId}`}
                       className="truncate hover:underline"
                     >
                       {titleFor(application, upcoming, t.trials.trial)}
                     </Link>
-                    <Badge variant={statusTone(application.status)}>
-                      {application.status.toLowerCase()}
+                    <Badge variant={statusTone(application?.status)}>
+                      {application?.status.toLowerCase()}
                     </Badge>
                   </li>
                 ))}
@@ -169,7 +169,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
           </CardContent>
         </Card>
 
-        {assessments.length === 0 && (
+        {assessments?.length === 0 && (
           <Alert tone="info" title={t.player.getVerifiedTitle}>
             {t.player.getVerifiedBody}
           </Alert>
@@ -180,7 +180,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
 }
 
 function titleFor(application: TrialApplication, upcoming: Trial[], fallback: string) {
-  return upcoming.find((trial) => trial.id === application.trialId)?.title ?? fallback;
+  return upcoming.find((trial) => trial?.id === application?.trialId)?.title ?? fallback;
 }
 
 function statusTone(status: TrialApplication['status']) {

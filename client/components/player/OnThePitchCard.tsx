@@ -42,7 +42,7 @@ export function OnThePitchCard({
           </div>
         </div>
 
-        {player?.playingStyle && <PlayingStyleStrip style={player.playingStyle} t={t} />}
+        {player?.playingStyle && <PlayingStyleStrip style={player?.playingStyle} t={t} />}
       </CardContent>
     </Card>
   );
@@ -63,7 +63,7 @@ export function OnThePitchCard({
  */
 function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
   const info = PLAYING_STYLE_INFO?.[style];
-  const description = info?.key ? t.playingStyles?.[info.key] : undefined;
+  const description = info?.key ? t.playingStyles?.[info?.key] : undefined;
 
   return (
     <div className="border-border bg-surface-2 flex items-center gap-3 rounded-lg border p-2.5">
@@ -76,7 +76,7 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
         )}
         {info?.exemplar && (
           <p className="text-muted mt-0.5 truncate text-[11px] italic">
-            {t.onboarding?.styleLikeWho}: {info.exemplar}
+            {t.onboarding?.styleLikeWho}: {info?.exemplar}
           </p>
         )}
       </div>

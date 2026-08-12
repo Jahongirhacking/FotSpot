@@ -42,22 +42,22 @@ export function GroupDetailManager({
     initialData: initialGroup,
   });
 
-  const group = detail.data ?? initialGroup;
+  const group = detail?.data ?? initialGroup;
 
   const update = useMutation({
     mutationFn: (body: { name: string; description?: string }) =>
-      browserFetch(`/academies/groups/${group.id}`, { method: 'PATCH', body }),
+      browserFetch(`/academies/groups/${group?.id}`, { method: 'PATCH', body }),
     onSuccess: () => {
       setEditing(false);
-      void queryClient.invalidateQueries({ queryKey: ['group', group.id] });
+      void queryClient.invalidateQueries({ queryKey: ['group', group?.id] });
       router.refresh();
     },
   });
 
   const remove = useMutation({
-    mutationFn: () => browserFetch(`/academies/groups/${group.id}`, { method: 'DELETE' }),
+    mutationFn: () => browserFetch(`/academies/groups/${group?.id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['groups', group.academy.id] });
+      void queryClient.invalidateQueries({ queryKey: ['groups', group?.academy.id] });
       router.replace('/academies/mine/squad');
       router.refresh();
     },
@@ -75,10 +75,10 @@ export function GroupDetailManager({
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-2 pb-2">
           <div className="min-w-0">
-            <CardTitle className="text-base">{group.name}</CardTitle>
+            <CardTitle className="text-base">{group?.name}</CardTitle>
             <p className="text-muted text-sm">
-              {group.academy.name}
-              {group.description ? ` · ${group.description}` : ''}
+              {group?.academy.name}
+              {group?.description ? ` · ${group?.description}` : ''}
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
@@ -122,7 +122,7 @@ export function GroupDetailManager({
                   id="group-name"
                   name="name"
                   required
-                  defaultValue={group.name}
+                  defaultValue={group?.name}
                   placeholder={t.placeholders.groupName}
                 />
               </Field>
@@ -131,7 +131,7 @@ export function GroupDetailManager({
                   id="group-description"
                   name="description"
                   rows={2}
-                  defaultValue={group.description ?? ''}
+                  defaultValue={group?.description ?? ''}
                   placeholder={t.placeholders.note}
                 />
               </Field>
@@ -148,8 +148,8 @@ export function GroupDetailManager({
       {/* The roster, not the group's own member list: only the roster knows
           which other squads exist to move somebody into. */}
       <SquadPanel
-        academyId={group.academy.id}
-        groupId={group.id}
+        academyId={group?.academy.id}
+        groupId={group?.id}
         title={t.academy.groupMembers}
         initialMembers={initialMembers}
         initialGroups={initialGroups}

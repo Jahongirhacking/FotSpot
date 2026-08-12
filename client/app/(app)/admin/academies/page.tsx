@@ -17,12 +17,12 @@ export default async function AdminAcademiesPage() {
   if (!session) redirect('/login?next=/admin/academies');
 
   const { t } = await getServerT();
-  const isAdmin = isAdminActing(session.activeRole);
+  const isAdmin = isAdminActing(session?.activeRole);
 
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const academies = await admin
-    .listAllAcademies({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
+    .listAllAcademies({ token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' })
     .catch(() => [] as (AcademyProfile & { members: { userId: string }[] })[]);
 
   return (

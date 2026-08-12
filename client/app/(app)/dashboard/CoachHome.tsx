@@ -10,8 +10,8 @@ import type { Dictionary } from '@/lib/i18n';
 
 export async function CoachHome({ token, t }: { token: string; t: Dictionary }) {
   const [profile, stats] = await Promise.all([
-    safe<CoachProfile | null>(() => coaches.getMine({ token, cache: 'no-store' }), null),
-    safe<ScoutStats | null>(() => recommendations.myScoutStats({ token, cache: 'no-store' }), null),
+    safe<CoachProfile | null>(() => coaches?.getMine({ token, cache: 'no-store' }), null),
+    safe<ScoutStats | null>(() => recommendations?.myScoutStats({ token, cache: 'no-store' }), null),
   ]);
 
   const verified = profile?.status === 'VERIFIED';

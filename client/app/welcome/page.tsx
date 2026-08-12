@@ -30,9 +30,9 @@ export default async function WelcomePage() {
   // roleless accounts here, so leaving on the cookie alone would bounce them
   // straight back and loop. Answering the question and ending up with a role are
   // now the same event, and both have to be true to leave.
-  if (session.onboarded && session.roles.length > 0) redirect('/dashboard');
+  if (session?.onboarded && session?.roles.length > 0) redirect('/dashboard');
 
-  const alreadyPlayer = session.roles.includes('player');
+  const alreadyPlayer = session?.roles.includes('player');
 
   return (
     <main className="pitch-gradient flex min-h-dvh flex-col items-center justify-center p-4">

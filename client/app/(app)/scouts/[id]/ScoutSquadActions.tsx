@@ -52,7 +52,7 @@ export function ScoutSquadActions({
 
   const invite = useMutation({
     mutationFn: () =>
-      browserFetch(`/academies/${standing.academyId}/invitations`, {
+      browserFetch(`/academies/${standing?.academyId}/invitations`, {
         method: 'POST',
         body: { userId: scoutId, role: 'SCOUT' },
       }),
@@ -67,7 +67,7 @@ export function ScoutSquadActions({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <UserPlus className="text-primary size-4" aria-hidden /> {standing.academyName}
+          <UserPlus className="text-primary size-4" aria-hidden /> {standing?.academyName}
         </CardTitle>
       </CardHeader>
 
@@ -75,20 +75,20 @@ export function ScoutSquadActions({
         {error && <Alert tone="danger">{error}</Alert>}
 
         {/* Done: on the books and endorsed. Nothing left to press. */}
-        {standing.isEndorsed ? (
+        {standing?.isEndorsed ? (
           <p className="text-success flex items-center gap-1.5 text-sm">
             <ShieldCheck className="size-4 shrink-0" aria-hidden /> {t.scouts.inSquad}
           </p>
-        ) : standing.isMember ? (
+        ) : standing?.isMember ? (
           <>
             <p className="text-success flex items-center gap-1.5 text-sm">
               <Check className="size-4 shrink-0" aria-hidden /> {t.scouts.acceptedInvite}
             </p>
             {/* Membership at an unverified academy opens no private profiles —
                 the manager should know that before wondering why. */}
-            {!standing.verified && <Alert tone="warning">{t.scouts.academyNotVerified}</Alert>}
+            {!standing?.verified && <Alert tone="warning">{t.scouts.academyNotVerified}</Alert>}
           </>
-        ) : standing.invitationPending ? (
+        ) : standing?.invitationPending ? (
           <p className="text-muted flex items-center gap-1.5 text-sm">
             <Clock className="size-4 shrink-0" aria-hidden /> {t.scouts.invitePending}
           </p>

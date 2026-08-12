@@ -37,15 +37,15 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
 
   const [form, setForm] = React.useState({
     // `<input type="date">` wants exactly YYYY-MM-DD; the API sends an ISO stamp.
-    birthDate: player.birthDate ? player.birthDate.slice(0, 10) : '',
-    primaryPosition: player.primaryPosition ?? '',
-    secondaryPosition: player.secondaryPosition ?? '',
-    dominantFoot: player.dominantFoot ?? '',
-    playingStyle: player.playingStyle ?? '',
-    region: player.region ?? '',
-    district: player.district ?? '',
-    height: player.height != null ? String(player.height) : '',
-    weight: player.weight != null ? String(player.weight) : '',
+    birthDate: player?.birthDate ? player?.birthDate.slice(0, 10) : '',
+    primaryPosition: player?.primaryPosition ?? '',
+    secondaryPosition: player?.secondaryPosition ?? '',
+    dominantFoot: player?.dominantFoot ?? '',
+    playingStyle: player?.playingStyle ?? '',
+    region: player?.region ?? '',
+    district: player?.district ?? '',
+    height: player?.height != null ? String(player?.height) : '',
+    weight: player?.weight != null ? String(player?.weight) : '',
   });
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);

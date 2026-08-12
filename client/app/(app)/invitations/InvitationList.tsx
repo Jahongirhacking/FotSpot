@@ -52,7 +52,7 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
 
   const invitations = list.data ?? [];
 
-  if (invitations.length === 0) {
+  if (invitations?.length === 0) {
     return (
       <EmptyState
         icon={MailOpen}
@@ -69,48 +69,48 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
       {answered && <Alert tone="success">{answered}</Alert>}
 
       <ul className="space-y-3">
-        {invitations.map((invitation) => {
-          const pending = invitation.status === 'PENDING';
-          const busy = decide.isPending && decide.variables?.id === invitation.id;
+        {invitations?.map((invitation) => {
+          const pending = invitation?.status === 'PENDING';
+          const busy = decide.isPending && decide.variables?.id === invitation?.id;
 
           return (
-            <li key={invitation.id}>
+            <li key={invitation?.id}>
               <Card>
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start gap-3">
                     <Building2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/academies/${invitation.academy.id}`}
+                        href={`/academies/${invitation?.academy.id}`}
                         className="truncate font-medium hover:underline"
                       >
-                        {invitation.academy.name}
+                        {invitation?.academy.name}
                       </Link>
                       <p className="text-muted truncate text-sm">
-                        {[invitation.academy.district, invitation.academy.region]
+                        {[invitation?.academy.district, invitation?.academy.region]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
                       <p className="text-muted mt-1 text-xs">
                         {t.invitations.invitedAs}:{' '}
-                        {t.roles[invitation.role.toLowerCase() as 'coach']} ·{' '}
-                        {relativeTime(invitation.createdAt)}
+                        {t.roles[invitation?.role.toLowerCase() as 'coach']} ·{' '}
+                        {relativeTime(invitation?.createdAt)}
                       </p>
                     </div>
 
                     {!pending && (
-                      <Badge variant={invitation.status === 'ACCEPTED' ? 'success' : 'neutral'}>
-                        {invitation.status === 'ACCEPTED'
+                      <Badge variant={invitation?.status === 'ACCEPTED' ? 'success' : 'neutral'}>
+                        {invitation?.status === 'ACCEPTED'
                           ? t.invitations.accepted
-                          : invitation.status === 'REJECTED'
+                          : invitation?.status === 'REJECTED'
                             ? t.invitations.rejected
                             : t.invitations.cancelled}
                       </Badge>
                     )}
                   </div>
 
-                  {invitation.note && (
-                    <p className="bg-surface-2 rounded-lg p-3 text-sm">{invitation.note}</p>
+                  {invitation?.note && (
+                    <p className="bg-surface-2 rounded-lg p-3 text-sm">{invitation?.note}</p>
                   )}
 
                   {pending && (
@@ -121,7 +121,7 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
                         disabled={busy}
                         onClick={() => {
                           if (window.confirm(t.invitations.confirmReject)) {
-                            decide.mutate({ id: invitation.id, accept: false });
+                            decide.mutate({ id: invitation?.id, accept: false });
                           }
                         }}
                       >
@@ -132,7 +132,7 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
                         loading={busy}
                         onClick={() => {
                           if (window.confirm(t.invitations.confirmAccept)) {
-                            decide.mutate({ id: invitation.id, accept: true });
+                            decide.mutate({ id: invitation?.id, accept: true });
                           }
                         }}
                       >

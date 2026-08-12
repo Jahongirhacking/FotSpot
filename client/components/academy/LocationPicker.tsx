@@ -73,7 +73,7 @@ export function LocationPicker({
   const [locating, setLocating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const center: [number, number] = value ? [value.latitude, value.longitude] : DEFAULT_CENTER;
+  const center: [number, number] = value ? [value?.latitude, value?.longitude] : DEFAULT_CENTER;
 
   function useMyLocation() {
     if (!navigator?.geolocation) {
@@ -118,7 +118,7 @@ export function LocationPicker({
           <RecenterOn value={value} />
           {value && (
             <Marker
-              position={[value.latitude, value.longitude]}
+              position={[value?.latitude, value?.longitude]}
               icon={pinIcon}
               draggable
               eventHandlers={{
@@ -140,7 +140,7 @@ export function LocationPicker({
         {value ? (
           <span className="text-muted flex items-center gap-1 font-mono text-xs">
             <MapPin className="size-3.5" aria-hidden />
-            {value.latitude?.toFixed(5)}, {value.longitude?.toFixed(5)}
+            {value?.latitude?.toFixed(5)}, {value?.longitude?.toFixed(5)}
           </span>
         ) : (
           <span className="text-muted text-xs">{t.academy?.tapMapHint}</span>

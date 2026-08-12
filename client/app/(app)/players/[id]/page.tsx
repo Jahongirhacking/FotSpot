@@ -32,7 +32,7 @@ import { PlayerActions } from './PlayerActions';
  */
 function fetchPlayer(idOrHandle: string, opts: Parameters<typeof players.getById>[1]) {
   const value = safeDecode(idOrHandle);
-  return value.startsWith('@') ? players.getByUsername(value, opts) : players.getById(value, opts);
+  return value?.startsWith('@') ? players?.getByUsername(value, opts) : players?.getById(value, opts);
 }
 
 /** A stray `%` in a URL throws rather than decoding; the raw value is the answer. */
@@ -53,11 +53,11 @@ export async function generateMetadata({
   const { id } = await params;
   try {
     const player = await fetchPlayer(id, { revalidate: 300 });
-    const name = `${player.firstName} ${player.lastName}`;
+    const name = `${player?.firstName} ${player?.lastName}`;
     const description = [
-      player.primaryPosition,
-      ageBand(player.birthDate),
-      player.region,
+      player?.primaryPosition,
+      ageBand(player?.birthDate),
+      player?.region,
       'on FotSpot',
     ]
       .filter(Boolean)
@@ -65,7 +65,7 @@ export async function generateMetadata({
 
     // The handle is the canonical address when there is one: two URLs for one
     // player split whatever ranking they earn between them.
-    const canonical = player.username ? `/players/@${player.username}` : `/players/${player.id}`;
+    const canonical = player?.username ? `/players/@${player?.username}` : `/players/${player?.id}`;
 
     return {
       title: name,
@@ -76,7 +76,7 @@ export async function generateMetadata({
         title: name,
         description,
         url: canonical,
-        ...(player.avatarUrl ? { images: [{ url: player.avatarUrl }] } : {}),
+        ...(player?.avatarUrl ? { images: [{ url: player?.avatarUrl }] } : {}),
       },
       twitter: { card: 'summary', title: name, description },
     };
@@ -93,7 +93,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   try {
     player = await fetchPlayer(
       id,
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 300 },
     );
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
@@ -108,26 +108,26 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
    * handle made the summary, the assessments and the clips all fail quietly, so
    * the page rendered a player with no bars, no clips and nobody vouching.
    */
-  const playerId = player.id;
+  const playerId = player?.id;
 
   // Marks the viewer's own card. `userId` is on the profile already, so this
   // costs one extra request only for signed-in visitors.
   const me = session
-    ? await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+    ? await users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null)
     : null;
-  const isSelf = Boolean(me && me.id === player.userId);
+  const isSelf = Boolean(me && me.id === player?.userId);
 
   // Public endpoint — a guest browsing a profile sees who vouched too.
   const summary = await recommendations
     .getPlayerSummary(
       playerId,
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
     )
     .catch(() => null);
 
   const assessments = session
     ? await coaches
-        .assessmentsForPlayer(playerId, {}, { token: session.accessToken, cache: 'no-store' })
+        .assessmentsForPlayer(playerId, {}, { token: session?.accessToken, cache: 'no-store' })
         .then((page) => page.items)
         .catch(() => [] as CoachAssessment[])
     : [];
@@ -142,7 +142,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       playerId,
       undefined,
       {},
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 60 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 60 },
     )
     .then((page) => page.items)
     .catch(() => [] as Media[]);
@@ -197,32 +197,32 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               <Badge variant="neutral">{t.player.selfReported}</Badge>
             </div>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label={t.profile.matches} value={player.matches} />
-              <Stat label={t.profile.goals} value={player.goals} />
-              <Stat label={t.profile.assists} value={player.assists} />
-              <Stat label={t.player.cleanSheets} value={player.cleanSheets} />
+              <Stat label={t.profile.matches} value={player?.matches} />
+              <Stat label={t.profile.goals} value={player?.goals} />
+              <Stat label={t.profile.assists} value={player?.assists} />
+              <Stat label={t.player.cleanSheets} value={player?.cleanSheets} />
             </dl>
           </CardContent>
         </Card>
 
-        {assessments.length > 0 && (
+        {assessments?.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>{t.player.coachAssessments}</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="divide-border divide-y">
-                {assessments.map((assessment) => (
-                  <li key={assessment.id} className="py-3">
+                {assessments?.map((assessment) => (
+                  <li key={assessment?.id} className="py-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="flex flex-wrap items-center gap-2">
                         <Badge variant="success">{t.player.coachVerified}</Badge>
                         {/* The coaches who assessed you are, precisely, your coaches. */}
                         {isSelf && <RelationBadge relation="MY_COACH" t={t} />}
                       </span>
-                      <span className="text-muted text-xs">{formatDate(assessment.createdAt)}</span>
+                      <span className="text-muted text-xs">{formatDate(assessment?.createdAt)}</span>
                     </div>
-                    {assessment.notes && <p className="mt-2 text-sm">{assessment.notes}</p>}
+                    {assessment?.notes && <p className="mt-2 text-sm">{assessment?.notes}</p>}
                   </li>
                 ))}
               </ul>
@@ -232,7 +232,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <aside>
-        <PlayerActions playerId={player.id} playerName={player.firstName} />
+        <PlayerActions playerId={player?.id} playerName={player?.firstName} />
       </aside>
     </div>
   );

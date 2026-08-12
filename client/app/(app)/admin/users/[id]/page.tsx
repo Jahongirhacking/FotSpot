@@ -19,12 +19,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   if (!session) redirect(`/login?next=/admin/users/${id}`);
 
   const { t } = await getServerT();
-  const isAdmin = isAdminActing(session.activeRole);
+  const isAdmin = isAdminActing(session?.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   let user;
   try {
-    user = await admin.userDetail(id, { token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' });
+    user = await admin.userDetail(id, { token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' });
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
@@ -39,7 +39,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
       </Button>
 
       {/* Mutations are gated on super admin here AND on the backend. */}
-      <UserDetailView user={user} canEdit={isSuperAdminActing(session.activeRole)} />
+      <UserDetailView user={user} canEdit={isSuperAdminActing(session?.activeRole)} />
     </div>
   );
 }

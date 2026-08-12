@@ -36,9 +36,9 @@ const TYPES: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
 
 /** What the detail filter means for each role — the one thing that differs. */
 function detailOf(member: MemberRowData): string | null {
-  if (member.role === 'PLAYER') return member.primaryPosition;
-  if (member.role === 'SCOUT') return member.level == null ? null : String(member.level);
-  return member.coachType;
+  if (member?.role === 'PLAYER') return member?.primaryPosition;
+  if (member?.role === 'SCOUT') return member?.level == null ? null : String(member?.level);
+  return member?.coachType;
 }
 
 /**
@@ -51,8 +51,8 @@ function detailOf(member: MemberRowData): string | null {
  */
 function ageBoundsOf(members: MemberRowData[]): [number, number] | null {
   const ages = members
-    .filter((member) => member.birthDate)
-    .map((member) => ageFrom(member.birthDate as string));
+    .filter((member) => member?.birthDate)
+    .map((member) => ageFrom(member?.birthDate as string));
   if (ages.length === 0) return null;
 
   const low = Math.min(...ages);
@@ -102,12 +102,12 @@ export function MemberFilters({
   const [open, setOpen] = React.useState(false);
 
   // The tab decides it where there is one; the select decides it where there is not.
-  const effectiveRole = role ?? (value.type || null);
+  const effectiveRole = role ?? (value?.type || null);
 
   // Every option is read from the rows the questions are about, so choosing
   // "coach" cannot offer a position and choosing "player" cannot offer a level.
   const inScope = React.useMemo(
-    () => (effectiveRole ? members.filter((member) => member.role === effectiveRole) : members),
+    () => (effectiveRole ? members?.filter((member) => member?.role === effectiveRole) : members),
     [members, effectiveRole],
   );
 
@@ -117,7 +117,7 @@ export function MemberFilters({
   );
   const groupOptions = React.useMemo(() => {
     const seen = new Map<string, string>();
-    for (const member of inScope) if (member.group) seen.set(member.group.id, member.group.name);
+    for (const member of inScope) if (member?.group) seen.set(member?.group.id, member?.group.name);
     return [...seen].sort((a, b) => a[1].localeCompare(b[1]));
   }, [inScope]);
   const bounds = React.useMemo(() => ageBoundsOf(inScope), [inScope]);
@@ -125,7 +125,7 @@ export function MemberFilters({
   const set = (patch: Partial<MemberFilterState>) => onChange({ ...value, ...patch });
 
   const active =
-    (value.type ? 1 : 0) + (value.detail ? 1 : 0) + (value.group ? 1 : 0) + (value.age ? 1 : 0);
+    (value?.type ? 1 : 0) + (value?.detail ? 1 : 0) + (value?.group ? 1 : 0) + (value?.age ? 1 : 0);
 
   const detailLabel =
     effectiveRole === 'SCOUT'
@@ -146,7 +146,7 @@ export function MemberFilters({
             aria-hidden
           />
           <Input
-            value={value.query}
+            value={value?.query}
             onChange={(event) => set({ query: event.target.value })}
             placeholder={t.player.searchByName}
             aria-label={t.player.searchByName}
@@ -176,7 +176,7 @@ export function MemberFilters({
             variant="ghost"
             className="shrink-0"
             aria-label={t.common.clear}
-            onClick={() => onChange({ ...EMPTY_FILTERS, query: value.query })}
+            onClick={() => onChange({ ...EMPTY_FILTERS, query: value?.query })}
           >
             <X aria-hidden />
           </Button>
@@ -191,12 +191,12 @@ export function MemberFilters({
             {role === null && (
               <Select
                 aria-label={t.academy.memberType}
-                value={value.type}
+                value={value?.type}
                 onChange={(event) =>
                   // The other answers were about the previous kind of member.
                   onChange({
                     ...EMPTY_FILTERS,
-                    query: value.query,
+                    query: value?.query,
                     type: event.target.value as MemberFilterState['type'],
                   })
                 }
@@ -211,15 +211,15 @@ export function MemberFilters({
               </Select>
             )}
 
-            {effectiveRole && details.length > 0 && (
+            {effectiveRole && details?.length > 0 && (
               <Select
                 aria-label={detailLabel}
-                value={value.detail}
+                value={value?.detail}
                 onChange={(event) => set({ detail: event.target.value })}
                 className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-36"
               >
                 <option value="">{detailLabel}</option>
-                {details.map((detail) => (
+                {details?.map((detail) => (
                   <option key={detail} value={detail}>
                     {effectiveRole === 'SCOUT' ? `${t.profile.level} ${detail}` : detail}
                   </option>
@@ -231,13 +231,13 @@ export function MemberFilters({
             {showGroup && effectiveRole && effectiveRole !== 'SCOUT' && (
               <Select
                 aria-label={t.academy.anyGroup}
-                value={value.group}
+                value={value?.group}
                 onChange={(event) => set({ group: event.target.value })}
                 className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-36"
               >
                 <option value="">{t.academy.anyGroup}</option>
                 <option value={RESERVE_VALUE}>{t.nav.reserve}</option>
-                {groupOptions.map(([id, name]) => (
+                {groupOptions?.map(([id, name]) => (
                   <option key={id} value={id}>
                     {name}
                   </option>
@@ -252,7 +252,7 @@ export function MemberFilters({
               <RangeSlider
                 min={bounds[0]}
                 max={bounds[1]}
-                value={value.age ?? bounds}
+                value={value?.age ?? bounds}
                 onChange={(age) => set({ age })}
                 labelFrom={t.common.from}
                 labelTo={t.common.to}
@@ -272,32 +272,32 @@ export function MemberFilters({
 
 /** Applies the filters. Kept beside them so the two cannot drift apart. */
 export function filterMembers(members: MemberRowData[], filters: MemberFilterState) {
-  const query = filters.query.trim().toLowerCase();
+  const query = filters?.query.trim().toLowerCase();
 
-  return members.filter((member) => {
+  return members?.filter((member) => {
     if (query) {
-      const haystack = [member.firstName, member.lastName, member.username]
+      const haystack = [member?.firstName, member?.lastName, member?.username]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
       if (!haystack.includes(query)) return false;
     }
 
-    if (filters.type && member.role !== filters.type) return false;
+    if (filters?.type && member?.role !== filters?.type) return false;
 
-    if (filters.detail && detailOf(member) !== filters.detail) return false;
+    if (filters?.detail && detailOf(member) !== filters?.detail) return false;
 
-    if (filters.group) {
-      const inReserve = !member.group;
-      if (filters.group === RESERVE_VALUE ? !inReserve : member.group?.id !== filters.group) {
+    if (filters?.group) {
+      const inReserve = !member?.group;
+      if (filters?.group === RESERVE_VALUE ? !inReserve : member?.group?.id !== filters?.group) {
         return false;
       }
     }
 
-    if (filters.age) {
-      if (!member.birthDate) return false;
-      const age = ageFrom(member.birthDate);
-      if (age < filters.age[0] || age > filters.age[1]) return false;
+    if (filters?.age) {
+      if (!member?.birthDate) return false;
+      const age = ageFrom(member?.birthDate);
+      if (age < filters?.age[0] || age > filters?.age[1]) return false;
     }
 
     return true;

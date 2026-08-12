@@ -25,17 +25,17 @@ export default async function MyRecommendationsPage() {
 
   const [mine, stats] = await Promise.all([
     recommendations
-      .listMine({}, { token: session.accessToken, cache: 'no-store' })
+      .listMine({}, { token: session?.accessToken, cache: 'no-store' })
       .then((page) => page.items)
       .catch(() => [] as MyRecommendation[]),
     recommendations
-      .myScoutStats({ token: session.accessToken, cache: 'no-store' })
+      .myScoutStats({ token: session?.accessToken, cache: 'no-store' })
       .catch(() => null as MyScoutStats | null),
   ]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <aside>{stats && <ScoutLevelCard stats={stats} pending={stats.pending} t={t} />}</aside>
+      <aside>{stats && <ScoutLevelCard stats={stats} pending={stats?.pending} t={t} />}</aside>
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
@@ -61,30 +61,30 @@ export default async function MyRecommendationsPage() {
           ) : (
             <ul className="divide-border divide-y">
               {mine.map((recommendation) => (
-                <li key={recommendation.id} className="flex items-start justify-between gap-3 py-3">
+                <li key={recommendation?.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <Link
-                      href={`/players/${recommendation.player.id}`}
+                      href={`/players/${recommendation?.player.id}`}
                       className="block truncate font-medium hover:underline"
                     >
-                      {recommendation.player.firstName} {recommendation.player.lastName}
+                      {recommendation?.player.firstName} {recommendation?.player.lastName}
                     </Link>
 
                     {/* GLOBAL addresses no academy at all (§1.5.3), which is why
-                        this used to crash: it read `academyId.slice()` on a null. */}
+                        this used to crash: it read `academyId?.slice()` on a null. */}
                     <p className="text-muted mt-0.5 text-xs">
-                      {recommendation.type === 'GLOBAL' ? (
+                      {recommendation?.type === 'GLOBAL' ? (
                         <span className="inline-flex items-center gap-1">
                           <Globe className="size-3" aria-hidden /> Open to every academy
                         </span>
-                      ) : recommendation.academies.length > 0 ? (
+                      ) : recommendation?.academies.length > 0 ? (
                         <span>
                           to{' '}
-                          {recommendation.academies.map((academy, index) => (
-                            <span key={academy.id}>
+                          {recommendation?.academies.map((academy, index) => (
+                            <span key={academy?.id}>
                               {index > 0 && ', '}
-                              <Link href={`/academies/${academy.id}`} className="hover:underline">
-                                {academy.name}
+                              <Link href={`/academies/${academy?.id}`} className="hover:underline">
+                                {academy?.name}
                               </Link>
                             </span>
                           ))}
@@ -92,18 +92,18 @@ export default async function MyRecommendationsPage() {
                       ) : (
                         <span>no academy</span>
                       )}{' '}
-                      · {relativeTime(recommendation.createdAt)}
+                      · {relativeTime(recommendation?.createdAt)}
                     </p>
 
-                    {recommendation.note && (
+                    {recommendation?.note && (
                       <p className="text-muted mt-1 line-clamp-2 text-xs italic">
-                        “{recommendation.note}”
+                        “{recommendation?.note}”
                       </p>
                     )}
                   </div>
 
-                  <Badge variant={tone(recommendation.status)}>
-                    {recommendation.status.toLowerCase()}
+                  <Badge variant={tone(recommendation?.status)}>
+                    {recommendation?.status.toLowerCase()}
                   </Badge>
                 </li>
               ))}

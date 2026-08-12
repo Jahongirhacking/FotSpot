@@ -34,10 +34,10 @@ export default async function FeedPage() {
 
   const [firstPage, suggested] = await Promise.all([
     media
-      .feed(1, PAGE_SIZE, { token: session.accessToken, cache: 'no-store' })
+      .feed(1, PAGE_SIZE, { token: session?.accessToken, cache: 'no-store' })
       .catch(() => ({ items: [], total: 0, page: 1, pageSize: PAGE_SIZE }) as FeedPageData),
     media
-      .suggestedPlayers(6, { token: session.accessToken, cache: 'no-store' })
+      .suggestedPlayers(6, { token: session?.accessToken, cache: 'no-store' })
       .catch(() => [] as SuggestedPlayer[]),
   ]);
 

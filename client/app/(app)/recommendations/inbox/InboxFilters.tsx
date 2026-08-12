@@ -28,7 +28,7 @@ export const EMPTY_INBOX_FILTERS: InboxFilterState = { query: '', position: '', 
 
 function ageBoundsOf(rows: FilterablePlayer[]): [number, number] | null {
   const ages = rows
-    .map((row) => row.player?.birthDate)
+    .map((row) => row?.player?.birthDate)
     .filter((date): date is string => !!date)
     .map((date) => ageFrom(date));
   if (ages.length === 0) return null;
@@ -70,7 +70,7 @@ export function InboxFilters({
       [
         ...new Set(
           rows
-            .map((row) => row.player?.primaryPosition)
+            .map((row) => row?.player?.primaryPosition)
             .filter((position): position is string => !!position),
         ),
       ].sort(),
@@ -79,7 +79,7 @@ export function InboxFilters({
   const bounds = React.useMemo(() => ageBoundsOf(rows), [rows]);
 
   const set = (patch: Partial<InboxFilterState>) => onChange({ ...value, ...patch });
-  const active = (value.position ? 1 : 0) + (value.age ? 1 : 0);
+  const active = (value?.position ? 1 : 0) + (value?.age ? 1 : 0);
 
   return (
     <div className="space-y-2">
@@ -90,7 +90,7 @@ export function InboxFilters({
             aria-hidden
           />
           <Input
-            value={value.query}
+            value={value?.query}
             onChange={(event) => set({ query: event.target.value })}
             placeholder={t.player.searchByName}
             aria-label={t.player.searchByName}
@@ -120,7 +120,7 @@ export function InboxFilters({
             variant="ghost"
             className="shrink-0"
             aria-label={t.common.clear}
-            onClick={() => onChange({ ...EMPTY_INBOX_FILTERS, query: value.query })}
+            onClick={() => onChange({ ...EMPTY_INBOX_FILTERS, query: value?.query })}
           >
             <X aria-hidden />
           </Button>
@@ -133,7 +133,7 @@ export function InboxFilters({
             {positions.length > 0 && (
               <Select
                 aria-label={t.player.anyPosition}
-                value={value.position}
+                value={value?.position}
                 onChange={(event) => set({ position: event.target.value })}
                 className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-36"
               >
@@ -153,7 +153,7 @@ export function InboxFilters({
               <RangeSlider
                 min={bounds[0]}
                 max={bounds[1]}
-                value={value.age ?? bounds}
+                value={value?.age ?? bounds}
                 onChange={(age) => set({ age })}
                 labelFrom={t.common.from}
                 labelTo={t.common.to}
@@ -169,22 +169,22 @@ export function InboxFilters({
 
 /** Applies the bar to a list. */
 export function filterInbox<T extends FilterablePlayer>(rows: T[], filters: InboxFilterState): T[] {
-  const query = filters.query.trim().toLowerCase();
+  const query = filters?.query.trim().toLowerCase();
 
-  return rows.filter((row) => {
-    const player = row.player;
-    if (!player) return !query && !filters.position && !filters.age;
+  return rows?.filter((row) => {
+    const player = row?.player;
+    if (!player) return !query && !filters?.position && !filters?.age;
 
     if (query) {
-      const name = `${player.firstName} ${player.lastName}`.toLowerCase();
+      const name = `${player?.firstName} ${player?.lastName}`.toLowerCase();
       if (!name.includes(query)) return false;
     }
 
-    if (filters.position && player.primaryPosition !== filters.position) return false;
+    if (filters?.position && player?.primaryPosition !== filters?.position) return false;
 
-    if (filters.age) {
-      const age = ageFrom(player.birthDate);
-      if (age < filters.age[0] || age > filters.age[1]) return false;
+    if (filters?.age) {
+      const age = ageFrom(player?.birthDate);
+      if (age < filters?.age[0] || age > filters?.age[1]) return false;
     }
 
     return true;

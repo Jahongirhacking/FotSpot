@@ -50,21 +50,21 @@ export function UserPicker({
     enabled: debounced.length >= 2,
   });
 
-  const results = (data?.items ?? []).filter((user) => !excludeIds.includes(user.id));
+  const results = (data?.items ?? []).filter((user) => !excludeIds.includes(user?.id));
 
   if (value) {
     return (
       <div className="border-border bg-surface-2 flex items-center gap-3 rounded-lg border p-2.5">
         <Avatar
-          src={value.avatarUrl}
-          fallback={initials(value.firstName, value.lastName)}
+          src={value?.avatarUrl}
+          fallback={initials(value?.firstName, value?.lastName)}
           className="size-9"
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">
-            {[value.firstName, value.lastName].filter(Boolean).join(' ') || value.id.slice(0, 8)}
+            {[value?.firstName, value?.lastName].filter(Boolean).join(' ') || value?.id.slice(0, 8)}
           </p>
-          <p className="text-muted truncate text-xs">{value.email ?? value.phone ?? value.username ?? ''}</p>
+          <p className="text-muted truncate text-xs">{value?.email ?? value?.phone ?? value?.username ?? ''}</p>
         </div>
         <button
           type="button"
@@ -96,14 +96,14 @@ export function UserPicker({
 
       {debounced.length >= 2 && (
         <div className="border-border max-h-64 overflow-y-auto rounded-lg border">
-          {isFetching && results.length === 0 ? (
+          {isFetching && results?.length === 0 ? (
             <p className="text-muted p-3 text-sm">…</p>
-          ) : results.length === 0 ? (
+          ) : results?.length === 0 ? (
             <p className="text-muted p-3 text-sm">—</p>
           ) : (
             <ul className="divide-border divide-y">
-              {results.map((user) => (
-                <li key={user.id}>
+              {results?.map((user) => (
+                <li key={user?.id}>
                   <button
                     type="button"
                     onClick={() => {
@@ -115,22 +115,22 @@ export function UserPicker({
                     )}
                   >
                     <Avatar
-                      src={user.avatarUrl}
-                      fallback={initials(user.firstName, user.lastName)}
+                      src={user?.avatarUrl}
+                      fallback={initials(user?.firstName, user?.lastName)}
                       className="size-8"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
-                        {[user.firstName, user.lastName].filter(Boolean).join(' ') ||
-                          user.id.slice(0, 8)}
+                        {[user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+                          user?.id.slice(0, 8)}
                       </span>
                       <span className="text-muted block truncate text-xs">
-                        {user.email ?? user.phone ?? user.username ?? ''}
+                        {user?.email ?? user?.phone ?? user?.username ?? ''}
                       </span>
                     </span>
-                    {user.roles.length > 0 && (
+                    {user?.roles.length > 0 && (
                       <Badge variant="neutral" className="shrink-0">
-                        {user.roles[0]}
+                        {user?.roles[0]}
                       </Badge>
                     )}
                     <Check className="text-primary size-4 shrink-0 opacity-0" aria-hidden />

@@ -23,8 +23,8 @@ export function Pagination({
 
   function goTo(nextPage: number) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(nextPage));
-    router.push(`?${params.toString()}`);
+    params?.set('page', String(nextPage));
+    router.push(`?${params?.toString()}`);
   }
 
   return (

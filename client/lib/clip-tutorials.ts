@@ -1,4 +1,5 @@
 import type { MediaCategory } from '@/lib/api/types';
+import { MEDIA_CONFIGURED, mediaAsset } from '@/lib/media-url';
 
 /**
  * Short vertical demonstrations of what each category wants filmed.
@@ -37,7 +38,6 @@ export interface ClipTutorial {
 }
 
 const tutorialPath = 'videos/clip-tutorials';
-const base = process.env.NEXT_PUBLIC_MEDIA_URL ?? '';
 
 const CATEGORIES: MediaCategory[] = [
   'PACE',
@@ -60,8 +60,8 @@ export const CLIP_TUTORIALS: ClipTutorial[] = CATEGORIES.map((category) => {
   const slug = category.toLowerCase();
   return {
     category,
-    src: `${base}/${tutorialPath}/${slug}.mp4`,
-    poster: `${base}/${tutorialPath}/${slug}.jpg`,
+    src: mediaAsset(`${tutorialPath}/${slug}.mp4`) ?? '',
+    poster: mediaAsset(`${tutorialPath}/${slug}.jpg`) ?? undefined,
   };
 });
 
@@ -70,4 +70,4 @@ export function tutorialFor(category: MediaCategory): ClipTutorial | undefined {
 }
 
 /** False when no bucket is configured, so the button can stay hidden. */
-export const TUTORIALS_AVAILABLE = Boolean(base);
+export const TUTORIALS_AVAILABLE = MEDIA_CONFIGURED;

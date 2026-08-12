@@ -39,9 +39,9 @@ export function MyTrialInvitations() {
   });
 
   const rows = (mine.data ?? []).filter(
-    (row) => row.trial?.type === 'PRIVATE' && ['INVITED', 'CONFIRMED'].includes(row.status),
+    (row) => row?.trial?.type === 'PRIVATE' && ['INVITED', 'CONFIRMED'].includes(row?.status),
   );
-  if (rows.length === 0) return null;
+  if (rows?.length === 0) return null;
 
   return (
     <Card>
@@ -52,51 +52,51 @@ export function MyTrialInvitations() {
       </CardHeader>
 
       <CardContent className="space-y-3 p-2">
-        {rows.map((row) => {
-          const busy = respond.isPending && respond.variables?.id === row.id;
+        {rows?.map((row) => {
+          const busy = respond.isPending && respond.variables?.id === row?.id;
           return (
-            <div key={row.id} className="border-border space-y-2 rounded-lg border p-3">
+            <div key={row?.id} className="border-border space-y-2 rounded-lg border p-3">
               <div className="flex flex-wrap items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/trials/${row.trialId}`}
+                    href={`/trials/${row?.trialId}`}
                     className="truncate font-medium hover:underline"
                   >
-                    {row.trial?.title}
+                    {row?.trial?.title}
                   </Link>
                   <p className="text-muted flex flex-wrap items-center gap-x-3 text-xs">
-                    <span>{row.trial && formatDate(row.trial.date)}</span>
+                    <span>{row?.trial && formatDate(row?.trial.date)}</span>
                     <span className="flex items-center gap-1">
                       <MapPin className="size-3" aria-hidden />
-                      {row.trial?.location}
+                      {row?.trial?.location}
                     </span>
                   </p>
                 </div>
-                {row.status === 'CONFIRMED' && (
+                {row?.status === 'CONFIRMED' && (
                   <Badge variant="success">{t.trials.statusConfirmed}</Badge>
                 )}
               </div>
 
               {/* The note is the invitation. Where to be and what to bring is
                   what makes it something a family can act on. */}
-              {row.inviteNote && (
-                <p className="bg-surface-2 rounded-lg p-3 text-sm">{row.inviteNote}</p>
+              {row?.inviteNote && (
+                <p className="bg-surface-2 rounded-lg p-3 text-sm">{row?.inviteNote}</p>
               )}
 
-              {row.status === 'INVITED' ? (
+              {row?.status === 'INVITED' ? (
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button
                     size="sm"
                     variant="ghost"
                     disabled={busy}
-                    onClick={() => respond.mutate({ id: row.id, accept: false })}
+                    onClick={() => respond.mutate({ id: row?.id, accept: false })}
                   >
                     <X aria-hidden /> {t.trials.declineInvitation}
                   </Button>
                   <Button
                     size="sm"
                     loading={busy}
-                    onClick={() => respond.mutate({ id: row.id, accept: true })}
+                    onClick={() => respond.mutate({ id: row?.id, accept: true })}
                   >
                     <Check aria-hidden /> {t.trials.acceptInvitation}
                   </Button>

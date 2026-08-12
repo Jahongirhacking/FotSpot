@@ -47,15 +47,15 @@ export function CoachSheet({ trial }: { trial: Trial }) {
   const queryClient = useQueryClient();
 
   const applicants = useQuery({
-    queryKey: ['trial-applications', trial.id],
-    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial.id}/applications`),
+    queryKey: ['trial-applications', trial?.id],
+    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial?.id}/applications`),
   });
 
   const verdict = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       browserFetch(`/trials/applications/${id}/verdict`, { method: 'POST', body }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial.id] });
+      void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
     },
     meta: { success: t.trials.verdictRecorded },
@@ -68,7 +68,7 @@ export function CoachSheet({ trial }: { trial: Trial }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ClipboardList className="text-primary size-4" aria-hidden /> {t.trials.sheet}
-          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+          {rows?.length > 0 && <Badge variant="neutral">{rows?.length}</Badge>}
         </CardTitle>
         <p className="text-muted text-sm">{t.trials.sheetHint}</p>
       </CardHeader>
@@ -78,16 +78,16 @@ export function CoachSheet({ trial }: { trial: Trial }) {
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : applicants.isError ? (
           <Alert tone="danger">{t.trials.sheetForbidden}</Alert>
-        ) : rows.length === 0 ? (
+        ) : rows?.length === 0 ? (
           <EmptyState icon={ClipboardList} title={t.academy.noApplicants} />
         ) : (
           <ul className="divide-border divide-y">
-            {rows.map((application) => (
+            {rows?.map((application) => (
               <SheetRow
-                key={application.id}
+                key={application?.id}
                 application={application}
-                pending={verdict.isPending && verdict.variables?.id === application.id}
-                onRecord={(body) => verdict.mutate({ id: application.id, body })}
+                pending={verdict?.isPending && verdict?.variables?.id === application?.id}
+                onRecord={(body) => verdict?.mutate({ id: application?.id, body })}
               />
             ))}
           </ul>
@@ -125,15 +125,15 @@ function SheetRow({
   return (
     <li className="space-y-2 p-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/players/${application.playerId}`} className="min-w-0 flex-1 hover:underline">
+        <Link href={`/players/${application?.playerId}`} className="min-w-0 flex-1 hover:underline">
           <span className="block truncate text-sm font-medium">
-            {application.player?.firstName} {application.player?.lastName}
+            {application?.player?.firstName} {application?.player?.lastName}
           </span>
           <span className="text-muted block truncate text-xs">
             {[
-              application.player?.primaryPosition,
-              application.player?.birthDate && ageBand(application.player.birthDate),
-              application.player?.region,
+              application?.player?.primaryPosition,
+              application?.player?.birthDate && ageBand(application?.player.birthDate),
+              application?.player?.region,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -144,10 +144,10 @@ function SheetRow({
 
       {result && (
         <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {result.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
+          {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
           {' · '}
-          {result.decidedAt && formatDate(result.decidedAt)}
-          {result.note && ` — ${result.note}`}
+          {result?.decidedAt && formatDate(result?.decidedAt)}
+          {result?.note && ` — ${result?.note}`}
         </p>
       )}
 
@@ -163,9 +163,9 @@ function SheetRow({
 
       {!result && expected && open && (
         <div className="border-border space-y-3 rounded-lg border p-3">
-          <Field label={t.recommendations.coachNote} htmlFor={`${application.id}-note`}>
+          <Field label={t.recommendations.coachNote} htmlFor={`${application?.id}-note`}>
             <Textarea
-              id={`${application.id}-note`}
+              id={`${application?.id}-note`}
               value={note}
               maxLength={1000}
               onChange={(event) => setNote(event.target.value)}

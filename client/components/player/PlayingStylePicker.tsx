@@ -53,9 +53,9 @@ export function PlayingStylePicker({
       role="radiogroup"
       aria-label={t.onboarding.playingStyle}
     >
-      {groups.map(([group, styles]) => (
+      {groups?.map(([group, styles]) => (
         <div key={group} className="space-y-2">
-          {groups.length > 1 && (
+          {groups?.length > 1 && (
             <p className="text-muted text-xs font-medium uppercase">
               {t.positionGroups[group as keyof typeof t.positionGroups] ?? group}
             </p>
@@ -93,11 +93,11 @@ export function PlayingStylePicker({
                       {selected && <Check className="text-primary size-3.5 shrink-0" aria-hidden />}
                     </span>
                     <span className="text-muted mt-0.5 block text-xs leading-snug">
-                      {info ? t.playingStyles[info.key] : ''}
+                      {info ? t.playingStyles[info?.key] : ''}
                     </span>
                     {info?.exemplar && (
                       <span className="text-muted mt-1 block text-[11px] italic">
-                        {t.onboarding.styleLikeWho}: {info.exemplar}
+                        {t.onboarding.styleLikeWho}: {info?.exemplar}
                       </span>
                     )}
                   </span>

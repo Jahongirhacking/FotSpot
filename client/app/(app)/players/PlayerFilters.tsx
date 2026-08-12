@@ -48,17 +48,17 @@ export function PlayerFilters() {
   function apply(next: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
-      if (value) params.set(key, value);
-      else params.delete(key);
+      if (value) params?.set(key, value);
+      else params?.delete(key);
     }
     // Any filter change resets pagination — page 3 of the old filter is meaningless.
-    params.delete('page');
-    router.push(`/players?${params.toString()}`);
+    params?.delete('page');
+    router.push(`/players?${params?.toString()}`);
   }
 
   const active = FILTER_KEYS.filter((key) => searchParams.get(key));
   // minAge and maxAge are one question, so they count once on the badge.
-  const activeCount = active.filter((key) => key !== 'maxAge').length;
+  const activeCount = active?.filter((key) => key !== 'maxAge').length;
 
   const age: [number, number] = [
     Number(searchParams.get('minAge') ?? AGE_MIN),

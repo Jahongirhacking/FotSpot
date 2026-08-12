@@ -18,11 +18,11 @@ export default async function AuditLogPage() {
   if (!session) redirect('/login?next=/admin/audit-logs');
 
   const { t } = await getServerT();
-  const isAdmin = isAdminActing(session.activeRole);
+  const isAdmin = isAdminActing(session?.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const entries = await admin
-    .auditLogs({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
+    .auditLogs({ token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' })
     .catch(() => [] as AuditLogEntry[]);
 
   return (
@@ -39,22 +39,22 @@ export default async function AuditLogPage() {
       ) : (
         <ul className="space-y-2">
           {entries.map((entry) => (
-            <li key={entry.id}>
+            <li key={entry?.id}>
               <Card>
                 <CardContent className="flex flex-wrap items-center gap-3 p-3">
                   <Badge variant="neutral" className="shrink-0 font-mono">
-                    {entry.action}
+                    {entry?.action}
                   </Badge>
                   <span className="text-muted min-w-0 flex-1 truncate font-mono text-xs">
-                    {entry.user
-                      ? [entry.user.firstName, entry.user.lastName].filter(Boolean).join(' ') ||
-                        entry.user.email ||
-                        entry.user.id.slice(0, 8)
+                    {entry?.user
+                      ? [entry?.user.firstName, entry?.user.lastName].filter(Boolean).join(' ') ||
+                        entry?.user.email ||
+                        entry?.user.id.slice(0, 8)
                       : 'system'}
-                    {entry.meta ? ` · ${JSON.stringify(entry.meta)}` : ''}
+                    {entry?.meta ? ` · ${JSON.stringify(entry?.meta)}` : ''}
                   </span>
                   <span className="text-muted shrink-0 text-xs">
-                    {relativeTime(entry.createdAt)}
+                    {relativeTime(entry?.createdAt)}
                   </span>
                 </CardContent>
               </Card>

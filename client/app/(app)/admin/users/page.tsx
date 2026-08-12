@@ -22,8 +22,8 @@ export default async function AdminUsersPage() {
   if (!session) redirect('/login?next=/admin/users');
 
   const { t } = await getServerT();
-  const isAdmin = isAdminActing(session.activeRole);
-  const isSuperAdmin = isSuperAdminActing(session.activeRole);
+  const isAdmin = isAdminActing(session?.activeRole);
+  const isSuperAdmin = isSuperAdminActing(session?.activeRole);
 
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 

@@ -21,9 +21,9 @@ export default async function SettingsPage() {
 
   const [devices, me] = await Promise.all([
     auth
-      .sessions({ token: session.accessToken, cache: 'no-store' })
+      .sessions({ token: session?.accessToken, cache: 'no-store' })
       .catch(() => [] as DeviceSession[]),
-    users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null),
+    users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null),
   ]);
 
   return (
@@ -39,13 +39,13 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {session.roles.map((role) => {
+          {session?.roles.map((role) => {
             const meta = ROLE_META[role as Role];
             if (!meta) return null;
-            const isActive = role === session.activeRole;
+            const isActive = role === session?.activeRole;
             return (
               <Badge key={role} variant={isActive ? 'primary' : 'outline'}>
-                {meta.label}
+                {meta?.label}
                 {isActive ? ' · active' : ''}
               </Badge>
             );

@@ -163,7 +163,7 @@ function ChoiceCard({
       <div className="flex-1">
         <h2 className="text-lg font-semibold">{title}</h2>
         <ul className="text-muted mt-2 space-y-1 text-sm">
-          {points.map((point) => (
+          {points?.map((point) => (
             <li key={point} className="flex gap-1.5">
               <span aria-hidden className="text-primary">
                 •

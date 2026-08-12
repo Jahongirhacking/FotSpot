@@ -53,24 +53,24 @@ export function UserDirectory() {
 
       <ul className="space-y-2">
         {(data?.items ?? []).map((user) => (
-          <li key={user.id}>
+          <li key={user?.id}>
             <Card className="hover:border-primary/40 transition-colors">
-              <Link href={`/admin/users/${user.id}`} className="block">
+              <Link href={`/admin/users/${user?.id}`} className="block">
                 <CardContent className="flex items-center gap-3 p-3">
                   <Avatar
-                    src={user.avatarUrl}
-                    fallback={initials(user.firstName, user.lastName)}
+                    src={user?.avatarUrl}
+                    fallback={initials(user?.firstName, user?.lastName)}
                     className="size-9"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      {[user.firstName, user.lastName].filter(Boolean).join(' ') ||
-                        user.id.slice(0, 8)}
+                      {[user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+                        user?.id.slice(0, 8)}
                     </p>
-                    <p className="text-muted truncate text-xs">{user.email ?? user.phone ?? user.username ?? ''}</p>
+                    <p className="text-muted truncate text-xs">{user?.email ?? user?.phone ?? user?.username ?? ''}</p>
                   </div>
                   <div className="hidden shrink-0 gap-1 sm:flex">
-                    {user.roles.slice(0, 3).map((role) => (
+                    {user?.roles.slice(0, 3).map((role) => (
                       <Badge key={role} variant="neutral">
                         {role}
                       </Badge>

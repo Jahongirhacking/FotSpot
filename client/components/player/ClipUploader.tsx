@@ -97,7 +97,7 @@ export function ClipUploader({
       }>('/media/upload-url', {
         method: 'POST',
         body: {
-          filename: file.name || 'clip.webm',
+          filename: file.name || 'clip?.webm',
           type: 'VIDEO',
           category,
           contentType: file.type || 'video/webm',
@@ -160,7 +160,7 @@ export function ClipUploader({
 
       <CardContent className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
-        {storage && !storage.configured && (
+        {storage && !storage?.configured && (
           <Alert tone="warning" title={t.clips.storageOffTitle}>
             {t.clips.storageOffHint}
           </Alert>
@@ -174,21 +174,21 @@ export function ClipUploader({
          * learn it here, not from a red box after the file has gone up.
          */}
         {storage?.quota &&
-          (storage.quota.exceeded ? (
+          (storage?.quota.exceeded ? (
             <Alert tone="warning" title={t.plans.limitReached}>
               {t.plans.clipsNone}
-              {storage.quota.resetsAt && (
+              {storage?.quota.resetsAt && (
                 <>
                   {' '}
-                  {f(t.plans.clipsResetOn, { date: formatDate(storage.quota.resetsAt) })}
+                  {f(t.plans.clipsResetOn, { date: formatDate(storage?.quota.resetsAt) })}
                 </>
               )}
             </Alert>
           ) : (
             <p className="text-muted text-xs">
               {f(t.plans.clipsLeft, {
-                count: storage.quota.remaining,
-                days: storage.quota.windowDays,
+                count: storage?.quota.remaining,
+                days: storage?.quota.windowDays,
               })}
             </p>
           ))}
@@ -406,7 +406,7 @@ function LiveRecorder({
   React.useEffect(() => cleanup, [cleanup]);
 
   const stop = React.useCallback(() => {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    if (recorderRef?.current?.state === 'recording') recorderRef?.current.stop();
   }, []);
 
   const start = async () => {
@@ -438,12 +438,12 @@ function LiveRecorder({
         if (event.data.size > 0) chunks.push(event.data);
       };
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        const blob = new Blob(chunks, { type: recorder?.mimeType || 'video/webm' });
         cleanup();
         onRecorded(new File([blob], `clip-${Date.now()}.webm`, { type: blob.type }));
       };
 
-      recorder.start();
+      recorder?.start();
       setRecording(true);
       setElapsed(0);
       timerRef.current = setInterval(() => {
@@ -521,11 +521,11 @@ function ClipTips({ category }: { category: Category }) {
     <div className="border-border bg-surface-2 space-y-2 rounded-lg border p-3">
       <p className="text-xs leading-snug">
         <span className="font-semibold">{t.clipTips.playerLabel}:</span>{' '}
-        <span className="text-muted">{tips.player}</span>
+        <span className="text-muted">{tips?.player}</span>
       </p>
       <p className="text-xs leading-snug">
         <span className="font-semibold">{t.clipTips.goalkeeperLabel}:</span>{' '}
-        <span className="text-muted">{tips.goalkeeper}</span>
+        <span className="text-muted">{tips?.goalkeeper}</span>
       </p>
       <p className="text-muted border-border border-t pt-2 text-xs leading-snug">
         {t.clipTips.camera}

@@ -63,10 +63,10 @@ export function SquadPanel({
     void queryClient.invalidateQueries({ queryKey: ['groups', academyId] });
   };
 
-  const members = (roster.data ?? []).filter((member) =>
+  const members = (roster?.data ?? []).filter((member) =>
     groupId === null
-      ? member.group === null && member.role !== 'MANAGER'
-      : member.group?.id === groupId,
+      ? member?.group === null && member?.role !== 'MANAGER'
+      : member?.group?.id === groupId,
   );
 
   return (
@@ -77,7 +77,7 @@ export function SquadPanel({
       <CardContent className="space-y-3 p-2">
         {/* No group select here: every row on this page is already in the same
             squad, so filtering by it would be a control with one answer. */}
-        {members.length > 0 && (
+        {members?.length > 0 && (
           <MemberFilters
             members={members}
             role={null}
@@ -92,7 +92,7 @@ export function SquadPanel({
           emptyLabel={t.academy.groupEmpty}
           controls={
             canManage
-              ? { academyId, groups: groupList.data?.groups ?? [], onChanged: refresh }
+              ? { academyId, groups: groupList?.data?.groups ?? [], onChanged: refresh }
               : undefined
           }
         />

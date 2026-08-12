@@ -14,7 +14,7 @@ export default async function NotificationsPage() {
   if (!session) redirect('/login?next=/notifications');
 
   const initial = await notifications
-    .list({ token: session.accessToken, cache: 'no-store' })
+    .list({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => [] as AppNotification[]);
 
   return (

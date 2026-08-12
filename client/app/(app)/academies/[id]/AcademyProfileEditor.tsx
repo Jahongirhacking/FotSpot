@@ -86,11 +86,11 @@ export function AcademyProfileEditor({
         <CardContent className="space-y-5">
           {FEATURED_ROLES.map((entry) => (
             <FeaturedList
-              key={entry.role}
+              key={entry?.role}
               academyId={academy?.id}
-              role={entry.role}
-              limit={entry.limit}
-              label={t.academy?.[entry.labelKey]}
+              role={entry?.role}
+              limit={entry?.limit}
+              label={t.academy?.[entry?.labelKey]}
               members={members}
             />
           ))}
@@ -175,7 +175,7 @@ function LocationCard({ academy }: { academy: AcademyProfile }) {
 
   const saved: LatLng | null =
     academy?.latitude != null && academy?.longitude != null
-      ? { latitude: academy.latitude, longitude: academy.longitude }
+      ? { latitude: academy?.latitude, longitude: academy?.longitude }
       : null;
 
   const [draft, setDraft] = React.useState<LatLng | null>(saved);
@@ -303,7 +303,7 @@ function PhotosCard({ academyId }: { academyId: string }) {
     mutationFn: async (file: File) => {
       const ticket = await browserFetch<{ uploadUrl: string; storageKey: string }>(
         `/academies/${academyId}/images/upload-url`,
-        { method: 'POST', body: { filename: file?.name || 'photo.jpg' } },
+        { method: 'POST', body: { filename: file?.name || 'photo?.jpg' } },
       );
       await uploadToStorage(ticket?.uploadUrl, file, {
         blocked: t.clips.uploadBlocked,
@@ -341,9 +341,9 @@ function PhotosCard({ academyId }: { academyId: string }) {
   const move = (index: number, direction: -1 | 1) => {
     const next = [...list];
     const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    if (target < 0 || target >= next?.length) return;
     [next[index], next[target]] = [next[target], next[index]];
-    reorder.mutate(next.map((photo) => photo?.id));
+    reorder.mutate(next?.map((photo) => photo?.id));
   };
 
   return (
@@ -464,29 +464,29 @@ function FeaturedList({
   });
 
   const toggle = (memberId: string) => {
-    const next = chosen.includes(memberId)
-      ? chosen.filter((id) => id !== memberId)
+    const next = chosen?.includes(memberId)
+      ? chosen?.filter((id) => id !== memberId)
       : [...chosen, memberId];
-    if (next.length > limit) return;
+    if (next?.length > limit) return;
     save.mutate(next);
   };
 
   const move = (index: number, direction: -1 | 1) => {
     const next = [...chosen];
     const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    if (target < 0 || target >= next?.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     save.mutate(next);
   };
 
-  const full = chosen.length >= limit;
+  const full = chosen?.length >= limit;
 
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{label}</h3>
         <span className={cn('text-xs', full ? 'text-warning' : 'text-muted')}>
-          {chosen.length} / {limit}
+          {chosen?.length} / {limit}
           {full && ` · ${t.academy?.featuredFull}`}
         </span>
       </div>
@@ -530,7 +530,7 @@ function FeaturedList({
       {/* Everybody eligible, so adding is one tap from the same place. */}
       <div className="flex flex-wrap gap-1.5">
         {eligible
-          .filter((member) => !chosen.includes(member?.id))
+          .filter((member) => !chosen?.includes(member?.id))
           .map((member) => (
             <button
               key={member?.id}

@@ -22,7 +22,7 @@ export default async function SquadPage() {
   const { t } = await getServerT();
 
   const academy = await academies
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null);
 
   if (!academy) {
@@ -35,10 +35,10 @@ export default async function SquadPage() {
     );
   }
 
-  const opts = { token: session.accessToken, cache: 'no-store' as const };
+  const opts = { token: session?.accessToken, cache: 'no-store' as const };
   const [members, list] = await Promise.all([
-    academyRoster.list(academy.id, {}, opts).catch(() => [] as AcademyMember[]),
-    groups.list(academy.id, opts).catch(() => ({ groups: [] as AcademyGroup[], reserveCount: 0 })),
+    academyRoster?.list(academy?.id, {}, opts).catch(() => [] as AcademyMember[]),
+    groups?.list(academy?.id, opts).catch(() => ({ groups: [] as AcademyGroup[], reserveCount: 0 })),
   ]);
 
   return (
@@ -49,7 +49,7 @@ export default async function SquadPage() {
       </header>
 
       <SquadManager
-        academyId={academy.id}
+        academyId={academy?.id}
         initialMembers={members}
         initialGroups={list.groups}
         initialReserveCount={list.reserveCount}

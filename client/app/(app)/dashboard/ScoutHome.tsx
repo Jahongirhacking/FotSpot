@@ -16,11 +16,11 @@ import type { Dictionary } from '@/lib/i18n';
 export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) {
   const [stats, mine, followerAcademies] = await Promise.all([
     safe<MyScoutStats | null>(
-      () => recommendations.myScoutStats({ token, cache: 'no-store' }),
+      () => recommendations?.myScoutStats({ token, cache: 'no-store' }),
       null,
     ),
     safe<MyRecommendation[]>(
-      () => recommendations.listMine({}, { token, cache: 'no-store' }).then((p) => p.items),
+      () => recommendations?.listMine({}, { token, cache: 'no-store' }).then((p) => p.items),
       [],
     ),
     safe(() => follows.academiesFollowingMe({ token, cache: 'no-store' }), []),
@@ -31,7 +31,7 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="space-y-6">
-        {stats && <ScoutLevelCard stats={stats} pending={stats.pending} t={t} />}
+        {stats && <ScoutLevelCard stats={stats} pending={stats?.pending} t={t} />}
 
         {/* The reward loop from §1.5.2 — a volunteer coach seeing "3 academies follow
             my recommendations" is real status, and it costs nothing to give. */}
@@ -93,22 +93,22 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
                 <ul className="divide-border divide-y">
                   {mine.slice(0, 12).map((recommendation) => (
                     <li
-                      key={recommendation.id}
+                      key={recommendation?.id}
                       className="flex items-center justify-between gap-3 py-2.5"
                     >
                       <div className="min-w-0">
                         <Link
-                          href={`/players/${recommendation.player.id}`}
+                          href={`/players/${recommendation?.player.id}`}
                           className="block truncate text-sm font-medium hover:underline"
                         >
-                          {recommendation.player.firstName} {recommendation.player.lastName}
+                          {recommendation?.player.firstName} {recommendation?.player.lastName}
                         </Link>
                         <p className="text-muted text-xs">
-                          {relativeTime(recommendation.createdAt)}
+                          {relativeTime(recommendation?.createdAt)}
                         </p>
                       </div>
-                      <Badge variant={tone(recommendation.status)}>
-                        {recommendation.status.toLowerCase()}
+                      <Badge variant={tone(recommendation?.status)}>
+                        {recommendation?.status.toLowerCase()}
                       </Badge>
                     </li>
                   ))}

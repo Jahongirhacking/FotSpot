@@ -118,8 +118,8 @@ export function ReviewFlow({
   // decision waiting on the manager; "a coach has it" and "a coach approved it"
   // are work already in motion. Mixed together, the second kind buries the
   // first — which is the only one the manager can act on today.
-  const arrived = shown.filter((item) => !item.review);
-  const active = shown.filter((item) => item.review);
+  const arrived = shown.filter((item) => !item?.review);
+  const active = shown.filter((item) => item?.review);
 
   return (
     <div className="space-y-6">
@@ -130,9 +130,9 @@ export function ReviewFlow({
         title={t.recommendations.fromEndorsedScouts}
         hint={t.recommendations.reviewFlowHint}
         rows={arrived}
-        emptyTitle={items.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
+        emptyTitle={items?.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
         academyId={academyId}
-        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        coaches={(coaches?.data ?? []).map((row) => row?.user ?? { id: row?.userId })}
         assign={assign}
       />
 
@@ -143,7 +143,7 @@ export function ReviewFlow({
         rows={active}
         emptyTitle={t.recommendations.activeEmpty}
         academyId={academyId}
-        coaches={(coaches.data ?? []).map((row) => row.user ?? { id: row.userId })}
+        coaches={(coaches?.data ?? []).map((row) => row?.user ?? { id: row?.userId })}
         assign={assign}
       />
 
@@ -161,25 +161,25 @@ export function ReviewFlow({
           ) : (
             <ul className="divide-border divide-y">
               {shownHistory.map((row) => (
-                <li key={row.recommendationId} className="flex flex-wrap items-center gap-3 p-2">
+                <li key={row?.recommendationId} className="flex flex-wrap items-center gap-3 p-2">
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/players/${row.player?.id ?? ''}`}
+                      href={`/players/${row?.player?.id ?? ''}`}
                       className="truncate text-sm font-medium hover:underline"
                     >
-                      {row.player?.firstName} {row.player?.lastName}
+                      {row?.player?.firstName} {row?.player?.lastName}
                     </Link>
                     <p className="text-muted truncate text-xs">
                       {[
-                        row.player?.primaryPosition,
-                        row.player?.birthDate && ageBand(row.player.birthDate),
+                        row?.player?.primaryPosition,
+                        row?.player?.birthDate && ageBand(row?.player.birthDate),
                       ]
                         .filter(Boolean)
                         .join(' · ')}
-                      {row.review?.coach &&
-                        ` · ${row.review.coach.firstName ?? ''} ${row.review.coach.lastName ?? ''}`.trimEnd()}
+                      {row?.review?.coach &&
+                        ` · ${row?.review.coach.firstName ?? ''} ${row?.review.coach.lastName ?? ''}`.trimEnd()}
                       {' · '}
-                      {formatDate(row.decidedAt)}
+                      {formatDate(row?.decidedAt)}
                     </p>
                   </div>
                   {/* Three outcomes, not two. "Invited" is what most rows here
@@ -187,12 +187,12 @@ export function ReviewFlow({
                       recommendation later. */}
                   <Badge
                     variant={
-                      row.invitation ? 'primary' : row.status === 'ACCEPTED' ? 'success' : 'neutral'
+                      row?.invitation ? 'primary' : row?.status === 'ACCEPTED' ? 'success' : 'neutral'
                     }
                   >
-                    {row.invitation
-                      ? `${t.recommendations.invited}${row.invitation.date ? ` · ${formatDate(row.invitation.date)}` : ''}`
-                      : row.status === 'ACCEPTED'
+                    {row?.invitation
+                      ? `${t.recommendations.invited}${row?.invitation.date ? ` · ${formatDate(row?.invitation.date)}` : ''}`
+                      : row?.status === 'ACCEPTED'
                         ? t.recommendations.statusAccepted
                         : t.recommendations.rejected}
                   </Badge>
@@ -238,25 +238,25 @@ function QueueCard({
         <CardTitle className="flex items-center gap-2 text-base">
           <Icon className="text-primary size-4" aria-hidden />
           {title}
-          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+          {rows?.length > 0 && <Badge variant="neutral">{rows?.length}</Badge>}
         </CardTitle>
         <p className="text-muted text-sm">{hint}</p>
       </CardHeader>
 
       <CardContent className="p-2">
-        {rows.length === 0 ? (
+        {rows?.length === 0 ? (
           <EmptyState icon={ClipboardCheck} title={emptyTitle} />
         ) : (
           <ul className="divide-border divide-y">
-            {rows.map((item) => (
+            {rows?.map((item) => (
               <InboxRow
-                key={item.playerId}
+                key={item?.playerId}
                 item={item}
                 academyId={academyId}
                 coaches={coaches}
                 // Only the row actually being sent, not the whole list.
-                pending={assign.isPending && assign.variables?.id === item.playerId}
-                onAssign={(coachUserId) => assign.mutate({ id: item.playerId, coachUserId })}
+                pending={assign.isPending && assign.variables?.id === item?.playerId}
+                onAssign={(coachUserId) => assign.mutate({ id: item?.playerId, coachUserId })}
               />
             ))}
           </ul>
@@ -281,41 +281,41 @@ function InboxRow({
 }) {
   const { t, f } = useI18n();
   const [coachUserId, setCoachUserId] = React.useState('');
-  const review = item.review;
+  const review = item?.review;
 
   return (
     <li className="space-y-2 p-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/players/${item.playerId}`} className="min-w-0 flex-1 hover:underline">
+        <Link href={`/players/${item?.playerId}`} className="min-w-0 flex-1 hover:underline">
           <span className="block truncate text-sm font-medium">
-            {item.player ? `${item.player.firstName} ${item.player.lastName}` : item.playerId}
+            {item?.player ? `${item?.player.firstName} ${item?.player.lastName}` : item?.playerId}
           </span>
           <span className="text-muted block truncate text-xs">
             {[
-              item.player?.primaryPosition,
-              item.player && ageBand(item.player.birthDate),
-              item.player?.region,
+              item?.player?.primaryPosition,
+              item?.player && ageBand(item?.player.birthDate),
+              item?.player?.region,
             ]
               .filter(Boolean)
               .join(' · ')}
             {' · '}
-            {f(t.recommendations.backedBy, { count: item.recommendationCount })}
+            {f(t.recommendations.backedBy, { count: item?.recommendationCount })}
           </span>
         </Link>
 
         {review ? (
           <Badge
             variant={
-              review.status === 'APPROVED'
+              review?.status === 'APPROVED'
                 ? 'success'
-                : review.status === 'REJECTED'
+                : review?.status === 'REJECTED'
                   ? 'neutral'
                   : 'warning'
             }
           >
-            {review.status === 'APPROVED'
+            {review?.status === 'APPROVED'
               ? t.recommendations.coachApproved
-              : review.status === 'REJECTED'
+              : review?.status === 'REJECTED'
                 ? t.recommendations.coachRejected
                 : t.recommendations.inReview}
           </Badge>
@@ -326,8 +326,8 @@ function InboxRow({
 
       {review && (
         <p className="text-muted truncate text-xs">
-          {[review.coach.firstName, review.coach.lastName].filter(Boolean).join(' ')}
-          {review.note ? ` — ${review.note}` : ''}
+          {[review?.coach.firstName, review?.coach.lastName].filter(Boolean).join(' ')}
+          {review?.note ? ` — ${review?.note}` : ''}
         </p>
       )}
 
@@ -344,11 +344,11 @@ function InboxRow({
             className="min-w-40 flex-1"
           >
             <option value="">{t.recommendations.anyCoach}</option>
-            {coaches.map((coach) => (
-              <option key={coach.id} value={coach.id}>
-                {[coach.firstName, coach.lastName].filter(Boolean).join(' ') ||
-                  coach.username ||
-                  coach.id.slice(0, 8)}
+            {coaches?.map((coach) => (
+              <option key={coach?.id} value={coach?.id}>
+                {[coach?.firstName, coach?.lastName].filter(Boolean).join(' ') ||
+                  coach?.username ||
+                  coach?.id.slice(0, 8)}
               </option>
             ))}
           </Select>
@@ -374,9 +374,9 @@ function InboxRow({
       {review?.status === 'APPROVED' && (
         <div className="flex justify-end">
           <InviteToPrivateTrialDialog
-            playerId={item.playerId}
+            playerId={item?.playerId}
             playerName={
-              item.player ? `${item.player.firstName} ${item.player.lastName}` : item.playerId
+              item?.player ? `${item?.player.firstName} ${item?.player.lastName}` : item?.playerId
             }
             academyId={academyId}
           />

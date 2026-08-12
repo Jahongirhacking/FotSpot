@@ -19,14 +19,14 @@ export default async function GroupDetailPage({
   const session = await getSession();
   if (!session) redirect(`/login?next=/academies/mine/groups/${groupId}`);
 
-  const opts = { token: session.accessToken, cache: 'no-store' as const };
-  const group = await groups.getById(groupId, opts).catch(() => null);
+  const opts = { token: session?.accessToken, cache: 'no-store' as const };
+  const group = await groups?.getById(groupId, opts).catch(() => null);
   if (!group) notFound();
 
   const [members, list] = await Promise.all([
-    academyRoster.list(group.academy.id, {}, opts).catch(() => [] as AcademyMember[]),
+    academyRoster?.list(group?.academy.id, {}, opts).catch(() => [] as AcademyMember[]),
     groups
-      .list(group.academy.id, opts)
+      .list(group?.academy.id, opts)
       .catch(() => ({ groups: [] as AcademyGroup[], reserveCount: 0 })),
   ]);
 

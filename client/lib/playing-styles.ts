@@ -1,4 +1,5 @@
 import type { Dictionary } from '@/lib/i18n';
+import { mediaAsset } from '@/lib/media-url';
 import { PlayingStyles } from './schemas/player';
 
 /**
@@ -40,83 +41,83 @@ export const PLAYING_STYLE_INFO: Record<string, PlayingStyleInfo> = {
   [PlayingStyles.GOAL_POACHER]: {
     key: PlayingStyles.GOAL_POACHER,
     exemplar: 'Kylian Mbappe',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/goal_poacher.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/goal_poacher.png`) ?? undefined,
   },
   [PlayingStyles.FOX_IN_THE_BOX]: {
     key: PlayingStyles.FOX_IN_THE_BOX,
     exemplar: 'Erling Haaland',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/fox_in_the_box.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/fox_in_the_box.png`) ?? undefined,
   },
   [PlayingStyles.DEEP_LYING_FORWARD]: {
     key: PlayingStyles.DEEP_LYING_FORWARD,
     exemplar: 'Cristiano Ronaldo',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/deep_lying_forward.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/deep_lying_forward.png`) ?? undefined,
   },
   [PlayingStyles.PROLIFIC_WINGER]: {
     key: PlayingStyles.PROLIFIC_WINGER,
     exemplar: 'Lamine Yamal',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/prolific_winger.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/prolific_winger.png`) ?? undefined,
   },
   [PlayingStyles.CLASSIC_10]: {
     key: PlayingStyles.CLASSIC_10,
     exemplar: 'Lionel Messi',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/classic_10.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/classic_10.png`) ?? undefined,
   },
 
   // Midfield
   [PlayingStyles.BOX_TO_BOX]: {
     key: PlayingStyles.BOX_TO_BOX,
     exemplar: 'Steven Gerrard',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/box_to_box.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/box_to_box.png`) ?? undefined,
   },
   [PlayingStyles.PLAYMAKER]: {
     key: PlayingStyles.PLAYMAKER,
     exemplar: 'Kevin De Bruyne',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/playmaker.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/playmaker.png`) ?? undefined,
   },
   [PlayingStyles.ANCHOR_MAN]: {
     key: PlayingStyles.DESTROYER,
     exemplar: 'Rodri',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/anchor_man.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/anchor_man.png`) ?? undefined,
   },
   [PlayingStyles.ORCHESTRATOR]: {
     key: PlayingStyles.ORCHESTRATOR,
     exemplar: 'Sergio Busquets',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/orchestrator.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/orchestrator.png`) ?? undefined,
   },
 
   // Defence
   [PlayingStyles.BUILD_UP]: {
     key: PlayingStyles.BUILD_UP,
     exemplar: 'Virgil van Dijk',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/build_up.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/build_up.png`) ?? undefined,
   },
   [PlayingStyles.DESTROYER]: {
     key: PlayingStyles.DESTROYER,
     exemplar: 'Abduqodir Husanov',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/destroyer.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/destroyer.png`) ?? undefined,
   },
   [PlayingStyles.OFFENSIVE_WINGBACK]: {
     key: PlayingStyles.OFFENSIVE_WINGBACK,
     exemplar: 'Roberto Carlos',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/offensive_wingback.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/offensive_wingback.png`) ?? undefined,
   },
   [PlayingStyles.DEFENSIVE_FULLBACK]: {
     key: PlayingStyles.DEFENSIVE_FULLBACK,
     exemplar: 'Paolo Maldini',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/defensive_fullback.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/defensive_fullback.png`) ?? undefined,
   },
 
   // Goalkeeper
   [PlayingStyles.OFFENSIVE_KEEPER]: {
     key: PlayingStyles.OFFENSIVE_KEEPER,
     exemplar: 'Manuel Neuer',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/offensive_keeper.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/offensive_keeper.png`) ?? undefined,
   },
   [PlayingStyles.DEFENSIVE_KEEPER]: {
     key: PlayingStyles.DEFENSIVE_KEEPER,
     exemplar: 'Gianluigi Buffon',
-    imageUrl: `${process.env.NEXT_PUBLIC_MEDIA_URL}/${playingStyleMediaPath}/defensive_keeper.png`,
+    imageUrl: mediaAsset(`${playingStyleMediaPath}/defensive_keeper.png`) ?? undefined,
   },
 };
 

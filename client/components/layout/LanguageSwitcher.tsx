@@ -21,7 +21,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
     <Menu>
       <MenuTrigger
         className="hover:bg-surface-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium"
-        aria-label={`${t.common.language}: ${active.label}`}
+        aria-label={`${t.common.language}: ${active?.label}`}
       >
         <Globe className="size-4 shrink-0" aria-hidden />
         {!compact && <span className="uppercase">{locale}</span>}

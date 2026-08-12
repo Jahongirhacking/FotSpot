@@ -24,7 +24,7 @@ export default async function ReservePage() {
   const { t } = await getServerT();
 
   const academy = await academies
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null);
 
   if (!academy) {
@@ -37,10 +37,10 @@ export default async function ReservePage() {
     );
   }
 
-  const opts = { token: session.accessToken, cache: 'no-store' as const };
+  const opts = { token: session?.accessToken, cache: 'no-store' as const };
   const [members, list] = await Promise.all([
-    academyRoster.list(academy.id, {}, opts).catch(() => [] as AcademyMember[]),
-    groups.list(academy.id, opts).catch(() => ({ groups: [] as AcademyGroup[], reserveCount: 0 })),
+    academyRoster?.list(academy?.id, {}, opts).catch(() => [] as AcademyMember[]),
+    groups?.list(academy?.id, opts).catch(() => ({ groups: [] as AcademyGroup[], reserveCount: 0 })),
   ]);
 
   return (
@@ -58,7 +58,7 @@ export default async function ReservePage() {
       </header>
 
       <SquadPanel
-        academyId={academy.id}
+        academyId={academy?.id}
         groupId={null}
         title={t.nav.reserve}
         initialMembers={members}

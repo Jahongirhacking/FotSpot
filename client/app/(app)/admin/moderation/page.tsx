@@ -15,13 +15,13 @@ export default async function ModerationPage() {
   if (!session) redirect('/login?next=/admin/moderation');
 
   const { t } = await getServerT();
-  const isAdmin = isAdminActing(session.activeRole);
+  const isAdmin = isAdminActing(session?.activeRole);
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const reports = await admin
     .pendingReports(
       {},
-      { token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' },
+      { token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' },
     )
     .then((page) => page.items)
     .catch(() => [] as Report[]);

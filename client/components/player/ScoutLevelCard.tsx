@@ -25,11 +25,11 @@ export function ScoutLevelCard({
   pending?: Quota;
   t: Dictionary;
 }) {
-  const tier = scoutTier(stats.level);
-  const next = nextScoutTier(stats.level);
+  const tier = scoutTier(stats?.level);
+  const next = nextScoutTier(stats?.level);
 
-  const recsToGo = next ? Math.max(0, next.minRecommendations - stats.totalRecommendations) : 0;
-  const rateToGo = next ? Math.max(0, next.minSuccessRate - stats.successRate) : 0;
+  const recsToGo = next ? Math.max(0, next?.minRecommendations - stats?.totalRecommendations) : 0;
+  const rateToGo = next ? Math.max(0, next?.minSuccessRate - stats?.successRate) : 0;
 
   return (
     <Card>
@@ -40,16 +40,16 @@ export function ScoutLevelCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="text-xl font-bold">{tier.name}</p>
+          <p className="text-xl font-bold">{tier?.name}</p>
           <p className="text-muted text-xs">
-            Level {tier.level} · weight {tier.weight}
+            Level {tier?.level} · weight {tier?.weight}
           </p>
         </div>
 
         <dl className="grid grid-cols-3 gap-2 text-center">
-          <Stat label={t.scouts.sent} value={stats.totalRecommendations} />
-          <Stat label={t.profile.accepted} value={stats.acceptedRecommendations} />
-          <Stat label={t.profile.successRate} value={`${Math.round(stats.successRate)}%`} />
+          <Stat label={t.scouts.sent} value={stats?.totalRecommendations} />
+          <Stat label={t.profile.accepted} value={stats?.acceptedRecommendations} />
+          <Stat label={t.profile.successRate} value={`${Math.round(stats?.successRate)}%`} />
         </dl>
 
         {pending && (
@@ -77,7 +77,7 @@ export function ScoutLevelCard({
         {next ? (
           <div className="bg-surface-2 space-y-1.5 rounded-lg p-3 text-xs">
             <p className="font-medium">
-              Next: {next.name} <Badge variant="outline">weight {next.weight}</Badge>
+              Next: {next?.name} <Badge variant="outline">weight {next?.weight}</Badge>
             </p>
             <ul className="text-muted space-y-0.5">
               <li>

@@ -28,9 +28,9 @@ const schema = z.object({
   username: z
     .string()
     .trim()
-    .transform((value) => value.replace(/^@+/, '').toLowerCase())
-    .refine((value) => value.length >= 3, 'At least 3 characters')
-    .refine((value) => value.length <= 30, 'At most 30 characters')
+    .transform((value) => value?.replace(/^@+/, '').toLowerCase())
+    .refine((value) => value?.length >= 3, 'At least 3 characters')
+    .refine((value) => value?.length <= 30, 'At most 30 characters')
     .refine(
       (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value),
       'Lowercase letters, numbers and single hyphens only',

@@ -61,23 +61,23 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
   );
 
   const { containerRef, start, end, offsets, totalSize, measureRef, centerIndex } = useWindowedList(
-    { count: clips.length, estimate: ROW_ESTIMATE },
+    { count: clips?.length, estimate: ROW_ESTIMATE },
   );
 
   // Fetch ahead of the reader rather than at the very end, so the next page is
   // usually already there by the time they reach it.
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
   React.useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage && end >= clips.length - 2) {
+    if (hasNextPage && !isFetchingNextPage && end >= clips?.length - 2) {
       void fetchNextPage();
     }
-  }, [end, clips.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [end, clips?.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (query.isError) {
     return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
   }
 
-  if (clips.length === 0) {
+  if (clips?.length === 0) {
     return <EmptyState icon={Play} title={t.feed.emptyTitle} description={t.feed.emptyBody} />;
   }
 
@@ -85,9 +85,9 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
   for (let index = start; index < end; index++) {
     const clip = clips[index];
     if (!clip) continue;
-    rows.push(
+    rows?.push(
       <div
-        key={clip.id}
+        key={clip?.id}
         ref={measureRef(index)}
         className="absolute inset-x-0 pb-4"
         style={{ transform: `translateY(${offsets[index]}px)` }}
@@ -149,7 +149,7 @@ function FeedCard({
 }) {
   const { t } = useI18n();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const attribute = CATEGORY_ATTRIBUTE[clip.category];
+  const attribute = CATEGORY_ATTRIBUTE[clip?.category];
 
   /*
    * Optimistic, and deliberately *not* invalidating the feed on success.
@@ -160,16 +160,16 @@ function FeedCard({
    * updates here; the new order is what they get on their next visit, which is
    * when "don't show me this again" is what they actually want.
    */
-  const [liked, setLiked] = React.useState(clip.likedByMe);
-  const [likes, setLikes] = React.useState(clip.likes);
+  const [liked, setLiked] = React.useState(clip?.likedByMe);
+  const [likes, setLikes] = React.useState(clip?.likes);
 
   const like = useMutation({
     mutationFn: (next: boolean) =>
-      browserFetch(`/media/${clip.id}/like`, { method: next ? 'POST' : 'DELETE' }),
+      browserFetch(`/media/${clip?.id}/like`, { method: next ? 'POST' : 'DELETE' }),
     onError: () => {
       // Put the heart back; the server said no.
-      setLiked(clip.likedByMe);
-      setLikes(clip.likes);
+      setLiked(clip?.likedByMe);
+      setLikes(clip?.likes);
     },
   });
 
@@ -180,11 +180,11 @@ function FeedCard({
     like.mutate(next);
   }
   const label =
-    clip.category === 'MATCH_HIGHLIGHTS'
+    clip?.category === 'MATCH_HIGHLIGHTS'
       ? t.attributes.highlights
       : attribute
         ? t.attributes[attribute]
-        : clip.category;
+        : clip?.category;
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -203,27 +203,27 @@ function FeedCard({
     <article className="bg-surface border-border overflow-hidden rounded-2xl border shadow-sm">
       <header className="flex items-center gap-3 p-3">
         <Link
-          href={`/players/${clip.player.id}`}
+          href={`/players/${clip?.player.id}`}
           className="flex min-w-0 flex-1 items-center gap-3"
         >
           <Avatar
-            src={clip.player.avatarUrl}
-            fallback={initials(clip.player.firstName, clip.player.lastName)}
+            src={clip?.player.avatarUrl}
+            fallback={initials(clip?.player.firstName, clip?.player.lastName)}
             className="size-9"
           />
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">
-              {clip.player.firstName} {clip.player.lastName}
+              {clip?.player.firstName} {clip?.player.lastName}
             </span>
             <span className="text-muted block truncate text-xs">
-              {[clip.player.primaryPosition, ageBand(clip.player.birthDate), clip.player.region]
+              {[clip?.player.primaryPosition, ageBand(clip?.player.birthDate), clip?.player.region]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
           </span>
         </Link>
 
-        {clip.following && <Badge variant="neutral">{t.feed.following}</Badge>}
+        {clip?.following && <Badge variant="neutral">{t.feed.following}</Badge>}
         <Badge variant="primary">{label}</Badge>
       </header>
 
@@ -235,20 +235,20 @@ function FeedCard({
           className="block w-full"
         >
           <span className="relative block aspect-[4/5] w-full overflow-hidden bg-black sm:aspect-video">
-            {clip.url && mounted ? (
+            {clip?.url && mounted ? (
               <video
                 ref={videoRef}
-                src={clip.url}
-                poster={clip.posterUrl ?? undefined}
+                src={clip?.url}
+                poster={clip?.posterUrl ?? undefined}
                 muted={muted}
                 loop
                 playsInline
                 preload="metadata"
                 className="size-full object-cover"
               />
-            ) : clip.posterUrl ? (
+            ) : clip?.posterUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL, not an optimisable asset
-              <img src={clip.posterUrl} alt="" className="size-full object-cover" />
+              <img src={clip?.posterUrl} alt="" className="size-full object-cover" />
             ) : (
               <span className="text-muted grid size-full place-items-center">
                 <TriangleAlert className="size-5" aria-hidden />
@@ -272,9 +272,9 @@ function FeedCard({
           )}
         </button>
 
-        {clip.rating != null && (
+        {clip?.rating != null && (
           <span className="absolute bottom-3 left-3 rounded-lg bg-black/55 px-2 py-1 font-mono text-lg font-black text-white backdrop-blur-sm">
-            {clip.rating}
+            {clip?.rating}
           </span>
         )}
       </div>
@@ -304,11 +304,11 @@ function FeedCard({
           </button>
           <span className="flex items-center gap-1">
             <Eye className="size-3.5" aria-hidden />
-            {clip.views}
+            {clip?.views}
           </span>
         </p>
-        {clip.title && <p className="text-sm font-medium">{clip.title}</p>}
-        {clip.description && <p className="text-muted line-clamp-2 text-sm">{clip.description}</p>}
+        {clip?.title && <p className="text-sm font-medium">{clip?.title}</p>}
+        {clip?.description && <p className="text-muted line-clamp-2 text-sm">{clip?.description}</p>}
       </footer>
     </article>
   );

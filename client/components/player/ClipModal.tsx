@@ -67,35 +67,35 @@ export function ClipModal({
   const [error, setError] = React.useState<string | null>(null);
 
   const engagement = useQuery({
-    queryKey: ['media-engagement', clip.id],
-    queryFn: () => browserFetch<Engagement>(`/media/${clip.id}/engagement`),
+    queryKey: ['media-engagement', clip?.id],
+    queryFn: () => browserFetch<Engagement>(`/media/${clip?.id}/engagement`),
     enabled: open,
   });
 
   const toggleLike = useMutation({
     mutationFn: (liked: boolean) =>
-      browserFetch(`/media/${clip.id}/like`, { method: liked ? 'DELETE' : 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['media-engagement', clip.id] }),
+      browserFetch(`/media/${clip?.id}/like`, { method: liked ? 'DELETE' : 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['media-engagement', clip?.id] }),
     onError: (err: Error) => setError(err.message),
   });
 
   const remove = useMutation({
-    mutationFn: () => browserFetch(`/media/${clip.id}`, { method: 'DELETE' }),
+    mutationFn: () => browserFetch(`/media/${clip?.id}`, { method: 'DELETE' }),
     onSuccess: () => {
       onOpenChange(false);
-      onDeleted(clip.id);
+      onDeleted(clip?.id);
       router.refresh();
     },
     onError: (err: Error) => setError(err.message),
   });
 
-  const attribute = CATEGORY_ATTRIBUTE[clip.category];
-  const isHighlight = clip.category === 'MATCH_HIGHLIGHTS';
+  const attribute = CATEGORY_ATTRIBUTE[clip?.category];
+  const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
   const label = isHighlight
     ? t.attributes.highlights
     : attribute
       ? t.attributes[attribute]
-      : clip.category;
+      : clip?.category;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,8 +103,8 @@ export function ClipModal({
         <div className="space-y-3 p-4 pt-12 sm:pt-4">
           {error && <Alert tone="danger">{error}</Alert>}
 
-          {clip.url ? (
-            <ClipPlayer src={clip.url} />
+          {clip?.url ? (
+            <ClipPlayer src={clip?.url} />
           ) : (
             /* The row exists but storage is unconfigured, so no URL could be
                signed. Say so, rather than showing a player that never starts. */
@@ -124,12 +124,12 @@ export function ClipModal({
             ) : (
               <>
                 <Badge variant="primary">{label}</Badge>
-                {clip.rating != null && (
-                  <span className="text-prov-self font-mono text-lg font-bold">{clip.rating}</span>
+                {clip?.rating != null && (
+                  <span className="text-prov-self font-mono text-lg font-bold">{clip?.rating}</span>
                 )}
               </>
             )}
-            <span className="text-muted ml-auto text-xs">{formatDate(clip.createdAt)}</span>
+            <span className="text-muted ml-auto text-xs">{formatDate(clip?.createdAt)}</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export function ClipModal({
             )}
           </div>
 
-          {canRate && clip.category !== 'MATCH_HIGHLIGHTS' && (
+          {canRate && clip?.category !== 'MATCH_HIGHLIGHTS' && (
             <CoachRating clip={clip} onRated={onUpdated} />
           )}
 
@@ -191,10 +191,10 @@ export function ClipModal({
               onError={setError}
             />
           ) : (
-            (clip.title || clip.description) && (
+            (clip?.title || clip?.description) && (
               <div className="space-y-1">
-                {clip.title && <p className="font-medium">{clip.title}</p>}
-                {clip.description && <p className="text-muted text-sm">{clip.description}</p>}
+                {clip?.title && <p className="font-medium">{clip?.title}</p>}
+                {clip?.description && <p className="text-muted text-sm">{clip?.description}</p>}
               </div>
             )
           )}
@@ -304,14 +304,14 @@ function EditClipForm({
   onError: (message: string) => void;
 }) {
   const { t } = useI18n();
-  const [title, setTitle] = React.useState(clip.title ?? '');
-  const [description, setDescription] = React.useState(clip.description ?? '');
-  const [rating, setRating] = React.useState(clip.rating ?? 70);
-  const isHighlight = clip.category === 'MATCH_HIGHLIGHTS';
+  const [title, setTitle] = React.useState(clip?.title ?? '');
+  const [description, setDescription] = React.useState(clip?.description ?? '');
+  const [rating, setRating] = React.useState(clip?.rating ?? 70);
+  const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
 
   const save = useMutation({
     mutationFn: () =>
-      browserFetch<Media>(`/media/${clip.id}`, {
+      browserFetch<Media>(`/media/${clip?.id}`, {
         method: 'PATCH',
         body: {
           title: title.trim(),
@@ -392,14 +392,14 @@ function EditClipForm({
 function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) => void }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [rating, setRating] = React.useState(clip.rating ?? 70);
+  const [rating, setRating] = React.useState(clip?.rating ?? 70);
 
   const save = useMutation({
     mutationFn: () =>
-      browserFetch<Media>(`/media/${clip.id}/rating`, { method: 'PATCH', body: { rating } }),
+      browserFetch<Media>(`/media/${clip?.id}/rating`, { method: 'PATCH', body: { rating } }),
     onSuccess: (media) => {
       onRated(media);
-      void queryClient.invalidateQueries({ queryKey: ['player-clips', clip.playerId] });
+      void queryClient.invalidateQueries({ queryKey: ['player-clips', clip?.playerId] });
     },
   });
 
@@ -419,7 +419,7 @@ function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) =
         className="accent-primary h-9 w-full"
       />
       <p className="text-muted text-xs">
-        {clip.reportedBy === 'COACH' ? t.clips.ratedByCoach : t.clips.ratedBySelf}
+        {clip?.reportedBy === 'COACH' ? t.clips.ratedByCoach : t.clips.ratedBySelf}
       </p>
       <div className="flex justify-end">
         <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>

@@ -55,7 +55,7 @@ export function RolesManager({ initial }: { initial: RoleWithPermissions[] }) {
   const allPermissions = React.useMemo(() => {
     const map = new Map<string, string>();
     for (const role of roles ?? []) {
-      for (const entry of role.permissions) map.set(entry.permission.id, entry.permission.key);
+      for (const entry of role.permissions) map.set(entry?.permission.id, entry?.permission.key);
     }
     return [...map.entries()];
   }, [roles]);
@@ -161,8 +161,8 @@ export function RolesManager({ initial }: { initial: RoleWithPermissions[] }) {
                   <span className="text-muted text-xs">—</span>
                 ) : (
                   role.permissions.map((entry) => (
-                    <Badge key={entry.permission.id} variant="outline" className="font-mono">
-                      {entry.permission.key}
+                    <Badge key={entry?.permission.id} variant="outline" className="font-mono">
+                      {entry?.permission.key}
                     </Badge>
                   ))
                 )}

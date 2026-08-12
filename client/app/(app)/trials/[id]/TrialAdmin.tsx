@@ -46,14 +46,14 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
 
-  const archived = trial.status === 'ARCHIVED';
+  const archived = trial?.status === 'ARCHIVED';
   /** Null until edited, so the stored note shows through unchanged. */
   const [typedNote, setTypedNote] = React.useState<string | null>(null);
-  const note = typedNote ?? htmlToMarkdown(trial.note);
+  const note = typedNote ?? htmlToMarkdown(trial?.note);
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      browserFetch<Trial>(`/trials/${trial.id}`, { method: 'PATCH', body }),
+      browserFetch<Trial>(`/trials/${trial?.id}`, { method: 'PATCH', body }),
     meta: { success: t.trials.trialUpdated },
     onSuccess: () => {
       setEditing(false);
@@ -74,7 +74,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
       ageRangeMax: Number(form.get('ageMax')),
       positions: String(form.get('positions') ?? '')
         .split(',')
-        .map((value) => value.trim().toUpperCase())
+        .map((value) => value?.trim().toUpperCase())
         .filter(Boolean),
       requirements: String(form.get('requirements') ?? '').trim(),
     });
@@ -116,12 +116,12 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
         {editing && (
           <form onSubmit={submit} className="border-border space-y-3 rounded-lg border p-3">
             <Field label={t.trials.title} htmlFor="edit-title" required>
-              <Input id="edit-title" name="title" required defaultValue={trial.title} />
+              <Input id="edit-title" name="title" required defaultValue={trial?.title} />
             </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t.trials.location} htmlFor="edit-location" required>
-                <Input id="edit-location" name="location" required defaultValue={trial.location} />
+                <Input id="edit-location" name="location" required defaultValue={trial?.location} />
               </Field>
               <Field
                 label={t.trials.examDate}
@@ -134,7 +134,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   name="date"
                   type="datetime-local"
                   required
-                  defaultValue={toLocalInput(trial.date)}
+                  defaultValue={toLocalInput(trial?.date)}
                 />
               </Field>
             </div>
@@ -151,7 +151,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   name="applyDeadline"
                   type="datetime-local"
                   required
-                  defaultValue={toLocalInput(trial.applyDeadline ?? trial.date)}
+                  defaultValue={toLocalInput(trial?.applyDeadline ?? trial?.date)}
                 />
               </Field>
             </div>
@@ -165,7 +165,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   min={6}
                   max={21}
                   required
-                  defaultValue={trial.ageRangeMin ?? undefined}
+                  defaultValue={trial?.ageRangeMin ?? undefined}
                 />
               </Field>
               <Field label={t.trials.ageMax} htmlFor="edit-age-max" required>
@@ -176,7 +176,7 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   min={6}
                   max={21}
                   required
-                  defaultValue={trial.ageRangeMax ?? undefined}
+                  defaultValue={trial?.ageRangeMax ?? undefined}
                 />
               </Field>
             </div>
@@ -189,12 +189,12 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
               <Input
                 id="edit-positions"
                 name="positions"
-                defaultValue={trial.positions.join(', ')}
+                defaultValue={trial?.positions.join(', ')}
               />
             </Field>
 
             <Field label={t.trials.requirements} htmlFor="edit-req">
-              <Textarea id="edit-req" name="requirements" defaultValue={trial.requirements ?? ''} />
+              <Textarea id="edit-req" name="requirements" defaultValue={trial?.requirements ?? ''} />
             </Field>
 
             <Field label={t.notes.playerNote} htmlFor="edit-note" hint={t.notes.playerNoteHint}>

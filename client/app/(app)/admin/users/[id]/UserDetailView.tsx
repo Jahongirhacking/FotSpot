@@ -25,30 +25,30 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
 
-  const isSuper = user.roles.includes('super_admin');
+  const isSuper = user?.roles.includes('super_admin');
 
   const setActive = useMutation({
     mutationFn: (isActive: boolean) =>
-      browserFetch(`/admin/users/${user.id}/status`, { method: 'PATCH', body: { isActive } }),
+      browserFetch(`/admin/users/${user?.id}/status`, { method: 'PATCH', body: { isActive } }),
     onSuccess: () => router.refresh(),
     onError: (err: Error) => setError(err.message),
   });
 
   const setRole = useMutation({
     mutationFn: ({ role, grant }: { role: string; grant: boolean }) =>
-      browserFetch(`/admin/users/${user.id}/roles`, { method: 'PATCH', body: { role, grant } }),
+      browserFetch(`/admin/users/${user?.id}/roles`, { method: 'PATCH', body: { role, grant } }),
     onSuccess: () => router.refresh(),
     onError: (err: Error) => setError(err.message),
   });
 
   const setPlan = useMutation({
     mutationFn: (tier: PlanTier) =>
-      browserFetch(`/admin/users/${user.id}/plan`, { method: 'PATCH', body: { tier } }),
+      browserFetch(`/admin/users/${user?.id}/plan`, { method: 'PATCH', body: { tier } }),
     onSuccess: () => router.refresh(),
     onError: (err: Error) => setError(err.message),
   });
 
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.id.slice(0, 8);
+  const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.id.slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -56,19 +56,19 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
 
       <header className="flex flex-wrap items-center gap-4">
         <Avatar
-          src={user.avatarUrl}
-          fallback={initials(user.firstName, user.lastName)}
+          src={user?.avatarUrl}
+          fallback={initials(user?.firstName, user?.lastName)}
           className="size-16 text-xl"
         />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{name}</h1>
-          <p className="text-muted truncate text-sm">{user.email ?? user.phone ?? user.username ?? ''}</p>
+          <p className="text-muted truncate text-sm">{user?.email ?? user?.phone ?? user?.username ?? ''}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            <Badge variant={user.isActive ? 'success' : 'danger'}>
-              {user.isActive ? t.admin.active : t.admin.disabled}
+            <Badge variant={user?.isActive ? 'success' : 'danger'}>
+              {user?.isActive ? t.admin.active : t.admin.disabled}
             </Badge>
             <span className="text-muted text-xs">
-              {t.profile.memberSince} {formatDate(user.createdAt)}
+              {t.profile.memberSince} {formatDate(user?.createdAt)}
             </span>
           </div>
         </div>
@@ -81,7 +81,7 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {user.roles.map((role) => (
+            {user?.roles.map((role) => (
               <Badge key={role} variant={role === 'super_admin' ? 'primary' : 'neutral'}>
                 {t.roles[role as Role] ?? role}
               </Badge>
@@ -91,7 +91,7 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
           {canEdit && !isSuper && (
             <div className="border-border flex flex-wrap gap-2 border-t pt-3">
               {ASSIGNABLE.map((role) => {
-                const held = user.roles.includes(role);
+                const held = user?.roles.includes(role);
                 return (
                   <Button
                     key={role}
@@ -130,8 +130,8 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={user.planTier === 'FREE' ? 'neutral' : 'primary'}>
-              {planLabel(user.planTier ?? 'FREE', t)}
+            <Badge variant={user?.planTier === 'FREE' ? 'neutral' : 'primary'}>
+              {planLabel(user?.planTier ?? 'FREE', t)}
             </Badge>
             <Link href="/admin/tariff-plans" className="text-muted text-xs hover:underline">
               {t.plans.title}
@@ -141,7 +141,7 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
           {canEdit && (
             <div className="border-border flex flex-wrap gap-2 border-t pt-3">
               {PLAN_TIERS.map((tier) => {
-                const current = (user.planTier ?? 'FREE') === tier;
+                const current = (user?.planTier ?? 'FREE') === tier;
                 return (
                   <Button
                     key={tier}
@@ -160,83 +160,83 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
       </Card>
 
       {/* Per-role facts, so an admin can answer "who is this" without a database. */}
-      {user.playerProfile && (
+      {user?.playerProfile && (
         <Card>
           <CardHeader>
             <CardTitle>{t.profile.playerStats}</CardTitle>
             <CardDescription>
-              {ageBand(user.playerProfile.birthDate)} · {user.playerProfile.primaryPosition ?? '—'}{' '}
-              · {user.playerProfile.region ?? '—'}
+              {ageBand(user?.playerProfile.birthDate)} · {user?.playerProfile.primaryPosition ?? '—'}{' '}
+              · {user?.playerProfile.region ?? '—'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              <Stat label={t.profile.matches} value={user.playerProfile.matches} />
-              <Stat label={t.profile.goals} value={user.playerProfile.goals} />
-              <Stat label={t.profile.assists} value={user.playerProfile.assists} />
-              <Stat label={t.profile.clips} value={user.playerProfile._count.media} />
+              <Stat label={t.profile.matches} value={user?.playerProfile.matches} />
+              <Stat label={t.profile.goals} value={user?.playerProfile.goals} />
+              <Stat label={t.profile.assists} value={user?.playerProfile.assists} />
+              <Stat label={t.profile.clips} value={user?.playerProfile._count.media} />
               <Stat
                 label={t.profile.trialApplications}
-                value={user.playerProfile._count.trialApplications}
+                value={user?.playerProfile._count.trialApplications}
               />
               <Stat
                 label={t.profile.recommendationsReceived}
-                value={user.playerProfile._count.recommendations}
+                value={user?.playerProfile._count.recommendations}
               />
             </dl>
           </CardContent>
         </Card>
       )}
 
-      {user.scoutStats && (
+      {user?.scoutStats && (
         <Card>
           <CardHeader>
             <CardTitle>{t.profile.scoutStats}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Stat label={t.profile.level} value={user.scoutStats.level} />
-              <Stat label={t.profile.sent} value={user.scoutStats.totalRecommendations} />
-              <Stat label={t.profile.accepted} value={user.scoutStats.acceptedRecommendations} />
+              <Stat label={t.profile.level} value={user?.scoutStats.level} />
+              <Stat label={t.profile.sent} value={user?.scoutStats.totalRecommendations} />
+              <Stat label={t.profile.accepted} value={user?.scoutStats.acceptedRecommendations} />
               <Stat
                 label={t.profile.successRate}
-                value={`${Math.round(user.scoutStats.successRate)}%`}
+                value={`${Math.round(user?.scoutStats.successRate)}%`}
               />
             </dl>
           </CardContent>
         </Card>
       )}
 
-      {user.coachProfile && (
+      {user?.coachProfile && (
         <Card>
           <CardHeader>
             <CardTitle>{t.profile.coachStats}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
-            <Badge variant={user.coachProfile.status === 'VERIFIED' ? 'success' : 'warning'}>
-              {user.coachProfile.status === 'VERIFIED' ? t.profile.verified : t.profile.pending}
+            <Badge variant={user?.coachProfile.status === 'VERIFIED' ? 'success' : 'warning'}>
+              {user?.coachProfile.status === 'VERIFIED' ? t.profile.verified : t.profile.pending}
             </Badge>
             <span className="text-muted text-sm">
-              {t.profile.assessments}: {user.coachProfile._count.assessments}
+              {t.profile.assessments}: {user?.coachProfile._count.assessments}
             </span>
           </CardContent>
         </Card>
       )}
 
-      {user.academyMemberships.length > 0 && (
+      {user?.academyMemberships.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>{t.profile.academyMemberships}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="divide-border divide-y text-sm">
-              {user.academyMemberships.map((membership) => (
+              {user?.academyMemberships.map((membership) => (
                 <li
-                  key={membership.academyId}
+                  key={membership?.academyId}
                   className="flex items-center justify-between gap-2 py-2"
                 >
-                  <span className="truncate">{membership.academy.name}</span>
-                  <Badge variant="neutral">{membership.role.toLowerCase()}</Badge>
+                  <span className="truncate">{membership?.academy.name}</span>
+                  <Badge variant="neutral">{membership?.role.toLowerCase()}</Badge>
                 </li>
               ))}
             </ul>
@@ -247,21 +247,21 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
       {canEdit && !isSuper && (
         <Card>
           <CardHeader>
-            <CardTitle>{user.isActive ? t.admin.disableAccount : t.admin.enableAccount}</CardTitle>
+            <CardTitle>{user?.isActive ? t.admin.disableAccount : t.admin.enableAccount}</CardTitle>
             <CardDescription>{t.admin.disableHint}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button
-              variant={user.isActive ? 'danger' : 'primary'}
+              variant={user?.isActive ? 'danger' : 'primary'}
               loading={setActive.isPending}
               onClick={() => {
-                if (!user.isActive || window.confirm(t.admin.confirmDisable)) {
-                  setActive.mutate(!user.isActive);
+                if (!user?.isActive || window.confirm(t.admin.confirmDisable)) {
+                  setActive.mutate(!user?.isActive);
                 }
               }}
             >
-              {user.isActive ? <Ban aria-hidden /> : <CheckCircle2 aria-hidden />}
-              {user.isActive ? t.admin.disableAccount : t.admin.enableAccount}
+              {user?.isActive ? <Ban aria-hidden /> : <CheckCircle2 aria-hidden />}
+              {user?.isActive ? t.admin.disableAccount : t.admin.enableAccount}
             </Button>
           </CardContent>
         </Card>

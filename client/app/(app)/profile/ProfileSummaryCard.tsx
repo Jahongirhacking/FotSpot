@@ -36,7 +36,7 @@ export function ProfileSummaryCard() {
   if (isLoading) return <Skeleton className="h-28 w-full rounded-xl" />;
   if (!data) return null;
 
-  const academy = data.academy;
+  const academy = data?.academy;
   const isManager = academy?.myRole === 'MANAGER';
 
   return (
@@ -45,12 +45,12 @@ export function ProfileSummaryCard() {
         <div className="grid grid-cols-2 gap-2">
           <CountLink
             href="/profile/network?tab=followers"
-            value={data.followers}
+            value={data?.followers}
             label={t.profile.followers}
           />
           <CountLink
             href="/profile/network?tab=following"
-            value={data.following}
+            value={data?.following}
             label={t.profile.following}
           />
         </div>
@@ -60,17 +60,17 @@ export function ProfileSummaryCard() {
           <div className="grid grid-cols-3 gap-2">
             <CountLink
               href="/academies/mine/squad"
-              value={academy.players}
+              value={academy?.players}
               label={t.profile.players}
             />
             <CountLink
               href="/academies/mine/squad"
-              value={academy.coaches}
+              value={academy?.coaches}
               label={t.profile.coaches}
             />
             <CountLink
               href="/academies/mine/squad"
-              value={academy.scouts}
+              value={academy?.scouts}
               label={t.profile.scouts}
               className="sm:col-start-3"
             />
@@ -78,10 +78,10 @@ export function ProfileSummaryCard() {
         )}
 
         <div className="grid grid-cols-1">
-          {data.coach && (
+          {data?.coach && (
             <CountLink
               href={academy ? '/groups/mine' : '/players'}
-              value={data.coach.assessedPlayers}
+              value={data?.coach.assessedPlayers}
               label={t.profile.assessedPlayers}
             />
           )}
@@ -89,34 +89,34 @@ export function ProfileSummaryCard() {
 
         {academy && (
           <Link
-            href={`/academies/${academy.id}`}
+            href={`/academies/${academy?.id}`}
             className="bg-surface-2 hover:bg-surface-3 flex items-center gap-2 rounded-lg p-3 transition-colors"
           >
             <Building2 className="text-primary size-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{academy.name}</span>
+              <span className="block truncate text-sm font-medium">{academy?.name}</span>
               <span className="text-muted block truncate text-xs">
-                {[academy.district, academy.region].filter(Boolean).join(' · ')}
+                {[academy?.district, academy?.region].filter(Boolean).join(' · ')}
               </span>
             </span>
-            <span className="text-muted shrink-0 text-xs">{t.roles[roleKey(academy.myRole)]}</span>
+            <span className="text-muted shrink-0 text-xs">{t.roles[roleKey(academy?.myRole)]}</span>
           </Link>
         )}
 
-        {data.player?.coach && (
+        {data?.player?.coach && (
           <Link
-            href={`/players/${data.player.profileId}`}
+            href={`/players/${data?.player.profileId}`}
             className="bg-surface-2 hover:bg-surface-3 flex items-center gap-2 rounded-lg p-3 transition-colors"
           >
             <GraduationCap className="text-primary size-4 shrink-0" aria-hidden />
             <span className="text-muted text-sm">{t.relation.myCoach}</span>
             <span className="ml-auto truncate text-sm font-medium">
-              {data.player.coach.firstName} {data.player.coach.lastName}
+              {data?.player.coach.firstName} {data?.player.coach.lastName}
             </span>
           </Link>
         )}
 
-        {!academy && !data.player?.coach && !data.coach && (
+        {!academy && !data?.player?.coach && !data?.coach && (
           <p className="text-muted flex items-center gap-2 text-sm">
             <Users className="size-4 shrink-0" aria-hidden />
             {t.profile.noAffiliations}

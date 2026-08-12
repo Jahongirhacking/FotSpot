@@ -14,8 +14,8 @@ import { formatDate } from '@/lib/utils';
  * the last person who should be shown a flattering scale.
  */
 export function RatingHistoryChart({ history }: { history: Media[] }) {
-  const points = history.filter((clip) => clip.rating != null);
-  if (points.length === 0) return null;
+  const points = history.filter((clip) => clip?.rating != null);
+  if (points?.length === 0) return null;
 
   const width = 450;
   const height = 196;
@@ -23,12 +23,12 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
   const padY = 25;
 
   const x = (index: number) =>
-    points.length === 1 ? width / 2 : padX + (index / (points.length - 1)) * (width - padX * 2);
+    points?.length === 1 ? width / 2 : padX + (index / (points?.length - 1)) * (width - padX * 2);
   const y = (rating: number) => height - padY - (rating / 100) * (height - padY * 2);
 
-  const line = points.map((clip, index) => `${x(index)},${y(clip.rating!)}`).join(' ');
+  const line = points?.map((clip, index) => `${x(index)},${y(clip.rating!)}`).join(' ');
   const first = points[0].rating!;
-  const last = points[points.length - 1].rating!;
+  const last = points[points?.length - 1].rating!;
   const change = last - first;
 
   return (
@@ -38,7 +38,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
         className="w-full"
         role="img"
         aria-label={points
-          .map((clip) => `${formatDate(clip.createdAt)}: ${clip.rating}`)
+          .map((clip) => `${formatDate(clip?.createdAt)}: ${clip?.rating}`)
           .join('; ')}
       >
         {[0, 50, 100].map((tick) => (
@@ -54,7 +54,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
           />
         ))}
 
-        {points.length > 1 && (
+        {points?.length > 1 && (
           <polyline
             points={line}
             fill="none"
@@ -65,8 +65,8 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
           />
         )}
 
-        {points.map((clip, index) => (
-          <g key={clip.id}>
+        {points?.map((clip, index) => (
+          <g key={clip?.id}>
             <circle cx={x(index)} cy={y(clip.rating!)} r="4" className="fill-prov-self" />
             <text
               x={x(index)}
@@ -74,7 +74,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
               textAnchor="middle"
               className="fill-foreground text-[10px] font-semibold"
             >
-              {clip.rating}
+              {clip?.rating}
             </text>
           </g>
         ))}
@@ -82,13 +82,13 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
 
       <div className="text-muted flex items-center justify-between text-[11px]">
         <span>{formatDate(points[0].createdAt)}</span>
-        {points.length > 1 && (
+        {points?.length > 1 && (
           <span className={change > 0 ? 'text-success' : change < 0 ? 'text-danger' : ''}>
             {change > 0 ? '+' : ''}
             {change}
           </span>
         )}
-        <span>{formatDate(points[points.length - 1].createdAt)}</span>
+        <span>{formatDate(points[points?.length - 1].createdAt)}</span>
       </div>
     </div>
   );

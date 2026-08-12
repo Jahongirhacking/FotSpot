@@ -30,7 +30,7 @@ export default async function AcademiesPage() {
   const list = await academies
     .listPublic(
       undefined,
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 300 },
     )
     .catch(() => []);
 
@@ -64,26 +64,26 @@ export default async function AcademiesPage() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((academy) => (
-            <li key={academy.id}>
+            <li key={academy?.id}>
               <Card className="hover:border-primary/40 h-full transition-colors">
-                <Link href={`/academies/${academy.id}`} className="block">
+                <Link href={`/academies/${academy?.id}`} className="block">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="bg-primary/12 text-primary grid size-10 shrink-0 place-items-center rounded-xl">
                         <Building2 className="size-5" aria-hidden />
                       </div>
-                      {academy.status === 'VERIFIED' && (
+                      {academy?.status === 'VERIFIED' && (
                         <Badge variant="success">{t.profile.verified}</Badge>
                       )}
                     </div>
-                    <p className="mt-3 font-semibold">{academy.name}</p>
+                    <p className="mt-3 font-semibold">{academy?.name}</p>
                     <p className="text-muted mt-0.5 flex items-center gap-1 text-xs">
                       <MapPin className="size-3" aria-hidden />
-                      {academy.region ?? 'Uzbekistan'}
-                      {academy.district ? ` · ${academy.district}` : ''}
+                      {academy?.region ?? 'Uzbekistan'}
+                      {academy?.district ? ` · ${academy?.district}` : ''}
                     </p>
-                    {academy.description && (
-                      <p className="text-muted mt-2 line-clamp-2 text-sm">{academy.description}</p>
+                    {academy?.description && (
+                      <p className="text-muted mt-2 line-clamp-2 text-sm">{academy?.description}</p>
                     )}
                   </CardContent>
                 </Link>

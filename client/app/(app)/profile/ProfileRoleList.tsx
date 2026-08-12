@@ -35,7 +35,7 @@ export function ProfileRoleList({
     <ul className="space-y-2">
       {roles.map((role) => {
         const meta = ROLE_META[role];
-        const Icon = meta.icon;
+        const Icon = meta?.icon;
         const isActive = role === activeRole;
         const copy = labels[role] ?? { label: role, blurb: '' };
 

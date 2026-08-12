@@ -25,7 +25,7 @@ export default async function PlayerDetailsPage() {
   const { t } = await getServerT();
 
   const player = await players
-    .getMine({ token: session.accessToken, cache: 'no-store' })
+    .getMine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null as PlayerProfile | null);
 
   return (
