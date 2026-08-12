@@ -13,15 +13,7 @@ import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { NoteEditor } from '@/components/trials/NoteEditor';
 import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-
-/** `datetime-local` wants `YYYY-MM-DDTHH:mm` in local time, not an ISO string in UTC. */
-function toLocalInput(iso: string) {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`;
-}
+import { toLocalInput } from '@/lib/utils';
 
 /**
  * The host's controls on a published trial.
@@ -51,6 +43,18 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
   const [typedNote, setTypedNote] = React.useState<string | null>(null);
   const note = typedNote ?? htmlToMarkdown(trial?.note);
 
+  /*
+   * Controlled, unlike the rest of the form, because the deadline's ceiling is
+   * whatever the exam date currently says — including after the manager moves it.
+   * Editing is where this matters most: pushing a trial back a week leaves a
+   * deadline that was valid and no longer is.
+   */
+  const [examDate, setExamDate] = React.useState(() => toLocalInput(trial?.date));
+  const [deadline, setDeadline] = React.useState(() =>
+    toLocalInput(trial?.applyDeadline ?? trial?.date),
+  );
+  const deadlineAfterExam = Boolean(examDate && deadline && deadline > examDate);
+
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       browserFetch<Trial>(`/trials/${trial?.id}`, { method: 'PATCH', body }),
@@ -63,12 +67,14 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (deadlineAfterExam) return;
+
     const form = new FormData(event.currentTarget);
     save.mutate({
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
-      date: new Date(String(form.get('date'))).toISOString(),
-      applyDeadline: new Date(String(form.get('applyDeadline'))).toISOString(),
+      date: new Date(examDate).toISOString(),
+      applyDeadline: new Date(deadline).toISOString(),
       note: note.trim() ? sanitizeNote(markdownToHtml(note)) : '',
       ageRangeMin: Number(form.get('ageMin')),
       ageRangeMax: Number(form.get('ageMax')),
@@ -134,7 +140,8 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                   name="date"
                   type="datetime-local"
                   required
-                  defaultValue={toLocalInput(trial?.date)}
+                  value={examDate}
+                  onChange={(event) => setExamDate(event.target.value)}
                 />
               </Field>
             </div>
@@ -144,14 +151,20 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
                 label={t.trials.applyDeadline}
                 htmlFor="edit-deadline"
                 hint={t.trials.applyDeadlineHint}
+                error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
                 required
               >
+                {/* No `min` here, unlike the create form: an existing trial's
+                    deadline may already be in the past, and a bound that made
+                    the current value invalid would block every other edit. */}
                 <Input
                   id="edit-deadline"
                   name="applyDeadline"
                   type="datetime-local"
                   required
-                  defaultValue={toLocalInput(trial?.applyDeadline ?? trial?.date)}
+                  max={examDate || undefined}
+                  value={deadline}
+                  onChange={(event) => setDeadline(event.target.value)}
                 />
               </Field>
             </div>

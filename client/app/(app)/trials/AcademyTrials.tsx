@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
-import { formatDate } from '@/lib/utils';
+import { formatDate, localNowInput } from '@/lib/utils';
 import { TrialHistory } from './TrialHistory';
 import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
 import { NoteEditor } from '@/components/trials/NoteEditor';
@@ -66,6 +66,15 @@ export function AcademyTrials({
    */
   const [ageRange, setAgeRange] = React.useState<[number, number]>([12, 14]);
   const [positions, setPositions] = React.useState<Position[]>([]);
+  /*
+   * The two dates are controlled for one reason: the deadline's ceiling is the
+   * exam date, and an uncontrolled input cannot know what the other one says.
+   * Applications closing after the session has been played is the one
+   * combination the API refuses, and it used to be refusable only by submitting.
+   */
+  const [examDate, setExamDate] = React.useState('');
+  const [deadline, setDeadline] = React.useState('');
+  const deadlineAfterExam = Boolean(examDate && deadline && deadline > examDate);
   const [trials, setTrials] = React.useState(initial);
   /** Null until the manager edits — the academy's default shows through. */
   const [typedNote, setTypedNote] = React.useState<string | null>(null);
@@ -84,6 +93,11 @@ export function AcademyTrials({
     onSuccess: (trial) => {
       setTrials((current) => [trial, ...current]);
       setOpen(false);
+      // The rest of the form is uncontrolled and clears when the panel unmounts;
+      // these two live up here, so a second trial would open on the first one's
+      // dates.
+      setExamDate('');
+      setDeadline('');
       router.refresh();
     },
     meta: { success: t.trials.trialCreated },
@@ -94,14 +108,19 @@ export function AcademyTrials({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // The `max` on the picker already blocks this, but only where the browser
+    // enforces it — and the API refuses it either way, in English, after a round
+    // trip. Cheaper and clearer to say so here.
+    if (deadlineAfterExam) return;
+
     const form = new FormData(event.currentTarget);
     create.mutate({
       // Never PRIVATE. See the note above the component.
       type: 'GENERAL',
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
-      date: new Date(String(form.get('date'))).toISOString(),
-      applyDeadline: new Date(String(form.get('applyDeadline'))).toISOString(),
+      date: new Date(examDate).toISOString(),
+      applyDeadline: new Date(deadline).toISOString(),
       // Both come from controlled inputs now — the age range from a slider and
       // the positions from the pitch — so they are read from state rather than
       // from the form. A typed list of codes was a place to mistype "CV".
@@ -159,7 +178,15 @@ export function AcademyTrials({
                   />
                 </Field>
                 <Field label={t.trials.examDate} htmlFor="trial-date" required>
-                  <Input id="trial-date" name="date" type="datetime-local" required />
+                  <Input
+                    id="trial-date"
+                    name="date"
+                    type="datetime-local"
+                    required
+                    min={localNowInput()}
+                    value={examDate}
+                    onChange={(event) => setExamDate(event.target.value)}
+                  />
                 </Field>
               </div>
 
@@ -167,9 +194,22 @@ export function AcademyTrials({
                 label={t.trials.applyDeadline}
                 htmlFor="trial-deadline"
                 hint={t.trials.applyDeadlineHint}
+                error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
                 required
               >
-                <Input id="trial-deadline" name="applyDeadline" type="datetime-local" required />
+                {/* Capped at the exam date: applications closing after the
+                    session has been played is the one thing the API refuses,
+                    and a picker that cannot offer it beats an error afterwards. */}
+                <Input
+                  id="trial-deadline"
+                  name="applyDeadline"
+                  type="datetime-local"
+                  required
+                  min={localNowInput()}
+                  max={examDate || undefined}
+                  value={deadline}
+                  onChange={(event) => setDeadline(event.target.value)}
+                />
               </Field>
 
               <div className="grid grid-cols-2 gap-3">

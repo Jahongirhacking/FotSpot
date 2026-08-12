@@ -134,15 +134,10 @@ export function InviteToPrivateTrialDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t.trials.examDate} htmlFor="invite-date" required>
-              {/*
-               * `lang="en-GB"` forces the 24-hour clock. The control otherwise
-               * follows the browser's locale and shows AM/PM to English users,
-               * which nobody arranging a football session here writes.
-               */}
+              {/* The 24-hour clock comes from `Input` itself — see Field.tsx. */}
               <Input
                 id="invite-date"
                 type="datetime-local"
-                lang="en-GB"
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required

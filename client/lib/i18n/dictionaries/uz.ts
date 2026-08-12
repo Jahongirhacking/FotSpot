@@ -743,6 +743,7 @@ export const uz = {
     applyDeadline: 'Ariza muddati',
     applyDeadlineHint:
       'Shu vaqtdan keyin hech kim ariza bera olmaydi. Sinov sanasidan keyin bo‘lishi mumkin emas.',
+    deadlineAfterExam: 'Ariza muddati sinov sanasidan keyin bo‘lishi mumkin emas.',
     moveDateWarning:
       'Sanani o‘zgartirsangiz, ariza bergan har bir futbolchiga bildirishnoma boradi.',
     history: 'Tarix',

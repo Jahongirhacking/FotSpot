@@ -63,6 +63,27 @@ export function formatDateTime(value: string | Date): string {
   });
 }
 
+/**
+ * `YYYY-MM-DDTHH:mm` in **local** time — what `<input type="datetime-local">` reads
+ * and writes.
+ *
+ * Not `toISOString().slice(0, 16)`: that is UTC, so a 09:00 trial in Tashkent
+ * comes back into the box as 04:00 and a manager who opens an edit form and saves
+ * without touching the date has just moved their own trial five hours earlier.
+ */
+export function toLocalInput(value: string | Date): string {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+/** Now, in the same shape — for `min` on a picker that should not offer the past. */
+export function localNowInput(): string {
+  return toLocalInput(new Date());
+}
+
 export function relativeTime(value: string | Date): string {
   const diffMs = Date.now() - new Date(value).getTime();
   const minutes = Math.round(diffMs / 60000);

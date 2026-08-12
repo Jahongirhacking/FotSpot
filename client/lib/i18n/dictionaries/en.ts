@@ -711,6 +711,7 @@ export const en: Dictionary = {
     examDate: 'Trial date and time',
     applyDeadline: 'Applications close',
     applyDeadlineHint: 'Nobody can apply after this. It cannot be later than the trial itself.',
+    deadlineAfterExam: 'Applications cannot close after the trial has happened.',
     moveDateWarning: 'Changing the date notifies every player who has applied.',
     history: 'History',
     historyHint:
