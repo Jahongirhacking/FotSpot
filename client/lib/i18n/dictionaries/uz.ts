@@ -636,6 +636,8 @@ export const uz = {
       'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
     onThePitch: 'Maydonda',
     dominantFoot: 'Kuchli oyoq',
+    footLeft: 'Chap',
+    footRight: 'O‘ng',
     attributes: 'Ko‘rsatkichlar',
     findPlayers: 'Futbolchilarni topish',
     searchByName: 'Ism bo‘yicha qidirish',

@@ -606,6 +606,8 @@ export const en: Dictionary = {
     comparedWithinPlain: 'Bars are compared within {band} only — never across age groups.',
     onThePitch: 'On the pitch',
     dominantFoot: 'Dominant foot',
+    footLeft: 'Left',
+    footRight: 'Right',
     attributes: 'Attributes',
     findPlayers: 'Find players',
     searchByName: 'Search by name',

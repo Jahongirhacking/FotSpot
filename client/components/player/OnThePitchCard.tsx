@@ -38,7 +38,7 @@ export function OnThePitchCard({
             <p className="text-muted text-[10px] tracking-wide uppercase">
               {t.player.dominantFoot}
             </p>
-            <DominantFootFigure foot={player?.dominantFoot} />
+            <DominantFootFigure foot={player?.dominantFoot} t={t} />
           </div>
         </div>
 

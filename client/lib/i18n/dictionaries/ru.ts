@@ -605,6 +605,8 @@ export const ru: Dictionary = {
       'Показатели сравниваются только внутри {band}, а не между возрастными группами.',
     onThePitch: 'На поле',
     dominantFoot: 'Сильная нога',
+    footLeft: 'Левая',
+    footRight: 'Правая',
     attributes: 'Показатели',
     findPlayers: 'Найти игроков',
     searchByName: 'Поиск по имени',
