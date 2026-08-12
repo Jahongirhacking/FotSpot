@@ -44,7 +44,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
     system: t.common.themeSystem,
   };
 
-  const Active = OPTIONS.find((option) => option.value === choice)?.icon ?? Monitor;
+  const Active = OPTIONS.find((option) => option?.value === choice)?.icon ?? Monitor;
 
   return (
     <Menu>

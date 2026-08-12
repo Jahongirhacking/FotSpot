@@ -35,7 +35,7 @@ export function PlanQuotaNote({ kind }: { kind: QuotaKind }) {
 
   const copy = MESSAGES[kind];
 
-  if (quota.exceeded) {
+  if (quota?.exceeded) {
     return (
       <Alert tone="warning" title={t.plans.limitReached}>
         {t.plans[copy.none]}
@@ -44,7 +44,7 @@ export function PlanQuotaNote({ kind }: { kind: QuotaKind }) {
   }
 
   return (
-    <p className="text-muted text-xs">{f(t.plans[copy.left], { count: quota.remaining })}</p>
+    <p className="text-muted text-xs">{f(t.plans[copy.left], { count: quota?.remaining })}</p>
   );
 }
 

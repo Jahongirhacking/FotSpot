@@ -16,8 +16,12 @@ import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { TariffsService } from '../tariffs/tariffs.service';
+import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
+import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
+  AddAcademyPhotoDto,
+  SetFeaturedDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -33,6 +37,9 @@ export interface ManagerCredentials {
   username: string;
   password: string;
 }
+
+/** How many of each role an academy may feature. A product decision, not a schema one. */
+const FEATURED_LIMITS = { PLAYER: 10, COACH: 5, SCOUT: 3 } as const;
 
 @Injectable()
 export class AcademiesService {
@@ -380,7 +387,10 @@ export class AcademiesService {
         }),
     );
     if (!academy) throw new NotFoundException('Academy not found');
-    return academy;
+    // The key never leaves the API — same rule as avatars and clips. The URL is
+    // built at read time so changing CDN or provider stays a config change.
+    const { logoKey, ...rest } = academy;
+    return { ...rest, logoUrl: this.storage.publicUrlOrNull(logoKey) };
   }
 
   async listPublic(region?: string) {
@@ -404,10 +414,27 @@ export class AcademiesService {
     // Admins onboard academies (§1.10) and therefore have to be able to correct
     // them; a manager can still edit their own.
     if (!isAdmin) await this.assertManager(userId, academyId);
+    // A key made a round trip through the browser, so re-check it addresses this
+    // academy's own directory before a row points at it.
+    if (dto.logoKey) assertKeyUnder(dto.logoKey, academyMediaPrefix(academyId));
+
+    /*
+     * Social links are normalised and host-checked, never stored as typed.
+     *
+     * These end up in an `href` on a public page, so the platform each one
+     * claims to be has to be the platform it goes to — see social-links.util.ts.
+     */
+    const socials: Record<string, string | null> = {};
+    for (const field of SOCIAL_FIELDS) {
+      const value = dto[field];
+      if (value !== undefined) socials[field] = normaliseSocialUrl(field, value);
+    }
+
     const updated = await this.prisma.academyProfile.update({
       where: { id: academyId },
       data: {
         ...dto,
+        ...socials,
         // The one field that carries markup. Cleaned here because this endpoint
         // is reachable without the editor that cleans it on the way in.
         ...(dto.defaultTrialNote !== undefined
@@ -840,6 +867,168 @@ export class AcademiesService {
       RedisKeys.academyList(undefined),
       ...(region ? [RedisKeys.academyList(region)] : []),
     );
+  }
+
+  /**
+   * A presigned PUT for the academy's own imagery — logo or a gallery photo.
+   *
+   * The key is minted server-side from the academy id, never from anything the
+   * client sent: a caller who could name its own key could write into another
+   * academy's directory, or into a player's.
+   */
+  async imageUploadUrl(userId: string, academyId: string, filename: string) {
+    await this.assertManager(userId, academyId);
+    const storageKey = academyMediaKey(academyId, filename);
+    return this.storage.createUploadUrl(storageKey);
+  }
+
+  /** The gallery, in the order the manager arranged it. */
+  async listPhotos(academyId: string) {
+    const photos = await this.prisma.academyPhoto.findMany({
+      where: { academyId },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    return photos.map((photo) => ({
+      ...photo,
+      url: this.storage.publicUrlOrNull(photo.storageKey),
+    }));
+  }
+
+  async addPhoto(userId: string, academyId: string, dto: AddAcademyPhotoDto) {
+    await this.assertManager(userId, academyId);
+    assertKeyUnder(dto.storageKey, academyMediaPrefix(academyId));
+
+    // Appended to the end. `sortOrder` is dense only by convention — reordering
+    // rewrites it wholesale — so the next slot is simply one past the last.
+    const last = await this.prisma.academyPhoto.findFirst({
+      where: { academyId },
+      orderBy: { sortOrder: 'desc' },
+      select: { sortOrder: true },
+    });
+
+    const photo = await this.prisma.academyPhoto.create({
+      data: {
+        academyId,
+        storageKey: dto.storageKey,
+        caption: dto.caption?.trim() || null,
+        sortOrder: (last?.sortOrder ?? -1) + 1,
+      },
+    });
+    await this.invalidate(academyId);
+    return { ...photo, url: this.storage.publicUrlOrNull(photo.storageKey) };
+  }
+
+  async removePhoto(userId: string, photoId: string) {
+    const photo = await this.prisma.academyPhoto.findUnique({ where: { id: photoId } });
+    if (!photo) throw new NotFoundException('Photo not found');
+    await this.assertManager(userId, photo.academyId);
+
+    await this.prisma.academyPhoto.delete({ where: { id: photoId } });
+    await this.invalidate(photo.academyId);
+    return { removed: true, id: photoId };
+  }
+
+  /** Rewrites the whole order, so dragging and deleting share one code path. */
+  async reorderPhotos(userId: string, academyId: string, ids: string[]) {
+    await this.assertManager(userId, academyId);
+
+    const owned = await this.prisma.academyPhoto.findMany({
+      where: { academyId, id: { in: ids } },
+      select: { id: true },
+    });
+    // Silently reordering somebody else's photo is worse than refusing: the id
+    // came from a client and may name a row from another academy entirely.
+    if (owned.length !== ids.length) {
+      throw new BadRequestException('That list contains a photo from another academy');
+    }
+
+    await this.prisma.$transaction(
+      ids.map((id, index) =>
+        this.prisma.academyPhoto.update({ where: { id }, data: { sortOrder: index } }),
+      ),
+    );
+    await this.invalidate(academyId);
+    return this.listPhotos(academyId);
+  }
+
+  /**
+   * The people this academy features, by role, in the order it chose.
+   *
+   * Joined through the membership so a name and a face come back with each —
+   * the wall is read far more often than it is edited, and a list of ids would
+   * make every reader do the same second query.
+   */
+  async listFeatured(academyId: string) {
+    const rows = await this.prisma.academyFeatured.findMany({
+      where: { academyId },
+      orderBy: [{ role: 'asc' }, { rank: 'asc' }],
+      include: {
+        member: {
+          select: {
+            id: true,
+            role: true,
+            user: {
+              select: { id: true, firstName: true, lastName: true, avatarKey: true },
+            },
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      role: row.role,
+      rank: row.rank,
+      memberId: row.memberId,
+      userId: row.member?.user?.id ?? null,
+      firstName: row.member?.user?.firstName ?? null,
+      lastName: row.member?.user?.lastName ?? null,
+      avatarUrl: this.storage.publicUrlOrNull(row.member?.user?.avatarKey),
+    }));
+  }
+
+  /**
+   * Replaces one role's featured list outright.
+   *
+   * Whole-list rather than add/remove/move, because "these five, in this order"
+   * is the thing the manager decided — and rebuilding makes reordering, removing
+   * and adding one operation with one set of rules instead of three.
+   *
+   * The caps live here rather than in the schema: ten players, five coaches and
+   * three scouts is a product decision that may change, and changing it should
+   * not be a migration.
+   */
+  async setFeatured(userId: string, academyId: string, dto: SetFeaturedDto) {
+    await this.assertManager(userId, academyId);
+
+    const limit = FEATURED_LIMITS[dto.role];
+    const memberIds = [...new Set(dto.memberIds ?? [])];
+    if (memberIds.length > limit) {
+      throw new BadRequestException(
+        `You can feature at most ${limit} ${dto.role.toLowerCase()}s`,
+      );
+    }
+
+    // Everyone featured must actually be on these books, in that role. Without
+    // this a manager could feature a rival's player by pasting a membership id.
+    const members = await this.prisma.academyMember.findMany({
+      where: { id: { in: memberIds }, academyId, role: dto.role, status: { not: 'RELEASED' } },
+      select: { id: true },
+    });
+    if (members.length !== memberIds.length) {
+      throw new BadRequestException('Everyone featured must be an active member in that role');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.academyFeatured.deleteMany({ where: { academyId, role: dto.role } }),
+      ...memberIds.map((memberId, index) =>
+        this.prisma.academyFeatured.create({
+          data: { academyId, role: dto.role, memberId, rank: index + 1 },
+        }),
+      ),
+    ]);
+
+    await this.invalidate(academyId);
+    return this.listFeatured(academyId);
   }
 
   private async assertManager(userId: string, academyId: string) {

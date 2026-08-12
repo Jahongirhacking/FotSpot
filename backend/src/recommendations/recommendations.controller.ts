@@ -3,6 +3,7 @@ import { RecommendationsService } from './recommendations.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -33,8 +34,19 @@ export class RecommendationsController {
 
   @Roles('scout')
   @Get('mine')
-  listMine(@CurrentUser() user: AuthUser) {
-    return this.recommendationsService.listMine(user.userId);
+  listMine(@CurrentUser() user: AuthUser, @Query() dto: PaginationDto) {
+    return this.recommendationsService.listMine(user.userId, dto);
+  }
+
+  /**
+   * Players in this manager's inbox that no coach has been asked about yet.
+   *
+   * Declared before `academy/:academyId`, since Nest matches in declaration
+   * order and would otherwise read "inbox" as an academy id.
+   */
+  @Get('inbox/awaiting-review-count')
+  inboxAwaitingReviewCount(@CurrentUser() user: AuthUser) {
+    return this.recommendationsService.inboxAwaitingReviewCount(user.userId);
   }
 
   @Get('academy/:academyId')
@@ -133,7 +145,7 @@ export class RecommendationsController {
 
   /**
    * A player's recommendation record: who vouched for them, with what weight, and
-   * the decayable public `globalWeight`. Per-academy extras stay in the inbox.
+   * the public `globalWeight`. Per-academy extras stay in the inbox.
    */
   @Public()
   @Get('player/:playerId')

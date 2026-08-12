@@ -21,7 +21,7 @@ export function NotificationBell() {
 
   useNotificationSocket();
 
-  const unread = data?.filter((notification) => !notification.read).length ?? 0;
+  const unread = data?.filter((notification) => !notification?.read).length ?? 0;
 
   return (
     <Link

@@ -9,6 +9,13 @@ export const RedisKeys = {
   playerProfile: (playerId: string) => `player:profile:${playerId}`,
   academyProfile: (academyId: string) => `academy:profile:${academyId}`,
   academyList: (region?: string) => `academy:list:${region ?? 'all'}`,
+  /**
+   * "This viewer has already been counted for this clip."
+   *
+   * `identity` is a user id, or `ip:<address>` for a guest — see
+   * MediaService.recordView.
+   */
+  mediaViewClaim: (mediaId: string, identity: string) => `media:view:${mediaId}:${identity}`,
   scoutRanking: () => 'leaderboard:scouts',
   recommendationRanking: (academyId: string) => `leaderboard:recommendations:${academyId}`,
 } as const;

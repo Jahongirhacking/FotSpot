@@ -20,10 +20,10 @@ export default async function ReviewPage() {
   if (!session) redirect('/login?next=/recommendations/review');
   const { t } = await getServerT();
 
-  const opts = { token: session.accessToken, cache: 'no-store' as const };
+  const opts = { token: session?.accessToken, cache: 'no-store' as const };
   const [pending, decided] = await Promise.all([
-    recommendations.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
-    recommendations.myReviews('DECIDED', opts).catch(() => [] as CoachReview[]),
+    recommendations?.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
+    recommendations?.myReviews('DECIDED', opts).catch(() => [] as CoachReview[]),
   ]);
 
   return (

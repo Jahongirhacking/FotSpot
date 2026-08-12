@@ -73,8 +73,8 @@ export function ShortViewer({
   }, [onClose]);
 
   React.useEffect(() => {
-    if (index >= clips.length - 2) onNeedMore();
-  }, [index, clips.length, onNeedMore]);
+    if (index >= clips?.length - 2) onNeedMore();
+  }, [index, clips?.length, onNeedMore]);
 
   function onScroll() {
     const scroller = scrollerRef.current;
@@ -114,9 +114,9 @@ export function ShortViewer({
         onScroll={onScroll}
         className="h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
-        {clips.map((clip, position) => (
+        {clips?.map((clip, position) => (
           <Slide
-            key={clip.id}
+            key={clip?.id}
             clip={clip}
             active={position === index}
             mounted={Math.abs(position - index) <= 1}
@@ -143,8 +143,8 @@ function Slide({
   const queryClient = useQueryClient();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [paused, setPaused] = React.useState(false);
-  const [liked, setLiked] = React.useState(clip.likedByMe);
-  const [likes, setLikes] = React.useState(clip.likes);
+  const [liked, setLiked] = React.useState(clip?.likedByMe);
+  const [likes, setLikes] = React.useState(clip?.likes);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -155,12 +155,12 @@ function Slide({
 
   const toggleLike = useMutation({
     mutationFn: (next: boolean) =>
-      browserFetch(`/media/${clip.id}/like`, { method: next ? 'POST' : 'DELETE' }),
+      browserFetch(`/media/${clip?.id}/like`, { method: next ? 'POST' : 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed'] }),
     onError: () => {
       // Put the heart back where it was; the server said no.
-      setLiked(clip.likedByMe);
-      setLikes(clip.likes);
+      setLiked(clip?.likedByMe);
+      setLikes(clip?.likes);
     },
   });
 
@@ -179,20 +179,20 @@ function Slide({
         aria-label={paused ? t.clips.play : t.clips.pause}
         className="absolute inset-0 z-0"
       >
-        {clip.url && mounted ? (
+        {clip?.url && mounted ? (
           <video
             ref={videoRef}
-            src={clip.url}
-            poster={clip.posterUrl ?? undefined}
+            src={clip?.url}
+            poster={clip?.posterUrl ?? undefined}
             muted={muted}
             loop
             playsInline
             preload="metadata"
             className="size-full object-contain"
           />
-        ) : clip.posterUrl ? (
+        ) : clip?.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL, not an optimisable asset
-          <img src={clip.posterUrl} alt="" className="size-full object-contain" />
+          <img src={clip?.posterUrl} alt="" className="size-full object-contain" />
         ) : (
           <span className="grid size-full place-items-center text-white/70">
             <TriangleAlert className="size-6" aria-hidden />
@@ -218,19 +218,19 @@ function Slide({
         style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
       >
         <div className="min-w-0 flex-1 space-y-2 text-white">
-          <Link href={`/players/${clip.player.id}`} className="flex items-center gap-2">
+          <Link href={`/players/${clip?.player.id}`} className="flex items-center gap-2">
             <Avatar
-              src={clip.player.avatarUrl}
-              fallback={initials(clip.player.firstName, clip.player.lastName)}
+              src={clip?.player.avatarUrl}
+              fallback={initials(clip?.player.firstName, clip?.player.lastName)}
               className="size-9 ring-2 ring-white/70"
             />
             <span className="truncate text-sm font-semibold">
-              {clip.player.firstName} {clip.player.lastName}
+              {clip?.player.firstName} {clip?.player.lastName}
             </span>
           </Link>
 
-          {clip.title && <p className="text-sm font-medium">{clip.title}</p>}
-          {clip.description && <p className="text-sm text-white/80">{clip.description}</p>}
+          {clip?.title && <p className="text-sm font-medium">{clip?.title}</p>}
+          {clip?.description && <p className="text-sm text-white/80">{clip?.description}</p>}
         </div>
 
         <button

@@ -132,14 +132,14 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
       body: JSON.stringify({ mode: 'email', ...loginBody(values) }),
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setServerError(body.message ?? t.auth.couldNotSignIn);
+    if (!response?.ok) {
+      const body = await response?.json().catch(() => ({}));
+      setServerError(body?.message ?? t.auth.couldNotSignIn);
       return;
     }
     // The login route answers with the roles it just wrote cookies for, which is
     // what decides where this account starts.
-    const { roles } = await response.json().catch(() => ({ roles: [] }));
+    const { roles } = await response?.json().catch(() => ({ roles: [] }));
     afterLogin(roles);
   }
 
@@ -234,17 +234,17 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       body: JSON.stringify(values),
     });
 
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setServerError(body.message ?? t.auth.couldNotSendCode);
+    const body = await response?.json().catch(() => ({}));
+    if (!response?.ok) {
+      setServerError(body?.message ?? t.auth.couldNotSendCode);
       return;
     }
 
-    setPhone(values.phone);
-    codeForm.setValue('phone', values.phone);
+    setPhone(values?.phone);
+    codeForm.setValue('phone', values?.phone);
     // The SMS gateway is a documented stub (backend README): in non-production the
     // API echoes the code back so the flow is testable without SMS credentials.
-    setDevCode(body.devCode ?? null);
+    setDevCode(body?.devCode ?? null);
     setStage('code');
   }
 
@@ -256,12 +256,12 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       body: JSON.stringify({ mode: 'otp', ...values }),
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setServerError(body.message ?? t.auth.codeDidNotWork);
+    if (!response?.ok) {
+      const body = await response?.json().catch(() => ({}));
+      setServerError(body?.message ?? t.auth.codeDidNotWork);
       return;
     }
-    const { roles } = await response.json().catch(() => ({ roles: [] }));
+    const { roles } = await response?.json().catch(() => ({ roles: [] }));
     afterLogin(roles);
   }
 

@@ -115,8 +115,8 @@ export function SquadManager({
     },
   });
 
-  const groups = groupList.data?.groups ?? [];
-  const inTab = (members.data ?? []).filter((member) => member.role === tab);
+  const groups = groupList?.data?.groups ?? [];
+  const inTab = (members?.data ?? []).filter((member) => member?.role === tab);
   const rows = filterMembers(inTab, filters);
 
   return (
@@ -192,13 +192,13 @@ export function SquadManager({
             <MemberFilters members={inTab} role={tab} value={filters} onChange={setFilters} />
           )}
 
-          {rows.length === 0 ? (
+          {rows?.length === 0 ? (
             <EmptyState icon={Users} title={t.academy.noMembers} />
           ) : (
             <ul className="divide-border divide-y">
-              {rows.map((member) => (
+              {rows?.map((member) => (
                 <MemberRow
-                  key={member.id}
+                  key={member?.id}
                   member={member}
                   controls={{ academyId, groups, onChanged: refresh }}
                 />
@@ -262,27 +262,27 @@ export function SquadManager({
           >
             <Users className="text-muted size-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-sm">{t.nav.reserve}</span>
-            <Badge variant="neutral">{groupList.data?.reserveCount ?? 0}</Badge>
+            <Badge variant="neutral">{groupList?.data?.reserveCount ?? 0}</Badge>
           </Link>
 
           {/* The whole row is the link: editing and deleting live on the group's
               own page, where they are a decision rather than a stray click. */}
-          {groups.map((group) => (
+          {groups?.map((group) => (
             <Link
-              key={group.id}
-              href={`/academies/mine/groups/${group.id}`}
+              key={group?.id}
+              href={`/academies/mine/groups/${group?.id}`}
               className="border-border hover:bg-surface-2 flex items-center gap-2 rounded-lg border p-2 transition-colors"
             >
-              {group.imageUrl ? (
+              {group?.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL
-                <img src={group.imageUrl} alt="" className="size-8 shrink-0 rounded object-cover" />
+                <img src={group?.imageUrl} alt="" className="size-8 shrink-0 rounded object-cover" />
               ) : (
                 <span className="bg-surface-3 grid size-8 shrink-0 place-items-center rounded">
                   <Users className="text-muted size-4" aria-hidden />
                 </span>
               )}
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</span>
-              <Badge variant="neutral">{group.memberCount}</Badge>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{group?.name}</span>
+              <Badge variant="neutral">{group?.memberCount}</Badge>
             </Link>
           ))}
         </CardContent>

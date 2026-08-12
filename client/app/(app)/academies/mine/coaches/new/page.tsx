@@ -25,7 +25,7 @@ export default async function NewCoachPage() {
   const { t } = await getServerT();
 
   const academy = await academies
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null);
 
   if (!academy) {
@@ -52,7 +52,7 @@ export default async function NewCoachPage() {
         <p className="text-muted text-sm">{t.academy.addCoachHint}</p>
       </header>
 
-      <AddCoach academyId={academy.id} defaultOpen />
+      <AddCoach academyId={academy?.id} defaultOpen />
     </div>
   );
 }

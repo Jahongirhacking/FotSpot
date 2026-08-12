@@ -13,8 +13,10 @@ import {
 } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { ClientInfoParam, type ClientInfo } from '../common/decorators/client-info.decorator';
 import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { Throttle } from '../common/decorators/throttle.decorator';
 import {
   ConfirmUploadDto,
   FeedDto,
@@ -72,6 +74,10 @@ export class MediaController {
    * Declared before `player/:playerId` and `:id`, since Nest matches in
    * declaration order.
    */
+  // The ranking joins four tables and aggregates two of them in full. Thirty a
+  // minute is far more paging than a person does and a fraction of what it takes
+  // to make the database the bottleneck.
+  @Throttle({ limit: 30, windowSeconds: 60 })
   @Get('feed')
   feed(@CurrentUser() user: AuthUser, @Query() dto: FeedDto) {
     return this.mediaService.feed(user.userId, dto);
@@ -91,8 +97,12 @@ export class MediaController {
    */
   @Public()
   @Get('player/:playerId')
-  listForPlayer(@Param('playerId') playerId: string, @Query() dto: ListPlayerMediaDto) {
-    return this.mediaService.listForPlayer(playerId, dto);
+  listForPlayer(
+    @Param('playerId') playerId: string,
+    @Query() dto: ListPlayerMediaDto,
+    @OptionalUser() viewerUserId?: string,
+  ) {
+    return this.mediaService.listForPlayer(playerId, dto, viewerUserId);
   }
 
   /** The uploader corrects their own clip's title, description or rating. */
@@ -133,11 +143,19 @@ export class MediaController {
   // ---- Views (1.14). Public: guests may view public media (1.2), so the view
   // counter must accept them; @OptionalUser attributes it when a token is present.
 
+  // Unauthenticated *and* it writes a row, which is the combination worth being
+  // careful about. The service also claims one view per viewer per hour, so this
+  // number bounds the requests and that bounds what they can persist.
+  @Throttle({ limit: 60, windowSeconds: 60 })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post(':id/view')
-  recordView(@Param('id') id: string, @OptionalUser() userId?: string) {
-    return this.mediaService.recordView(id, userId);
+  recordView(
+    @Param('id') id: string,
+    @ClientInfoParam() client: ClientInfo,
+    @OptionalUser() userId?: string,
+  ) {
+    return this.mediaService.recordView(id, { userId, ipAddress: client.ipAddress });
   }
 
   /** Counts, plus `likedByMe` when a token is present — one like per account. */

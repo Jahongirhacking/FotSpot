@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('moderation')
@@ -18,8 +19,8 @@ export class ModerationController {
 
   @Roles('admin', 'super_admin')
   @Get('reports/pending')
-  listPending() {
-    return this.moderationService.listPending();
+  listPending(@Query() dto: PaginationDto) {
+    return this.moderationService.listPending(dto);
   }
 
   @Roles('admin', 'super_admin')

@@ -25,12 +25,12 @@ export function CredibilityMeter({ value, t }: { value: number; t: Dictionary })
 
   return (
     <div className="shrink-0 text-right">
-      <Badge variant={meta.variant}>{meta.label}</Badge>
+      <Badge variant={meta?.variant}>{meta?.label}</Badge>
       <p
         className={cn('text-muted mt-1 font-mono text-xs')}
         title={t.recommendations.credibilityHint}
       >
-        {value.toFixed(1)}
+        {value?.toFixed(1)}
       </p>
     </div>
   );

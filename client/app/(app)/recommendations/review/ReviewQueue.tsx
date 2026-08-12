@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ClipboardCheck, TriangleAlert, Video, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import type { Page } from '@/lib/api/client';
 import type { CoachReview, Media } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ClipTile } from '@/components/player/ClipTile';
@@ -89,10 +90,10 @@ export function ReviewQueue({
       ) : (
         (pending.data ?? []).map((review) => (
           <ReviewCard
-            key={review.id}
+            key={review?.id}
             review={review}
             pending={decide.isPending}
-            onDecide={(body) => decide.mutate({ id: review.id, body })}
+            onDecide={(body) => decide.mutate({ id: review?.id, body })}
           />
         ))
       )}
@@ -105,18 +106,18 @@ export function ReviewQueue({
           <CardContent className="p-2">
             <ul className="divide-border divide-y">
               {(decided.data ?? []).map((review) => (
-                <li key={review.id} className="flex flex-wrap items-center gap-3 p-2">
+                <li key={review?.id} className="flex flex-wrap items-center gap-3 p-2">
                   <Link
-                    href={`/players/${review.player?.id ?? ''}`}
+                    href={`/players/${review?.player?.id ?? ''}`}
                     className="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
                   >
-                    {review.player?.firstName} {review.player?.lastName}
+                    {review?.player?.firstName} {review?.player?.lastName}
                   </Link>
                   <span className="text-muted text-xs">
-                    {review.decidedAt && formatDate(review.decidedAt)}
+                    {review?.decidedAt && formatDate(review?.decidedAt)}
                   </span>
-                  <Badge variant={review.status === 'APPROVED' ? 'success' : 'neutral'}>
-                    {review.status === 'APPROVED'
+                  <Badge variant={review?.status === 'APPROVED' ? 'success' : 'neutral'}>
+                    {review?.status === 'APPROVED'
                       ? t.recommendations.approved
                       : t.recommendations.rejected}
                   </Badge>
@@ -143,7 +144,7 @@ function ReviewCard({
   // The player hangs off the review, not the recommendation — a review the
   // academy started itself has no recommendation, and the coach still has to see
   // whose profile they are reading.
-  const player = review.player;
+  const player = review?.player;
   const [note, setNote] = React.useState('');
   const [openClipId, setOpenClipId] = React.useState<string | null>(null);
   const [confirming, setConfirming] = React.useState<'APPROVED' | 'REJECTED' | null>(null);
@@ -151,11 +152,14 @@ function ReviewCard({
   // The clips are the evidence; without them the sliders are guesswork.
   const clips = useQuery({
     queryKey: ['player-clips', player?.id],
-    queryFn: () => browserFetch<Media[]>(`/media/player/${player?.id}`),
+    // Paginated now; the review panel wants the newest page, which is what the
+    // bars are drawn from anyway.
+    queryFn: () =>
+      browserFetch<Page<Media>>(`/media/player/${player?.id}`).then((page) => page.items),
     enabled: Boolean(player?.id),
   });
 
-  const openClip = (clips.data ?? []).find((clip) => clip.id === openClipId) ?? null;
+  const openClip = (clips?.data ?? []).find((clip) => clip?.id === openClipId) ?? null;
 
   return (
     <Card>
@@ -171,35 +175,35 @@ function ReviewCard({
             <p className="text-muted truncate text-xs">
               {[
                 player?.primaryPosition,
-                player?.birthDate && ageBand(player.birthDate),
+                player?.birthDate && ageBand(player?.birthDate),
                 player?.region,
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
-          <Badge variant="neutral">{review.academy?.name}</Badge>
+          <Badge variant="neutral">{review?.academy?.name}</Badge>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {(clips.data ?? []).length === 0 ? (
+        {(clips?.data ?? []).length === 0 ? (
           <p className="text-muted flex items-center gap-1.5 text-sm">
             <Video className="size-4" aria-hidden /> {t.recommendations.noClips}
           </p>
         ) : (
           <ul className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:grid-cols-4">
-            {(clips.data ?? []).map((clip) => (
-              <li key={clip.id}>
-                <ClipTile clip={clip} onOpen={() => setOpenClipId(clip.id)} />
+            {(clips?.data ?? []).map((clip) => (
+              <li key={clip?.id}>
+                <ClipTile clip={clip} onOpen={() => setOpenClipId(clip?.id)} />
               </li>
             ))}
           </ul>
         )}
 
-        <Field label={t.recommendations.coachNote} htmlFor={`${review.id}-note`}>
+        <Field label={t.recommendations.coachNote} htmlFor={`${review?.id}-note`}>
           <Textarea
-            id={`${review.id}-note`}
+            id={`${review?.id}-note`}
             value={note}
             maxLength={1000}
             onChange={(event) => setNote(event.target.value)}

@@ -39,6 +39,8 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       tone: string;
       href?: string;
       idKey?: string;
+      /** Overrides `href` from the payload; falls back when it returns undefined. */
+      hrefFor?: (payload: Record<string, unknown> | null | undefined) => string | undefined;
     }
   > = {
     // Answering this is the point of it, so it opens the screen where the answer
@@ -49,11 +51,24 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       tone: 'text-primary',
       href: '/invitations?action=JOIN_ACADEMY',
     },
+    /*
+     * A yes from a scout opens their profile, not the squad list.
+     *
+     * The manager's next act is on that page — endorsing them — and landing on
+     * a roster of forty names and asking them to find the one who just answered
+     * is the kind of small friction that stops the second step happening at all.
+     * Everybody else still goes to the squad, where their row is the thing to
+     * look at.
+     */
     ACADEMY_JOIN_ANSWER: {
       icon: Users,
       title: t.notifications.joinAnswer,
       tone: 'text-info',
       href: '/academies/mine/squad',
+      hrefFor: (payload) =>
+        payload?.role === 'SCOUT' && typeof payload.userId === 'string'
+          ? `/scouts/${payload?.userId}`
+          : undefined,
     },
     ACADEMY_INVITATION: {
       icon: Building2,
@@ -147,9 +162,9 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
-  const unread = (data ?? []).filter((notification) => !notification.read).length;
+  const unread = (data ?? []).filter((notification) => !notification?.read).length;
 
-  if (!data || data.length === 0) {
+  if (!data || data?.length === 0) {
     return (
       <EmptyState
         icon={BellOff}
@@ -177,21 +192,23 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       )}
 
       <ul className="space-y-2">
-        {data.map((notification) => {
+        {data?.map((notification) => {
           // A notification the client does not know about is still news worth
           // showing — falling through to `undefined` here used to crash the page.
-          const meta = EVENT_META[notification.event] ?? {
+          const meta = EVENT_META[notification?.event] ?? {
             ...FALLBACK,
             title: t.notifications.title,
           };
-          const Icon = meta.icon;
-          const href = meta.href
-            ? meta.idKey
-              ? `${meta.href}/${notification.payload?.[meta.idKey]}`
-              : meta.href
-            : null;
+          const Icon = meta?.icon;
+          const href =
+            meta?.hrefFor?.(notification?.payload) ??
+            (meta?.href
+              ? meta?.idKey
+                ? `${meta?.href}/${notification?.payload?.[meta?.idKey]}`
+                : meta?.href
+              : null);
 
-          const detail = [notification.payload?.academyName, notification.payload?.note]
+          const detail = [notification?.payload?.academyName, notification?.payload?.note]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)
             .join(' · ');
 
@@ -204,29 +221,29 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
            * simply has no byline rather than an empty one.
            */
           const actorName =
-            [notification.actor?.firstName, notification.actor?.lastName]
+            [notification?.actor?.firstName, notification?.actor?.lastName]
               .filter(Boolean)
               .join(' ') ||
-            notification.actor?.username ||
+            notification?.actor?.username ||
             null;
-          const actorRole = notification.actorRole
-            ? (t.roles[notification.actorRole as keyof typeof t.roles] ?? notification.actorRole)
+          const actorRole = notification?.actorRole
+            ? (t.roles[notification?.actorRole as keyof typeof t.roles] ?? notification?.actorRole)
             : null;
 
           const card = (
-            <Card className={cn(!notification.read && 'border-primary/30 bg-primary/[0.03]')}>
+            <Card className={cn(!notification?.read && 'border-primary/30 bg-primary/[0.03]')}>
               <CardContent className="flex items-start gap-3 p-4">
-                <Icon className={cn('mt-0.5 size-5 shrink-0', meta.tone)} aria-hidden />
+                <Icon className={cn('mt-0.5 size-5 shrink-0', meta?.tone)} aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{meta.title}</p>
+                  <p className="font-medium">{meta?.title}</p>
 
                   {actorName && (
                     <p className="text-muted mt-0.5 flex items-center gap-1.5 truncate text-sm">
                       <Avatar
-                        src={notification.actor?.avatarUrl ?? null}
+                        src={notification?.actor?.avatarUrl ?? null}
                         fallback={initials(
-                          notification.actor?.firstName ?? '',
-                          notification.actor?.lastName ?? '',
+                          notification?.actor?.firstName ?? '',
+                          notification?.actor?.lastName ?? '',
                         )}
                         className="size-4"
                       />
@@ -242,18 +259,18 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
                   {/* The exact moment as well as the friendly one: "2 days ago" is
                     easier to read and useless for working out which morning. */}
                   <p className="text-muted mt-0.5 text-xs">
-                    <time dateTime={notification.createdAt}>
-                      {formatDateTime(notification.createdAt)}
+                    <time dateTime={notification?.createdAt}>
+                      {formatDateTime(notification?.createdAt)}
                     </time>
                     {' · '}
-                    {relativeTime(notification.createdAt)}
+                    {relativeTime(notification?.createdAt)}
                   </p>
                 </div>
-                {!notification.read && (
+                {!notification?.read && (
                   <button
                     type="button"
                     onClick={(event) => {
-                      markRead.mutate(notification.id);
+                      markRead.mutate(notification?.id);
                       event.stopPropagation();
                     }}
                     className="text-primary shrink-0 text-xs font-medium hover:underline"
@@ -266,11 +283,11 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
           );
 
           return (
-            <li key={notification.id}>
+            <li key={notification?.id}>
               {href ? (
                 <Link
                   href={href}
-                  onClick={() => !notification.read && markRead.mutate(notification.id)}
+                  onClick={() => !notification?.read && markRead.mutate(notification?.id)}
                 >
                   {card}
                 </Link>

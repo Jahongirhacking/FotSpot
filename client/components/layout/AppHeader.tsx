@@ -1,5 +1,7 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { browserFetch } from '@/lib/api/browser';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,42 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
 
   const nav = navForRole(activeRole);
 
+  /*
+   * The Trials badge.
+   *
+   * Polled rather than pushed: a new trial is not urgent enough for a socket
+   * message, and the notifications gateway is deliberately scoped to
+   * notifications (§1.17). `staleTime` matches the interval so a route change
+   * does not refetch on top of the poll.
+   *
+   * Guests have no "since" to compare against, so it is not asked for at all.
+   */
+  const { data: unseenTrials } = useQuery({
+    queryKey: ['trials-unseen'],
+    queryFn: () => browserFetch<{ count: number }>('/trials/unseen-count'),
+    enabled: isAuthenticated,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  /*
+   * The Inbox badge: players nobody has been asked about yet.
+   *
+   * Only fetched while acting as a manager, since Inbox is only in that menu —
+   * asking as a player would be a request whose answer is always zero.
+   */
+  const { data: inbox } = useQuery({
+    queryKey: ['inbox-awaiting-review'],
+    queryFn: () => browserFetch<{ count: number }>('/recommendations/inbox/awaiting-review-count'),
+    enabled: isAuthenticated && activeRole === 'academy_manager',
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  /** Which menu entries carry a count, so the two lists below stay in step. */
+  const badgeFor = (label: string) =>
+    label === 'trials' ? unseenTrials?.count : label === 'inbox' ? inbox?.count : undefined;
+
   return (
     <header className="bg-surface/85 border-border sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-2 py-2.5 sm:gap-2 sm:px-4">
@@ -60,11 +98,12 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
           {nav.map((item) => (
             <NavLink
-              key={item.href}
-              href={item.href}
-              label={t.nav[item.label]}
-              icon={item.icon}
-              active={isActive(pathname, item.href)}
+              key={item?.href}
+              href={item?.href}
+              label={t.nav[item?.label]}
+              icon={item?.icon}
+              active={isActive(pathname, item?.href)}
+              badge={badgeFor(item?.label)}
             />
           ))}
         </nav>
@@ -102,11 +141,11 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         >
           {nav.map((item) => (
             <NavLink
-              key={item.href}
-              href={item.href}
-              label={t.nav[item.label]}
-              icon={item.icon}
-              active={isActive(pathname, item.href)}
+              key={item?.href}
+              href={item?.href}
+              label={t.nav[item?.label]}
+              icon={item?.icon}
+              active={isActive(pathname, item?.href)}
               mobile
             />
           ))}
@@ -126,12 +165,15 @@ function NavLink({
   icon: Icon,
   active,
   mobile,
+  badge,
 }: {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   mobile?: boolean;
+  /** How many new things wait behind this link. Hidden at zero. */
+  badge?: number;
 }) {
   return (
     <Link
@@ -147,6 +189,13 @@ function NavLink({
     >
       <Icon className="size-4 shrink-0" />
       {label}
+      {/* Capped at 9+: past a handful the exact number stops being information
+          and starts being a wide pill that pushes the menu around. */}
+      {badge != null && badge > 0 && (
+        <span className="bg-primary ml-0.5 grid min-w-5 shrink-0 place-items-center rounded-full px-1.5 py-0.5 text-[10px] leading-none font-bold text-white">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
     </Link>
   );
 }

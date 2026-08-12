@@ -25,8 +25,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const trial = await trials.getById(id, { revalidate: 300 });
-    return { title: trial.title };
+    const trial = await trials?.getById(id, { revalidate: 300 });
+    return { title: trial?.title };
   } catch {
     return { title: 'Trial' };
   }
@@ -39,9 +39,9 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
 
   let trial: Trial;
   try {
-    trial = await trials.getById(
+    trial = await trials?.getById(
       id,
-      session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 300 },
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 300 },
     );
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
@@ -49,10 +49,10 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
   }
 
   const applications = session
-    ? await trials.myApplications({ token: session.accessToken, cache: 'no-store' }).catch(() => [])
+    ? await trials?.myApplications({ token: session?.accessToken, cache: 'no-store' }).catch(() => [])
     : [];
 
-  const existing = applications.find((application) => application.trialId === id);
+  const existing = applications?.find((application) => application?.trialId === id);
 
   /*
    * The hosting academy sees who applied; everyone else sees the apply button.
@@ -61,10 +61,10 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
    * view, not a manager's.
    */
   const [academy, relation, coaching] = await Promise.all([
-    academies.getById(trial.academyId, { revalidate: 300 }).catch(() => null),
+    academies.getById(trial?.academyId, { revalidate: 300 }).catch(() => null),
     session
       ? academies
-          .relation(trial.academyId, { token: session.accessToken, cache: 'no-store' })
+          .relation(trial?.academyId, { token: session?.accessToken, cache: 'no-store' })
           .catch(() => null)
       : null,
     /*
@@ -73,11 +73,11 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
      * user id, and this is the same question in one request.
      */
     session?.activeRole === 'coach'
-      ? trials.myCoaching({ token: session.accessToken, cache: 'no-store' }).catch(() => [])
+      ? trials?.myCoaching({ token: session?.accessToken, cache: 'no-store' }).catch(() => [])
       : [],
   ]);
   const hosts = relation?.relation === 'MANAGER';
-  const works = coaching.some((assigned) => assigned.id === id);
+  const works = coaching?.some((assigned) => assigned.id === id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -85,43 +85,43 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap items-center gap-2">
           {/* A private trial states no age range: it is for one named child who
               was already chosen, so there is no rule to show them. */}
-          {trial.ageRangeMin != null && trial.ageRangeMax != null && (
+          {trial?.ageRangeMin != null && trial?.ageRangeMax != null && (
             <Badge variant="primary">
-              {t.trials.ages} {trial.ageRangeMin}–{trial.ageRangeMax}
+              {t.trials.ages} {trial?.ageRangeMin}–{trial?.ageRangeMax}
             </Badge>
           )}
-          {trial.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
-          {trial.status === 'ARCHIVED' && (
+          {trial?.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
+          {trial?.status === 'ARCHIVED' && (
             <Badge variant="neutral">{t.trials.statusArchived}</Badge>
           )}
         </div>
-        <h1 className="mt-2 text-2xl font-bold">{trial.title}</h1>
+        <h1 className="mt-2 text-2xl font-bold">{trial?.title}</h1>
         <dl className="text-muted mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <div className="flex items-center gap-1.5">
             <CalendarDays className="size-4" aria-hidden />
             <dt className="sr-only">{t.trials.examDate}</dt>
-            <dd>{formatDate(trial.date)}</dd>
+            <dd>{formatDate(trial?.date)}</dd>
           </div>
           {/* The two dates are different promises — when to turn up, and by when
               to say you are coming — so both are on the page, not just the one. */}
-          {trial.applyDeadline && (
+          {trial?.applyDeadline && (
             <div className="flex items-center gap-1.5">
               <Hourglass className="size-4" aria-hidden />
               <dt className="sr-only">{t.trials.applyDeadline}</dt>
               <dd>
-                {t.trials.applyDeadline}: {formatDate(trial.applyDeadline)}
+                {t.trials.applyDeadline}: {formatDate(trial?.applyDeadline)}
               </dd>
             </div>
           )}
           <div className="flex items-center gap-1.5">
             <MapPin className="size-4" aria-hidden />
             <dt className="sr-only">{t.trials.location}</dt>
-            <dd>{trial.location}</dd>
+            <dd>{trial?.location}</dd>
           </div>
         </dl>
         <p className="text-muted mt-2 text-sm">
           {t.academy.hostedBy}{' '}
-          <Link href={`/academies/${trial.academyId}`} className="text-primary hover:underline">
+          <Link href={`/academies/${trial?.academyId}`} className="text-primary hover:underline">
             {academy?.name ?? t.nav.academies}
           </Link>
         </p>
@@ -131,32 +131,32 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="text-primary size-4" aria-hidden />
-            {trial.positions.length > 0 ? t.trials.positionsWanted : t.trials.aboutThisTrial}
+            {trial?.positions.length > 0 ? t.trials.positionsWanted : t.trials.aboutThisTrial}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {trial.positions.length > 0 && (
+          {trial?.positions.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {trial.positions.map((position) => (
+              {trial?.positions.map((position) => (
                 <Badge key={position} variant="neutral" className="font-mono">
                   {position}
                 </Badge>
               ))}
             </div>
           )}
-          {trial.requirements && (
+          {trial?.requirements && (
             <div>
               <h2 className="mb-1 text-sm font-medium">{t.trials.whatToBring}</h2>
-              <p className="text-muted text-sm">{trial.requirements}</p>
+              <p className="text-muted text-sm">{trial?.requirements}</p>
             </div>
           )}
 
           {/* The academy's note, rendered through the one component allowed to
               hand HTML to the DOM — see TrialNote for what guards it. */}
-          {trial.note && (
+          {trial?.note && (
             <div>
               <h2 className="mb-1 text-sm font-medium">{t.notes.playerNote}</h2>
-              <TrialNote html={trial.note} />
+              <TrialNote html={trial?.note} />
             </div>
           )}
         </CardContent>
@@ -165,27 +165,27 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       {hosts ? (
         <>
           <TrialAdmin trial={trial} />
-          <TrialStaff trial={trial} academyId={trial.academyId} />
+          <TrialStaff trial={trial} academyId={trial?.academyId} />
           <Applicants trial={trial} />
         </>
       ) : works ? (
         /* A coach on this trial gets the sheet and the verdict, and nothing
            administrative — the staff list and the squad are the manager's. */
         <CoachSheet trial={trial} />
-      ) : trial.status === 'ARCHIVED' ? (
+      ) : trial?.status === 'ARCHIVED' ? (
         /* Applying would be refused by the server, so the button is replaced by
            the reason rather than left to fail under the press. */
         <Alert tone="warning">{t.trials.closedToApplications}</Alert>
       ) : (
         <ApplyToTrialButton
-          trialId={trial.id}
+          trialId={trial?.id}
           existingStatus={existing?.status ?? null}
           ageRange={
-            trial.ageRangeMin != null && trial.ageRangeMax != null
-              ? { min: trial.ageRangeMin, max: trial.ageRangeMax }
+            trial?.ageRangeMin != null && trial?.ageRangeMax != null
+              ? { min: trial?.ageRangeMin, max: trial?.ageRangeMax }
               : null
           }
-          applyDeadline={trial.applyDeadline}
+          applyDeadline={trial?.applyDeadline}
         />
       )}
     </div>

@@ -127,9 +127,9 @@ export default async function RootLayout({
           session={
             session
               ? {
-                  roles: session.roles,
-                  activeRole: session.activeRole,
-                  onboarded: session.onboarded,
+                  roles: session?.roles,
+                  activeRole: session?.activeRole,
+                  onboarded: session?.onboarded,
                 }
               : null
           }

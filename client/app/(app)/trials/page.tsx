@@ -5,6 +5,7 @@ import { academies, recommendations, trials } from '@/lib/api/resources';
 import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MyTrialInvitations } from './MyTrialInvitations';
+import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
@@ -33,14 +34,15 @@ export default async function TrialsPage() {
    * and also has a player profile still sees the board while wearing that hat.
    */
   if (session?.activeRole === 'coach') {
-    const opts = { token: session.accessToken, cache: 'no-store' as const };
+    const opts = { token: session?.accessToken, cache: 'no-store' as const };
     const [coaching, pending] = await Promise.all([
-      trials.myCoaching(opts).catch(() => [] as CoachTrial[]),
-      recommendations.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
+      trials?.myCoaching(opts).catch(() => [] as CoachTrial[]),
+      recommendations?.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
     ]);
 
     return (
       <div className="space-y-6">
+        {session && <MarkTrialsSeen />}
         <header>
           <h1 className="text-xl font-bold">{t.nav.trials}</h1>
           <p className="text-muted text-sm">{t.trials.coachTrialsHint}</p>
@@ -51,7 +53,7 @@ export default async function TrialsPage() {
   }
 
   const list = await trials
-    .listUpcoming(session ? { token: session.accessToken, cache: 'no-store' } : { revalidate: 120 })
+    .listUpcoming(session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 })
     .catch(() => []);
 
   /*
@@ -64,7 +66,7 @@ export default async function TrialsPage() {
    */
   const managed =
     session?.activeRole === 'academy_manager'
-      ? await academies.mine({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+      ? await academies.mine({ token: session?.accessToken, cache: 'no-store' }).catch(() => null)
       : null;
   const managedTrials = managed
     ? await trials
@@ -74,6 +76,8 @@ export default async function TrialsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Guests have no badge to clear, so it is only mounted for a session. */}
+      {session && <MarkTrialsSeen />}
       <header>
         <h1 className="text-xl font-bold">{t.trials.openTrials}</h1>
         <p className="text-muted text-sm">{t.trials.openTrialsHint}</p>
@@ -101,33 +105,33 @@ export default async function TrialsPage() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {list.map((trial) => (
-            <li key={trial.id}>
+            <li key={trial?.id}>
               <Card className="hover:border-primary/40 h-full transition-colors">
-                <Link href={`/trials/${trial.id}`} className="block">
+                <Link href={`/trials/${trial?.id}`} className="block">
                   <CardContent className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold">{trial.title}</p>
+                      <p className="font-semibold">{trial?.title}</p>
                       <Badge variant="primary" className="shrink-0">
-                        U{trial.ageRangeMax}
+                        U{trial?.ageRangeMax}
                       </Badge>
                     </div>
                     <dl className="text-muted space-y-1 text-xs">
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" aria-hidden />
                         <dt className="sr-only">Date</dt>
-                        <dd>{formatDate(trial.date)}</dd>
+                        <dd>{formatDate(trial?.date)}</dd>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <MapPin className="size-3.5" aria-hidden />
                         <dt className="sr-only">{t.trials.location}</dt>
-                        <dd>{trial.location}</dd>
+                        <dd>{trial?.location}</dd>
                       </div>
                     </dl>
                     <div className="flex flex-wrap gap-1.5">
                       <Badge variant="outline">
-                        Ages {trial.ageRangeMin}–{trial.ageRangeMax}
+                        Ages {trial?.ageRangeMin}–{trial?.ageRangeMax}
                       </Badge>
-                      {trial.positions.slice(0, 4).map((position) => (
+                      {trial?.positions.slice(0, 4).map((position) => (
                         <Badge key={position} variant="neutral" className="font-mono">
                           {position}
                         </Badge>

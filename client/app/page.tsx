@@ -35,18 +35,18 @@ export default async function LandingPage() {
 
   // Every fetch is optional: this page must render with the API down.
   const [recent, academyList, trialList, clips] = await Promise.all([
-    players.search({ pageSize: 6 }, { revalidate: 600 }).catch(() => ({
+    players?.search({ pageSize: 6 }, { revalidate: 600 }).catch(() => ({
       items: [] as PlayerProfile[],
       total: 0,
       page: 1,
       pageSize: 6,
     })),
     academies.listPublic(undefined, { revalidate: 600 }).catch(() => []),
-    trials.listUpcoming({ revalidate: 600 }).catch(() => []),
+    trials?.listUpcoming({ revalidate: 600 }).catch(() => []),
     // One request for the strip. This used to fetch a page of players and then
     // one media request per player — seven round trips, on the most-visited page
     // in the product, for visitors on the worst connections it ever serves.
-    media.listRecent(8, { revalidate: 600 }).catch(() => [] as RecentClip[]),
+    media?.listRecent(8, { revalidate: 600 }).catch(() => [] as RecentClip[]),
   ]);
 
   const cta = await resolvePlayerCta(session);
@@ -149,12 +149,12 @@ export default async function LandingPage() {
 
         {/* Live counts — an empty marketplace is the honest early state, so these
             only render once there is something to show. */}
-        {(recent.total > 0 || academyList.length > 0 || trialList.length > 0) && (
+        {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
           <section className="mx-auto max-w-6xl px-4 pb-8">
             <dl className="grid grid-cols-3 gap-3">
               <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
-              <Stat icon={Building2} label={t.landing.statAcademies} value={academyList.length} />
-              <Stat icon={CalendarDays} label={t.landing.statTrials} value={trialList.length} />
+              <Stat icon={Building2} label={t.landing.statAcademies} value={academyList?.length} />
+              <Stat icon={CalendarDays} label={t.landing.statTrials} value={trialList?.length} />
             </dl>
           </section>
         )}
@@ -174,7 +174,7 @@ export default async function LandingPage() {
             </Button>
           </div>
 
-          {clips.length === 0 ? (
+          {clips?.length === 0 ? (
             <Card>
               <CardContent className="text-muted flex items-center gap-3 p-5 text-sm">
                 <FootballBall className="size-8" />
@@ -183,10 +183,10 @@ export default async function LandingPage() {
             </Card>
           ) : (
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {clips.map((item) => (
-                <li key={item.id}>
+              {clips?.map((item) => (
+                <li key={item?.id}>
                   <Link
-                    href={`/players/${item.player.id}`}
+                    href={`/players/${item?.player.id}`}
                     className="group border-border bg-surface hover:border-primary/40 rounded-card block overflow-hidden border transition-colors"
                   >
                     <div className="bg-surface-2 relative aspect-video">
@@ -200,7 +200,7 @@ export default async function LandingPage() {
                         variant="neutral"
                         className="bg-surface/85 absolute top-2 left-2 backdrop-blur"
                       >
-                        {humanizeEnum(item.category)}
+                        {humanizeEnum(item?.category)}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 p-2.5">
@@ -208,13 +208,13 @@ export default async function LandingPage() {
                         className="bg-primary/15 text-primary grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold"
                         aria-hidden
                       >
-                        {initials(item.player.firstName, item.player.lastName)}
+                        {initials(item?.player.firstName, item?.player.lastName)}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                        {item.player.firstName} {item.player.lastName}
+                        {item?.player.firstName} {item?.player.lastName}
                       </span>
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {ageBand(item.player.birthDate)}
+                        {ageBand(item?.player.birthDate)}
                       </Badge>
                     </div>
                   </Link>
@@ -229,18 +229,18 @@ export default async function LandingPage() {
             <h2 className="mb-4 text-lg font-semibold">{t.landing.recentlyJoined}</h2>
             <div className="grid gap-3 sm:grid-cols-3">
               {recent.items.slice(0, 3).map((player) => (
-                <Card key={player.id}>
+                <Card key={player?.id}>
                   <CardContent className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
                       <p className="truncate font-medium">
-                        {player.firstName} {player.lastName}
+                        {player?.firstName} {player?.lastName}
                       </p>
                       <p className="text-muted text-xs">
-                        {player.primaryPosition ?? '—'} · {player.region ?? 'Uzbekistan'}
+                        {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
                       </p>
                     </div>
                     <Button asChild size="sm" variant="ghost">
-                      <Link href={`/players/${player.id}`} aria-label={`${player.firstName}`}>
+                      <Link href={`/players/${player?.id}`} aria-label={`${player?.firstName}`}>
                         <ArrowRight aria-hidden />
                       </Link>
                     </Button>
@@ -287,7 +287,7 @@ async function resolvePlayerCta(
   }
 
   try {
-    await players.getMine({ token: session.accessToken, cache: 'no-store' });
+    await players?.getMine({ token: session?.accessToken, cache: 'no-store' });
     // The card is the player's home screen (§21.6).
     return { href: '/dashboard', hasCard: true };
   } catch (error) {
@@ -349,7 +349,7 @@ function RoleValue({
         <h3 className="font-semibold">{title}</h3>
         <p className="text-muted mt-1.5 text-sm">{body}</p>
         <ul className="mt-3 space-y-1.5">
-          {points.map((point) => (
+          {points?.map((point) => (
             <li key={point} className="text-muted flex gap-2 text-sm">
               <ShieldCheck className="text-primary mt-0.5 size-4 shrink-0" aria-hidden />
               <span>{point}</span>

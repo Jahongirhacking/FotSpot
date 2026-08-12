@@ -35,9 +35,9 @@ export default async function NetworkPage({
   const { t } = await getServerT();
   await searchParams;
 
-  const opts = { token: session.accessToken, cache: 'no-store' as const };
+  const opts = { token: session?.accessToken, cache: 'no-store' as const };
   const [summary, following] = await Promise.all([
-    users.summary(opts).catch(() => null as ProfileSummary | null),
+    users?.summary(opts).catch(() => null as ProfileSummary | null),
     follows
       .listMine({}, opts)
       .then((page) => page.items)
@@ -80,25 +80,25 @@ export default async function NetworkPage({
           ) : (
             <ul className="divide-border divide-y">
               {following.map((row) => (
-                <li key={row.id}>
+                <li key={row?.id}>
                   <Link
                     href={
-                      row.targetType === 'PLAYER'
-                        ? `/players/${row.targetId}`
-                        : `/academies/${row.targetId}`
+                      row?.targetType === 'PLAYER'
+                        ? `/players/${row?.targetId}`
+                        : `/academies/${row?.targetId}`
                     }
                     className="hover:bg-surface-2 flex items-center gap-3 rounded-lg p-2"
                   >
                     <Avatar
                       src={null}
-                      fallback={initials(row.targetType[0], '')}
+                      fallback={initials(row?.targetType[0], '')}
                       className="size-9"
                     />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {row.targetId.slice(0, 8)}
+                      {row?.targetId.slice(0, 8)}
                     </span>
                     <Badge variant="neutral">
-                      {row.targetType === 'PLAYER' ? t.roles.player : t.nav.academies}
+                      {row?.targetType === 'PLAYER' ? t.roles.player : t.nav.academies}
                     </Badge>
                   </Link>
                 </li>

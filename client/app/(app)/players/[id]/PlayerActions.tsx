@@ -271,7 +271,7 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
   if (!state) return null;
 
-  if (state.recommendation?.status === 'ACCEPTED') {
+  if (state?.recommendation?.status === 'ACCEPTED') {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
         <Check className="size-4" aria-hidden /> {t.player.alreadyInvited}
@@ -279,24 +279,24 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
     );
   }
 
-  const review = state.review;
+  const review = state?.review;
 
   if (review?.status === 'PENDING') {
     return (
       <p className="text-muted text-sm">
         {t.recommendations.awaitingCoach}
-        {review.coachUser.firstName
-          ? ` — ${review.coachUser.firstName} ${review.coachUser.lastName ?? ''}`
+        {review?.coachUser.firstName
+          ? ` — ${review?.coachUser.firstName} ${review?.coachUser.lastName ?? ''}`
           : ''}
       </p>
     );
   }
 
-  if (state.invitation) {
+  if (state?.invitation) {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
         <Check className="size-4" aria-hidden /> {t.recommendations.invited} ·{' '}
-        {formatDate(state.invitation.date)}
+        {formatDate(state?.invitation.date)}
       </p>
     );
   }
@@ -313,7 +313,7 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
         <InviteToPrivateTrialDialog
           playerId={playerId}
           playerName={playerName}
-          academyId={state.academy.id}
+          academyId={state?.academy.id}
           trigger={
             <Button className="w-full">
               <Mail aria-hidden /> {t.recommendations.invite}
@@ -333,7 +333,7 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
       {/* The reason instead of the button. `assignReview` refuses with exactly
           this, and an error that explains a control should not have been there
           is a worse answer than not offering it. */}
-      {!state.hasCoaches ? (
+      {!state?.hasCoaches ? (
         <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
       ) : (
         <>
@@ -344,10 +344,10 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
               onChange={(event) => setCoachUserId(event.target.value)}
             >
               <option value="">{t.recommendations.anyCoach}</option>
-              {(coaches.data ?? []).map((row) => (
-                <option key={row.userId} value={row.userId}>
-                  {[row.user?.firstName, row.user?.lastName].filter(Boolean).join(' ') ||
-                    row.userId.slice(0, 8)}
+              {(coaches?.data ?? []).map((row) => (
+                <option key={row?.userId} value={row?.userId}>
+                  {[row?.user?.firstName, row?.user?.lastName].filter(Boolean).join(' ') ||
+                    row?.userId.slice(0, 8)}
                 </option>
               ))}
             </Select>
@@ -422,8 +422,8 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
             >
               <option value="">{t.recommendations.globalType}</option>
               {endorsing?.map(({ academy }) => (
-                <option key={academy.id} value={academy.id}>
-                  {academy.name}
+                <option key={academy?.id} value={academy?.id}>
+                  {academy?.name}
                 </option>
               ))}
             </Select>
@@ -500,19 +500,19 @@ function CoachReviewAction({ playerId, playerName }: { playerId: string; playerN
     },
   });
 
-  if (review.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
+  if (review?.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
 
   // Nobody gave this coach this player. Nothing to offer, and saying so would
   // only advertise a door they cannot open.
-  if (!review.data) return null;
+  if (!review?.data) return null;
 
-  const { id, status, academy } = review.data;
+  const { id, status, academy } = review?.data;
 
   if (status !== 'PENDING') {
     return (
       <Alert tone={status === 'APPROVED' ? 'success' : 'info'}>
         {status === 'APPROVED' ? t.recommendations.approved : t.recommendations.rejected}
-        {academy?.name ? ` · ${academy.name}` : ''}
+        {academy?.name ? ` · ${academy?.name}` : ''}
       </Alert>
     );
   }

@@ -1,8 +1,6 @@
 import {
   academyVisibleWeight,
   contributionOf,
-  decayedWeight,
-  DEFAULT_HALF_LIFE_DAYS,
   SPECIFIC_ACADEMY_MULTIPLIER,
 } from './recommendation-weight.util';
 import { SCOUT_LEVEL_TIERS } from './scout-level.util';
@@ -55,38 +53,5 @@ describe('academyVisibleWeight', () => {
 
   it('equals the global weight when nothing was addressed to this academy', () => {
     expect(academyVisibleWeight(20, 0)).toBe(20);
-  });
-});
-
-describe('decayedWeight (the future recalculation job)', () => {
-  it('leaves a fresh weight untouched', () => {
-    expect(decayedWeight(100, 0)).toBe(100);
-  });
-
-  it('halves it after one half-life', () => {
-    expect(decayedWeight(100, DEFAULT_HALF_LIFE_DAYS)).toBe(50);
-  });
-
-  it('quarters it after two', () => {
-    expect(decayedWeight(100, DEFAULT_HALF_LIFE_DAYS * 2)).toBe(25);
-  });
-
-  it('is continuous, so running the job daily or weekly gives the same curve', () => {
-    // Seven daily passes must land where one seven-day pass lands.
-    let daily = 100;
-    for (let day = 0; day < 7; day++) daily = decayedWeight(daily, 1);
-    const weekly = decayedWeight(100, 7);
-    expect(Math.abs(daily - weekly)).toBeLessThan(0.05);
-  });
-
-  it('never goes negative', () => {
-    expect(decayedWeight(1, DEFAULT_HALF_LIFE_DAYS * 50)).toBeGreaterThanOrEqual(0);
-  });
-
-  it('lets a recent modest recommendation overtake a large stale one', () => {
-    // The whole point of decay: discovery must keep pointing at new talent.
-    const stale = decayedWeight(125, DEFAULT_HALF_LIFE_DAYS * 4);
-    const fresh = decayedWeight(20, 7);
-    expect(fresh).toBeGreaterThan(stale);
   });
 });

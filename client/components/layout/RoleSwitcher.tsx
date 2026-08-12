@@ -24,7 +24,7 @@ export function RoleSwitcher() {
   if (!activeRole || roles.length < 2) return null;
 
   const active = ROLE_META[activeRole];
-  const ActiveIcon = active.icon;
+  const ActiveIcon = active?.icon;
 
   function switchTo(role: Role) {
     if (role === activeRole) return;
@@ -45,10 +45,10 @@ export function RoleSwitcher() {
     <Menu>
       <MenuTrigger
         className="border-border bg-surface hover:bg-surface-2 flex min-h-11 items-center gap-2 rounded-lg border px-2.5 text-sm font-medium transition-colors"
-        aria-label={`Active role: ${active.label}. Change role`}
+        aria-label={`Active role: ${active?.label}. Change role`}
       >
         <ActiveIcon className="text-primary size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">{active.label}</span>
+        <span className="hidden sm:inline">{active?.label}</span>
         <ChevronDown className="text-muted size-4 shrink-0" aria-hidden />
       </MenuTrigger>
 
@@ -56,13 +56,13 @@ export function RoleSwitcher() {
         <MenuLabel>{t.roles.viewAs}</MenuLabel>
         {roles.map((role) => {
           const meta = ROLE_META[role];
-          const Icon = meta.icon;
+          const Icon = meta?.icon;
           return (
             <MenuRadioItem key={role} checked={role === activeRole} onSelect={() => switchTo(role)}>
               <Icon className="text-muted size-4" aria-hidden />
               <span className="flex flex-col items-start">
-                <span>{meta.label}</span>
-                <span className="text-muted text-xs">{meta.blurb}</span>
+                <span>{meta?.label}</span>
+                <span className="text-muted text-xs">{meta?.blurb}</span>
               </span>
             </MenuRadioItem>
           );

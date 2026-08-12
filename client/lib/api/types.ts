@@ -7,18 +7,19 @@
 export type DominantFoot = 'LEFT' | 'RIGHT' | 'BOTH';
 
 export type PlayingStyle =
-  | 'POACHER'
-  | 'TARGET_MAN'
+  | 'GOAL_POACHER'
+  | 'FOX_IN_THE_BOX'
   | 'DEEP_LYING_FORWARD'
-  | 'WIDE_THREAT'
+  | 'PROLIFIC_WINGER'
+  | 'CLASSIC_10'
   | 'BOX_TO_BOX'
   | 'PLAYMAKER'
-  | 'DESTROYER'
+  | 'ANCHOR_MAN'
   | 'ORCHESTRATOR'
-  | 'BALL_PLAYING_DEFENDER'
-  | 'STOPPER'
-  | 'OVERLAPPING_FULL_BACK'
-  | 'SWEEPER'
+  | 'DEFENSIVE_FULLBACK'
+  | 'DESTROYER'
+  | 'OFFENSIVE_WINGBACK'
+  | 'BUILD_UP'
   | 'OFFENSIVE_KEEPER'
   | 'DEFENSIVE_KEEPER';
 
@@ -70,7 +71,12 @@ export interface Media {
   playerId: string;
   type: MediaType;
   category: MediaCategory;
-  status: 'ACTIVE' | 'FLAGGED' | 'REMOVED';
+  /**
+   * A clip starts PROCESSING and is promoted by the media worker once it has
+   * found the object in the bucket; FAILED means it never arrived. Only the
+   * owner is served anything but ACTIVE — see MediaService.listForPlayer.
+   */
+  status: 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'FLAGGED' | 'REMOVED';
   title?: string | null;
   description?: string | null;
   /** The 0–100 rating this clip evidences. Null for highlights. */
@@ -343,8 +349,43 @@ export interface AcademyProfile {
   /** Sanitised HTML this academy starts every trial note from. */
   defaultTrialNote?: string | null;
   status: VerificationStatus;
+
+  /** Where it is, as a point. Null together — one coordinate locates nothing. */
+  latitude?: number | null;
+  longitude?: number | null;
+
+  /** Built from `logoKey` server-side; the key itself never leaves the API. */
+  logoUrl?: string | null;
+
+  /** Host-validated on write — the icon has to go where it claims. */
+  telegramUrl?: string | null;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+
   members?: AcademyMemberRef[];
   createdAt: string;
+}
+
+/** One photo in an academy's gallery. The lowest `sortOrder` is the cover. */
+export interface AcademyPhoto {
+  id: string;
+  academyId: string;
+  caption?: string | null;
+  sortOrder: number;
+  url: string | null;
+  createdAt: string;
+}
+
+/** Somebody the academy chose to show off, in the order it chose. */
+export interface AcademyFeatured {
+  role: AcademyMemberRole;
+  rank: number;
+  memberId: string;
+  userId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
 }
 
 /** The trimmed membership embedded in an academy profile. */

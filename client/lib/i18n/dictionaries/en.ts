@@ -1,3 +1,4 @@
+import { PlayingStyles } from '@/lib/schemas/player';
 import type { Dictionary } from './uz';
 
 /** English. Typed against the Uzbek source, so a missing key is a build error. */
@@ -199,6 +200,7 @@ export const en: Dictionary = {
     scoutPoint3: 'Follow players and academies',
     scoutCta: 'Start scouting',
     decideLater: "I'll decide later",
+    subtitleLong: 'Pick the one that fits you today. You can add the other later.',
     settingUp: 'Setting up…',
   },
 
@@ -209,6 +211,9 @@ export const en: Dictionary = {
     stepFootball: 'Football',
     progress: 'Progress',
     whoIsPlaying: "Who's playing?",
+    optionalHint:
+      'All optional — you can fill these in later. Every one you add makes your card stronger.',
+    tipLabel: 'Tip',
     whoIsPlayingHint:
       "Just the basics for now. Your date of birth decides which age group you're compared in — we never compare across age groups.",
     dateOfBirth: 'Date of birth',
@@ -230,6 +235,8 @@ export const en: Dictionary = {
     otherPosition: 'Other position',
     notSureYet: 'Not sure yet',
     playingStyle: 'Playing style',
+    styleLikeWho: 'Plays like',
+    positionPickHint: 'Press your position on the pitch.',
     playingStyleHint: 'How you play, not just where. Academies search for this.',
     pickLater: 'Pick later',
     strongFoot: 'Strong foot',
@@ -460,6 +467,23 @@ export const en: Dictionary = {
     verificationNotice:
       'Verification exists to keep fake academies away from children. Expect a real person to check this.',
     name: 'Academy name',
+    useMyLocation: 'Use my location',
+    tapMapHint: 'Tap the map where the academy is, or drag the pin.',
+    locationDenied: 'Could not get your location. Place the pin on the map instead.',
+    locationUnavailable: 'Location is not available in this browser.',
+    locationLabel: 'Location',
+    logoLabel: 'Academy logo',
+    socialsLabel: 'Social links',
+    photosLabel: 'Academy photos',
+    photosHint: 'Stadium, changing rooms, the squad — the first photo is the cover.',
+    addPhoto: 'Add photo',
+    featuredLabel: 'Featured',
+    featuredPlayers: 'Top players (up to 10)',
+    featuredCoaches: 'Top coaches (up to 5)',
+    featuredScouts: 'Top scouts (up to 3)',
+    featuredHint: 'Pick from your squad. They appear in the order you set.',
+    featuredFull: 'Limit reached',
+    editProfileTitle: 'Academy profile',
     district: 'District',
     about: 'About the academy',
     aboutHint: 'Age groups, training ground, what you look for.',
@@ -514,6 +538,9 @@ export const en: Dictionary = {
     play: 'Play',
     privateNote: 'This clip stays on your profile until you delete it.',
     yourClips: 'Clips',
+    watchTutorials: 'Watch tutorials',
+    tutorialsHint: 'A short video per skill, showing what to film and how.',
+    tutorialUnavailable: 'No tutorial for this skill yet.',
     addClip: 'Add a clip',
     all: 'All',
     dropHere: 'Drop a video here',
@@ -600,6 +627,12 @@ export const en: Dictionary = {
     recommendToAcademy: 'Recommend to an academy',
     yourClips: 'Your clips',
     noClips: 'No clips yet. 60 seconds of you dribbling is worth more than any description.',
+    checkPosition: 'Position picked',
+    checkStyle: 'Playing style picked',
+    checkRegion: 'Region set',
+    checkMeasurements: 'Height & weight',
+    checkClip: 'At least one clip',
+    completionDone: '{done} of {total} done',
     makeCardStronger: 'Make your card stronger',
     doneOf: '{done} of {total} done',
     positionPicked: 'Position picked',
@@ -749,6 +782,11 @@ export const en: Dictionary = {
     ageMin: 'Youngest age',
     ageMax: 'Oldest age',
     positions: 'Positions',
+    ageRange: 'Age range',
+    ageRangeHint: 'Counted from age on the day of the trial.',
+    positionsPickHint: 'Mark the positions you want on the pitch. Matching players are notified.',
+    positionsNoneChosen: 'No positions chosen',
+    newBadge: 'new',
     positionsHint: 'Comma separated, e.g. GK, CB, LW',
     requirements: 'Requirements',
     open: 'Open',
@@ -769,6 +807,8 @@ export const en: Dictionary = {
     ageCheckedNote: 'The academy checks your age against the {min}–{max} range automatically.',
     needsCard: 'Applying needs a player card',
     needsCardBody: 'It takes about a minute, and the academy sees your card with your application.',
+    browseOpen: 'Browse {count} open trials',
+    trial: 'Trial',
     yourTrials: 'Your trials',
     noApplications: "You haven't applied to any trials yet.",
     browseCount: 'Browse {count} open trials',
@@ -962,6 +1002,85 @@ export const en: Dictionary = {
     superAdminSubtitle: 'Full platform control, including roles and audit logs.',
   },
 
+  positionGroups: {
+    Goalkeeper: 'Goalkeeper',
+    Defence: 'Defence',
+    Midfield: 'Midfield',
+    Forward: 'Forward',
+    Unknown: 'Not set',
+  },
+
+  playingStyles: {
+    [PlayingStyles.GOAL_POACHER]:
+      'Runs behind the defensive line, finds space and finishes quickly.',
+    [PlayingStyles.FOX_IN_THE_BOX]:
+      'Finds space inside the penalty area and quickly turns chances into goals.',
+    [PlayingStyles.DEEP_LYING_FORWARD]:
+      'Drops deeper to build play, provide passes and support the attack.',
+    [PlayingStyles.PROLIFIC_WINGER]: 'Cuts inside from the wing with pace and takes shots on goal.',
+    [PlayingStyles.CLASSIC_10]:
+      'Roams freely behind the attack, builds play and creates scoring chances for teammates.',
+    [PlayingStyles.BOX_TO_BOX]:
+      'Covers the pitch actively, contributing in both defense and attack.',
+    [PlayingStyles.PLAYMAKER]:
+      'Controls the game, delivers accurate passes and creates scoring chances for teammates.',
+    [PlayingStyles.ANCHOR_MAN]:
+      'Holds position in front of the defense, stops attacks and safely builds play.',
+    [PlayingStyles.ORCHESTRATOR]:
+      'Controls the tempo, organizes attacks through passing and moves the team forward.',
+    [PlayingStyles.DEFENSIVE_FULLBACK]:
+      'Defends reliably, maintains position and safely moves the ball forward.',
+    [PlayingStyles.DESTROYER]:
+      'Disrupts opposition attacks, applies strong pressure and wins the ball back.',
+    [PlayingStyles.OFFENSIVE_WINGBACK]:
+      'Pushes forward along the wing, delivers crosses and tracks back to defend.',
+    [PlayingStyles.BUILD_UP]: 'Builds play from the back, controls possession and starts attacks.',
+    [PlayingStyles.OFFENSIVE_KEEPER]:
+      'Plays away from the goal, confident with the ball at his feet — an eleventh outfield player.',
+    [PlayingStyles.DEFENSIVE_KEEPER]:
+      'Stays in goal, relying on reactions, positioning and control of the penalty area.',
+  },
+
+  clipTips: {
+    camera:
+      'Tip: keep the camera stable, use good lighting, and keep your full body and the ball visible.',
+    playerLabel: 'Player',
+    goalkeeperLabel: 'Goalkeeper',
+    PACE: {
+      player:
+        'Show your first few steps, a 20–30 m run, acceleration with the ball and a change of direction.',
+      goalkeeper:
+        'Show reaction speed off the line, how quickly you come out and how fast you reach the ball.',
+    },
+    DRIBBLING: {
+      player:
+        'Show close control in a tight space, feints, beating a defender and keeping the ball under pressure.',
+      goalkeeper: 'Show carrying the ball out under pressure and escaping a press with your feet.',
+    },
+    PASSING: {
+      player: 'Show short and long passes, accuracy, both feet, and passing to a moving team-mate.',
+      goalkeeper: 'Show distribution by hand and foot, a long pass, and starting a quick attack.',
+    },
+    FINISHING: {
+      player: 'Show finishes inside and outside the box, with both feet and with your head.',
+      goalkeeper: 'Show penalty saves and stopping a shot in a one-on-one.',
+    },
+    PHYSICAL: {
+      player: 'Show strength, balance, duels, jump height and stamina.',
+      goalkeeper: 'Show jumping, extension, dominance in the box and getting back up quickly.',
+    },
+    TECHNIQUE: {
+      player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
+      goalkeeper:
+        'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
+    },
+    MATCH_HIGHLIGHTS: {
+      player:
+        'Your best moments from a real match: goals, assists, decisive actions. Make sure you are identifiable.',
+      goalkeeper: 'Saves, claims and moments of organising the defence, from a real match.',
+    },
+  },
+
   plans: {
     title: 'Tariff plans',
     hint: 'Set what each tier allows. Every new account starts on Free.',
@@ -1017,6 +1136,15 @@ export const en: Dictionary = {
     notFound: 'No such scout',
     hiddenFromCoaches:
       'A coach judges the player, not the scout who put them forward. This page is not shown to coaches.',
+    inviteToSquad: 'Invite to join squad',
+    inviteHint: 'If the scout accepts, they join your academy squad.',
+    inviteWarning:
+      'Invite {name} to your squad? If they accept, they can recommend players to your academy and — at a verified academy — see private player profiles.',
+    invitePending: 'Invitation sent — awaiting their answer',
+    acceptedInvite: 'Accepted your invitation',
+    inSquad: 'In your squad',
+    academyNotVerified:
+      'Your academy is not verified yet, so this scout cannot see private profiles.',
     viewProfile: 'View scout profile',
   },
 

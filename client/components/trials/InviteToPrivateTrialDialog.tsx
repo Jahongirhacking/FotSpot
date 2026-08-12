@@ -78,12 +78,12 @@ export function InviteToPrivateTrialDialog({
     enabled: open && Boolean(academyId),
   });
 
-  const defaultLocation = [academy.data?.district, academy.data?.region].filter(Boolean).join(', ');
+  const defaultLocation = [academy?.data?.district, academy?.data?.region].filter(Boolean).join(', ');
 
   const location = typedLocation ?? defaultLocation;
   // The academy's default note is the starting point, exactly as it is when a
   // global trial is created — one place to write it, both routes use it.
-  const note = typedNote ?? htmlToMarkdown(academy.data?.defaultTrialNote);
+  const note = typedNote ?? htmlToMarkdown(academy?.data?.defaultTrialNote);
 
   const invite = useMutation({
     mutationFn: () =>

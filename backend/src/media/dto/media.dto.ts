@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaCategory } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 /** The six card attributes a clip can evidence, plus highlights (§21.1). */
@@ -94,7 +95,14 @@ export class RateMediaDto {
   rating: number;
 }
 
-export class ListPlayerMediaDto {
+/**
+ * A page of one player's clips, optionally narrowed to a single attribute.
+ *
+ * Paginated because a clip list only grows: the tariff bounds how fast a player
+ * may upload, not how many they end up with, and every earlier claim is kept on
+ * purpose so an attribute bar has a history rather than a value.
+ */
+export class ListPlayerMediaDto extends PaginationDto {
   @ApiPropertyOptional({ enum: MediaCategory, enumName: 'MediaCategory' })
   @IsOptional()
   @IsIn(CATEGORIES)
@@ -125,16 +133,5 @@ export class CreateMediaCommentDto {
   body: string;
 }
 
-export class ListMediaCommentsDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  pageSize?: number = 20;
+export class ListMediaCommentsDto extends PaginationDto {
 }

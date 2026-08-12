@@ -58,15 +58,15 @@ export function TariffPlansManager({ initial }: { initial: TariffPlan[] }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      {plans.map((plan) => (
+      {plans?.map((plan) => (
         // Keyed on the row's own timestamp, so a saved (or somebody else's)
         // change remounts the card and the inputs re-read the server rather
         // than an effect syncing them one render late.
         <PlanCard
-          key={`${plan.tier}:${plan.updatedAt}`}
+          key={`${plan?.tier}:${plan?.updatedAt}`}
           plan={plan}
-          saved={savedTier === plan.tier}
-          onSaved={() => setSavedTier(plan.tier)}
+          saved={savedTier === plan?.tier}
+          onSaved={() => setSavedTier(plan?.tier)}
           onEdited={() => setSavedTier(null)}
         />
       ))}
@@ -92,7 +92,7 @@ function PlanCard({
 
   const save = useMutation({
     mutationFn: (body: Partial<Record<LimitKey, number>>) =>
-      browserFetch<TariffPlan>(`/tariff-plans/${plan.tier}`, { method: 'PATCH', body }),
+      browserFetch<TariffPlan>(`/tariff-plans/${plan?.tier}`, { method: 'PATCH', body }),
     onSuccess: () => {
       setError(null);
       onSaved();
@@ -121,8 +121,8 @@ function PlanCard({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-2">
-        <CardTitle>{planLabel(plan.tier, t)}</CardTitle>
-        <Badge variant={plan.tier === 'FREE' ? 'neutral' : 'primary'}>{plan.tier}</Badge>
+        <CardTitle>{planLabel(plan?.tier, t)}</CardTitle>
+        <Badge variant={plan?.tier === 'FREE' ? 'neutral' : 'primary'}>{plan?.tier}</Badge>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -133,10 +133,10 @@ function PlanCard({
             key={limit.key}
             label={t.plans[limit.label]}
             hint={t.plans[limit.hint]}
-            htmlFor={`${plan.tier}-${limit.key}`}
+            htmlFor={`${plan?.tier}-${limit.key}`}
           >
             <Input
-              id={`${plan.tier}-${limit.key}`}
+              id={`${plan?.tier}-${limit.key}`}
               type="number"
               inputMode="numeric"
               min={limit.min}
@@ -173,10 +173,10 @@ function PlanCard({
 
 function toDraft(plan: TariffPlan): Record<LimitKey, string> {
   return {
-    clipLimit: String(plan.clipLimit),
-    clipWindowDays: String(plan.clipWindowDays),
-    pendingRecommendationLimit: String(plan.pendingRecommendationLimit),
-    maxCoaches: String(plan.maxCoaches),
-    maxGroups: String(plan.maxGroups),
+    clipLimit: String(plan?.clipLimit),
+    clipWindowDays: String(plan?.clipWindowDays),
+    pendingRecommendationLimit: String(plan?.pendingRecommendationLimit),
+    maxCoaches: String(plan?.maxCoaches),
+    maxGroups: String(plan?.maxGroups),
   };
 }

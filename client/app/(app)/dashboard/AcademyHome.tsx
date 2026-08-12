@@ -60,14 +60,14 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
 
   const [summary, ranked, academyTrials, weekly] = await Promise.all([
     safe<AcademySummary | null>(
-      () => insights.forAcademy(academy.id, { token, cache: 'no-store' }),
+      () => insights.forAcademy(academy?.id, { token, cache: 'no-store' }),
       null,
     ),
     safe<{ items: RankedRecommendation[]; total: number }>(
-      () => recommendations.listRanked(academy.id, { token, cache: 'no-store' }),
+      () => recommendations?.listRanked(academy?.id, { token, cache: 'no-store' }),
       { items: [], total: 0 },
     ),
-    safe<Trial[]>(() => trials.listForAcademy(academy.id, { token, cache: 'no-store' }), []),
+    safe<Trial[]>(() => trials?.listForAcademy(academy?.id, { token, cache: 'no-store' }), []),
     // Cached server-side for five minutes, so this costs little per dashboard load.
     safe<WeeklyInsights | null>(() => insights.weekly({ token, revalidate: 120 }), null),
   ]);
@@ -76,11 +76,11 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">{academy.name}</h1>
+          <h1 className="text-xl font-bold">{academy?.name}</h1>
           <p className="text-muted flex items-center gap-2 text-sm">
-            {academy.region ?? '—'}
-            <Badge variant={academy.status === 'VERIFIED' ? 'success' : 'warning'}>
-              {academy.status.toLowerCase()}
+            {academy?.region ?? '—'}
+            <Badge variant={academy?.status === 'VERIFIED' ? 'success' : 'warning'}>
+              {academy?.status.toLowerCase()}
             </Badge>
           </p>
         </div>
@@ -91,7 +91,7 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
             </Link>
           </Button>
           <Button asChild>
-            <Link href={`/trials/new?academyId=${academy.id}`}>
+            <Link href={`/trials/new?academyId=${academy?.id}`}>
               <Plus aria-hidden /> {t.academy.postTrial}
             </Link>
           </Button>
@@ -103,28 +103,28 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
           <Metric
             icon={Inbox}
             label={t.academy.pendingRecommendations}
-            value={summary.pendingRecommendations}
+            value={summary?.pendingRecommendations}
             href="/recommendations/inbox"
             highlight
           />
-          <Metric icon={TrendingUp} label={t.academy.newThisWeek} value={summary.newThisWeek} />
+          <Metric icon={TrendingUp} label={t.academy.newThisWeek} value={summary?.newThisWeek} />
           <Metric
             icon={ShieldCheck}
             label={t.academy.endorsedScouts}
-            value={summary.endorsedScouts}
+            value={summary?.endorsedScouts}
             href="/academies/mine/squad?tab=SCOUT"
           />
           <Metric
             icon={Users}
             label={t.academy.endorsedCoaches}
-            value={summary.endorsedCoaches}
+            value={summary?.endorsedCoaches}
             href="/academies/mine/squad?tab=COACH"
           />
-          <Metric icon={CalendarDays} label={t.academy.openTrials} value={summary.openTrials} />
+          <Metric icon={CalendarDays} label={t.academy.openTrials} value={summary?.openTrials} />
           <Metric
             icon={ClipboardCheck}
             label={t.academy.applications}
-            value={summary.applications}
+            value={summary?.applications}
           />
         </dl>
       )}
@@ -149,21 +149,21 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
             ) : (
               <ul className="divide-border divide-y">
                 {ranked.items.slice(0, 6).map((item) => (
-                  <li key={item.playerId} className="flex items-center gap-3 py-3">
+                  <li key={item?.playerId} className="flex items-center gap-3 py-3">
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/players/${item.playerId}`}
+                        href={`/players/${item?.playerId}`}
                         className="block truncate text-sm font-medium hover:underline"
                       >
-                        {item.player
-                          ? `${item.player.firstName} ${item.player.lastName}`
+                        {item?.player
+                          ? `${item?.player.firstName} ${item?.player.lastName}`
                           : `${t.academy.player} —`}
                       </Link>
                       <p className="text-muted text-xs">
-                        {item.recommendationCount} · {t.academy.backing}
+                        {item?.recommendationCount} · {t.academy.backing}
                       </p>
                     </div>
-                    <CredibilityMeter value={item.credibility} t={t} />
+                    <CredibilityMeter value={item?.credibility} t={t} />
                   </li>
                 ))}
               </ul>
@@ -179,15 +179,15 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {academyTrials.length === 0 ? (
+              {academyTrials?.length === 0 ? (
                 <p className="text-muted text-sm">{t.academy.noTrials}</p>
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {academyTrials.slice(0, 5).map((trial) => (
-                    <li key={trial.id}>
-                      <Link href={`/trials/${trial.id}`} className="block hover:underline">
-                        <span className="font-medium">{trial.title}</span>
-                        <span className="text-muted block text-xs">{formatDate(trial.date)}</span>
+                  {academyTrials?.slice(0, 5).map((trial) => (
+                    <li key={trial?.id}>
+                      <Link href={`/trials/${trial?.id}`} className="block hover:underline">
+                        <span className="font-medium">{trial?.title}</span>
+                        <span className="text-muted block text-xs">{formatDate(trial?.date)}</span>
                       </Link>
                     </li>
                   ))}
@@ -229,15 +229,15 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
         <Board title={t.academy.mostBackedPlayers} hint={t.academy.mostBackedPlayersHint}>
           {weekly.players.map((player, index) => (
             <Row
-              key={player.id}
+              key={player?.id}
               rank={index + 1}
-              href={`/players/${player.id}`}
-              avatarUrl={player.avatarUrl}
-              name={`${player.firstName} ${player.lastName}`}
-              detail={[ageBand(player.birthDate), player.primaryPosition, player.region]
+              href={`/players/${player?.id}`}
+              avatarUrl={player?.avatarUrl}
+              name={`${player?.firstName} ${player?.lastName}`}
+              detail={[ageBand(player?.birthDate), player?.primaryPosition, player?.region]
                 .filter(Boolean)
                 .join(' · ')}
-              value={player.backingCount}
+              value={player?.backingCount}
               valueLabel={t.academy.backing}
             />
           ))}
@@ -246,17 +246,17 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
         <Board title={t.academy.topScouts} hint={t.academy.topScoutsHint}>
           {weekly.scouts.map((scout, index) => (
             <Row
-              key={scout.id}
+              key={scout?.id}
               rank={index + 1}
               // A manager weighs a recommendation by the record of whoever made
               // it (§1.5), so the name on this board opens that record.
-              href={`/scouts/${scout.id}`}
-              avatarUrl={scout.avatarUrl}
+              href={`/scouts/${scout?.id}`}
+              avatarUrl={scout?.avatarUrl}
               name={
-                [scout.firstName, scout.lastName].filter(Boolean).join(' ') || scout.id.slice(0, 8)
+                [scout?.firstName, scout?.lastName].filter(Boolean).join(' ') || scout?.id.slice(0, 8)
               }
-              detail={`${t.profile.level} ${scout.level} · ${Math.round(scout.successRate)}%`}
-              value={scout.acceptedThisWeek}
+              detail={`${t.profile.level} ${scout?.level} · ${Math.round(scout?.successRate)}%`}
+              value={scout?.acceptedThisWeek}
               valueLabel={t.academy.accepted}
             />
           ))}
@@ -265,14 +265,14 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
         <Board title={t.academy.topCoaches} hint={t.academy.topCoachesHint}>
           {weekly.coaches.map((coach, index) => (
             <Row
-              key={coach.id}
+              key={coach?.id}
               rank={index + 1}
-              avatarUrl={coach.avatarUrl}
+              avatarUrl={coach?.avatarUrl}
               name={
-                [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.id.slice(0, 8)
+                [coach?.firstName, coach?.lastName].filter(Boolean).join(' ') || coach?.id.slice(0, 8)
               }
               detail={t.academy.assessments}
-              value={coach.assessmentsThisWeek}
+              value={coach?.assessmentsThisWeek}
               valueLabel={t.academy.assessments}
             />
           ))}
@@ -300,7 +300,7 @@ function Board({
         <CardDescription>{hint}</CardDescription>
       </CardHeader>
       <CardContent>
-        {items.length === 0 ? (
+        {items?.length === 0 ? (
           <p className="text-muted text-sm">—</p>
         ) : (
           <ol className="divide-border divide-y">{items}</ol>

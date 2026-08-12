@@ -24,12 +24,12 @@ export default async function TariffPlansPage() {
 
   const { t } = await getServerT();
 
-  if (!isSuperAdminActing(session.activeRole)) {
+  if (!isSuperAdminActing(session?.activeRole)) {
     return <Alert tone="warning">{t.plans.onlySuperAdmin}</Alert>;
   }
 
   const plans = await tariffs
-    .list({ token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' })
+    .list({ token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' })
     .catch(() => [] as TariffPlan[]);
 
   return (

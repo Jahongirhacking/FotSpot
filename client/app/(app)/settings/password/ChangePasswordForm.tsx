@@ -57,9 +57,9 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
     onError: (err: Error) => setError(err.message),
   });
 
-  const tooShort = next.length > 0 && next.length < MIN_LENGTH;
+  const tooShort = next?.length > 0 && next?.length < MIN_LENGTH;
   const mismatch = confirm.length > 0 && confirm !== next;
-  const ready = next.length >= MIN_LENGTH && confirm === next && (forced || current.length > 0);
+  const ready = next?.length >= MIN_LENGTH && confirm === next && (forced || current?.length > 0);
 
   return (
     <form

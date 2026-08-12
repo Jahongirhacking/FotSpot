@@ -36,8 +36,8 @@ export function AttributeBars({
   className?: string;
 }) {
   const { t } = useI18n();
-  const attributes = deriveAttributes(player, assessments, clips ?? player.media ?? []);
-  const band = ageBand(player.birthDate);
+  const attributes = deriveAttributes(player, assessments, clips ?? player?.media ?? []);
+  const band = ageBand(player?.birthDate);
 
   return (
     <div className={className}>

@@ -20,10 +20,10 @@ export default async function MyAcademyPage() {
   if (!session) redirect('/login?next=/academies/mine');
 
   const academy = await academies
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null);
 
-  if (academy) redirect(`/academies/${academy.id}`);
+  if (academy) redirect(`/academies/${academy?.id}`);
 
   const { t } = await getServerT();
   return (

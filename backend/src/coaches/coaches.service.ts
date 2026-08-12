@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { RbacService } from '../rbac/rbac.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
@@ -148,10 +149,26 @@ export class CoachesService {
     });
   }
 
-  async listAssessmentsForPlayer(playerId: string) {
-    return this.prisma.coachAssessment.findMany({
-      where: { playerId },
-      orderBy: { createdAt: 'desc' },
-    });
+  /**
+   * Every assessment written about a player, newest first.
+   *
+   * Paginated: a player who stays at an academy collects one of these per coach
+   * per review cycle for years, and nothing ever deletes them — the history is
+   * the point (§1.9). The screen shows the recent ones; the rest are still here.
+   */
+  async listAssessmentsForPlayer(playerId: string, dto: PaginationDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.coachAssessment.findMany({
+        where: { playerId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.coachAssessment.count({ where: { playerId } }),
+    ]);
+
+    return pageOf(items, total, { page, pageSize });
   }
 }

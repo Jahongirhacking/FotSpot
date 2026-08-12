@@ -60,13 +60,13 @@ export function NoteEditor({
     if (!field) return;
 
     const { selectionStart: start, selectionEnd: end } = field;
-    const selected = value.slice(start, end);
-    const next = `${value.slice(0, start)}${before}${selected}${after}${value.slice(end)}`;
+    const selected = value?.slice(start, end);
+    const next = `${value?.slice(0, start)}${before}${selected}${after}${value?.slice(end)}`;
     onChange(next);
 
     requestAnimationFrame(() => {
       field.focus();
-      field.setSelectionRange(start + before.length, start + before.length + selected.length);
+      field.setSelectionRange(start + before.length, start + before.length + selected?.length);
     });
   };
 
@@ -76,14 +76,14 @@ export function NoteEditor({
     if (!field) return;
 
     const { selectionStart: start, selectionEnd: end } = field;
-    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-    const block = value.slice(lineStart, end) || '';
+    const lineStart = value?.lastIndexOf('\n', start - 1) + 1;
+    const block = value?.slice(lineStart, end) || '';
     const prefixed = block
       .split('\n')
       .map((line, index) => (line.trim() ? `${marker(index)}${line}` : line))
       .join('\n');
 
-    onChange(`${value.slice(0, lineStart)}${prefixed}${value.slice(end)}`);
+    onChange(`${value?.slice(0, lineStart)}${prefixed}${value?.slice(end)}`);
     requestAnimationFrame(() => field.focus());
   };
 
@@ -125,7 +125,7 @@ export function NoteEditor({
 
       {preview ? (
         <div className="min-h-24 p-3">
-          {value.trim() ? (
+          {value?.trim() ? (
             <TrialNote html={markdownToHtml(value)} />
           ) : (
             <p className="text-muted text-sm">{t.notes.nothingToPreview}</p>

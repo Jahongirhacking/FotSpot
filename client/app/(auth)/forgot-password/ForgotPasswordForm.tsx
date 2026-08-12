@@ -27,8 +27,8 @@ async function postStep(step: 'forgot' | 'verify' | 'reset', body: Record<string
     body: JSON.stringify({ step, ...body }),
   });
 
-  const parsed = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(parsed.message);
+  const parsed = await response?.json().catch(() => ({}));
+  if (!response?.ok) throw new Error(parsed.message);
   return parsed as { devCode?: string };
 }
 
@@ -118,8 +118,8 @@ function RequestStep({
   async function onSubmit(values: ForgotPasswordValues) {
     setServerError(null);
     try {
-      const body = await postStep('forgot', { identifier: values.identifier });
-      onSent(values.identifier, body.devCode ?? null);
+      const body = await postStep('forgot', { identifier: values?.identifier });
+      onSent(values?.identifier, body?.devCode ?? null);
     } catch (error) {
       setServerError((error as Error).message || t.auth.couldNotSendCode);
     }
@@ -174,10 +174,10 @@ function CodeStep({
   async function onSubmit(values: ResetCodeValues) {
     setServerError(null);
     try {
-      await postStep('verify', { identifier: values.identifier, code: values.code });
+      await postStep('verify', { identifier: values?.identifier, code: values?.code });
       // Zod has already stripped spacing and upper-cased it, so what moves to the
       // next step is the form the server will see.
-      onVerified(values.code);
+      onVerified(values?.code);
     } catch (error) {
       setServerError((error as Error).message || t.auth.codeDidNotWork);
     }
@@ -238,7 +238,7 @@ function PasswordStep({
   async function onSubmit(values: NewPasswordValues) {
     setServerError(null);
     try {
-      await postStep('reset', { identifier, code, newPassword: values.newPassword });
+      await postStep('reset', { identifier, code, newPassword: values?.newPassword });
       // Straight to sign-in, with nothing carried over: the reset issues no tokens,
       // and typing the new password once more is what proves it was remembered.
       window.location.assign('/login?reset=1');

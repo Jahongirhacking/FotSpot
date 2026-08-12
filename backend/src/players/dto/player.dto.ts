@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -68,7 +69,7 @@ export class UpdatePlayerStatsDto {
   @IsOptional() @IsInt() @Min(0) jugglingRecord?: number;
 }
 
-export class SearchPlayersDto {
+export class SearchPlayersDto extends PaginationDto {
   @IsOptional() @IsString() region?: string;
   @IsOptional() @IsString() position?: string;
   /** "We need a Destroyer, U16, Fergana" - README 21.3 recruitment filter. */
@@ -89,15 +90,4 @@ export class SearchPlayersDto {
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) maxAge?: number;
 
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  pageSize?: number = 20;
 }

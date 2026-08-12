@@ -14,7 +14,7 @@ export default async function PasswordPage() {
   if (!session) redirect('/login?next=/settings/password');
 
   const { t } = await getServerT();
-  const me = await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null);
+  const me = await users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null);
   const forced = Boolean(me?.mustChangePassword);
 
   return (

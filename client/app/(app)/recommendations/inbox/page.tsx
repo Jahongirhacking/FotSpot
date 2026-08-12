@@ -27,7 +27,7 @@ export default async function InboxPage() {
    * academy's inbox the moment there were two.
    */
   const academy = await academies
-    .mine({ token: session.accessToken, cache: 'no-store' })
+    .mine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null as AcademyProfile | null);
 
   if (!academy) {
@@ -42,10 +42,10 @@ export default async function InboxPage() {
 
   const [ranked, history] = await Promise.all([
     recommendations
-      .listRanked(academy.id, { token: session.accessToken, cache: 'no-store' })
+      .listRanked(academy?.id, { token: session?.accessToken, cache: 'no-store' })
       .catch(() => ({ items: [] as RankedRecommendation[], total: 0 })),
     recommendations
-      .listHistory(academy.id, { token: session.accessToken, cache: 'no-store' })
+      .listHistory(academy?.id, { token: session?.accessToken, cache: 'no-store' })
       .catch(() => [] as AcademyHistoryRow[]),
   ]);
 
@@ -53,14 +53,14 @@ export default async function InboxPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-bold">{t.recommendations.inbox}</h1>
-        <p className="text-muted text-sm">{academy.name}</p>
+        <p className="text-muted text-sm">{academy?.name}</p>
       </header>
 
       <Alert tone="info" title={t.recommendations.howOrderWorks}>
         {t.recommendations.howOrderWorksBody}
       </Alert>
 
-      <ReviewFlow academyId={academy.id} initialItems={ranked.items} initialHistory={history} />
+      <ReviewFlow academyId={academy?.id} initialItems={ranked.items} initialHistory={history} />
     </div>
   );
 }

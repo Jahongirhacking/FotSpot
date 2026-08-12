@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
@@ -17,6 +27,10 @@ import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
+  AddAcademyPhotoDto,
+  AcademyImageUploadDto,
+  ReorderDto,
+  SetFeaturedDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
@@ -334,6 +348,64 @@ export class AcademiesController {
    * and being expelled withdraws it — one act, one place, no second mechanism to
    * drift out of step with the first.
    */
+  /**
+   * A presigned PUT for the academy's logo or a gallery photo.
+   *
+   * The key is minted from the academy id server-side; nothing the client sends
+   * can steer where the object lands.
+   */
+  @Post(':id/images/upload-url')
+  imageUploadUrl(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AcademyImageUploadDto,
+  ) {
+    return this.academiesService.imageUploadUrl(user.userId, id, dto.filename);
+  }
+
+  /** The gallery, in the order the manager arranged it. Public. */
+  @Public()
+  @Get(':id/photos')
+  listPhotos(@Param('id') id: string) {
+    return this.academiesService.listPhotos(id);
+  }
+
+  @Post(':id/photos')
+  addPhoto(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AddAcademyPhotoDto,
+  ) {
+    return this.academiesService.addPhoto(user.userId, id, dto);
+  }
+
+  @Patch(':id/photos/order')
+  reorderPhotos(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: ReorderDto) {
+    return this.academiesService.reorderPhotos(user.userId, id, dto.ids);
+  }
+
+  @Delete('photos/:photoId')
+  removePhoto(@CurrentUser() user: AuthUser, @Param('photoId') photoId: string) {
+    return this.academiesService.removePhoto(user.userId, photoId);
+  }
+
+  /** Who the academy features — its top players, coaches and scouts. Public. */
+  @Public()
+  @Get(':id/featured')
+  listFeatured(@Param('id') id: string) {
+    return this.academiesService.listFeatured(id);
+  }
+
+  /** Replaces one role's list outright — see `setFeatured` for why wholesale. */
+  @Put(':id/featured')
+  setFeatured(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SetFeaturedDto,
+  ) {
+    return this.academiesService.setFeatured(user.userId, id, dto);
+  }
+
   @Get(':id/endorsements')
   listEndorsements(
     @CurrentUser() user: AuthUser,

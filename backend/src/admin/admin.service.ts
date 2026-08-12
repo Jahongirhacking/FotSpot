@@ -14,6 +14,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
+import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
+import { SearchUsersDto } from './dto/admin.dto';
 import { TariffsService } from '../tariffs/tariffs.service';
 
 @Injectable()
@@ -70,8 +72,9 @@ export class AdminService {
    * Admin-gated: a public user directory is not something this platform should
    * have, given most accounts belong to minors (README §11.3).
    */
-  async searchUsers(query: string, page = 1, pageSize = 20) {
-    const term = query.trim();
+  async searchUsers(dto: SearchUsersDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const term = (dto.query ?? '').trim();
     const where: Prisma.UserWhereInput = term
       ? {
           OR: [
@@ -102,22 +105,21 @@ export class AdminService {
           planTier: true,
           roles: { select: { role: { select: { name: true } } } },
         },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    return {
-      items: items.map(({ roles, ...user }) => ({
+    return pageOf(
+      items.map(({ roles, ...user }) => ({
         ...this.storage.withAvatarUrl(user),
         roles: roles.map((entry) => entry.role.name),
       })),
       total,
-      page,
-      pageSize,
-    };
+      { page, pageSize },
+    );
   }
 
   /** Everyone currently holding admin or super_admin. */

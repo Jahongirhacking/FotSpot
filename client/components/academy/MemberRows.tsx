@@ -47,7 +47,7 @@ export interface MemberControls {
 }
 
 function displayName(member: MemberRowData) {
-  return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.username || '—';
+  return [member?.firstName, member?.lastName].filter(Boolean).join(' ') || member?.username || '—';
 }
 
 /**
@@ -76,7 +76,7 @@ export function MemberRow({
     mutationFn: (groupId: string) =>
       browserFetch(`/academies/${controls!.academyId}/groups/move`, {
         method: 'POST',
-        body: { memberIds: [member.id], ...(groupId === RESERVE ? {} : { groupId }) },
+        body: { memberIds: [member?.id], ...(groupId === RESERVE ? {} : { groupId }) },
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['group'] });
@@ -85,15 +85,15 @@ export function MemberRow({
   });
 
   const detail =
-    member.role === 'SCOUT'
+    member?.role === 'SCOUT'
       ? // No stats row means they have recommended nobody yet, so there is no
         // standing to report — better than printing a level they have not earned.
-        member.level == null
+        member?.level == null
         ? t.recommendations.nothingYet
-        : `${t.profile.level} ${member.level} · ${Math.round(member.successRate ?? 0)}%`
+        : `${t.profile.level} ${member?.level} · ${Math.round(member?.successRate ?? 0)}%`
       : [
-          member.birthDate ? `${ageFrom(member.birthDate)}` : null,
-          member.role === 'PLAYER' ? member.primaryPosition : member.coachType,
+          member?.birthDate ? `${ageFrom(member?.birthDate)}` : null,
+          member?.role === 'PLAYER' ? member?.primaryPosition : member?.coachType,
         ]
           .filter(Boolean)
           .join(' · ');
@@ -101,15 +101,15 @@ export function MemberRow({
   return (
     <li className="flex flex-wrap items-center gap-3 p-2">
       <Avatar
-        src={member.avatarUrl}
-        fallback={initials(member.firstName ?? '', member.lastName ?? '')}
+        src={member?.avatarUrl}
+        fallback={initials(member?.firstName ?? '', member?.lastName ?? '')}
         className="size-10 shrink-0"
       />
 
       <div className="min-w-0 flex-1">
-        {member.playerId ? (
+        {member?.playerId ? (
           <Link
-            href={`/players/${member.playerId}`}
+            href={`/players/${member?.playerId}`}
             className="truncate text-sm font-medium hover:underline"
           >
             {displayName(member)}
@@ -125,19 +125,19 @@ export function MemberRow({
           make room for a group picker. */}
       {controls && (
         <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
-          {member.role !== 'SCOUT' && (
+          {member?.role !== 'SCOUT' && (
             <>
               <Select
                 aria-label={t.academy.group}
-                value={member.group?.id ?? RESERVE}
+                value={member?.group?.id ?? RESERVE}
                 disabled={move.isPending}
                 onChange={(event) => move.mutate(event.target.value)}
                 className="w-36 shrink-0 sm:w-40"
               >
                 <option value={RESERVE}>{t.nav.reserve}</option>
                 {controls.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
+                  <option key={group?.id} value={group?.id}>
+                    {group?.name}
                   </option>
                 ))}
               </Select>
@@ -169,7 +169,7 @@ export function MemberRow({
       {controls && panel === 'transfer' && (
         <TransferPanel
           academyId={controls.academyId}
-          memberId={member.id}
+          memberId={member?.id}
           onClose={() => setPanel(null)}
           onDone={controls.onChanged}
         />
@@ -178,7 +178,7 @@ export function MemberRow({
       {controls && panel === 'expel' && (
         <ExpelPanel
           academyId={controls.academyId}
-          memberId={member.id}
+          memberId={member?.id}
           onClose={() => setPanel(null)}
           onDone={controls.onChanged}
         />
@@ -256,10 +256,10 @@ export function MemberSections({
 }) {
   const { t } = useI18n();
 
-  const players = members.filter((member) => member.role === 'PLAYER');
-  const staff = members.filter((member) => member.role !== 'PLAYER');
+  const players = members?.filter((member) => member?.role === 'PLAYER');
+  const staff = members?.filter((member) => member?.role !== 'PLAYER');
 
-  if (members.length === 0) return <p className="text-muted p-2 text-sm">{emptyLabel}</p>;
+  if (members?.length === 0) return <p className="text-muted p-2 text-sm">{emptyLabel}</p>;
 
   return (
     <div className="space-y-4">
@@ -275,7 +275,7 @@ export function MemberSections({
             </h3>
             <ul className="divide-border divide-y">
               {section.rows.map((member) => (
-                <MemberRow key={member.id} member={member} controls={controls} />
+                <MemberRow key={member?.id} member={member} controls={controls} />
               ))}
             </ul>
           </section>
@@ -334,10 +334,10 @@ function TransferPanel({
         >
           <option value="">{t.academy.transferTo}</option>
           {(others.data ?? [])
-            .filter((academy) => academy.id !== academyId)
+            .filter((academy) => academy?.id !== academyId)
             .map((academy) => (
-              <option key={academy.id} value={academy.id}>
-                {academy.name}
+              <option key={academy?.id} value={academy?.id}>
+                {academy?.name}
               </option>
             ))}
         </Select>

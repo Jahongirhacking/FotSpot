@@ -66,7 +66,7 @@ export function TrialHistory({ academyId }: { academyId: string }) {
       <CardContent className="space-y-3 p-2">
         {history.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
-        ) : rows.length === 0 ? (
+        ) : rows?.length === 0 ? (
           <EmptyState
             icon={History}
             title={t.trials.noHistory}
@@ -75,16 +75,16 @@ export function TrialHistory({ academyId }: { academyId: string }) {
         ) : (
           <>
             <ul className="divide-border divide-y">
-              {rows.map((trial) => (
-                <li key={trial.id}>
+              {rows?.map((trial) => (
+                <li key={trial?.id}>
                   <Link
-                    href={`/trials/${trial.id}`}
+                    href={`/trials/${trial?.id}`}
                     className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-sm font-medium">{trial.title}</span>
-                        {trial.type === 'PRIVATE' && (
+                        <span className="truncate text-sm font-medium">{trial?.title}</span>
+                        {trial?.type === 'PRIVATE' && (
                           <Badge variant="warning">
                             <Lock className="size-3" aria-hidden /> {t.trials.typePrivate}
                           </Badge>
@@ -92,10 +92,10 @@ export function TrialHistory({ academyId }: { academyId: string }) {
                       </span>
                       <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                         <span className="flex items-center gap-1">
-                          <CalendarDays className="size-3" aria-hidden /> {formatDate(trial.date)}
+                          <CalendarDays className="size-3" aria-hidden /> {formatDate(trial?.date)}
                         </span>
                         <span className="flex items-center gap-1">
-                          <MapPin className="size-3" aria-hidden /> {trial.location}
+                          <MapPin className="size-3" aria-hidden /> {trial?.location}
                         </span>
                       </span>
                     </span>

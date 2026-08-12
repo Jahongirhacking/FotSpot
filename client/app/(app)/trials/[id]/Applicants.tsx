@@ -47,12 +47,12 @@ export function Applicants({ trial }: { trial: Trial }) {
   const queryClient = useQueryClient();
 
   const applicants = useQuery({
-    queryKey: ['trial-applications', trial.id],
-    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial.id}/applications`),
+    queryKey: ['trial-applications', trial?.id],
+    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial?.id}/applications`),
   });
 
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ['trial-applications', trial.id] });
+    queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
 
   const invite = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
@@ -78,7 +78,7 @@ export function Applicants({ trial }: { trial: Trial }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ClipboardList className="text-primary size-4" aria-hidden /> {t.academy.applicants}
-          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+          {rows?.length > 0 && <Badge variant="neutral">{rows?.length}</Badge>}
         </CardTitle>
         <p className="text-muted text-sm">{t.academy.applicantsHint}</p>
       </CardHeader>
@@ -86,21 +86,21 @@ export function Applicants({ trial }: { trial: Trial }) {
       <CardContent className="p-2">
         {applicants.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
-        ) : rows.length === 0 ? (
+        ) : rows?.length === 0 ? (
           <EmptyState icon={ClipboardList} title={t.academy.noApplicants} />
         ) : (
           <ul className="divide-border divide-y">
-            {rows.map((application) => (
+            {rows?.map((application) => (
               <ApplicantRow
-                key={application.id}
+                key={application?.id}
                 application={application}
-                isPrivate={trial.type === 'PRIVATE'}
+                isPrivate={trial?.type === 'PRIVATE'}
                 pending={
-                  (invite.isPending && invite.variables?.id === application.id) ||
-                  (addToSquad.isPending && addToSquad.variables === application.id)
+                  (invite.isPending && invite.variables?.id === application?.id) ||
+                  (addToSquad.isPending && addToSquad.variables === application?.id)
                 }
-                onInvite={(note) => invite.mutate({ id: application.id, note })}
-                onAddToSquad={() => addToSquad.mutate(application.id)}
+                onInvite={(note) => invite.mutate({ id: application?.id, note })}
+                onAddToSquad={() => addToSquad.mutate(application?.id)}
               />
             ))}
           </ul>
@@ -139,20 +139,20 @@ function ApplicantRow({
   return (
     <li className="space-y-2 p-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/players/${application.playerId}`} className="min-w-0 flex-1 hover:underline">
+        <Link href={`/players/${application?.playerId}`} className="min-w-0 flex-1 hover:underline">
           <span className="block truncate text-sm font-medium">
-            {application.player?.firstName} {application.player?.lastName}
+            {application?.player?.firstName} {application?.player?.lastName}
           </span>
           <span className="text-muted block truncate text-xs">
             {[
-              application.player?.primaryPosition,
-              application.player?.birthDate && ageBand(application.player.birthDate),
-              application.player?.region,
+              application?.player?.primaryPosition,
+              application?.player?.birthDate && ageBand(application?.player.birthDate),
+              application?.player?.region,
             ]
               .filter(Boolean)
               .join(' · ')}
             {' · '}
-            {formatDate(application.createdAt)}
+            {formatDate(application?.createdAt)}
           </span>
         </Link>
         <StatusBadge status={status} />
@@ -163,13 +163,13 @@ function ApplicantRow({
       {screening && review && (
         <p className="text-muted flex items-center gap-1.5 text-xs">
           <Hourglass className="size-3.5" aria-hidden />
-          {t.trials.withCoach}: {review.coachUser?.firstName} {review.coachUser?.lastName}
+          {t.trials.withCoach}: {review?.coachUser?.firstName} {review?.coachUser?.lastName}
         </p>
       )}
 
-      {review?.note && review.decidedAt && (
+      {review?.note && review?.decidedAt && (
         <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {t.recommendations.coachNote}: {review.note}
+          {t.recommendations.coachNote}: {review?.note}
         </p>
       )}
 
@@ -177,10 +177,10 @@ function ApplicantRow({
           squad" should be able to see whose judgement they are acting on. */}
       {result && (
         <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {result.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed} ·{' '}
-          {result.coachUser?.firstName} {result.coachUser?.lastName} ·{' '}
-          {result.decidedAt && formatDate(result.decidedAt)}
-          {result.note && ` — ${result.note}`}
+          {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed} ·{' '}
+          {result?.coachUser?.firstName} {result?.coachUser?.lastName} ·{' '}
+          {result?.decidedAt && formatDate(result?.decidedAt)}
+          {result?.note && ` — ${result?.note}`}
         </p>
       )}
 

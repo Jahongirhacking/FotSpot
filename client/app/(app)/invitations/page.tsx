@@ -27,7 +27,7 @@ export default async function InvitationsPage({
   await searchParams;
 
   const mine = await invitations
-    .listMine({ token: session.accessToken, cache: 'no-store' })
+    .listMine({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => [] as MyInvitation[]);
 
   return (

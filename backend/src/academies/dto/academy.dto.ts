@@ -1,12 +1,18 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
+  IsNumber,
   IsOptional,
   IsPhoneNumber,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -67,6 +73,82 @@ export class UpdateAcademyDto {
    * rewrite the notes of trials that have already happened.
    */
   @IsOptional() @IsString() @MaxLength(20_000) defaultTrialNote?: string;
+
+  /**
+   * Where the academy is, as a point.
+   *
+   * Sent together or not at all — the database refuses half a pair, because one
+   * coordinate locates nothing. The bounds are checked here *and* by a CHECK
+   * constraint: a swapped latitude/longitude is the classic way to end up in the
+   * Gulf of Guinea, and it should fail at the edge rather than on a map.
+   */
+  @ApiPropertyOptional({ minimum: -90, maximum: 90 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiPropertyOptional({ minimum: -180, maximum: 180 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+
+  /** R2 object key from the upload ticket, re-checked server-side. */
+  @IsOptional() @IsString() @MaxLength(512) logoKey?: string;
+
+  /*
+   * Social links, one field per allowed platform.
+   *
+   * Host-checked rather than merely "is a URL": the point of naming four
+   * platforms is that only those four appear, and a validator that accepts any
+   * https address makes the restriction decorative. An empty string clears one.
+   */
+  @IsOptional() @IsString() @MaxLength(300) telegramUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) facebookUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) instagramUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) youtubeUrl?: string;
+}
+
+/** Asking for a presigned PUT. The key is minted server-side from the id. */
+export class AcademyImageUploadDto {
+  @IsString() @MaxLength(200) filename: string;
+}
+
+/** A photo being added to the academy's gallery. */
+export class AddAcademyPhotoDto {
+  @IsString() @MaxLength(512) storageKey: string;
+  @IsOptional() @IsString() @MaxLength(200) caption?: string;
+}
+
+/** Reordering the gallery, or the featured lists — ids in the order wanted. */
+export class ReorderDto {
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  ids: string[];
+}
+
+/**
+ * Who the academy features, for one role, in order.
+ *
+ * The whole list is sent rather than one addition at a time: "these five, in
+ * this order" is the thing the manager decided, and rebuilding it wholesale is
+ * what makes reordering and removing the same operation as adding.
+ */
+export class SetFeaturedDto {
+  @ApiProperty({ enum: AcademyMemberRole, enumName: 'AcademyMemberRole' })
+  @IsIn(['PLAYER', 'COACH', 'SCOUT'])
+  role: 'PLAYER' | 'COACH' | 'SCOUT';
+
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  memberIds: string[];
 }
 
 /**

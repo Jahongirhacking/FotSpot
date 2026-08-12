@@ -73,7 +73,7 @@ export function ProfileMenu({
             <MenuLabel>{t.roles.viewAs}</MenuLabel>
             {roles.map((role) => {
               const meta = ROLE_META[role];
-              const Icon = meta.icon;
+              const Icon = meta?.icon;
               return (
                 <MenuRadioItem
                   key={role}

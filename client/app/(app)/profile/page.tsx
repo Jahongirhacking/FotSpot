@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   const { t } = await getServerT();
 
   const profile = await users
-    .myProfile({ token: session.accessToken, cache: 'no-store' })
+    .myProfile({ token: session?.accessToken, cache: 'no-store' })
     .catch(() => null);
 
   if (!profile) {
@@ -38,32 +38,32 @@ export default async function ProfilePage() {
 
   // The card is the player's own, so it is worth a second request — but only when
   // there is a player role to show one for.
-  const playerCard: PlayerProfile | null = profile.roles.includes('player')
-    ? await players.getMine({ token: session.accessToken, cache: 'no-store' }).catch(() => null)
+  const playerCard: PlayerProfile | null = profile?.roles.includes('player')
+    ? await players?.getMine({ token: session?.accessToken, cache: 'no-store' }).catch(() => null)
     : null;
 
-  const activeRole = session.activeRole;
+  const activeRole = session?.activeRole;
 
   // `profile.roles` comes from the database and is authoritative; the session
   // cookie can lag behind it (see SyncRoles).
-  const roles = sortRoles(profile.roles);
-  const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+  const roles = sortRoles(profile?.roles);
+  const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <SyncRoles authoritativeRoles={profile.roles} />
+      <SyncRoles authoritativeRoles={profile?.roles} />
 
       <header className="flex flex-wrap items-center gap-4">
         <Avatar
-          src={profile.avatarUrl}
-          fallback={initials(profile.firstName, profile.lastName)}
+          src={profile?.avatarUrl}
+          fallback={initials(profile?.firstName, profile?.lastName)}
           className="size-16 text-xl"
         />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{name || t.profile.myProfile}</h1>
-          <p className="text-muted truncate text-sm">{profile.email ?? profile.phone ?? ''}</p>
+          <p className="text-muted truncate text-sm">{profile?.email ?? profile?.phone ?? ''}</p>
           <p className="text-muted mt-0.5 text-xs">
-            {t.profile.memberSince} {formatDate(profile.createdAt)}
+            {t.profile.memberSince} {formatDate(profile?.createdAt)}
           </p>
         </div>
         <EditProfileButton label={t.profile.editProfile} />
@@ -97,27 +97,27 @@ export default async function ProfilePage() {
         the account has ever been. Switch role and this section switches with it.
       */}
       <section className="space-y-4">
-        {activeRole === 'player' && profile.stats.player && (
+        {activeRole === 'player' && profile?.stats.player && (
           <>
             <h2 className="text-lg font-semibold">{t.profile.playerStats}</h2>
             <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
               {playerCard && <PlayerCard player={playerCard} selfLabel={t.relation.you} />}
-              <PlayerDetails stats={profile.stats.player} t={t} />
+              <PlayerDetails stats={profile?.stats.player} t={t} />
             </div>
           </>
         )}
 
-        {activeRole === 'scout' && profile.stats.scout && (
+        {activeRole === 'scout' && profile?.stats.scout && (
           <>
             <h2 className="text-lg font-semibold">{t.profile.scoutStats}</h2>
-            <ScoutStats stats={profile.stats.scout} t={t} />
+            <ScoutStats stats={profile?.stats.scout} t={t} />
           </>
         )}
 
-        {activeRole === 'coach' && profile.stats.coach && (
+        {activeRole === 'coach' && profile?.stats.coach && (
           <>
             <h2 className="text-lg font-semibold">{t.profile.coachStats}</h2>
-            <CoachStats stats={profile.stats.coach} t={t} />
+            <CoachStats stats={profile?.stats.coach} t={t} />
           </>
         )}
 
@@ -136,8 +136,8 @@ export default async function ProfilePage() {
 
         {activeRole === 'player' && !roles.includes('scout') && <BecomeScoutCard />}
 
-        {profile.stats.academies.length > 0 && (
-          <AcademyList academies={profile.stats.academies} t={t} />
+        {profile?.stats.academies.length > 0 && (
+          <AcademyList academies={profile?.stats.academies} t={t} />
         )}
       </section>
     </div>
@@ -164,19 +164,19 @@ function PlayerDetails({
   t: T;
 }) {
   const facts = [
-    { label: t.onboarding.mainPosition, value: stats.primaryPosition },
-    { label: t.onboarding.otherPosition, value: stats.secondaryPosition },
+    { label: t.onboarding.mainPosition, value: stats?.primaryPosition },
+    { label: t.onboarding.otherPosition, value: stats?.secondaryPosition },
     {
       label: t.onboarding.strongFoot,
-      value: stats.dominantFoot && humanizeEnum(stats.dominantFoot),
+      value: stats?.dominantFoot && humanizeEnum(stats?.dominantFoot),
     },
     {
       label: t.onboarding.playingStyle,
-      value: stats.playingStyle && humanizeEnum(stats.playingStyle),
+      value: stats?.playingStyle && humanizeEnum(stats?.playingStyle),
     },
-    { label: t.onboarding.heightCm, value: stats.height && `${stats.height}` },
-    { label: t.onboarding.weightKg, value: stats.weight && `${stats.weight}` },
-    { label: t.onboarding.region, value: stats.region },
+    { label: t.onboarding.heightCm, value: stats?.height && `${stats?.height}` },
+    { label: t.onboarding.weightKg, value: stats?.weight && `${stats?.weight}` },
+    { label: t.onboarding.region, value: stats?.region },
   ].filter((fact) => fact.value);
 
   return (
@@ -187,10 +187,10 @@ function PlayerDetails({
             <Sparkles className="text-primary size-4" aria-hidden /> {t.profile.cardDetails}
           </CardTitle>
           <CardDescription className="flex flex-wrap gap-1.5 pt-1.5">
-            <Badge variant="outline">{ageBand(stats.birthDate)}</Badge>
-            {stats.primaryPosition && (
+            <Badge variant="outline">{ageBand(stats?.birthDate)}</Badge>
+            {stats?.primaryPosition && (
               <Badge variant="primary" className="font-mono">
-                {stats.primaryPosition}
+                {stats?.primaryPosition}
               </Badge>
             )}
           </CardDescription>
@@ -213,9 +213,9 @@ function PlayerDetails({
         </dl>
 
         <dl className="border-border grid grid-cols-3 gap-2 border-t pt-4">
-          <Stat label={t.profile.clips} value={stats.mediaCount} />
-          <Stat label={t.profile.trialApplications} value={stats.trialApplications} />
-          <Stat label={t.profile.recommendationsReceived} value={stats.recommendationsReceived} />
+          <Stat label={t.profile.clips} value={stats?.mediaCount} />
+          <Stat label={t.profile.trialApplications} value={stats?.trialApplications} />
+          <Stat label={t.profile.recommendationsReceived} value={stats?.recommendationsReceived} />
         </dl>
       </CardContent>
     </Card>
@@ -265,11 +265,11 @@ function ScoutStats({
       </CardHeader>
       <CardContent>
         <dl className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          <Stat label={t.profile.level} value={stats.level} />
-          <Stat label={t.profile.sent} value={stats.totalRecommendations} />
-          <Stat label={t.profile.accepted} value={stats.acceptedRecommendations} />
-          <Stat label={t.profile.successRate} value={`${Math.round(stats.successRate)}%`} />
-          <Stat label={t.profile.followerAcademies} value={stats.followerAcademies} />
+          <Stat label={t.profile.level} value={stats?.level} />
+          <Stat label={t.profile.sent} value={stats?.totalRecommendations} />
+          <Stat label={t.profile.accepted} value={stats?.acceptedRecommendations} />
+          <Stat label={t.profile.successRate} value={`${Math.round(stats?.successRate)}%`} />
+          <Stat label={t.profile.followerAcademies} value={stats?.followerAcademies} />
         </dl>
       </CardContent>
     </Card>
@@ -284,11 +284,11 @@ function CoachStats({
   t: T;
 }) {
   const tone =
-    stats.status === 'VERIFIED' ? 'success' : stats.status === 'REJECTED' ? 'danger' : 'warning';
+    stats?.status === 'VERIFIED' ? 'success' : stats?.status === 'REJECTED' ? 'danger' : 'warning';
   const label =
-    stats.status === 'VERIFIED'
+    stats?.status === 'VERIFIED'
       ? t.profile.verified
-      : stats.status === 'REJECTED'
+      : stats?.status === 'REJECTED'
         ? t.profile.rejected
         : t.profile.pending;
 
@@ -302,7 +302,7 @@ function CoachStats({
       <CardContent className="flex flex-wrap items-center gap-3">
         <Badge variant={tone}>{label}</Badge>
         <dl className="grid grid-cols-1">
-          <Stat label={t.profile.assessments} value={stats.assessments} />
+          <Stat label={t.profile.assessments} value={stats?.assessments} />
         </dl>
       </CardContent>
     </Card>
@@ -330,16 +330,16 @@ function AcademyList({
           <ul className="divide-border divide-y">
             {academies.map((academy) => (
               <li
-                key={academy.academyId}
+                key={academy?.academyId}
                 className="flex items-center justify-between gap-3 py-2.5"
               >
-                <Link href={`/academies/${academy.academyId}`} className="truncate hover:underline">
-                  {academy.name}
+                <Link href={`/academies/${academy?.academyId}`} className="truncate hover:underline">
+                  {academy?.name}
                 </Link>
                 <div className="flex shrink-0 gap-1.5">
-                  <Badge variant="neutral">{academy.role.toLowerCase()}</Badge>
-                  <Badge variant={academy.status === 'VERIFIED' ? 'success' : 'warning'}>
-                    {academy.status === 'VERIFIED' ? t.profile.verified : t.profile.pending}
+                  <Badge variant="neutral">{academy?.role.toLowerCase()}</Badge>
+                  <Badge variant={academy?.status === 'VERIFIED' ? 'success' : 'warning'}>
+                    {academy?.status === 'VERIFIED' ? t.profile.verified : t.profile.pending}
                   </Badge>
                 </div>
               </li>

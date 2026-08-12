@@ -95,10 +95,10 @@ export function CandidatePicker({
 
   const first = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
   const last = Math.min(
-    rows.length,
+    rows?.length,
     Math.ceil((scrollTop + VIEWPORT_HEIGHT) / ROW_HEIGHT) + OVERSCAN,
   );
-  const visible = rows.slice(first, last);
+  const visible = rows?.slice(first, last);
 
   function onScroll(event: React.UIEvent<HTMLDivElement>) {
     const element = event.currentTarget;
@@ -135,14 +135,14 @@ export function CandidatePicker({
         className="overflow-y-auto"
         style={{ height: VIEWPORT_HEIGHT }}
       >
-        {rows.length === 0 ? (
+        {rows?.length === 0 ? (
           <p className="text-muted p-4 text-center text-sm">
             {list.isLoading ? t.common.loading : t.academy.noCandidates}
           </p>
         ) : (
           // The spacer div carries the full height so the scrollbar reflects the
           // whole list; the mounted rows are positioned into their slot in it.
-          <div style={{ height: rows.length * ROW_HEIGHT, position: 'relative' }}>
+          <div style={{ height: rows?.length * ROW_HEIGHT, position: 'relative' }}>
             <div style={{ transform: `translateY(${first * ROW_HEIGHT}px)` }}>
               {visible.map((candidate) => (
                 <button
@@ -187,9 +187,9 @@ export function CandidatePicker({
         )}
       </div>
 
-      {rows.length > 0 && (
+      {rows?.length > 0 && (
         <p className="text-muted border-border border-t px-3 py-1.5 text-xs">
-          {rows.length} / {total}
+          {rows?.length} / {total}
         </p>
       )}
     </div>

@@ -16,9 +16,7 @@
           }
         ],
         "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
-        "tags": [
-          "tariffs"
-        ]
+        "tags": ["tariffs"]
       }
     },
     "/api/v1/tariff-plans/me": {
@@ -36,9 +34,7 @@
           }
         ],
         "summary": "The caller's own plan and how much of it they have used.",
-        "tags": [
-          "tariffs"
-        ]
+        "tags": ["tariffs"]
       }
     },
     "/api/v1/tariff-plans/{tier}": {
@@ -75,9 +71,7 @@
           }
         ],
         "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
-        "tags": [
-          "tariffs"
-        ]
+        "tags": ["tariffs"]
       }
     },
     "/api/v1/auth/register/request-code": {
@@ -112,9 +106,7 @@
           }
         ],
         "summary": "Step 1 of signing up: proves the address before an account exists for it.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/register/email": {
@@ -142,9 +134,7 @@
           }
         ],
         "summary": "Step 2: creates the account, only against a code that checks out.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/login/email": {
@@ -171,9 +161,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/password/forgot": {
@@ -208,9 +196,7 @@
           }
         ],
         "summary": "\"I forgot my password\" — sends a reset code to the address on the account.\n\nAnswers identically whether or not the account exists, so it cannot be used\nto test which emails and handles are registered. See AuthService.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/password/verify-code": {
@@ -238,9 +224,7 @@
           }
         ],
         "summary": "Checks a reset code without spending it.\n\nLets the form ask for a new password only once the code is known to be good,\nso a typo does not discard a password the user has already entered twice. It\ngrants nothing — `password/reset` re-checks the code regardless.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/password/reset": {
@@ -268,9 +252,7 @@
           }
         ],
         "summary": "Sets a new password against the code, and signs every device out.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/otp/request": {
@@ -304,9 +286,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/otp/verify": {
@@ -333,9 +313,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/oauth": {
@@ -362,9 +340,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/refresh": {
@@ -391,9 +367,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/logout": {
@@ -421,9 +395,7 @@
           }
         ],
         "summary": "Revokes this device by default; `allDevices` revokes every active session.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/password": {
@@ -451,9 +423,7 @@
           }
         ],
         "summary": "Sets a new password and signs every other device out.\n\n`currentPassword` may be omitted only while the account still holds the\npassword an admin generated for it — see AuthService.changePassword.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/auth/sessions": {
@@ -471,9 +441,7 @@
           }
         ],
         "summary": "\"Where am I logged in\" - README 1.21 device tracking.",
-        "tags": [
-          "auth"
-        ]
+        "tags": ["auth"]
       }
     },
     "/api/v1/users/me": {
@@ -490,9 +458,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       },
       "patch": {
         "operationId": "users_updateProfile",
@@ -517,9 +483,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/profile": {
@@ -537,9 +501,7 @@
           }
         ],
         "summary": "Identity + roles + per-role counters for the profile screen, in one request.",
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/roles/scout": {
@@ -557,9 +519,7 @@
           }
         ],
         "summary": "Become a scout — the one role a user may give themselves.\n\nEverything else is granted by somebody: `player` comes with creating a\nprofile, `coach` from the academy that hires you, `academy_manager` and\n`admin` from an admin. Scouting needs no permission because it starts with\nzero authority: a new scout's recommendations carry the lowest §1.5 weight\nand only earn more by being accepted.",
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/avatar/upload-url": {
@@ -586,9 +546,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/contact/request": {
@@ -616,9 +574,7 @@
           }
         ],
         "summary": "Step 1 of changing a phone or email: prove you control the new destination.",
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/contact/verify": {
@@ -645,9 +601,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/users/me/summary": {
@@ -664,9 +618,8 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "summary": "The \"who am I here\" block behind the avatar menu — see UsersService.summary.\n\nNot `@Public()`, though it was. `@CurrentUser()` reads `request.user`, which\nthe auth guard leaves unset on a public route, so an unauthenticated call\nreached Prisma with `userId: undefined` and answered 500. There is nothing\nfor a guest here in any case: every field describes an account.",
+        "tags": ["users"]
       }
     },
     "/api/v1/users/{id}": {
@@ -692,9 +645,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "users"
-        ]
+        "tags": ["users"]
       }
     },
     "/api/v1/media/storage-status": {
@@ -712,9 +663,7 @@
           }
         ],
         "summary": "Whether uploads can be accepted and how many clips the caller has left in\ntheir plan's window, so the UI can say so before recording.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/upload-url": {
@@ -741,9 +690,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/confirm": {
@@ -777,9 +724,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/recent": {
@@ -806,9 +751,7 @@
           }
         ],
         "summary": "The newest clips platform-wide, each with its player. Drives the landing\nstrip in one request instead of one per player — see MediaService.listRecent.\n\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/feed": {
@@ -846,9 +789,7 @@
           }
         ],
         "summary": "The ranked feed — the scout's and the academy manager's home screen.\n\nSigned in only: the ranking is personalised by who the caller follows and\nmarks what they have already liked, neither of which exists for a guest.\nDeclared before `player/:playerId` and `:id`, since Nest matches in\ndeclaration order.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/feed/suggested-players": {
@@ -875,9 +816,7 @@
           }
         ],
         "summary": "Players worth following, for the panel beside the feed.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/player/{playerId}": {
@@ -893,6 +832,27 @@
             }
           },
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
             "name": "category",
             "required": false,
             "in": "query",
@@ -903,17 +863,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -922,9 +872,7 @@
           }
         ],
         "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nCarries permanent `url` and `posterUrl`: clips are public and stay reachable\nuntil the player deletes them.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}": {
@@ -968,9 +916,7 @@
           }
         ],
         "summary": "The uploader corrects their own clip's title, description or rating.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       },
       "delete": {
         "operationId": "media_remove",
@@ -1001,9 +947,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/rating": {
@@ -1047,9 +991,7 @@
           }
         ],
         "summary": "Removes one of your own clips. The previous one in that category becomes\n the current claim again.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/rating/history": {
@@ -1076,9 +1018,7 @@
           }
         ],
         "summary": "What that rating was before each change.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/like": {
@@ -1104,9 +1044,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       },
       "delete": {
         "operationId": "media_unlike",
@@ -1130,9 +1068,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/view": {
@@ -1158,9 +1094,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/engagement": {
@@ -1187,9 +1121,7 @@
           }
         ],
         "summary": "Counts, plus `likedByMe` when a token is present — one like per account.",
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/{id}/comments": {
@@ -1225,9 +1157,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       },
       "get": {
         "operationId": "media_listComments",
@@ -1256,6 +1186,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "default": 20,
               "type": "number"
             }
@@ -1271,9 +1202,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/media/comments/{commentId}": {
@@ -1299,9 +1228,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "media"
-        ]
+        "tags": ["media"]
       }
     },
     "/api/v1/academies": {
@@ -1329,9 +1256,7 @@
           }
         ],
         "summary": "Admin-only. There are roughly fifty academies in Uzbekistan, so they are\nonboarded by the platform team rather than self-registered — see\nAcademiesService.register for the reasoning.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "get": {
         "operationId": "academies_listPublic",
@@ -1355,9 +1280,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/mine": {
@@ -1382,9 +1305,7 @@
           }
         ],
         "summary": "The academy the caller manages, or null.\n\nDeclared before `:id` — Nest matches routes in declaration order, so putting\nthis after would make `/academies/mine` resolve as an academy whose id is the\nliteral string \"mine\".",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}": {
@@ -1402,14 +1323,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -1417,9 +1331,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "patch": {
         "operationId": "academies_update",
@@ -1454,9 +1366,7 @@
           }
         ],
         "summary": "Manager edits their own; an admin may correct any (§1.10).",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "delete": {
         "operationId": "academies_archive",
@@ -1481,9 +1391,7 @@
           }
         ],
         "summary": "Archives an academy (admin only). Sets status REJECTED rather than deleting —\na hard delete would cascade through trials, applications and recommendation\nhistory. See AcademiesService.archive.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/relation": {
@@ -1517,9 +1425,7 @@
           }
         ],
         "summary": "What the caller is to this academy — manager, staff, endorsed, or a player it\naccepted at a trial. Drives the \"My academy\" badge.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/manager": {
@@ -1556,9 +1462,7 @@
           }
         ],
         "summary": "Assigns or replaces the academy's single manager (admin only). Either names an\nexisting user or mints an account, returning its one-time credentials once.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/manager/reset-password": {
@@ -1585,9 +1489,7 @@
           }
         ],
         "summary": "Issues the manager a fresh one-time password (admin only).",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/admin/all": {
@@ -1615,9 +1517,7 @@
           }
         ],
         "summary": "Every academy including pending/archived — admin console list.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/coaches": {
@@ -1654,9 +1554,7 @@
           }
         ],
         "summary": "Add a coach: an existing account, or a new one minted with credentials the\nmanager hands over — the same two paths an admin has for a manager.\n\nCredentials come back exactly once and are never retrievable again.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/groups": {
@@ -1682,9 +1580,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "post": {
         "operationId": "academies_createGroup",
@@ -1718,9 +1614,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/groups/mine": {
@@ -1738,9 +1632,7 @@
           }
         ],
         "summary": "A coach's own groups — declared before `:id/groups/:groupId`.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/groups/{groupId}": {
@@ -1766,9 +1658,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "patch": {
         "operationId": "academies_updateGroup",
@@ -1802,9 +1692,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "delete": {
         "operationId": "academies_deleteGroup",
@@ -1829,9 +1717,7 @@
           }
         ],
         "summary": "Deleting a group returns its people to the reserve; it removes nobody.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/groups/move": {
@@ -1868,9 +1754,7 @@
           }
         ],
         "summary": "Move members into a group, or back to the reserve by omitting `groupId`.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/candidates": {
@@ -1891,11 +1775,7 @@
             "in": "query",
             "description": "Declared here rather than read separately: the global ValidationPipe runs\n`forbidNonWhitelisted` over the whole query object, so a parameter missing\nfrom this DTO is a 400 even when the handler binds it by name.",
             "schema": {
-              "enum": [
-                "PLAYER",
-                "COACH",
-                "SCOUT"
-              ],
+              "enum": ["PLAYER", "COACH", "SCOUT"],
               "type": "string"
             }
           },
@@ -1939,9 +1819,7 @@
           }
         ],
         "summary": "Accounts this academy could add for a role — declared before `:id/transfers`.\n\nPaged and searchable: the picker on the squad screen is a window onto every\naccount holding that role, and there are far more of those than fit a list.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/invitations": {
@@ -1977,9 +1855,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "get": {
         "operationId": "academies_listAcademyInvitations",
@@ -2004,9 +1880,7 @@
           }
         ],
         "summary": "What this academy has asked of people, answered or not.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/invitations/mine": {
@@ -2034,9 +1908,7 @@
           }
         ],
         "summary": "Invitations addressed to me — declared before `:id` cannot catch it.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/invitations/{invitationId}/accept": {
@@ -2062,9 +1934,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/invitations/{invitationId}/reject": {
@@ -2090,9 +1960,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/invitations/{invitationId}/cancel": {
@@ -2119,9 +1987,7 @@
           }
         ],
         "summary": "The academy withdrawing a question nobody has answered yet.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/transfers": {
@@ -2157,9 +2023,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       },
       "get": {
         "operationId": "academies_listTransfers",
@@ -2202,9 +2066,7 @@
           }
         ],
         "summary": "Offers made, or offers waiting on this academy's answer.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/transfers/{transferId}/approve": {
@@ -2231,9 +2093,7 @@
           }
         ],
         "summary": "The receiving academy accepts — the member lands in their reserve.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/transfers/{transferId}/reject": {
@@ -2259,9 +2119,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/transfers/{transferId}/cancel": {
@@ -2288,9 +2146,7 @@
           }
         ],
         "summary": "The offering academy withdraws before the other side answers.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/members": {
@@ -2310,12 +2166,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "MANAGER",
-                "COACH",
-                "SCOUT",
-                "PLAYER"
-              ],
+              "enum": ["MANAGER", "COACH", "SCOUT", "PLAYER"],
               "type": "string"
             }
           },
@@ -2324,11 +2175,7 @@
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "ACTIVE",
-                "INACTIVE",
-                "RELEASED"
-              ],
+              "enum": ["ACTIVE", "INACTIVE", "RELEASED"],
               "type": "string"
             }
           }
@@ -2344,9 +2191,7 @@
           }
         ],
         "summary": "The roster: coaches, scouts and the squad, players sorted by assessed rating.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/members/{memberId}": {
@@ -2391,9 +2236,7 @@
           }
         ],
         "summary": "Edit a membership or stand it down. There is no delete — see the service.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/members/{memberId}/release": {
@@ -2428,9 +2271,7 @@
           }
         ],
         "summary": "Let a member go, so another academy can take them on.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/transfers/available": {
@@ -2457,9 +2298,7 @@
           }
         ],
         "summary": "Everyone any academy has released — declared before `:id` routes.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/members/import": {
@@ -2496,9 +2335,7 @@
           }
         ],
         "summary": "Take on someone another academy released.",
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/staff": {
@@ -2524,9 +2361,228 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
+      }
+    },
+    "/api/v1/academies/{id}/images/upload-url": {
+      "post": {
+        "operationId": "academies_imageUploadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademyImageUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["academies"]
+      }
+    },
+    "/api/v1/academies/{id}/photos": {
+      "get": {
+        "operationId": "academies_listPhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The gallery, in the order the manager arranged it. Public.",
+        "tags": ["academies"]
+      },
+      "post": {
+        "operationId": "academies_addPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddAcademyPhotoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["academies"]
+      }
+    },
+    "/api/v1/academies/{id}/photos/order": {
+      "patch": {
+        "operationId": "academies_reorderPhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["academies"]
+      }
+    },
+    "/api/v1/academies/photos/{photoId}": {
+      "delete": {
+        "operationId": "academies_removePhoto",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["academies"]
+      }
+    },
+    "/api/v1/academies/{id}/featured": {
+      "get": {
+        "operationId": "academies_listFeatured",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who the academy features — its top players, coaches and scouts. Public.",
+        "tags": ["academies"]
+      },
+      "put": {
+        "operationId": "academies_setFeatured",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeaturedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replaces one role's list outright — see `setFeatured` for why wholesale.",
+        "tags": ["academies"]
       }
     },
     "/api/v1/academies/{id}/endorsements": {
@@ -2560,9 +2616,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "academies"
-        ]
+        "tags": ["academies"]
       }
     },
     "/api/v1/notifications": {
@@ -2589,9 +2643,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "notifications"
-        ]
+        "tags": ["notifications"]
       }
     },
     "/api/v1/notifications/read-all": {
@@ -2609,9 +2661,7 @@
           }
         ],
         "summary": "Clear the whole list.\n\nDeclared before `:id/read` — Nest matches routes in order, and `read-all`\nwould otherwise be read as an id.",
-        "tags": [
-          "notifications"
-        ]
+        "tags": ["notifications"]
       }
     },
     "/api/v1/notifications/{id}/read": {
@@ -2644,9 +2694,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "notifications"
-        ]
+        "tags": ["notifications"]
       }
     },
     "/api/v1/players/me": {
@@ -2673,9 +2721,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       },
       "get": {
         "operationId": "players_getOwnProfile",
@@ -2690,9 +2736,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       },
       "patch": {
         "operationId": "players_updateProfile",
@@ -2717,9 +2761,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       }
     },
     "/api/v1/players/me/stats": {
@@ -2746,15 +2788,34 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       }
     },
     "/api/v1/players/search": {
       "get": {
         "operationId": "players_search",
         "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
           {
             "name": "playingStyle",
             "required": false,
@@ -2808,26 +2869,6 @@
               "maximum": 60,
               "type": "number"
             }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 20,
-              "type": "number"
-            }
           }
         ],
         "responses": {
@@ -2840,9 +2881,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       }
     },
     "/api/v1/players/by-username/{username}": {
@@ -2869,9 +2908,7 @@
           }
         ],
         "summary": "Resolves `/players/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as a player id.",
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       }
     },
     "/api/v1/players/{id}": {
@@ -2897,9 +2934,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "players"
-        ]
+        "tags": ["players"]
       }
     },
     "/api/v1/coaches/me": {
@@ -2926,9 +2961,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       },
       "get": {
         "operationId": "coaches_getOwnProfile",
@@ -2943,9 +2976,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       }
     },
     "/api/v1/coaches/{id}": {
@@ -2971,9 +3002,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       }
     },
     "/api/v1/coaches/academy/{academyId}": {
@@ -3010,9 +3039,7 @@
           }
         ],
         "summary": "An academy manager adds a coach to their academy. Created VERIFIED — the\nacademy vouches for them, and the platform already vetted the academy.",
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       }
     },
     "/api/v1/coaches/assessments": {
@@ -3039,9 +3066,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       }
     },
     "/api/v1/coaches/assessments/player/{playerId}": {
@@ -3055,6 +3080,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -3067,9 +3113,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "coaches"
-        ]
+        "tags": ["coaches"]
       }
     },
     "/api/v1/follows": {
@@ -3096,9 +3140,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "delete": {
         "operationId": "follows_unfollow",
@@ -3123,23 +3165,13 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/follows/me": {
       "get": {
         "operationId": "follows_listMine",
         "parameters": [
-          {
-            "name": "targetType",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/FollowTargetType"
-            }
-          },
           {
             "name": "page",
             "required": false,
@@ -3156,8 +3188,17 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "default": 20,
               "type": "number"
+            }
+          },
+          {
+            "name": "targetType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/FollowTargetType"
             }
           }
         ],
@@ -3171,9 +3212,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/follows/count/{targetType}/{targetId}": {
@@ -3207,9 +3246,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/follows/academy/{academyId}/scouts": {
@@ -3245,9 +3282,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       },
       "get": {
         "operationId": "follows_listScoutNetwork",
@@ -3271,9 +3306,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/follows/academy/{academyId}/scouts/{scoutId}": {
@@ -3307,9 +3340,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/follows/me/academies": {
@@ -3327,9 +3358,7 @@
           }
         ],
         "summary": "A scout's own follower academies - status, not a leaderboard (1.5.2).",
-        "tags": [
-          "follows"
-        ]
+        "tags": ["follows"]
       }
     },
     "/api/v1/recommendations": {
@@ -3364,15 +3393,35 @@
           }
         ],
         "summary": "Files a recommendation. **Scouts only** (§1.5).\n\nRecommending is the one action the whole reputation system measures, and it\nis measured per scout: `ScoutStats`, the §1.5 level tiers and the §1.5.1\nharmonic credibility all key off a scout identity. A coach or manager filing\none would accrue a reputation nothing in the product surfaces, and an\nacademy recommending a player to itself is not a signal at all.\n\nEnforced on the acting role, so a scout who is also a coach must be acting\nas a scout — see JwtStrategy.validate.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/mine": {
       "get": {
         "operationId": "recommendations_listMine",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -3383,9 +3432,32 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
+      }
+    },
+    "/api/v1/recommendations/inbox/awaiting-review-count": {
+      "get": {
+        "operationId": "recommendations_inboxAwaitingReviewCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players in this manager's inbox that no coach has been asked about yet.\n\nDeclared before `academy/:academyId`, since Nest matches in declaration\norder and would otherwise read \"inbox\" as an academy id.",
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/academy/{academyId}": {
@@ -3411,9 +3483,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/academy/{academyId}/ranked": {
@@ -3440,9 +3510,7 @@
           }
         ],
         "summary": "Manager-only: same inbox ranked by per-academy credibility (1.5.1/1.5.2).",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/academy/{academyId}/history": {
@@ -3469,9 +3537,7 @@
           }
         ],
         "summary": "What this academy already settled — invited or turned down.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/player/{playerId}/mine": {
@@ -3505,9 +3571,7 @@
           }
         ],
         "summary": "This scout's own recommendation for a player — one per player (§1.5).",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/player/{playerId}/academy-state": {
@@ -3541,9 +3605,7 @@
           }
         ],
         "summary": "Where a player stands with the academy this manager runs.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/players/{playerId}/review": {
@@ -3579,9 +3641,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/player/{playerId}/my-review": {
@@ -3615,9 +3675,7 @@
           }
         ],
         "summary": "This coach's review of one player, or null if nobody gave them that player.\n\nLets a coach answer from the profile they are reading rather than hunting\nthe same person down in their queue. Null is the rule, not an empty state:\na coach may only judge players an academy assigned to them.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/reviews/mine": {
@@ -3644,9 +3702,7 @@
           }
         ],
         "summary": "A coach's own queue. Declared before `:id` — Nest matches in order.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/reviews/{reviewId}/decision": {
@@ -3683,9 +3739,7 @@
           }
         ],
         "summary": "The coach's verdict, and the ratings that become the player's credible ones.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/players/{playerId}/invite": {
@@ -3729,9 +3783,7 @@
           }
         ],
         "summary": "The manager invites an approved player, with a note they will read.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/{id}/status": {
@@ -3767,9 +3819,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/player/{playerId}": {
@@ -3795,10 +3845,8 @@
             "bearer": []
           }
         ],
-        "summary": "A player's recommendation record: who vouched for them, with what weight, and\nthe decayable public `globalWeight`. Per-academy extras stay in the inbox.",
-        "tags": [
-          "recommendations"
-        ]
+        "summary": "A player's recommendation record: who vouched for them, with what weight, and\nthe public `globalWeight`. Per-academy extras stay in the inbox.",
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/endorsing-academies": {
@@ -3826,9 +3874,7 @@
           }
         ],
         "summary": "Academies that currently endorse me — the only valid targets for a SPECIFIC\nrecommendation. Drives the picker, so it can only ever offer valid choices.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/scout-stats/me": {
@@ -3852,9 +3898,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/recommendations/scouts/{scoutId}": {
@@ -3881,9 +3925,7 @@
           }
         ],
         "summary": "One scout's reputation page.\n\nVisible to players and academies, and refused to coaches — a coach answers\nfor the player in front of them, and knowing which scout is asking is\npressure rather than information. See `getScoutProfile` for the full\nreasoning; the rule is enforced there so a direct request is refused too,\nnot merely un-linked in the UI.",
-        "tags": [
-          "recommendations"
-        ]
+        "tags": ["recommendations"]
       }
     },
     "/api/v1/trials/academy/{academyId}": {
@@ -3919,9 +3961,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       },
       "get": {
         "operationId": "trials_listForAcademy",
@@ -3945,9 +3985,43 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
+      }
+    },
+    "/api/v1/trials/unseen-count": {
+      "get": {
+        "operationId": "trials_unseenCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How many trials have appeared since this account last opened the list.\n\nDeclared before `:id`, since Nest matches in declaration order — otherwise\n\"unseen-count\" is read as a trial id.",
+        "tags": ["trials"]
+      }
+    },
+    "/api/v1/trials/seen": {
+      "post": {
+        "operationId": "trials_markSeen",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clears the badge. Sent when the trials list is opened.",
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials": {
@@ -3964,9 +4038,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/academy/{academyId}/history": {
@@ -4014,9 +4086,7 @@
           }
         ],
         "summary": "The academy's finished trials, newest first.\n\nManager-only and paginated: a history that never stops growing needs pages,\nand an archived trial still carries its applicants.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/{id}": {
@@ -4043,9 +4113,7 @@
           }
         ],
         "summary": "One trial. A general one is public; a private one is a 404 to anyone but the\nacademy, its coaches on that trial, and the player it concerns.\n\n`@Public()` with an optional user rather than an authenticated route: the\nopen board has to be readable by somebody who has not signed up yet.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       },
       "patch": {
         "operationId": "trials_update",
@@ -4080,9 +4148,7 @@
           }
         ],
         "summary": "Edit a published trial, or archive it.\n\nManager of the hosting academy only. See TrialsService.update for why an\narchive exists where a delete does not.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/{id}/coaches": {
@@ -4109,9 +4175,7 @@
           }
         ],
         "summary": "Who works this trial — public, the way the hosting academy is.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       },
       "post": {
         "operationId": "trials_assignCoaches",
@@ -4146,9 +4210,7 @@
           }
         ],
         "summary": "Name the coaches working this trial. Replaces the list.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/{id}/apply": {
@@ -4174,9 +4236,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/mine": {
@@ -4203,9 +4263,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/coaching/mine": {
@@ -4223,9 +4281,7 @@
           }
         ],
         "summary": "The trials this coach is working.\n\nAssignment is the whole of a coach's relationship with a trial — it is what\nlets them read a private one, see the sheet and record a verdict — so it is\nalso what this lists.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/{id}/applications": {
@@ -4261,9 +4317,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/{applicationId}/invite": {
@@ -4300,9 +4354,7 @@
           }
         ],
         "summary": "Invite a screened player to a private trial, with the note they will read.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/{applicationId}/respond": {
@@ -4339,9 +4391,7 @@
           }
         ],
         "summary": "The player's yes or no — the one step nobody can take for them.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/{applicationId}/verdict": {
@@ -4378,9 +4428,7 @@
           }
         ],
         "summary": "The coach's PASS or FAIL, after testing the player in person.\n\nWritten by a coach working this trial, never by the manager — the academy\ndoes not evaluate the football. Only a PASS makes the player eligible for a\nsquad place, and only a PASS clears their recommendations.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/{applicationId}/squad": {
@@ -4407,9 +4455,7 @@
           }
         ],
         "summary": "Take the player on: sends them an invitation to join the academy.\n\nNot a direct write to the squad — joining is still the player's yes to give,\nthe same rule every other route into a squad follows. Requires a trial PASS.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/trials/applications/{applicationId}/status": {
@@ -4446,9 +4492,7 @@
           }
         ],
         "summary": "The academy declining an applicant. The only status a manager may write.",
-        "tags": [
-          "trials"
-        ]
+        "tags": ["trials"]
       }
     },
     "/api/v1/moderation/reports": {
@@ -4475,15 +4519,35 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/v1/moderation/reports/pending": {
       "get": {
         "operationId": "moderation_listPending",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -4494,9 +4558,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/v1/moderation/reports/{id}/resolve": {
@@ -4532,9 +4594,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/v1/moderation/media/{id}/flag": {
@@ -4560,9 +4620,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "moderation"
-        ]
+        "tags": ["moderation"]
       }
     },
     "/api/v1/admin/coaches/{id}/verify": {
@@ -4598,9 +4656,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/academies/{id}/verify": {
@@ -4636,9 +4692,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/admins": {
@@ -4655,9 +4709,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       },
       "post": {
         "operationId": "admin_assignAdmin",
@@ -4682,15 +4734,44 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "admin_searchUsers",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -4701,10 +4782,8 @@
             "bearer": []
           }
         ],
-        "summary": "Find a user to promote or endorse, instead of pasting a UUID.",
-        "tags": [
-          "admin"
-        ]
+        "summary": "Find a user to promote or endorse, instead of pasting a UUID.\n\nA DTO rather than three raw `@Query` strings coerced with `Number()`: that\nversion accepted `?pageSize=999999` and answered with every account on the\nplatform, since nothing on the path validated it.",
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/users/{id}": {
@@ -4731,9 +4810,7 @@
           }
         ],
         "summary": "Read-only, any admin. Mutations below are super-admin only.",
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/users/{id}/status": {
@@ -4769,9 +4846,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/users/{id}/roles": {
@@ -4807,9 +4882,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/users/{id}/plan": {
@@ -4846,9 +4919,7 @@
           }
         ],
         "summary": "Move an account onto another tariff — **super admin only**.\n\nThe only way a plan ever changes: there is no self-serve upgrade, so a user\ncannot raise their own ceiling and a plain admin cannot raise somebody\nelse's. The limits each tier carries are edited on `/tariff-plans`.",
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/audit-logs": {
@@ -4875,9 +4946,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/admins/{userId}/revoke": {
@@ -4903,9 +4972,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/roles": {
@@ -4932,9 +4999,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/permissions": {
@@ -4961,9 +5026,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/admin/roles/permissions": {
@@ -4990,9 +5053,7 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "admin"
-        ]
+        "tags": ["admin"]
       }
     },
     "/api/v1/insights/weekly": {
@@ -5010,9 +5071,7 @@
           }
         ],
         "summary": "Most-backed players, most-accepted scouts and most-active coaches this week.",
-        "tags": [
-          "insights"
-        ]
+        "tags": ["insights"]
       }
     },
     "/api/v1/insights/academy/{academyId}": {
@@ -5039,9 +5098,7 @@
           }
         ],
         "summary": "Inbox, endorsement and trial counters for one academy's home screen.",
-        "tags": [
-          "insights"
-        ]
+        "tags": ["insights"]
       }
     }
   },
@@ -5127,11 +5184,7 @@
     "schemas": {
       "PlanTier": {
         "type": "string",
-        "enum": [
-          "FREE",
-          "PRO",
-          "PREMIUM"
-        ]
+        "enum": ["FREE", "PRO", "PREMIUM"]
       },
       "UpdateTariffPlanDto": {
         "type": "object",
@@ -5176,9 +5229,7 @@
             "format": "email"
           }
         },
-        "required": [
-          "email"
-        ]
+        "required": ["email"]
       },
       "RegisterEmailDto": {
         "type": "object",
@@ -5204,11 +5255,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "email",
-          "code",
-          "password"
-        ]
+        "required": ["email", "code", "password"]
       },
       "LoginEmailDto": {
         "type": "object",
@@ -5224,9 +5271,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "password"
-        ]
+        "required": ["password"]
       },
       "ForgotPasswordDto": {
         "type": "object",
@@ -5237,9 +5282,7 @@
             "maxLength": 120
           }
         },
-        "required": [
-          "identifier"
-        ]
+        "required": ["identifier"]
       },
       "VerifyResetCodeDto": {
         "type": "object",
@@ -5255,10 +5298,7 @@
             "maxLength": 20
           }
         },
-        "required": [
-          "identifier",
-          "code"
-        ]
+        "required": ["identifier", "code"]
       },
       "ResetPasswordDto": {
         "type": "object",
@@ -5279,11 +5319,7 @@
             "minLength": 8
           }
         },
-        "required": [
-          "identifier",
-          "code",
-          "newPassword"
-        ]
+        "required": ["identifier", "code", "newPassword"]
       },
       "RequestOtpDto": {
         "type": "object",
@@ -5292,9 +5328,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "phone"
-        ]
+        "required": ["phone"]
       },
       "VerifyOtpDto": {
         "type": "object",
@@ -5306,10 +5340,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "phone",
-          "code"
-        ]
+        "required": ["phone", "code"]
       },
       "OAuthLoginDto": {
         "type": "object",
@@ -5326,11 +5357,7 @@
             "format": "email"
           }
         },
-        "required": [
-          "provider",
-          "providerToken",
-          "email"
-        ]
+        "required": ["provider", "providerToken", "email"]
       },
       "RefreshTokenDto": {
         "type": "object",
@@ -5339,9 +5366,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "refreshToken"
-        ]
+        "required": ["refreshToken"]
       },
       "LogoutDto": {
         "type": "object",
@@ -5364,9 +5389,7 @@
             "minLength": 8
           }
         },
-        "required": [
-          "newPassword"
-        ]
+        "required": ["newPassword"]
       },
       "UpdateProfileDto": {
         "type": "object",
@@ -5408,16 +5431,11 @@
             "maxLength": 100
           }
         },
-        "required": [
-          "filename"
-        ]
+        "required": ["filename"]
       },
       "VerificationChannel": {
         "type": "string",
-        "enum": [
-          "PHONE",
-          "EMAIL"
-        ]
+        "enum": ["PHONE", "EMAIL"]
       },
       "RequestContactChangeDto": {
         "type": "object",
@@ -5434,10 +5452,7 @@
             "maxLength": 200
           }
         },
-        "required": [
-          "channel",
-          "destination"
-        ]
+        "required": ["channel", "destination"]
       },
       "VerifyContactChangeDto": {
         "type": "object",
@@ -5459,11 +5474,7 @@
             "maxLength": 6
           }
         },
-        "required": [
-          "channel",
-          "destination",
-          "code"
-        ]
+        "required": ["channel", "destination", "code"]
       },
       "MediaCategory": {
         "type": "string",
@@ -5492,10 +5503,7 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "IMAGE",
-              "VIDEO"
-            ]
+            "enum": ["IMAGE", "VIDEO"]
           },
           "contentType": {
             "type": "string",
@@ -5503,11 +5511,7 @@
             "maxLength": 100
           }
         },
-        "required": [
-          "category",
-          "filename",
-          "type"
-        ]
+        "required": ["category", "filename", "type"]
       },
       "ConfirmUploadDto": {
         "type": "object",
@@ -5530,10 +5534,7 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "IMAGE",
-              "VIDEO"
-            ]
+            "enum": ["IMAGE", "VIDEO"]
           },
           "title": {
             "type": "string",
@@ -5549,11 +5550,7 @@
             "maxLength": 512
           }
         },
-        "required": [
-          "category",
-          "storageKey",
-          "type"
-        ]
+        "required": ["category", "storageKey", "type"]
       },
       "UpdateMediaDto": {
         "type": "object",
@@ -5592,9 +5589,7 @@
             "maxLength": 1000
           }
         },
-        "required": [
-          "body"
-        ]
+        "required": ["body"]
       },
       "NewManagerDto": {
         "type": "object",
@@ -5614,10 +5609,7 @@
             "description": "Optional, and only for reaching them later — sign-in is by username."
           }
         },
-        "required": [
-          "firstName",
-          "lastName"
-        ]
+        "required": ["firstName", "lastName"]
       },
       "CreateAcademyDto": {
         "type": "object",
@@ -5641,9 +5633,7 @@
             "$ref": "#/components/schemas/NewManagerDto"
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "SetManagerDto": {
         "type": "object",
@@ -5659,6 +5649,17 @@
       "UpdateAcademyDto": {
         "type": "object",
         "properties": {
+          "latitude": {
+            "type": "number",
+            "description": "Where the academy is, as a point.\n\nSent together or not at all — the database refuses half a pair, because one\ncoordinate locates nothing. The bounds are checked here *and* by a CHECK\nconstraint: a swapped latitude/longitude is the classic way to end up in the\nGulf of Guinea, and it should fail at the edge rather than on a map.",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
           "name": {
             "type": "string"
           },
@@ -5675,6 +5676,27 @@
             "type": "string",
             "description": "The note this academy puts on every trial unless it says otherwise.\n\nHTML from the note editor, sanitised server-side before storage. It is a\n*default*, copied into a trial at creation — editing it later does not\nrewrite the notes of trials that have already happened.",
             "maxLength": 20000
+          },
+          "logoKey": {
+            "type": "string",
+            "description": "R2 object key from the upload ticket, re-checked server-side.",
+            "maxLength": 512
+          },
+          "telegramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "facebookUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "instagramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "youtubeUrl": {
+            "type": "string",
+            "maxLength": 300
           }
         }
       },
@@ -5711,9 +5733,7 @@
             "maxLength": 500
           }
         },
-        "required": [
-          "name"
-        ]
+        "required": ["name"]
       },
       "UpdateGroupDto": {
         "type": "object",
@@ -5746,20 +5766,14 @@
             "type": "string"
           }
         },
-        "required": [
-          "memberIds"
-        ]
+        "required": ["memberIds"]
       },
       "InviteMemberDto": {
         "type": "object",
         "properties": {
           "role": {
             "type": "string",
-            "enum": [
-              "COACH",
-              "SCOUT",
-              "PLAYER"
-            ]
+            "enum": ["COACH", "SCOUT", "PLAYER"]
           },
           "userId": {
             "type": "string"
@@ -5770,10 +5784,7 @@
             "maxLength": 500
           }
         },
-        "required": [
-          "role",
-          "userId"
-        ]
+        "required": ["role", "userId"]
       },
       "RequestTransferDto": {
         "type": "object",
@@ -5789,28 +5800,18 @@
             "maxLength": 500
           }
         },
-        "required": [
-          "memberId",
-          "toAcademyId"
-        ]
+        "required": ["memberId", "toAcademyId"]
       },
       "UpdateMemberDto": {
         "type": "object",
         "properties": {
           "role": {
             "type": "string",
-            "enum": [
-              "COACH",
-              "SCOUT",
-              "PLAYER"
-            ]
+            "enum": ["COACH", "SCOUT", "PLAYER"]
           },
           "status": {
             "type": "string",
-            "enum": [
-              "ACTIVE",
-              "INACTIVE"
-            ]
+            "enum": ["ACTIVE", "INACTIVE"]
           },
           "coachType": {
             "type": "string",
@@ -5826,32 +5827,89 @@
             "type": "string"
           }
         },
-        "required": [
-          "memberId"
-        ]
+        "required": ["memberId"]
+      },
+      "AcademyImageUploadDto": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": ["filename"]
+      },
+      "AddAcademyPhotoDto": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": ["storageKey"]
+      },
+      "ReorderDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["ids"]
+      },
+      "AcademyMemberRole": {
+        "type": "string",
+        "enum": ["MANAGER", "COACH", "SCOUT", "PLAYER"]
+      },
+      "SetFeaturedDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AcademyMemberRole"
+              }
+            ]
+          },
+          "memberIds": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["role", "memberIds"]
       },
       "EndorsementRole": {
         "type": "string",
-        "enum": [
-          "SCOUT",
-          "COACH"
-        ]
+        "enum": ["SCOUT", "COACH"]
       },
       "PlayingStyle": {
         "type": "string",
         "enum": [
-          "POACHER",
-          "TARGET_MAN",
+          "GOAL_POACHER",
+          "FOX_IN_THE_BOX",
           "DEEP_LYING_FORWARD",
-          "WIDE_THREAT",
+          "PROLIFIC_WINGER",
+          "CLASSIC_10",
           "BOX_TO_BOX",
           "PLAYMAKER",
-          "DESTROYER",
+          "ANCHOR_MAN",
           "ORCHESTRATOR",
-          "BALL_PLAYING_DEFENDER",
-          "STOPPER",
-          "OVERLAPPING_FULL_BACK",
-          "SWEEPER",
+          "DEFENSIVE_FULLBACK",
+          "DESTROYER",
+          "OFFENSIVE_WINGBACK",
+          "BUILD_UP",
           "OFFENSIVE_KEEPER",
           "DEFENSIVE_KEEPER"
         ]
@@ -5886,11 +5944,7 @@
           },
           "dominantFoot": {
             "type": "string",
-            "enum": [
-              "LEFT",
-              "RIGHT",
-              "BOTH"
-            ]
+            "enum": ["LEFT", "RIGHT", "BOTH"]
           },
           "primaryPosition": {
             "type": "string"
@@ -5905,12 +5959,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "firstName",
-          "lastName",
-          "birthDate",
-          "gender"
-        ]
+        "required": ["firstName", "lastName", "birthDate", "gender"]
       },
       "UpdatePlayerProfileDto": {
         "type": "object",
@@ -5934,11 +5983,7 @@
           },
           "dominantFoot": {
             "type": "string",
-            "enum": [
-              "LEFT",
-              "RIGHT",
-              "BOTH"
-            ]
+            "enum": ["LEFT", "RIGHT", "BOTH"]
           },
           "primaryPosition": {
             "type": "string"
@@ -6001,9 +6046,7 @@
             "maxLength": 1000
           }
         },
-        "required": [
-          "userId"
-        ]
+        "required": ["userId"]
       },
       "CreateAssessmentDto": {
         "type": "object",
@@ -6081,10 +6124,7 @@
       },
       "FollowTargetType": {
         "type": "string",
-        "enum": [
-          "PLAYER",
-          "ACADEMY"
-        ]
+        "enum": ["PLAYER", "ACADEMY"]
       },
       "CreateFollowDto": {
         "type": "object",
@@ -6100,17 +6140,11 @@
             "type": "string"
           }
         },
-        "required": [
-          "targetType",
-          "targetId"
-        ]
+        "required": ["targetType", "targetId"]
       },
       "AcademyScoutFollowState": {
         "type": "string",
-        "enum": [
-          "FOLLOWING",
-          "MUTED"
-        ]
+        "enum": ["FOLLOWING", "MUTED"]
       },
       "SetScoutFollowStateDto": {
         "type": "object",
@@ -6126,17 +6160,11 @@
             "type": "string"
           }
         },
-        "required": [
-          "state",
-          "scoutId"
-        ]
+        "required": ["state", "scoutId"]
       },
       "RecommendationType": {
         "type": "string",
-        "enum": [
-          "GLOBAL",
-          "SPECIFIC"
-        ]
+        "enum": ["GLOBAL", "SPECIFIC"]
       },
       "CreateRecommendationDto": {
         "type": "object",
@@ -6164,10 +6192,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "playerId"
-        ]
+        "required": ["type", "playerId"]
       },
       "AssignReviewDto": {
         "type": "object",
@@ -6182,19 +6207,14 @@
         "properties": {
           "decision": {
             "type": "string",
-            "enum": [
-              "APPROVED",
-              "REJECTED"
-            ]
+            "enum": ["APPROVED", "REJECTED"]
           },
           "note": {
             "type": "string",
             "maxLength": 1000
           }
         },
-        "required": [
-          "decision"
-        ]
+        "required": ["decision"]
       },
       "InvitePlayerDto": {
         "type": "object",
@@ -6216,38 +6236,25 @@
             "maxLength": 1000
           }
         },
-        "required": [
-          "date",
-          "location",
-          "note"
-        ]
+        "required": ["date", "location", "note"]
       },
       "UpdateRecommendationStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "REVIEWING",
-              "ACCEPTED",
-              "REJECTED"
-            ]
+            "enum": ["REVIEWING", "ACCEPTED", "REJECTED"]
           },
           "academyId": {
             "type": "string",
             "description": "Which academy is deciding. Required when the caller manages more than one, so\na verdict is never written to the wrong academy's target row."
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "TrialType": {
         "type": "string",
-        "enum": [
-          "GENERAL",
-          "PRIVATE"
-        ]
+        "enum": ["GENERAL", "PRIVATE"]
       },
       "CreateTrialDto": {
         "type": "object",
@@ -6317,16 +6324,11 @@
             }
           }
         },
-        "required": [
-          "coachUserIds"
-        ]
+        "required": ["coachUserIds"]
       },
       "TrialStatus": {
         "type": "string",
-        "enum": [
-          "OPEN",
-          "ARCHIVED"
-        ]
+        "enum": ["OPEN", "ARCHIVED"]
       },
       "UpdateTrialDto": {
         "type": "object",
@@ -6384,9 +6386,7 @@
             "maxLength": 500
           }
         },
-        "required": [
-          "note"
-        ]
+        "required": ["note"]
       },
       "RespondToInvitationDto": {
         "type": "object",
@@ -6395,54 +6395,38 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "accept"
-        ]
+        "required": ["accept"]
       },
       "RecordTrialVerdictDto": {
         "type": "object",
         "properties": {
           "verdict": {
             "type": "string",
-            "enum": [
-              "PASS",
-              "FAIL"
-            ]
+            "enum": ["PASS", "FAIL"]
           },
           "note": {
             "type": "string",
             "maxLength": 1000
           }
         },
-        "required": [
-          "verdict"
-        ]
+        "required": ["verdict"]
       },
       "UpdateTrialApplicationStatusDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "REJECTED"
-            ]
+            "enum": ["REJECTED"]
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "CreateReportDto": {
         "type": "object",
         "properties": {
           "type": {
             "type": "string",
-            "enum": [
-              "USER",
-              "MEDIA",
-              "ACADEMY",
-              "COACH"
-            ]
+            "enum": ["USER", "MEDIA", "ACADEMY", "COACH"]
           },
           "reason": {
             "type": "string"
@@ -6460,20 +6444,14 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "reason"
-        ]
+        "required": ["type", "reason"]
       },
       "ResolveReportDto": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "RESOLVED",
-              "DISMISSED"
-            ]
+            "enum": ["RESOLVED", "DISMISSED"]
           },
           "resolutionNote": {
             "type": "string"
@@ -6483,9 +6461,7 @@
             "description": "If resolving a MEDIA report and the content should come down."
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "VerifyDto": {
         "type": "object",
@@ -6494,9 +6470,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "approve"
-        ]
+        "required": ["approve"]
       },
       "SetUserActiveDto": {
         "type": "object",
@@ -6505,31 +6479,20 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "isActive"
-        ]
+        "required": ["isActive"]
       },
       "SetUserRoleDto": {
         "type": "object",
         "properties": {
           "role": {
             "type": "string",
-            "enum": [
-              "scout",
-              "player",
-              "coach",
-              "academy_manager",
-              "admin"
-            ]
+            "enum": ["scout", "player", "coach", "academy_manager", "admin"]
           },
           "grant": {
             "type": "boolean"
           }
         },
-        "required": [
-          "role",
-          "grant"
-        ]
+        "required": ["role", "grant"]
       },
       "SetUserPlanDto": {
         "type": "object",
@@ -6542,9 +6505,7 @@
             ]
           }
         },
-        "required": [
-          "tier"
-        ]
+        "required": ["tier"]
       },
       "AssignAdminDto": {
         "type": "object",
@@ -6553,9 +6514,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "userId"
-        ]
+        "required": ["userId"]
       },
       "CreatePermissionDto": {
         "type": "object",
@@ -6564,9 +6523,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "key"
-        ]
+        "required": ["key"]
       },
       "GrantRolePermissionDto": {
         "type": "object",
@@ -6578,10 +6535,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "roleId",
-          "permissionId"
-        ]
+        "required": ["roleId", "permissionId"]
       }
     }
   },

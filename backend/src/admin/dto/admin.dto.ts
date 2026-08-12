@@ -1,4 +1,16 @@
-import { IsBoolean, IsIn, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, IsUUID } from 'class-validator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+
+/**
+ * Admin user lookup.
+ *
+ * `query` is length-capped: it reaches four `contains` filters, and an
+ * unbounded search term is an unbounded pattern for Postgres to scan on a table
+ * that grows with every signup.
+ */
+export class SearchUsersDto extends PaginationDto {
+  @IsOptional() @IsString() @MaxLength(120) query?: string;
+}
 
 export class VerifyDto {
   @IsBoolean() approve: boolean;

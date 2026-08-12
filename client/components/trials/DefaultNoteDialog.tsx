@@ -50,7 +50,7 @@ export function DefaultNoteDialog({ academyId }: { academyId: string }) {
     enabled: open,
   });
 
-  const saved = htmlToMarkdown(academy.data?.defaultTrialNote);
+  const saved = htmlToMarkdown(academy?.data?.defaultTrialNote);
   const markdown = typed ?? saved;
 
   const save = useMutation({

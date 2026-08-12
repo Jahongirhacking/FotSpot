@@ -58,14 +58,14 @@ export function ManagerFields({
     <div className="border-border space-y-3 rounded-lg border p-3">
       <div className="grid grid-cols-2 gap-2">
         <ModeButton
-          active={value.mode === 'existing'}
+          active={value?.mode === 'existing'}
           icon={UserSearch}
           label={t.admin.managerExisting}
           hint={t.admin.managerExistingHint}
           onClick={() => onChange(EMPTY_MANAGER)}
         />
         <ModeButton
-          active={value.mode === 'new'}
+          active={value?.mode === 'new'}
           icon={UserPlus}
           label={t.admin.managerNew}
           hint={t.admin.managerNewHint}
@@ -75,9 +75,9 @@ export function ManagerFields({
         />
       </div>
 
-      {value.mode === 'existing' ? (
+      {value?.mode === 'existing' ? (
         <UserPicker
-          value={value.user}
+          value={value?.user}
           onChange={(user) => onChange({ mode: 'existing', user })}
           placeholder={t.admin.findUser}
         />
@@ -88,7 +88,7 @@ export function ManagerFields({
               <Input
                 id="mgr-first"
                 placeholder={t.placeholders.firstName}
-                value={value.draft.firstName}
+                value={value?.draft.firstName}
                 onChange={(event) =>
                   onChange({
                     mode: 'new',
@@ -101,7 +101,7 @@ export function ManagerFields({
               <Input
                 id="mgr-last"
                 placeholder={t.placeholders.lastName}
-                value={value.draft.lastName}
+                value={value?.draft.lastName}
                 onChange={(event) =>
                   onChange({ mode: 'new', draft: { ...value.draft, lastName: event.target.value } })
                 }
@@ -114,7 +114,7 @@ export function ManagerFields({
               id="mgr-phone"
               type="tel"
               placeholder="+998 90 123 45 67"
-              value={value.draft.phone ?? ''}
+              value={value?.draft.phone ?? ''}
               onChange={(event) =>
                 onChange({ mode: 'new', draft: { ...value.draft, phone: event.target.value } })
               }

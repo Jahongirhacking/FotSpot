@@ -1,7 +1,6 @@
 import type { PlayerProfile } from '@/lib/api/types';
 import { CARD_THEME, positionGroup, starTier } from '@/lib/player-card';
 import { ageBand, cn, humanizeEnum } from '@/lib/utils';
-import Image from 'next/image';
 import Link from 'next/link';
 
 /**
@@ -48,10 +47,10 @@ export function PlayerCard({
   selfLabel?: string;
   className?: string;
 }) {
-  const group = positionGroup(player.primaryPosition);
+  const group = positionGroup(player?.primaryPosition);
   const theme = CARD_THEME[group];
-  const stars = player.stars ?? 0;
-  const bandLabel = ageBand(player.birthDate).replace('U-', 'U');
+  const stars = player?.stars ?? 0;
+  const bandLabel = ageBand(player?.birthDate).replace('U-', 'U');
   const small = size === 'sm';
 
   const card = (
@@ -108,7 +107,7 @@ export function PlayerCard({
               )}
               style={{ color: theme.ring }}
             >
-              {player.primaryPosition ?? '—'}
+              {player?.primaryPosition ?? '—'}
             </p>
           </div>
 
@@ -125,9 +124,9 @@ export function PlayerCard({
                 {selfLabel}
               </span>
             )}
-            {player.secondaryPosition && !small && (
+            {player?.secondaryPosition && !small && (
               <span className="rounded-md bg-black/35 px-1.5 py-0.5 font-mono text-[11px] font-semibold backdrop-blur-sm">
-                {player.secondaryPosition}
+                {player?.secondaryPosition}
               </span>
             )}
           </div>
@@ -142,18 +141,18 @@ export function PlayerCard({
               small ? 'text-xs' : 'text-lg',
             )}
           >
-            {player.firstName} {player.lastName}
+            {player?.firstName} {player?.lastName}
           </h3>
 
           {!small && (
             <p className="truncate text-xs text-white/70">
               {/* The handle first: it is what someone types to find this player
                   again, and the playing style is already a badge elsewhere. */}
-              {player.username
-                ? `@${player.username}`
-                : player.playingStyle
-                  ? humanizeEnum(player.playingStyle)
-                  : (player.region ?? '')}
+              {player?.username
+                ? `@${player?.username}`
+                : player?.playingStyle
+                  ? humanizeEnum(player?.playingStyle)
+                  : (player?.region ?? '')}
             </p>
           )}
 
@@ -180,11 +179,22 @@ export function PlayerCard({
  * fallback has to look deliberate rather than broken.
  */
 function PlayerPortrait({ player, small }: { player: PlayerProfile; small: boolean }) {
-  if (player.avatarUrl) {
+  if (player?.avatarUrl) {
     return (
-      <Image
-        src={player.avatarUrl}
+      /*
+       * A plain <img>, like every other bucket asset in the app.
+       *
+       * `next/image` needs either width+height or `fill` — this had neither, so
+       * it threw at runtime — and it also needs the R2 host in
+       * `images.remotePatterns`, which is not configured. Both are avoidable:
+       * the optimiser buys little for an already-resized avatar coming from a
+       * CDN, and Avatar and ClipTile made the same call for the same reason.
+       */
+      // eslint-disable-next-line @next/next/no-img-element -- CDN asset; see above
+      <img
+        src={player?.avatarUrl}
         alt={player?.username || 'player'}
+        loading="lazy"
         referrerPolicy="no-referrer"
         className="absolute inset-x-0 bottom-0 h-[82%] w-full object-cover object-top"
       />

@@ -70,7 +70,7 @@ export function AdminManager({ initialAdmins }: { initialAdmins: AdminUser[] }) 
           <Button
             disabled={!selected}
             loading={grant.isPending}
-            onClick={() => selected && grant.mutate(selected.id)}
+            onClick={() => selected && grant.mutate(selected?.id)}
           >
             <ShieldPlus aria-hidden /> {t.admin.grantAdmin}
           </Button>

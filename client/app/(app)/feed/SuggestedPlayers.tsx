@@ -45,29 +45,29 @@ export function SuggestedPlayers({ initial }: { initial: SuggestedPlayer[] }) {
       </CardHeader>
       <CardContent className="space-y-1 p-2">
         {initial.map((player) => (
-          <div key={player.id} className="flex items-center gap-2 rounded-lg p-2">
+          <div key={player?.id} className="flex items-center gap-2 rounded-lg p-2">
             <Link
-              href={`/players/${player.id}`}
+              href={`/players/${player?.id}`}
               className="flex min-w-0 flex-1 items-center gap-2.5"
             >
               <Avatar
-                src={player.avatarUrl}
-                fallback={initials(player.firstName, player.lastName)}
+                src={player?.avatarUrl}
+                fallback={initials(player?.firstName, player?.lastName)}
                 className="size-9"
               />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">
-                  {player.firstName} {player.lastName}
+                  {player?.firstName} {player?.lastName}
                 </span>
                 <span className="text-muted block truncate text-xs">
-                  {[player.primaryPosition, ageBand(player.birthDate), player.region]
+                  {[player?.primaryPosition, ageBand(player?.birthDate), player?.region]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
               </span>
             </Link>
 
-            {followed[player.id] ? (
+            {followed[player?.id] ? (
               <span className="text-muted shrink-0 text-xs">{t.feed.following}</span>
             ) : (
               <Button
@@ -76,8 +76,8 @@ export function SuggestedPlayers({ initial }: { initial: SuggestedPlayer[] }) {
                 className="text-primary shrink-0"
                 disabled={follow.isPending}
                 onClick={() => {
-                  setFollowed((current) => ({ ...current, [player.id]: true }));
-                  follow.mutate(player.id);
+                  setFollowed((current) => ({ ...current, [player?.id]: true }));
+                  follow.mutate(player?.id);
                 }}
               >
                 <UserPlus aria-hidden /> {t.feed.follow}

@@ -1,16 +1,18 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Check } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { homeHrefForRole } from '@/components/layout/nav';
+import { PitchPositionPicker } from '@/components/player/PitchPositionPicker';
+import { PlayingStylePicker } from '@/components/player/PlayingStylePicker';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Feedback';
+import { Field, Input, Label, Select } from '@/components/ui/Field';
+import { browserFetch } from '@/lib/api/browser';
+import { refreshSession, setActiveRoleCookie } from '@/lib/api/session-refresh';
+import type { PlayerProfile } from '@/lib/api/types';
+import { positionGroup } from '@/lib/player-card';
 import {
-  PLAYING_STYLES,
   POSITIONS,
   UZBEK_REGIONS,
   playerFootballSchema,
@@ -19,12 +21,12 @@ import {
   type PlayerFootballValues,
   type PlayerIdentityValues,
 } from '@/lib/schemas/player';
-import type { PlayerProfile } from '@/lib/api/types';
-import { cn, humanizeEnum } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Field, Input, Label, Select } from '@/components/ui/Field';
-import { Alert } from '@/components/ui/Feedback';
+import { cn } from '@/lib/utils';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft, Check } from 'lucide-react';
+import Link from 'next/link';
+import * as React from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 
 /**
  * Two steps, not three.
@@ -150,10 +152,7 @@ function IdentityStep({
     <Card>
       <CardHeader>
         <CardTitle>{t.onboarding.whoIsPlaying}</CardTitle>
-        <CardDescription>
-          Just the basics for now. Your date of birth decides which age group you&apos;re compared
-          in — we never compare across age groups.
-        </CardDescription>
+        <CardDescription>{t.onboarding.whoIsPlayingHint}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onDone)} className="space-y-4" noValidate>
@@ -244,7 +243,7 @@ function FootballStep({
   onBack: () => void;
   onError: (message: string | null) => void;
 }) {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
   // Input/output types differ because of z.coerce — see lib/schemas/player.ts.
   const form = useForm<PlayerFootballInput, unknown, PlayerFootballValues>({
     resolver: zodResolver(playerFootballSchema),
@@ -254,6 +253,7 @@ function FootballStep({
   // useWatch, not form.watch: watch() returns a fresh function each render, which
   // opts the whole component out of React Compiler memoization.
   const primaryPosition = useWatch({ control: form.control, name: 'primaryPosition' });
+  const playingStyle = useWatch({ control: form.control, name: 'playingStyle' });
 
   async function onSubmit(values: PlayerFootballValues) {
     onError(null);
@@ -287,61 +287,79 @@ function FootballStep({
     <Card>
       <CardHeader>
         <CardTitle>{t.onboarding.yourGame}</CardTitle>
-        <CardDescription>
-          All optional — you can fill these in later. Every one you add makes your card stronger.
-        </CardDescription>
+        <CardDescription>{t.onboarding.optionalHint}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={t.onboarding.mainPosition} htmlFor="primaryPosition">
-              <Select id="primaryPosition" {...form.register('primaryPosition')}>
-                <option value="">{t.onboarding.notSureYet}</option>
-                {POSITIONS.map((position) => (
-                  <option key={position} value={position}>
-                    {position}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t.onboarding.otherPosition} htmlFor="secondaryPosition">
-              <Select id="secondaryPosition" {...form.register('secondaryPosition')}>
-                <option value="">—</option>
-                {POSITIONS.map((position) => (
-                  <option key={position} value={position}>
-                    {position}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+          {/*
+            The pitch and the two selects show the same answer.
+            The pitch is how most people will pick — a dot in a shape they already
+            know — while the selects stay because they are what a keyboard user
+            and a screen reader reach first, and because "AM" is faster than
+            aiming at a circle once you know the codes.
+          */}
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+            <PitchPositionPicker
+              mode="single"
+              label={t.onboarding.mainPosition}
+              value={primaryPosition ? [primaryPosition] : []}
+              onChange={(next) => form.setValue('primaryPosition', next[0], { shouldDirty: true })}
+            />
+
+            <div className="space-y-3">
+              <Field
+                label={t.onboarding.mainPosition}
+                htmlFor="primaryPosition"
+                hint={t.onboarding.positionPickHint}
+              >
+                <Select id="primaryPosition" {...form.register('primaryPosition')}>
+                  <option value="">{t.onboarding.notSureYet}</option>
+                  {POSITIONS.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={t.onboarding.otherPosition} htmlFor="secondaryPosition">
+                <Select id="secondaryPosition" {...form.register('secondaryPosition')}>
+                  <option value="">—</option>
+                  {POSITIONS.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
           </div>
 
+          {/*
+            Cards rather than a dropdown: a style is recruitment vocabulary
+            (§21.3), and picking one from fourteen unexplained words is guessing.
+            Narrowed to the group matching the chosen position, so a striker
+            reads four options instead of fourteen.
+          */}
           <Field
             label={t.onboarding.playingStyle}
             htmlFor="playingStyle"
             hint={t.onboarding.playingStyleHint}
           >
-            <Select id="playingStyle" {...form.register('playingStyle')}>
-              <option value="">{t.onboarding.pickLater}</option>
-              {Object.entries(PLAYING_STYLES).map(([group, styles]) => (
-                <optgroup key={group} label={group}>
-                  {styles.map((style) => (
-                    <option key={style} value={style}>
-                      {humanizeEnum(style)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
+            <input type="hidden" id="playingStyle" {...form.register('playingStyle')} />
+            <PlayingStylePicker
+              value={playingStyle}
+              positionGroup={positionGroup(primaryPosition ?? null)}
+              onChange={(next) => form.setValue('playingStyle', next, { shouldDirty: true })}
+            />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label={t.onboarding.strongFoot} htmlFor="dominantFoot">
               <Select id="dominantFoot" {...form.register('dominantFoot')}>
                 <option value="">—</option>
-                <option value="RIGHT">Right</option>
-                <option value="LEFT">Left</option>
-                <option value="BOTH">Both</option>
+                <option value="RIGHT">{t.onboarding.right}</option>
+                <option value="LEFT">{t.onboarding.left}</option>
+                <option value="BOTH">{t.onboarding.both}</option>
               </Select>
             </Field>
             <Field label={t.onboarding.region} htmlFor="region">
@@ -355,7 +373,7 @@ function FootballStep({
             </Field>
           </div>
 
-          <fieldset className="grid grid-cols-2 gap-3">
+          <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <legend className="sr-only">{t.onboarding.measurements}</legend>
             <Field
               label={t.onboarding.heightCm}
@@ -385,17 +403,26 @@ function FootballStep({
 
           {primaryPosition && (
             <p className="text-muted text-xs">
-              <Label className="text-foreground">Tip</Label> — a {primaryPosition} with a chosen
-              playing style shows up in far more academy searches.
+              <Label className="text-foreground">{t.onboarding.tipLabel}</Label> —{' '}
+              {f(t.onboarding.tipStyle, { position: primaryPosition ?? '' })}
             </p>
           )}
 
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-              <ArrowLeft aria-hidden /> Back
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onBack}
+              className="flex-1 cursor-pointer"
+            >
+              <ArrowLeft aria-hidden /> {t.common.back}
             </Button>
-            <Button type="submit" className="flex-1" loading={form.formState.isSubmitting}>
-              Create my card
+            <Button
+              type="submit"
+              className="flex-1 cursor-pointer"
+              loading={form.formState.isSubmitting}
+            >
+              {t.onboarding.createMyCard}
             </Button>
           </div>
         </form>

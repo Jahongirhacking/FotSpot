@@ -31,7 +31,7 @@ export type RecommendationKind = 'GLOBAL' | 'SPECIFIC';
 export const SPECIFIC_ACADEMY_MULTIPLIER = 1.0;
 
 export interface WeightContribution {
-  /** Added to the player's public, decayable global weight. */
+  /** Added to the player's public global weight. */
   global: number;
   /** Added per target academy, visible only to that academy. */
   perAcademy: number;
@@ -60,34 +60,16 @@ export function academyVisibleWeight(globalWeight: number, academyExtra: number)
   return globalWeight + academyExtra;
 }
 
-/**
- * Time decay for the scheduled recalculation.
+/*
+ * There is deliberately no time-decay function here any more.
  *
- * WHY THIS EXISTS: without decay, weight is pure accumulation and the top of every
- * search is permanently occupied by whoever has been on the platform longest. A
- * 13-year-old recommended last week would never surface above a 19-year-old
- * recommended fifty times over three years. Decay is what keeps discovery pointed
- * at new talent — which is the entire product (README §1.1).
+ * `decayedWeight` and its half-life constant lived here waiting for a scheduled
+ * job to call them. Reputation is no longer something a clock adjusts: a scout's
+ * standing moves when an academy or a coach answers one of their
+ * recommendations, and at no other time — see
+ * `RecommendationsService.recalculateScoutStats` and README §1.5.
  *
- * Half-life shaped: weight halves every `halfLifeDays`. Continuous rather than
- * stepped, so a nightly job and a weekly job produce the same curve and re-running
- * it late doesn't over-penalise.
- *
- * Not yet scheduled — no BullMQ workers exist (backend/README). This is the
- * function that job will call, kept here so the maths is settled and tested first.
+ * Nothing replaced it, because nothing needs to. Every event that can change a
+ * scout's record already recalculates it from the target rows, which is a
+ * recomputation rather than a delta and therefore idempotent under retries.
  */
-export const DEFAULT_HALF_LIFE_DAYS = 180;
-
-export function decayedWeight(
-  currentWeight: number,
-  daysElapsed: number,
-  halfLifeDays: number = DEFAULT_HALF_LIFE_DAYS,
-): number {
-  if (currentWeight <= 0 || daysElapsed <= 0) return Math.max(0, currentWeight);
-  if (halfLifeDays <= 0) return currentWeight;
-
-  const decayed = currentWeight * Math.pow(0.5, daysElapsed / halfLifeDays);
-  // Two decimals: this is a ranking signal, not an accounting figure, and it keeps
-  // stored values from drifting into float noise over many decay passes.
-  return Math.round(decayed * 100) / 100;
-}

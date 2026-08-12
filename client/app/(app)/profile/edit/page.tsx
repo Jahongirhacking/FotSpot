@@ -17,7 +17,7 @@ export default async function EditProfilePage() {
   if (!session) redirect('/login?next=/profile/edit');
 
   const { t } = await getServerT();
-  const me = await users.me({ token: session.accessToken, cache: 'no-store' }).catch(() => null);
+  const me = await users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null);
 
   if (!me) return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
 

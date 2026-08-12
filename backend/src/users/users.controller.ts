@@ -2,7 +2,6 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
-import { Public } from '../common/decorators/public.decorator';
 import {
   AvatarUploadUrlDto,
   RequestContactChangeDto,
@@ -65,8 +64,14 @@ export class UsersController {
     return this.usersService.verifyContactChange(user.userId, dto);
   }
 
-  @Public()
-  /** The "who am I here" block behind the avatar menu — see UsersService.summary. */
+  /**
+   * The "who am I here" block behind the avatar menu — see UsersService.summary.
+   *
+   * Not `@Public()`, though it was. `@CurrentUser()` reads `request.user`, which
+   * the auth guard leaves unset on a public route, so an unauthenticated call
+   * reached Prisma with `userId: undefined` and answered 500. There is nothing
+   * for a guest here in any case: every field describes an account.
+   */
   @Get('me/summary')
   summary(@CurrentUser() user: AuthUser) {
     return this.usersService.summary(user.userId);

@@ -73,6 +73,56 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Atomically counts one hit inside a fixed window, returning the new total.
+   *
+   * `INCR` rather than the read-then-write `getJson`/`setJson` pair the lockout
+   * counter uses, because this one bounds *concurrent* traffic: a flood is by
+   * definition many requests arriving at once, which is exactly the case where
+   * read-modify-write loses increments and the limiter reports a fraction of the
+   * real rate. INCR is a single round trip and cannot lose one.
+   *
+   * The TTL is set only when the counter is created (`NX`), so the window is
+   * fixed from the first request rather than sliding forward with every hit —
+   * an expiry refreshed on each call would never expire under sustained load and
+   * would lock the caller out permanently.
+   *
+   * Returns null when Redis is unreachable, which callers must read as "no
+   * information" and allow: see the class note on failing soft.
+   */
+  async incrementInWindow(key: string, windowSeconds: number): Promise<number | null> {
+    try {
+      const [[, count]] = (await this.client
+        .multi()
+        .incr(key)
+        .expire(key, windowSeconds, 'NX')
+        .exec()) as [[Error | null, number], [Error | null, number]];
+      return count;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Sets `key` only if it does not exist, returning whether this call created it.
+   *
+   * The "have I seen this already" primitive — one caller wins, everybody else
+   * is told the slot was taken. Used to make an event idempotent for a window
+   * (see MediaService.recordView) without a table to look in.
+   *
+   * Fails **closed**, unlike the reads above: with Redis down there is no way to
+   * know whether the thing already happened, and answering "no, go ahead" turns
+   * a cache outage into duplicate writes.
+   */
+  async claimOnce(key: string, ttlSeconds: number): Promise<boolean> {
+    try {
+      const result = await this.client.set(key, '1', 'EX', ttlSeconds, 'NX');
+      return result === 'OK';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Read-through cache. Returns the cached value when present, otherwise runs
    * `loader`, caches its result and returns it.
    */

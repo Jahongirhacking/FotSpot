@@ -15,6 +15,6 @@ import { PlayerCard } from '@/components/player/PlayerCard';
 export function PlayerResultCard({ player }: { player: PlayerProfile }) {
   // Prefers the handle: `/players/@amber-falcon-nutmeg-42` is a link somebody can
   // read out, and it survives even if ids ever change shape.
-  const href = player.username ? `/players/@${player.username}` : `/players/${player.id}`;
+  const href = player?.username ? `/players/@${player?.username}` : `/players/${player?.id}`;
   return <PlayerCard player={player} size="sm" href={href} />;
 }
