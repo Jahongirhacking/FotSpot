@@ -1,4 +1,4 @@
-import DOMPurify from 'dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 /**
  * The tags a trial note may contain. Mirrors `backend/src/common/rich-text.util.ts`.
@@ -24,8 +24,6 @@ const ALLOWED_TAGS = [
   'a',
 ];
 
-const ALLOWED_ATTR = ['href', 'title', 'target', 'rel'];
-
 /**
  * Clean a note before it is sent, and again before it is shown.
  *
@@ -38,14 +36,37 @@ const ALLOWED_ATTR = ['href', 'title', 'target', 'rel'];
  * in means saving something that will not come back the same, and skipping it on
  * the way out means trusting the API completely at the one place we hand raw
  * HTML to the DOM.
+ *
+ * ## `sanitize-html`, not DOMPurify
+ *
+ * DOMPurify sanitises by parsing into a real DOM, so it needs one. Where there is
+ * none it does not throw or fall back — `createDOMPurify` returns early with
+ * `isSupported = false` and never defines `sanitize` at all. This file is
+ * imported by `TrialNote`, a Server Component, so the call landed on `undefined`
+ * and took the note's error boundary with it.
+ *
+ * A `'use client'` directive would not have helped: client components are still
+ * rendered on the server for the initial HTML, so the sanitiser has to work
+ * without a DOM either way.
+ *
+ * `sanitize-html` parses HTML itself and needs nothing from the environment, so
+ * one implementation covers RSC, SSR and the browser. It is also what the backend
+ * already uses, against this same allow-list — so the two ends of the boundary
+ * this file promises to mirror now behave identically, rather than mirroring in
+ * wording only.
  */
 export function sanitizeNote(html: string | null | undefined): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    // Every link leaves the app, so none of them may keep a handle back to it.
-    ADD_ATTR: ['target', 'rel'],
+  return sanitizeHtml(html, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: { a: ['href', 'title', 'target', 'rel'] },
+    // Anything else — `javascript:`, `data:` — is dropped with the attribute.
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    // Every link leaves the app, so none of them may keep a handle back to it
+    // through `window.opener`.
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' }),
+    },
   });
 }
 
