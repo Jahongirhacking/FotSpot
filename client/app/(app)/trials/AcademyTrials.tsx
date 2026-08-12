@@ -1,27 +1,25 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
-import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { Trial } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
+import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
+import { NoteEditor } from '@/components/trials/NoteEditor';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
-import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
-import { formatDate } from '@/lib/utils';
-import { TrialHistory } from './TrialHistory';
-import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
-import { NoteEditor } from '@/components/trials/NoteEditor';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyProfile, Trial } from '@/lib/api/types';
 import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-import { useQuery } from '@tanstack/react-query';
-import type { AcademyProfile } from '@/lib/api/types';
+import { formatDate, localNowInput } from '@/lib/utils';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
+import { TrialHistory } from './TrialHistory';
 
 /**
  * The manager's half of the trials screen, in the two lists they actually think
@@ -66,6 +64,15 @@ export function AcademyTrials({
    */
   const [ageRange, setAgeRange] = React.useState<[number, number]>([12, 14]);
   const [positions, setPositions] = React.useState<Position[]>([]);
+  /*
+   * The two dates are controlled for one reason: the deadline's ceiling is the
+   * exam date, and an uncontrolled input cannot know what the other one says.
+   * Applications closing after the session has been played is the one
+   * combination the API refuses, and it used to be refusable only by submitting.
+   */
+  const [examDate, setExamDate] = React.useState('');
+  const [deadline, setDeadline] = React.useState('');
+  const deadlineAfterExam = Boolean(examDate && deadline && deadline > examDate);
   const [trials, setTrials] = React.useState(initial);
   /** Null until the manager edits — the academy's default shows through. */
   const [typedNote, setTypedNote] = React.useState<string | null>(null);
@@ -84,6 +91,11 @@ export function AcademyTrials({
     onSuccess: (trial) => {
       setTrials((current) => [trial, ...current]);
       setOpen(false);
+      // The rest of the form is uncontrolled and clears when the panel unmounts;
+      // these two live up here, so a second trial would open on the first one's
+      // dates.
+      setExamDate('');
+      setDeadline('');
       router.refresh();
     },
     meta: { success: t.trials.trialCreated },
@@ -94,14 +106,19 @@ export function AcademyTrials({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // The `max` on the picker already blocks this, but only where the browser
+    // enforces it — and the API refuses it either way, in English, after a round
+    // trip. Cheaper and clearer to say so here.
+    if (deadlineAfterExam) return;
+
     const form = new FormData(event.currentTarget);
     create.mutate({
       // Never PRIVATE. See the note above the component.
       type: 'GENERAL',
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
-      date: new Date(String(form.get('date'))).toISOString(),
-      applyDeadline: new Date(String(form.get('applyDeadline'))).toISOString(),
+      date: new Date(examDate).toISOString(),
+      applyDeadline: new Date(deadline).toISOString(),
       // Both come from controlled inputs now — the age range from a slider and
       // the positions from the pitch — so they are read from state rather than
       // from the form. A typed list of codes was a place to mistype "CV".
@@ -159,7 +176,15 @@ export function AcademyTrials({
                   />
                 </Field>
                 <Field label={t.trials.examDate} htmlFor="trial-date" required>
-                  <Input id="trial-date" name="date" type="datetime-local" required />
+                  <Input
+                    id="trial-date"
+                    name="date"
+                    type="datetime-local"
+                    required
+                    min={localNowInput()}
+                    value={examDate}
+                    onChange={(event) => setExamDate(event.target.value)}
+                  />
                 </Field>
               </div>
 
@@ -167,19 +192,35 @@ export function AcademyTrials({
                 label={t.trials.applyDeadline}
                 htmlFor="trial-deadline"
                 hint={t.trials.applyDeadlineHint}
+                error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
                 required
               >
-                <Input id="trial-deadline" name="applyDeadline" type="datetime-local" required />
+                {/* Capped at the exam date: applications closing after the
+                    session has been played is the one thing the API refuses,
+                    and a picker that cannot offer it beats an error afterwards. */}
+                <Input
+                  id="trial-deadline"
+                  name="applyDeadline"
+                  type="datetime-local"
+                  required
+                  min={localNowInput()}
+                  max={examDate || undefined}
+                  value={deadline}
+                  onChange={(event) => setDeadline(event.target.value)}
+                />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-              </div>
+              <div className="grid grid-cols-2 gap-3"></div>
 
               {/* One control for what is one decision. Two number boxes let a
                   manager save a range whose ends are the wrong way round; the
                   slider clamps instead, and still carries the boxes for anyone
                   who already knows the exact ages they want. */}
-              <Field label={t.trials.ageRange} htmlFor="trial-age-range" hint={t.trials.ageRangeHint}>
+              <Field
+                label={t.trials.ageRange}
+                htmlFor="trial-age-range"
+                hint={t.trials.ageRangeHint}
+              >
                 <RangeSlider
                   min={TRIAL_AGE_MIN}
                   max={TRIAL_AGE_MAX}
@@ -292,7 +333,7 @@ function TrialList({ trials }: { trials: Trial[] }) {
         <li key={trial?.id}>
           <Link
             href={`/trials/${trial?.id}`}
-            className="hover:bg-surface-2 flex flex-wrap items-center gap-3 rounded-lg p-2"
+            className="hover:bg-surface-2 border-border flex flex-wrap items-center gap-3 rounded-lg border-1 border-dashed p-2"
           >
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">

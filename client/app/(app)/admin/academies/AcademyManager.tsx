@@ -6,8 +6,8 @@ import { Archive, Building2, Check, KeyRound, Pencil, Plus, UserCog, X } from 'l
 import { browserFetch } from '@/lib/api/browser';
 import type { ManagerCredentials } from '@/lib/api/resources';
 import type { AcademyProfile } from '@/lib/api/types';
-import { UZBEK_REGIONS } from '@/lib/schemas/player';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import {
   EMPTY_MANAGER,
   isManagerComplete,
@@ -256,7 +256,7 @@ function AcademyForm({
 }) {
   const { t } = useI18n();
   const [name, setName] = React.useState(defaults?.name ?? '');
-  const [region, setRegion] = React.useState(defaults?.region ?? UZBEK_REGIONS[0]);
+  const [region, setRegion] = React.useState(defaults?.region ?? '');
   const [district, setDistrict] = React.useState(defaults?.district ?? '');
   const [description, setDescription] = React.useState(defaults?.description ?? '');
   const [manager, setManagerChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
@@ -291,25 +291,13 @@ function AcademyForm({
             />
           </Field>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t.onboarding.region} htmlFor="ac-region">
-              <Select id="ac-region" value={region} onChange={(e) => setRegion(e.target.value)}>
-                {UZBEK_REGIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t.academy.district} htmlFor="ac-district">
-              <Input
-                id="ac-district"
-                placeholder={t.placeholders.district}
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-              />
-            </Field>
-          </div>
+          <RegionDistrictPicker
+            idPrefix="ac"
+            region={region}
+            district={district}
+            onRegionChange={setRegion}
+            onDistrictChange={setDistrict}
+          />
 
           <Field label={t.academy.about} htmlFor="ac-about" hint={t.academy.aboutHint}>
             <Textarea

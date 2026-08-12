@@ -511,6 +511,7 @@ export const uz = {
     featuredHint: 'Tarkibdan tanlang. Tartib siz belgilagancha ko‘rinadi.',
     featuredFull: 'Chegaraga yetdingiz',
     editProfileTitle: 'Akademiya profili',
+    districtNeedsRegion: 'Avval viloyatni tanlang.',
     district: 'Tuman',
     about: 'Akademiya haqida',
     aboutHint: 'Yosh guruhlari, mashg‘ulot maydoni, nimani qidirasiz.',
@@ -546,6 +547,7 @@ export const uz = {
     finishing: 'Zarba',
     physical: 'Jismoniy',
     technique: 'Texnika',
+    goalkeeping: 'Darvozabon',
     highlights: 'Eng yaxshi lahzalar',
   },
 
@@ -566,7 +568,8 @@ export const uz = {
     privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',
     watchTutorials: 'Darsliklarni ko‘rish',
-    tutorialsHint: 'Har bir ko‘nikma uchun qisqa video — nimani va qanday suratga olishni ko‘rsatadi.',
+    tutorialsHint:
+      'Har bir ko‘nikma uchun qisqa video — nimani va qanday suratga olishni ko‘rsatadi.',
     tutorialUnavailable: 'Bu ko‘nikma uchun darslik hozircha yo‘q.',
     addClip: 'Lavha qo‘shish',
     all: 'Barchasi',
@@ -634,6 +637,8 @@ export const uz = {
       'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
     onThePitch: 'Maydonda',
     dominantFoot: 'Kuchli oyoq',
+    footLeft: 'Chap',
+    footRight: 'O‘ng',
     attributes: 'Ko‘rsatkichlar',
     findPlayers: 'Futbolchilarni topish',
     searchByName: 'Ism bo‘yicha qidirish',
@@ -741,6 +746,7 @@ export const uz = {
     applyDeadline: 'Ariza muddati',
     applyDeadlineHint:
       'Shu vaqtdan keyin hech kim ariza bera olmaydi. Sinov sanasidan keyin bo‘lishi mumkin emas.',
+    deadlineAfterExam: 'Ariza muddati sinov sanasidan keyin bo‘lishi mumkin emas.',
     moveDateWarning:
       'Sanani o‘zgartirsangiz, ariza bergan har bir futbolchiga bildirishnoma boradi.',
     history: 'Tarix',
@@ -1126,6 +1132,12 @@ export const uz = {
       player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
+    },
+    GOALKEEPING: {
+      player:
+        'Bu bo‘lim darvozabonlar uchun. Maydon o‘yinchisi bo‘lsangiz, boshqa ko‘nikmani tanlang.',
+      goalkeeper:
+        'Cho‘zilib to‘xtatish, reaksiya, baland to‘plarda chiqish, 1v1 holatlar, penalti va oyoq bilan to‘p tarqatishni ko‘rsating.',
     },
     MATCH_HIGHLIGHTS: {
       player:

@@ -71,8 +71,8 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-6">
-        <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PlayerCard player={profile} selfLabel={t.relation.you} />
+        <div className="grid min-w-0 items-center gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+          <PlayerCard player={profile} selfLabel={t.relation.you} className="m-auto" />
           <OnThePitchCard player={profile} t={t} className="!h-full" />
 
           {/* The clips live with the bars they move, not in a gallery of their

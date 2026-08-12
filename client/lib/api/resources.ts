@@ -192,6 +192,8 @@ export interface MyProfileResponse extends MeResponse {
 
 export interface PlayerSearchParams {
   region?: string;
+  /** Only meaningful with a region — the API cannot resolve one without it. */
+  district?: string;
   position?: string;
   playingStyle?: PlayingStyle;
   query?: string;
@@ -1063,7 +1065,7 @@ export const media = {
       storageKey: string;
       type: MediaType;
       category: MediaCategory;
-      /** Required for the six attribute categories, rejected for highlights. */
+      /** Required for every attribute category, rejected for highlights. */
       rating?: number;
       title?: string;
       description?: string;

@@ -32,7 +32,9 @@ import { PlayerActions } from './PlayerActions';
  */
 function fetchPlayer(idOrHandle: string, opts: Parameters<typeof players.getById>[1]) {
   const value = safeDecode(idOrHandle);
-  return value?.startsWith('@') ? players?.getByUsername(value, opts) : players?.getById(value, opts);
+  return value?.startsWith('@')
+    ? players?.getByUsername(value, opts)
+    : players?.getById(value, opts);
 }
 
 /** A stray `%` in a URL throws rather than decoding; the raw value is the answer. */
@@ -158,7 +160,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           stretching to the card's, which left a dead band under it.
         */}
         <div className="grid min-w-0 items-start gap-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PlayerCard player={player} selfLabel={isSelf ? t.relation.you : undefined} />
+          <PlayerCard
+            player={player}
+            selfLabel={isSelf ? t.relation.you : undefined}
+            className="m-auto"
+          />
           <OnThePitchCard player={player} t={t} className="h-full" />
 
           {/* min-w-0: a grid item defaults to min-width:auto, which means it
@@ -220,7 +226,9 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                         {/* The coaches who assessed you are, precisely, your coaches. */}
                         {isSelf && <RelationBadge relation="MY_COACH" t={t} />}
                       </span>
-                      <span className="text-muted text-xs">{formatDate(assessment?.createdAt)}</span>
+                      <span className="text-muted text-xs">
+                        {formatDate(assessment?.createdAt)}
+                      </span>
                     </div>
                     {assessment?.notes && <p className="mt-2 text-sm">{assessment?.notes}</p>}
                   </li>

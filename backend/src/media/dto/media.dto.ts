@@ -4,7 +4,7 @@ import { MediaCategory } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
-/** The six card attributes a clip can evidence, plus highlights (§21.1). */
+/** The card attributes a clip can evidence, plus highlights (§21.1). */
 const CATEGORIES = [
   'PACE',
   'DRIBBLING',
@@ -12,6 +12,7 @@ const CATEGORIES = [
   'FINISHING',
   'PHYSICAL',
   'TECHNIQUE',
+  'GOALKEEPING',
   'MATCH_HIGHLIGHTS',
 ] as const;
 const TYPES = ['IMAGE', 'VIDEO'] as const;
@@ -37,8 +38,7 @@ export class ConfirmUploadDto {
   /**
    * The player's own 0–100 claim for this attribute, evidenced by the clip.
    *
-   * Required for the six attribute categories and rejected for
-   * MATCH_HIGHLIGHTS — enforced in the service, because "required unless the
+   * Required for every attribute category and rejected for MATCH_HIGHLIGHTS — enforced in the service, because "required unless the
    * value of another field is X" is not something class-validator states
    * clearly enough to be worth the custom constraint.
    */

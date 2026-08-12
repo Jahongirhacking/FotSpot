@@ -6,9 +6,19 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// `url` is what the running API queries through; `directUrl` is what migrations
+// use. On a managed Postgres they are two different endpoints and the split
+// matters: Neon's `-pooler` host is PgBouncer in transaction mode, which is right
+// for many short-lived app queries and wrong for `migrate deploy`, whose advisory
+// lock has to outlive a single transaction to stop two deploys migrating at once.
+//
+// Both point at the same database, so a single-server Postgres sets them to the
+// same value — see .env.example. `directUrl` is read only by the Prisma CLI, so
+// it costs the running app nothing.
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- RBAC (1.4) ----------
@@ -690,6 +700,9 @@ enum MediaType {
 
 /// One value per player-card attribute (§21.1), plus highlights.
 ///
+/// GOALKEEPING is an attribute like the rest — a keeper's clips were otherwise
+/// filed under Technique and Passing, which is not what either bar claims.
+///
 /// Renamed from SPRINT/SHOOTING so a clip's category *is* the bar it evidences.
 /// When the two vocabularies differed, nothing could connect a video to the
 /// attribute it was uploaded to prove.
@@ -700,6 +713,7 @@ enum MediaCategory {
   FINISHING
   PHYSICAL
   TECHNIQUE
+  GOALKEEPING
   MATCH_HIGHLIGHTS
 }
 

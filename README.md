@@ -394,8 +394,7 @@ and fire notifications (§1.12).
 
 > **Canonical: [`TRIAL.md`](./TRIAL.md) §31.1, Rules 21–23.** This section summarises.
 
-Categories rated **0–100**: Speed · Passing · Vision · Dribbling · Finishing · Physical ·
-Leadership · Discipline. A coach may attach notes, media and documents.
+Categories rated **0–100**: Speed · Passing · Dribbling · Finishing · Physical · Technique · Goalkeeping. A coach may attach notes, media and documents.
 
 **Who may write one — the whole rule:**
 
@@ -1300,24 +1299,25 @@ platform. Nothing else in this spec has that property.
 ### 21.1 Card anatomy
 
 ```
-┌──────────────────────────────┐
-│  [ action photo ]      U14   │  ← age band always on the card
-│                              │
-│   RASULOV, Javohir           │
-│   ┌────┐  ┌──────────────┐   │
-│   │ AM │  │ Orchestrator │   │  ← position · playing style
-│   └────┘  └──────────────┘   │
-│   Fergana · Right foot       │
-├──────────────────────────────┤
-│  PACE       ██████████░░  78 │ ⏱ combine-measured
-│  DRIBBLING  ████████░░░░  66 │ ⏱ combine-measured
-│  PASSING    ███████████░  81 │ ✔ coach-verified
-│  FINISHING  ██████░░░░░░  54 │ ✎ self-reported
-│  PHYSICAL   ███████░░░░░  61 │ ⏱ combine-measured
-│  TECHNIQUE  █████████░░░  72 │ ⏱ combine-measured
-├──────────────────────────────┤
-│  ▶ Dribbling  ▶ Sprint  ▶ +2 │  ← 60 s clips, one per skill slot
-└──────────────────────────────┘
+┌───────────────────────────────┐
+│  [ action photo ]      U14    │  ← age band always on the card
+│                               │
+│   RASULOV, Javohir            │
+│   ┌────┐  ┌──────────────┐    │
+│   │ AM │  │ Orchestrator │    │  ← position · playing style
+│   └────┘  └──────────────┘    │
+│   Fergana · Right foot        │
+├───────────────────────────────┤
+│  PACE        ██████████░░  78 │ ⏱ combine-measured
+│  DRIBBLING   ████████░░░░  66 │ ⏱ combine-measured
+│  PASSING     ███████████░  81 │ ✔ coach-verified
+│  FINISHING   ██████░░░░░░  54 │ ✎ self-reported
+│  PHYSICAL    ███████░░░░░  61 │ ⏱ combine-measured
+│  TECHNIQUE   █████████░░░  72 │ ⏱ combine-measured
+│  GOALKEEPING █████████░░░  72 │ ⏱ combine-measured
+├───────────────────────────────┤
+│  ▶ Dribbling  ▶ Sprint  ▶ +2  │  ← 60 s clips, one per skill slot
+└───────────────────────────────┘
 ```
 
 Every bar carries its **provenance icon** — this is §12.4's verified/unverified requirement
@@ -1326,14 +1326,15 @@ than a measured one, which makes verification something the player _wants_, not 
 
 ### 21.2 Attributes map to data you already collect
 
-| Card attribute | Source                                                            |
-| -------------- | ----------------------------------------------------------------- |
-| **Pace**       | 30 m sprint + 5-10-5 shuttle (§13.1)                              |
-| **Dribbling**  | Dribble slalom (§13.1) + coach Dribbling rating (§1.9)            |
-| **Passing**    | Wall-pass accuracy (§13.1) + coach Passing/Vision (§1.9)          |
-| **Finishing**  | Coach Finishing rating (§1.9) + match goals (§1.6, self-reported) |
-| **Physical**   | Vertical jump (§13.1) + coach Physical (§1.9)                     |
-| **Technique**  | 60 s juggling (§13.1) + coach ratings                             |
+| Card attribute  | Source                                                            |
+| --------------- | ----------------------------------------------------------------- |
+| **Pace**        | 30 m sprint + 5-10-5 shuttle (§13.1)                              |
+| **Dribbling**   | Dribble slalom (§13.1) + coach Dribbling rating (§1.9)            |
+| **Passing**     | Wall-pass accuracy (§13.1) + coach Passing/Vision (§1.9)          |
+| **Finishing**   | Coach Finishing rating (§1.9) + match goals (§1.6, self-reported) |
+| **Physical**    | Vertical jump (§13.1) + coach Physical (§1.9)                     |
+| **Technique**   | 60 s juggling (§13.1) + coach ratings                             |
+| **Goalkeeping** | jump & save (§13.1) + coach ratings                               |
 
 Six bars, not eight — a card that needs scrolling isn't a card. Leadership and Discipline (§1.9)
 stay on the academy-facing profile, where they belong; they don't render as game stats.

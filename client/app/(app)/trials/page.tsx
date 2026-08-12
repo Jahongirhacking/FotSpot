@@ -1,19 +1,19 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { CalendarDays, MapPin } from 'lucide-react';
-import { academies, recommendations, trials } from '@/lib/api/resources';
-import { AcademyTrials } from './AcademyTrials';
-import { CoachTrials } from './CoachTrials';
-import { MyTrialInvitations } from './MyTrialInvitations';
-import { MarkTrialsSeen } from './MarkTrialsSeen';
-import { getSession } from '@/lib/session';
-import { getServerT } from '@/lib/i18n/server';
-import type { CoachReview, CoachTrial } from '@/lib/api/types';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
+import { academies, recommendations, trials } from '@/lib/api/resources';
+import type { CoachReview, CoachTrial } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { getSession } from '@/lib/session';
 import { formatDate } from '@/lib/utils';
+import { CalendarDays, MapPin } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { AcademyTrials } from './AcademyTrials';
+import { CoachTrials } from './CoachTrials';
+import { MarkTrialsSeen } from './MarkTrialsSeen';
+import { MyTrialInvitations } from './MyTrialInvitations';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,7 +53,9 @@ export default async function TrialsPage() {
   }
 
   const list = await trials
-    .listUpcoming(session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 })
+    .listUpcoming(
+      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
+    )
     .catch(() => []);
 
   /*
@@ -84,66 +86,72 @@ export default async function TrialsPage() {
       </header>
 
       {/* A private trial is never on the board below, so the only way a player
-          learns of one is here (and in their notifications). */}
-      {session && <MyTrialInvitations />}
+          learns of one is here (and in their notifications).
+
+          Only for a player: the endpoint behind this is "my applications", which
+          a manager or a scout does not have. Mounting it for any session asked
+          every one of them for something that cannot exist, and got a 403 back on
+          every visit to this page. */}
+      {session?.activeRole === 'player' && <MyTrialInvitations />}
 
       {managed && (
         <AcademyTrials academyId={managed.id} academyName={managed.name} initial={managedTrials} />
       )}
 
-      {list.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          title={t.trials.noTrials}
-          description={t.trials.noTrialsHint}
-          action={
-            <Button asChild variant="outline">
-              <Link href="/academies">{t.trials.browseAcademies}</Link>
-            </Button>
-          }
-        />
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {list.map((trial) => (
-            <li key={trial?.id}>
-              <Card className="hover:border-primary/40 h-full transition-colors">
-                <Link href={`/trials/${trial?.id}`} className="block">
-                  <CardContent className="space-y-3 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold">{trial?.title}</p>
-                      <Badge variant="primary" className="shrink-0">
-                        U{trial?.ageRangeMax}
-                      </Badge>
-                    </div>
-                    <dl className="text-muted space-y-1 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <CalendarDays className="size-3.5" aria-hidden />
-                        <dt className="sr-only">Date</dt>
-                        <dd>{formatDate(trial?.date)}</dd>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="size-3.5" aria-hidden />
-                        <dt className="sr-only">{t.trials.location}</dt>
-                        <dd>{trial?.location}</dd>
-                      </div>
-                    </dl>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge variant="outline">
-                        Ages {trial?.ageRangeMin}–{trial?.ageRangeMax}
-                      </Badge>
-                      {trial?.positions.slice(0, 4).map((position) => (
-                        <Badge key={position} variant="neutral" className="font-mono">
-                          {position}
+      {!managed &&
+        (list?.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title={t.trials.noTrials}
+            description={t.trials.noTrialsHint}
+            action={
+              <Button asChild variant="outline">
+                <Link href="/academies">{t.trials.browseAcademies}</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {list?.map((trial) => (
+              <li key={trial?.id}>
+                <Card className="hover:border-primary/40 h-full transition-colors">
+                  <Link href={`/trials/${trial?.id}`} className="block">
+                    <CardContent className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold">{trial?.title}</p>
+                        <Badge variant="primary" className="shrink-0">
+                          U{trial?.ageRangeMax}
                         </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Link>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
+                      </div>
+                      <dl className="text-muted space-y-1 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarDays className="size-3.5" aria-hidden />
+                          <dt className="sr-only">Date</dt>
+                          <dd>{formatDate(trial?.date)}</dd>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="size-3.5" aria-hidden />
+                          <dt className="sr-only">{t.trials.location}</dt>
+                          <dd>{trial?.location}</dd>
+                        </div>
+                      </dl>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="outline">
+                          Ages {trial?.ageRangeMin}–{trial?.ageRangeMax}
+                        </Badge>
+                        {trial?.positions.slice(0, 4).map((position) => (
+                          <Badge key={position} variant="neutral" className="font-mono">
+                            {position}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Link>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        ))}
     </div>
   );
 }

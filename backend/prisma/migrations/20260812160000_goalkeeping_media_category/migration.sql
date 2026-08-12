@@ -1,0 +1,12 @@
+-- Goalkeeping becomes a clip category, and therefore a card attribute.
+--
+-- The six existing categories are outfield skills — a keeper uploading evidence
+-- had to file diving saves under "Technique" and distribution under "Passing",
+-- which is not what either bar claims. The clip's category *is* the bar it
+-- argues for (see the enum's own note), so a keeper with no category of their
+-- own had no honest way to evidence the thing they actually do.
+--
+-- Placed before MATCH_HIGHLIGHTS so the attribute categories stay contiguous:
+-- highlights is the odd one out, being the only value that evidences no single
+-- attribute and therefore carries no rating.
+ALTER TYPE "MediaCategory" ADD VALUE IF NOT EXISTS 'GOALKEEPING' BEFORE 'MATCH_HIGHLIGHTS';

@@ -18,6 +18,11 @@ import { AuditAction } from '../audit/audit.actions';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
+import {
+  isValidRegionDistrict,
+  normaliseDistrict,
+  normaliseRegion,
+} from '../common/uzbekistan';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import {
   AddAcademyPhotoDto,
@@ -419,6 +424,39 @@ export class AcademiesService {
     if (dto.logoKey) assertKeyUnder(dto.logoKey, academyMediaPrefix(academyId));
 
     /*
+     * The region/district pair as the row would *end up*.
+     *
+     * The DTO validator sees only the request, so a PATCH sending one half slips
+     * past it — moving an academy stored in `Xiva` to `Namangan viloyati` is two
+     * individually-valid values naming a place that does not exist. Canonical
+     * spellings come back, so an ASCII apostrophe is stored the way the picker
+     * would have stored it rather than splitting the district in search.
+     */
+    const stored = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { region: true, district: true },
+    });
+    if (!stored) throw new NotFoundException('Academy not found');
+
+    const nextRegion = dto.region !== undefined ? dto.region : stored.region;
+    const nextDistrict = dto.district !== undefined ? dto.district : stored.district;
+    if (!isValidRegionDistrict(nextRegion, nextDistrict)) {
+      const canonical = normaliseRegion(nextRegion);
+      throw new BadRequestException(
+        canonical
+          ? `"${nextDistrict}" is not a district of ${canonical}`
+          : `"${nextRegion}" is not a region of Uzbekistan`,
+      );
+    }
+
+    const canonicalRegion = normaliseRegion(nextRegion);
+    const location: { region?: string | null; district?: string | null } = {};
+    if (dto.region !== undefined) location.region = canonicalRegion;
+    if (dto.district !== undefined) {
+      location.district = canonicalRegion ? normaliseDistrict(canonicalRegion, nextDistrict) : null;
+    }
+
+    /*
      * Social links are normalised and host-checked, never stored as typed.
      *
      * These end up in an `href` on a public page, so the platform each one
@@ -435,6 +473,7 @@ export class AcademiesService {
       data: {
         ...dto,
         ...socials,
+        ...location,
         // The one field that carries markup. Cleaned here because this endpoint
         // is reachable without the editor that cleans it on the way in.
         ...(dto.defaultTrialNote !== undefined

@@ -20,8 +20,37 @@ export function Label({ className, ...props }: React.ComponentProps<typeof Label
 const controlClasses =
   'bg-surface border-border placeholder:text-muted/70 min-h-11 w-full rounded-lg border px-3 py-2 text-base transition-colors disabled:opacity-50 sm:text-sm aria-[invalid=true]:border-danger';
 
-export function Input({ className, ...props }: React.ComponentProps<'input'>) {
-  return <input className={cn(controlClasses, className)} {...props} />;
+/**
+ * Date and time controls that a browser might otherwise render as AM/PM.
+ *
+ * The native picker follows the *browser's* locale, not the page's. Chromium has
+ * no date formats for `uz`, so the app being in Uzbek does not help: it falls
+ * back to the browser's own locale and an English one puts a 12-hour clock in
+ * front of a manager scheduling a session for 18:00. Nobody arranging football
+ * here writes half past six as 6:30 PM.
+ */
+const CLOCK_TYPES = new Set(['datetime-local', 'time', 'date', 'month', 'week']);
+
+/**
+ * `lang` defaults to `en-GB` on those controls — 24-hour clock, day before month.
+ *
+ * Set here rather than at each call site because forgetting it is invisible to
+ * whoever wrote the form: it renders correctly on their machine and wrongly on
+ * someone else's, which is the kind of bug that only ever arrives as a report
+ * from a user. Callers can still pass their own `lang`.
+ *
+ * It matches `formatDateTime`, so a time reads the same in the picker that set
+ * it and in the page that displays it.
+ */
+export function Input({ className, type, lang, ...props }: React.ComponentProps<'input'>) {
+  return (
+    <input
+      type={type}
+      lang={lang ?? (type && CLOCK_TYPES.has(type) ? 'en-GB' : undefined)}
+      className={cn(controlClasses, className)}
+      {...props}
+    />
+  );
 }
 
 /**

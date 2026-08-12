@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
+  academyMediaKey,
   assertKeyUnder,
   avatarKey,
   avatarPrefix,
@@ -7,6 +8,7 @@ import {
   isPublicKey,
   playerMediaKey,
   playerMediaPrefix,
+  playerPosterKey,
   safeExtension,
 } from './storage.keys';
 
@@ -34,16 +36,27 @@ describe('safeExtension', () => {
 });
 
 describe('key tiers', () => {
-  it('puts avatars and clips in the public tier', () => {
-    // Clips are meant to be watched and stay reachable until their player
-    // deletes them, so they carry a permanent URL like an avatar does. The
-    // private tier is kept for the §12.1 identity documents, which are not
-    // built yet — hence nothing here asserts a private producer.
+  it('publishes avatars and academy imagery, and keeps clips private', () => {
+    /*
+     * The split that matters, and the one this file exists to make impossible to
+     * get wrong: an avatar is a thumbnail somebody chose as their face, and a
+     * clip is a minute of video of a child at a training ground. The first gets
+     * a permanent CDN address; the second is reachable only through a signature
+     * this API mints, so deleting the row actually ends access.
+     */
     expect(isPublicKey(avatarKey('user-1', 'a.jpg'))).toBe(true);
     expect(isPrivateKey(avatarKey('user-1', 'a.jpg'))).toBe(false);
 
-    expect(isPublicKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(true);
-    expect(isPrivateKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(false);
+    expect(isPublicKey(academyMediaKey('academy-1', 'stadium.jpg'))).toBe(true);
+
+    expect(isPrivateKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(true);
+    expect(isPublicKey(playerMediaKey('player-1', 'clip.mp4'))).toBe(false);
+  });
+
+  it('keeps a clip poster in the same tier as the clip', () => {
+    // A still frame of the video is the same content at lower resolution, so a
+    // public poster for a private clip would leak exactly what the tier hides.
+    expect(isPrivateKey(playerPosterKey('player-1'))).toBe(true);
   });
 
   it('never reuses a key', () => {

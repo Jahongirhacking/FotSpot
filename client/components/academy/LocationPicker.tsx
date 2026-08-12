@@ -1,13 +1,13 @@
 'use client';
 
-import * as React from 'react';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Crosshair, MapPin } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Feedback';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Crosshair, MapPin } from 'lucide-react';
+import * as React from 'react';
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 
 /** Tashkent, as the opening view for an academy that has never set a point. */
 const DEFAULT_CENTER: [number, number] = [41.2995, 69.2401];
@@ -108,7 +108,7 @@ export function LocationPicker({
           center={center}
           zoom={value ? PLACED_ZOOM : DEFAULT_ZOOM}
           scrollWheelZoom={false}
-          className="h-[280px] w-full"
+          className="z-[0] h-[280px] w-full"
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -133,7 +133,13 @@ export function LocationPicker({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Button type="button" variant="outline" size="sm" loading={locating} onClick={useMyLocation}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={locating}
+          onClick={useMyLocation}
+        >
           <Crosshair aria-hidden /> {t.academy?.useMyLocation}
         </Button>
 

@@ -11,25 +11,32 @@ import * as crypto from 'crypto';
  * reports, screenshots, support tickets — and a design where the key is the
  * secret is a design that has already failed by the time anyone notices.
  *
- * So the prefix does not *protect* anything; it *declares* intent, and the bucket
- * is configured to serve only `public/` over the CDN. Two visible tiers:
+ * So the prefix does not *protect* anything; it *declares* intent. Two tiers:
  *
- * - `public/`  — avatars, and player clips.
- * - `private/` — nothing yet; kept for the age and identity documents of §12.1.
+ * - `public/`  — avatars and academy imagery: things an account chose to publish
+ *                as its face, served straight from the CDN.
+ * - `private/` — player clips, and the age and identity documents of §12.1.
+ *                Reachable only through a signature this API mints.
  *
- * ## The prefix is a namespace, not a serving policy
+ * ## The prefix declares intent; the bucket enforces it
  *
- * It stopped being one when clips moved to presigned URLs. **Avatars** are served
- * from the CDN origin and are genuinely public. **Clips** are served by signature
- * (`StorageService.readUrlOrNull`) — permanently reachable because the signature
- * is re-minted on every read, but never composed from a public hostname, which is
- * why they work with no public bucket access configured at all.
+ * `StorageService` routes on that prefix: `public/` keys are written to and read
+ * from `R2_PUBLIC_BUCKET`, everything else from `R2_PRIVATE_BUCKET`. So the
+ * declaration is also what puts the object somewhere, and the two cannot drift
+ * apart — an avatar is presigned against the public bucket *because* its key
+ * says `public/`, which is the same fact that lets `buildPublicUrl` address it.
  *
- * The consequence worth knowing: if public read access is switched on for the
- * whole bucket, `public/players/…` becomes directly fetchable and the signing
- * stops being the only way in. That is not harmful — clips are meant to stay
- * reachable until deleted either way — but if signing should be the *only* route,
- * scope public access to `public/avatars/` rather than the bucket.
+ * **Avatars** and **academy imagery** get a permanent CDN URL from
+ * `buildPublicUrl`. **Clips** are served by signature
+ * (`StorageService.readUrlOrNull`), and `buildPublicUrl` throws rather than
+ * compose a public address for one.
+ *
+ * That refusal is the code's half of the bargain; the bucket owes the other half.
+ * With two buckets it is kept by construction — the private bucket has no public
+ * access at all. In the single-bucket deployment (`R2_PUBLIC_BUCKET` unset) it
+ * has to be configured: public read must be scoped to `public/`, or `private/…`
+ * is fetchable at the CDN host whatever this file intends. `pnpm r2:check` tests
+ * exactly that, by writing a private probe and trying to fetch it anonymously.
  *
  * Pure and DI-free (backend/CLAUDE.md §2), so the traversal and ownership rules
  * below are unit-testable without a bucket or a Nest container.
@@ -68,13 +75,27 @@ export function avatarKey(userId: string, filename: string): string {
 /**
  * Directory a player's clips live in.
  *
- * Public: clips are the point of the profile and are meant to be watched,
- * embedded and cached. Serving them through signed URLs cost a round trip before
- * every play, expired mid-session, and made them uncacheable by the CDN — for
- * content whose whole purpose is to be shown to scouts.
+ * **Private.** A clip is a video of a child, and the difference between that and
+ * an avatar is the difference between a thumbnail somebody chose to publish and
+ * a minute of footage taken at a training ground. A permanent public address for
+ * the second kind is an address nobody can revoke: once it is in a message, a
+ * cache or a scraper's index, deleting the row does not take it back.
+ *
+ * These were briefly public, for real reasons — signing costs a round trip
+ * before playback and makes CDN caching harder. Both are true and both are worth
+ * paying: `createReadUrl` signs for the seven-day maximum and re-mints on every
+ * read, so a clip stays watchable for as long as it exists, and the signature is
+ * stable within an hour so a rewatch still comes from the browser cache.
+ *
+ * ## This only holds if the bucket agrees
+ *
+ * These keys land in `R2_PRIVATE_BUCKET`, which must have no public access. If instead
+ * one bucket serves both tiers and its public read is not scoped to `public/`,
+ * `private/players/…` is anonymously fetchable at `R2_PUBLIC_BASE_URL`
+ * regardless of what this file says — see backend/README, and `pnpm r2:check`.
  */
 export function playerMediaPrefix(playerId: string): string {
-  return `${PUBLIC_PREFIX}players/${playerId}/`;
+  return `${PRIVATE_PREFIX}players/${playerId}/`;
 }
 
 export function playerMediaKey(playerId: string, filename: string): string {

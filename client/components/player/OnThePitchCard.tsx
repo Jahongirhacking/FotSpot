@@ -1,7 +1,7 @@
+import { DominantFootFigure, PitchMap } from '@/components/player/PitchMap';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { PlayerProfile } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
-import { PitchMap, DominantFootFigure } from '@/components/player/PitchMap';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
 
@@ -30,6 +30,8 @@ export function OnThePitchCard({
       </CardHeader>
       <CardContent className="space-y-3 pt-1">
         <div className="flex flex-wrap items-center justify-around gap-4">
+          {player?.playingStyle && <PlayingStyleStrip style={player?.playingStyle} t={t} />}
+
           <div className="w-[132px] shrink-0">
             <PitchMap primary={player?.primaryPosition} secondary={player?.secondaryPosition} />
           </div>
@@ -38,11 +40,9 @@ export function OnThePitchCard({
             <p className="text-muted text-[10px] tracking-wide uppercase">
               {t.player.dominantFoot}
             </p>
-            <DominantFootFigure foot={player?.dominantFoot} />
+            <DominantFootFigure foot={player?.dominantFoot} t={t} />
           </div>
         </div>
-
-        {player?.playingStyle && <PlayingStyleStrip style={player?.playingStyle} t={t} />}
       </CardContent>
     </Card>
   );
@@ -66,13 +66,15 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
   const description = info?.key ? t.playingStyles?.[info?.key] : undefined;
 
   return (
-    <div className="border-border bg-surface-2 flex items-center gap-3 rounded-lg border p-2.5">
+    <div className="border-border bg-surface-2 flex max-w-[min(180px,100%)] flex-col items-center gap-3 rounded-lg border p-2.5">
       <StyleCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} />
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{humanizeEnum(style)}</p>
         {description && (
-          <p className="text-muted mt-0.5 line-clamp-2 text-xs leading-snug">{description}</p>
+          <p title={description} className="text-muted mt-0.5 line-clamp-2 text-xs leading-snug">
+            {description}
+          </p>
         )}
         {info?.exemplar && (
           <p className="text-muted mt-0.5 truncate text-[11px] italic">
@@ -93,7 +95,7 @@ function StyleCrest({ name, imageUrl }: { name: string; imageUrl?: string }) {
         src={imageUrl}
         alt={name}
         loading="lazy"
-        className="size-12 shrink-0 rounded-lg object-contain"
+        className="size-22 shrink-0 rounded-lg object-contain"
       />
     );
   }

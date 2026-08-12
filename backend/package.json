@@ -21,7 +21,8 @@
     "docs:generate": "nest build && node dist/src/openapi.js",
     "docs:check": "node scripts/check-openapi.mjs",
     "r2:cors": "node scripts/apply-r2-cors.mjs",
-    "r2:cors:check": "node scripts/apply-r2-cors.mjs --check"
+    "r2:cors:check": "node scripts/apply-r2-cors.mjs --check",
+    "r2:check": "node scripts/check-r2.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1100.0",

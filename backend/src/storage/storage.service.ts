@@ -37,19 +37,45 @@ const SIGNING_WINDOW_MS = 60 * 60 * 1000;
 /**
  * The one place an object key becomes a URL — Cloudflare R2 (README §1.7).
  *
+ * ## Two buckets, and the key prefix picks between them
+ *
+ * - `R2_PRIVATE_BUCKET` — player clips and their cover frames. Nothing in it is
+ *   reachable without a signature this API mints, and it has no public domain.
+ *   (`R2_BUCKET` is the former name and is still read.)
+ * - `R2_PUBLIC_BUCKET` — served at `R2_PUBLIC_BASE_URL`. Avatars, academy logos
+ *   and academy gallery images: things an account published as its own face.
+ *
+ * The `public/` prefix on a key is what routes it, so a key's tier decides which
+ * bucket it is written to *and* read from, and the two can never disagree. Get
+ * that wrong and the failure is silent in the worst way: the upload succeeds, the
+ * URL is well-formed, and the image 404s — which is exactly what happened while
+ * public objects were being written to the private bucket and linked from the
+ * public host. `pnpm r2:check` exists to catch that round trip.
+ *
+ * One API token must be authorized for **both** buckets. A token scoped to one
+ * presigns happily and fails at PUT time, in the browser, for whichever half it
+ * does not cover — so the symptom is "avatars are broken" rather than anything
+ * naming a permission.
+ *
+ * `R2_PUBLIC_BUCKET` falls back to the private bucket for the single-bucket
+ * deployment, where one bucket holds both tiers and public read is scoped to
+ * `public/`. That setup still works; it just needs the bucket policy to do the
+ * job the second bucket does here.
+ *
  * ## Two kinds of URL, and only one of them is permanent
  *
- * - `publicUrl` — a plain CDN URL, and **only** for `public/` keys. Avatars and
- *   player clips: both are meant to be watched, cached and hotlinked, and a clip
- *   stays reachable until its player deletes it.
- * - `createReadUrl` — a signed, minutes-long URL for a `private/` key, issued
- *   only after the caller has been authorized. Nothing uses it today; it is kept
- *   for the §12.1 identity documents, where a permanent link would be wrong.
+ * - `buildPublicUrl` — a plain CDN URL, and **only** for `public/` keys. Avatars
+ *   and academy imagery are meant to be cached and hotlinked, and they cost
+ *   nothing to serve twice.
+ * - `createReadUrl` — a signed URL for a `private/` key, issued only after the
+ *   caller has been authorized. This is how every clip is played, and how the
+ *   §12.1 identity documents will be read.
  *
- * `buildPublicUrl` still refuses private keys. The tiers no longer split media
- * from avatars, but they do split "safe to link forever" from "must be
- * authorized every time", and a builder that silently published the second kind
- * is exactly the mistake worth making impossible.
+ * `buildPublicUrl` throws on a private key. That refusal is the whole point of
+ * having two builders: the split is "safe to link forever" against "must be
+ * authorized every time", and a builder that could quietly publish the second
+ * kind — a minute of footage of a child — is the mistake worth making
+ * impossible rather than merely unlikely.
  *
  * With no credentials, presigning throws 503 and `isConfigured` is false, so the
  * UI can say so up front rather than after a player has recorded a minute of
@@ -59,14 +85,27 @@ const SIGNING_WINDOW_MS = 60 * 60 * 1000;
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
   private readonly client: S3Client | null;
-  private readonly bucket: string;
+  private readonly privateBucket: string;
+  private readonly publicBucket: string;
   private readonly publicBaseUrl: string;
 
   constructor(private config: ConfigService) {
     const accountId = config.get<string>('R2_ACCOUNT_ID');
     const accessKeyId = config.get<string>('R2_ACCESS_KEY_ID');
     const secretAccessKey = config.get<string>('R2_SECRET_ACCESS_KEY');
-    this.bucket = config.get<string>('R2_BUCKET') ?? '';
+
+    // `||` throughout, not the `??` the style guide asks for: an empty bucket
+    // name is not a legitimate value the way an empty string or a zero port can
+    // be, so an `R2_PUBLIC_BUCKET=""` left behind in a .env should fall through
+    // rather than presign uploads against a bucket called "".
+    const bucket = (key: string) => (config.get<string>(key) ?? '').trim();
+
+    // `R2_BUCKET` is the old name for the private bucket, from when there was
+    // only one and the tier lived in the key prefix alone. Still read, so an
+    // environment that has not been updated keeps working — but the pair of names
+    // now says which bucket is which, which is the whole difficulty here.
+    this.privateBucket = bucket('R2_PRIVATE_BUCKET') || bucket('R2_BUCKET');
+    this.publicBucket = bucket('R2_PUBLIC_BUCKET') || this.privateBucket;
     this.publicBaseUrl = (config.get<string>('R2_PUBLIC_BASE_URL') ?? '').replace(/\/+$/, '');
 
     // Now that clips are public too, this is not a cosmetic gap: every endpoint
@@ -84,17 +123,42 @@ export class StorageService {
       );
     }
 
-    if (accountId && accessKeyId && secretAccessKey && this.bucket) {
+    if (accountId && accessKeyId && secretAccessKey && this.privateBucket) {
       this.client = new S3Client({
         region: 'auto',
         endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
         credentials: { accessKeyId, secretAccessKey },
       });
+
+      // Worth saying at boot, because the two setups fail in opposite directions
+      // and the logs are where you find out which one you are running: two
+      // buckets need an API token authorized for *both*, one bucket needs public
+      // read scoped to `public/`.
+      if (this.publicBucket !== this.privateBucket) {
+        this.logger.log(
+          `R2: private "${this.privateBucket}", public "${this.publicBucket}" at ` +
+            `${this.publicBaseUrl || '(no public base URL)'}`,
+        );
+      } else {
+        // A warning, not a note. One bucket serving both tiers is a legitimate
+        // deployment, but it is also exactly what an unset R2_PUBLIC_BUCKET looks
+        // like — and the two are indistinguishable from here. Both readings have
+        // a consequence somebody needs to have decided on, so neither is allowed
+        // to pass quietly.
+        this.logger.warn(
+          `R2: one bucket "${this.privateBucket}" is serving both tiers, because ` +
+            'R2_PUBLIC_BUCKET is unset. If that is deliberate, public read must be scoped to ' +
+            'public/ or every clip is anonymously downloadable at the CDN host. If it is not, ' +
+            'avatars and academy images are being written here and linked from ' +
+            `${this.publicBaseUrl || 'the public host'}, where they will 404. ` +
+            '`pnpm r2:check` settles which.',
+        );
+      }
     } else {
       this.client = null;
       this.logger.warn(
         'R2 is not configured — uploads will be refused with 503. Set R2_ACCOUNT_ID, ' +
-          'R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET to enable them.',
+          'R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_PRIVATE_BUCKET to enable them.',
       );
     }
   }
@@ -102,6 +166,18 @@ export class StorageService {
   /** Lets callers warn *before* a player records a video that cannot be stored. */
   get isConfigured() {
     return this.client !== null;
+  }
+
+  /**
+   * Which bucket a key belongs in — the single decision that keeps the tiers apart.
+   *
+   * Derived from the key rather than passed in by the caller, so writing and
+   * reading an object can never pick differently. A caller that had to name the
+   * bucket would eventually name the wrong one on one side of the round trip, and
+   * that mistake is invisible until an image 404s in production.
+   */
+  private bucketFor(storageKey: string): string {
+    return isPublicKey(storageKey) ? this.publicBucket : this.privateBucket;
   }
 
   /**
@@ -161,7 +237,7 @@ export class StorageService {
     const uploadUrl = await getSignedUrl(
       client,
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketFor(storageKey),
         Key: storageKey,
         ...(contentType ? { ContentType: contentType } : {}),
       }),
@@ -183,7 +259,7 @@ export class StorageService {
 
     const url = await getSignedUrl(
       client,
-      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      new GetObjectCommand({ Bucket: this.bucketFor(storageKey), Key: storageKey }),
       { expiresIn: ttlSeconds, signingDate },
     );
     return {
@@ -225,7 +301,7 @@ export class StorageService {
     const client = this.require();
     try {
       const head = await client.send(
-        new HeadObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+        new HeadObjectCommand({ Bucket: this.bucketFor(storageKey), Key: storageKey }),
       );
       return {
         size: head.ContentLength ?? 0,

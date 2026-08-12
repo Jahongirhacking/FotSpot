@@ -48,9 +48,25 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
     throw error;
   }
 
-  const applications = session
-    ? await trials?.myApplications({ token: session?.accessToken, cache: 'no-store' }).catch(() => [])
-    : [];
+  /*
+   * Only a player has applications, so only a player is asked for them.
+   *
+   * Gated on the active role rather than on merely having a session: the
+   * endpoint refuses anyone without a player profile, and asking regardless
+   * meant a manager opening one of their own trials logged a 403 every time.
+   * The `.catch` hid it from the page, which is why it went unnoticed — the only
+   * trace was a WARN on the server for a question that should not be asked.
+   *
+   * The active role, not the presence of a profile, for the same reason the
+   * manager's trial form is: somebody who coaches and also plays sees the screen
+   * belonging to the hat they are wearing (§1.2.1).
+   */
+  const applications =
+    session?.activeRole === 'player'
+      ? await trials
+          ?.myApplications({ token: session?.accessToken, cache: 'no-store' })
+          .catch(() => [])
+      : [];
 
   const existing = applications?.find((application) => application?.trialId === id);
 

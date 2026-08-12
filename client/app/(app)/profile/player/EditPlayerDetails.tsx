@@ -6,8 +6,9 @@ import { useMutation } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { PlayerProfile } from '@/lib/api/types';
-import { POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
+import { POSITIONS } from '@/lib/schemas/player';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import { PitchPositionPicker } from '@/components/player/PitchPositionPicker';
 import { PlayingStylePicker } from '@/components/player/PlayingStylePicker';
 import { positionGroup } from '@/lib/player-card';
@@ -196,30 +197,13 @@ export function EditPlayerDetails({ player }: { player: PlayerProfile }) {
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t.onboarding.region} htmlFor="region">
-          <Select
-            id="region"
-            value={form.region}
-            onChange={(event) => set('region')(event.target.value)}
-          >
-            <option value="">{t.onboarding.notSureYet}</option>
-            {UZBEK_REGIONS.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={t.academy.district} htmlFor="district">
-          <Input
-            id="district"
-            placeholder={t.placeholders.district}
-            value={form.district}
-            onChange={(event) => set('district')(event.target.value)}
-          />
-        </Field>
-      </div>
+      <RegionDistrictPicker
+        idPrefix="player"
+        region={form?.region}
+        district={form?.district}
+        onRegionChange={set('region')}
+        onDistrictChange={set('district')}
+      />
 
       <Button type="submit" loading={save.isPending}>
         <Check aria-hidden /> {t.common.save}

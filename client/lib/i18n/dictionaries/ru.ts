@@ -482,6 +482,7 @@ export const ru: Dictionary = {
     featuredHint: 'Выберите из состава. Порядок задаёте вы.',
     featuredFull: 'Достигнут предел',
     editProfileTitle: 'Профиль академии',
+    districtNeedsRegion: 'Сначала выберите регион.',
     district: 'Район',
     about: 'Об академии',
     aboutHint: 'Возрастные группы, поле, кого вы ищете.',
@@ -517,6 +518,7 @@ export const ru: Dictionary = {
     finishing: 'Завершение',
     physical: 'Физика',
     technique: 'Техника',
+    goalkeeping: 'Вратарское мастерство',
     highlights: 'Лучшие моменты',
   },
 
@@ -603,6 +605,8 @@ export const ru: Dictionary = {
       'Показатели сравниваются только внутри {band}, а не между возрастными группами.',
     onThePitch: 'На поле',
     dominantFoot: 'Сильная нога',
+    footLeft: 'Левая',
+    footRight: 'Правая',
     attributes: 'Показатели',
     findPlayers: 'Найти игроков',
     searchByName: 'Поиск по имени',
@@ -708,6 +712,7 @@ export const ru: Dictionary = {
     applyDeadline: 'Приём заявок до',
     applyDeadlineHint:
       'После этого момента заявки не принимаются. Не может быть позже даты просмотра.',
+    deadlineAfterExam: 'Приём заявок не может закрываться позже даты просмотра.',
     moveDateWarning: 'Если изменить дату, уведомление получит каждый подавший заявку игрок.',
     history: 'История',
     historyHint: 'Завершённые просмотры — каждый игрок получил вердикт, и просмотр ушёл в архив.',
@@ -1065,6 +1070,11 @@ export const ru: Dictionary = {
     TECHNIQUE: {
       player: 'Покажите жонглирование, дриблинг, финты, первое касание, передачу и удар.',
       goalkeeper: 'Покажите сэйвы в падении, реакцию, игру на выходах, 1 в 1, ввод ногой и рукой.',
+    },
+    GOALKEEPING: {
+      player: 'Этот раздел для вратарей. Полевым игрокам стоит выбрать другой навык.',
+      goalkeeper:
+        'Покажите сэйвы в падении, реакцию, игру на выходах, 1 в 1, пенальти и ввод мяча ногой.',
     },
     MATCH_HIGHLIGHTS: {
       player:

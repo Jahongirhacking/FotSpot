@@ -48,22 +48,16 @@ export const PLAYING_STYLES = {
 
 export const ALL_PLAYING_STYLES = Object.values(PLAYING_STYLES).flat();
 
-export const UZBEK_REGIONS = [
-  'Tashkent City',
-  'Tashkent Region',
-  'Andijan',
-  'Bukhara',
-  'Fergana',
-  'Jizzakh',
-  'Kashkadarya',
-  'Khorezm',
-  'Namangan',
-  'Navoiy',
-  'Samarkand',
-  'Sirdaryo',
-  'Surkhandarya',
-  'Karakalpakstan',
-] as const;
+/**
+ * Re-exported so existing importers keep working, but the list itself now lives
+ * with the districts it has to agree with — see `lib/uzbekistan.ts`.
+ *
+ * The names changed with it: these were English transliterations
+ * ('Tashkent City', 'Andijan') and are now the official Uzbek forms
+ * ('Toshkent shahri', 'Andijon viloyati'), because the district list is written
+ * that way and a region has to match its districts exactly to be checkable.
+ */
+export { UZBEK_REGIONS } from '@/lib/uzbekistan';
 
 /**
  * Step 1 of the player wizard: identity + birth date only.

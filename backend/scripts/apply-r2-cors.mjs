@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Applies `r2-cors.json` to the R2 bucket.
+ * Applies `r2-cors.json` to both R2 buckets — `R2_PRIVATE_BUCKET` and
+ * `R2_PUBLIC_BUCKET`.
  *
  * ## Why this is needed at all
  *
@@ -51,7 +52,7 @@ function env() {
 }
 
 const config = env();
-const missing = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'].filter(
+const missing = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'].filter(
   (key) => !config[key],
 );
 if (missing.length) {
@@ -68,41 +69,58 @@ const client = new S3Client({
   },
 });
 
-const bucket = config.R2_BUCKET;
+// Both tiers are uploaded to by the browser — clips to the private bucket, avatars
+// and academy imagery to the public one — so both need the policy. Deduped,
+// because the single-bucket deployment names the same bucket twice.
+const buckets = [
+  ...new Set(
+    [config.R2_PRIVATE_BUCKET ?? config.R2_BUCKET, config.R2_PUBLIC_BUCKET].filter(Boolean),
+  ),
+];
 const checkOnly = process.argv.includes('--check');
 
-try {
-  if (checkOnly) {
-    const current = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
-    console.log(JSON.stringify(current.CORSRules, null, 2));
-    process.exit(0);
-  }
+let failed = false;
 
-  const rules = JSON.parse(readFileSync(join(root, 'r2-cors.json'), 'utf8'));
+for (const bucket of buckets) {
+  try {
+    if (checkOnly) {
+      const current = await client.send(new GetBucketCorsCommand({ Bucket: bucket }));
+      console.log(`\n=== ${bucket}`);
+      console.log(JSON.stringify(current.CORSRules, null, 2));
+      continue;
+    }
 
-  const override = (config.R2_CORS_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  if (override.length) {
-    for (const rule of rules) rule.AllowedOrigins = override;
-    console.log('Using R2_CORS_ORIGINS from the environment.');
-  }
-  await client.send(
-    new PutBucketCorsCommand({ Bucket: bucket, CORSConfiguration: { CORSRules: rules } }),
-  );
-  console.log(`Applied ${rules.length} CORS rule(s) to ${bucket}.`);
-  console.log('Origins:', rules.flatMap((rule) => rule.AllowedOrigins).join(', '));
-} catch (error) {
-  console.error(`${error.name}: ${error.message}`);
-  if (error.name === 'AccessDenied') {
-    console.error(
-      '\nThis token cannot change bucket configuration — expected for an object-level\n' +
-        'R2 token. Either use an admin R2 token, or paste r2-cors.json into\n' +
-        'Cloudflare → R2 → ' +
-        bucket +
-        ' → Settings → CORS Policy.',
+    const rules = JSON.parse(readFileSync(join(root, 'r2-cors.json'), 'utf8'));
+
+    const override = (config.R2_CORS_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    if (override.length) {
+      for (const rule of rules) rule.AllowedOrigins = override;
+      console.log('Using R2_CORS_ORIGINS from the environment.');
+    }
+    await client.send(
+      new PutBucketCorsCommand({ Bucket: bucket, CORSConfiguration: { CORSRules: rules } }),
     );
+    console.log(`Applied ${rules.length} CORS rule(s) to ${bucket}.`);
+    console.log('Origins:', rules.flatMap((rule) => rule.AllowedOrigins).join(', '));
+  } catch (error) {
+    failed = true;
+    console.error(`${bucket}: ${error.name}: ${error.message}`);
+    if (error.name === 'AccessDenied') {
+      console.error(
+        '\nThis token cannot change bucket configuration — expected for an object-level\n' +
+          'R2 token. Either use an admin R2 token, or paste r2-cors.json into\n' +
+          'Cloudflare → R2 → ' +
+          bucket +
+          ' → Settings → CORS Policy.',
+      );
+    }
   }
-  process.exit(1);
 }
+
+// Keep going after one bucket fails, then exit non-zero: a token authorized for
+// one bucket and not the other is the likely case, and knowing *which* half
+// worked is the useful output.
+if (failed) process.exit(1);

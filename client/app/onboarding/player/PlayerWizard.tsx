@@ -3,6 +3,7 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { homeHrefForRole } from '@/components/layout/nav';
 import { PitchPositionPicker } from '@/components/player/PitchPositionPicker';
+import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import { PlayingStylePicker } from '@/components/player/PlayingStylePicker';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -14,7 +15,6 @@ import type { PlayerProfile } from '@/lib/api/types';
 import { positionGroup } from '@/lib/player-card';
 import {
   POSITIONS,
-  UZBEK_REGIONS,
   playerFootballSchema,
   playerIdentitySchema,
   type PlayerFootballInput,
@@ -247,13 +247,17 @@ function FootballStep({
   // Input/output types differ because of z.coerce — see lib/schemas/player.ts.
   const form = useForm<PlayerFootballInput, unknown, PlayerFootballValues>({
     resolver: zodResolver(playerFootballSchema),
-    defaultValues: { region: UZBEK_REGIONS[0] },
+    // No default province: pre-selecting one files every player who skips the
+    // field in whichever province happens to sort first.
+    defaultValues: { region: '' },
   });
 
   // useWatch, not form.watch: watch() returns a fresh function each render, which
   // opts the whole component out of React Compiler memoization.
   const primaryPosition = useWatch({ control: form.control, name: 'primaryPosition' });
   const playingStyle = useWatch({ control: form.control, name: 'playingStyle' });
+  const region = useWatch({ control: form.control, name: 'region' });
+  const district = useWatch({ control: form.control, name: 'district' });
 
   async function onSubmit(values: PlayerFootballValues) {
     onError(null);
@@ -362,16 +366,20 @@ function FootballStep({
                 <option value="BOTH">{t.onboarding.both}</option>
               </Select>
             </Field>
-            <Field label={t.onboarding.region} htmlFor="region">
-              <Select id="region" {...form.register('region')}>
-                {UZBEK_REGIONS.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {/* District options come from the chosen province — see
+                RegionDistrictPicker. Registered as hidden inputs so RHF still
+                owns the values. */}
+            <input type="hidden" {...form.register('region')} />
+            <input type="hidden" {...form.register('district')} />
           </div>
+
+          <RegionDistrictPicker
+            idPrefix="wizard"
+            region={region ?? ''}
+            district={district ?? ''}
+            onRegionChange={(next) => form.setValue('region', next, { shouldDirty: true })}
+            onDistrictChange={(next) => form.setValue('district', next, { shouldDirty: true })}
+          />
 
           <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <legend className="sr-only">{t.onboarding.measurements}</legend>

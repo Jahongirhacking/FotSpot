@@ -111,23 +111,55 @@ editing the JSON.
 
 Object keys are split into two tiers (`src/storage/storage.keys.ts`):
 
-- `public/avatars/…` and `public/players/…` — avatars and player clips. Both are
-  meant to be watched, cached and hotlinked, and **a clip stays reachable until
-  its player deletes it**: no signature, no expiry. The consequence is worth
-  stating rather than discovering — a clip URL that has been seen once keeps
-  working for anyone until the object is removed.
-- `private/…` — reachable only through a short-lived signed URL the API issues
-  after an authorization check. Nothing uses it today; it is kept for the §12.1
-  age and identity documents, where a permanent link would be the wrong answer.
+- `public/avatars/…` and `public/academies/…` — the faces an account chose to
+  publish. Served straight from the CDN origin: cacheable, hotlinkable, no
+  signature and no expiry.
+- `private/players/…` — player clips and their cover frames, plus the §12.1 age
+  and identity documents. Reachable **only** through a signature this API mints
+  per read, so removing the row genuinely ends access.
 
-So the bucket needs **public read access on `public/`** — via an r2.dev domain or
-a custom domain on the bucket.
+The split is the difference between a thumbnail somebody chose as their avatar
+and a minute of video of a child at a training ground. A permanent public address
+for the second is an address nobody can revoke: once it is in a message, a cache
+or a scraper's index, deleting the row does not take it back.
 
-**`R2_PUBLIC_BASE_URL` is needed for avatars only.** Clips and their covers are
-served by presigned URL against the S3 endpoint, so they work with nothing but the
-R2 credentials — no public bucket access, no custom domain. Avatars still come
-from the public origin, and without it they resolve to `null` and fall back to
-initials.
+The prefix is also what picks the bucket. `StorageService` routes on it, so a
+key's tier decides where the object is written *and* where it is read from:
+
+| Prefix     | Bucket             | Holds                              | Reached by            |
+| ---------- | ------------------ | ---------------------------------- | --------------------- |
+| `public/`  | `R2_PUBLIC_BUCKET` | avatars, academy logos and gallery | `R2_PUBLIC_BASE_URL`  |
+| `private/` | `R2_PRIVATE_BUCKET` | clips, cover frames, §12.1 docs    | presigned URL, 7 days |
+
+Two rules follow, and getting either wrong fails quietly:
+
+- **One API token must be authorized for both buckets.** A token scoped to one
+  fails only on uploads touching the other, which presents as "avatars are
+  broken", not as a permissions error.
+- **`R2_PUBLIC_BUCKET` and `R2_PUBLIC_BASE_URL` must name the same bucket.** If
+  the host serves a bucket the app never writes to, every upload succeeds, every
+  URL is well-formed, and every image 404s — with nothing in the logs, in a UI
+  that falls back to initials when an avatar is missing.
+
+`R2_PUBLIC_BUCKET` may be left empty, which falls back to `R2_PRIVATE_BUCKET` and puts
+both tiers in one bucket. That still works, but then the prefix is only a
+declaration and the bucket has to enforce it: **public read access scoped to
+`public/`**, not on the bucket as a whole. Left open, `private/players/…` is
+anonymously fetchable at `R2_PUBLIC_BASE_URL` whatever the code intends.
+
+`pnpm r2:check` verifies all of it against the real buckets — it writes a probe
+object to each tier, fetches both back over the public host, confirms the public
+one is served and the private one is not, and deletes them. Run it after changing
+any R2 setting; it is the only thing that catches a mismatch, because every
+individual piece of configuration looks fine on its own.
+
+**`R2_PUBLIC_BASE_URL` is needed for the public tier only** — avatars and academy
+imagery. Clips and their covers are served by presigned URL against the S3
+endpoint, so they work with nothing but the R2 credentials: no public bucket
+access, no custom domain. Without the base URL, avatars resolve to `null` and
+fall back to initials, and `buildPublicUrl` throws outright if ever handed a
+`private/` key, which is what stops a clip acquiring a permanent address by
+accident.
 
 Clip URLs carry the seven-day SigV4 maximum and are re-minted on every read, so a
 clip stays reachable for as long as it exists — deletion, not time, ends it. The
@@ -204,7 +236,7 @@ owner's request, not by scope drift:
 ## Running it
 
 ```bash
-cp .env.example .env        # fill in DATABASE_URL at minimum
+cp .env.example .env        # fill in DATABASE_URL and DIRECT_URL at minimum
 npm install
 npm run prisma:migrate      # creates tables
 npm run seed                # default roles + a super_admin bootstrap account
@@ -213,6 +245,45 @@ npm run start:dev
 
 API is served under `/api/v1`. WebSocket notifications connect to the
 `/notifications` namespace with `{ auth: { token: <accessToken> } }`.
+
+### Managed Postgres and Redis in production
+
+Nothing in the application changes for either — both are ordinary Postgres and
+ordinary Redis over the wire. What changes is which endpoint each URL names, and
+both providers hand you the wrong one first.
+
+**Neon** gives one `DATABASE_URL`, against the `-pooler` host. That is the right
+endpoint for the running API — many short-lived queries, which is what a
+transaction-mode pooler is for — and the wrong one for migrations. `migrate
+deploy` takes an advisory lock to stop two deploys migrating at once, and an
+advisory lock has to outlive a single transaction to mean anything. So:
+
+```bash
+DATABASE_URL="postgresql://…@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://…@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"   # no -pooler
+```
+
+Neon labels the second `DATABASE_URL_UNPOOLED` and comments it out with a note
+that it is only needed below Prisma 5.10. Set it regardless: it is free at
+runtime, since `directUrl` is read by the CLI and never by the running client,
+and `DIRECT_URL` is required by the schema in any case.
+
+**Upstash** shows `UPSTASH_REDIS_REST_URL` and a REST token, and a snippet using
+`@upstash/redis`. Do not use either here. That client speaks HTTP
+request/response, and this app's queue is built on blocking commands — a BullMQ
+worker holds `BZPOPMIN` open on a live socket until a job arrives, which HTTP
+cannot express. Installing it would leave clips stuck in `PROCESSING` forever.
+
+Use Upstash's **TCP** endpoint instead, which is plain Redis and needs no code
+change. The REST token doubles as the password:
+
+```bash
+REDIS_URL="rediss://default:<UPSTASH_REDIS_REST_TOKEN>@<name>.upstash.io:6379"
+```
+
+`rediss://` (two s) is TLS, which Upstash requires; ioredis reads the scheme and
+configures itself. Worth knowing that Upstash bills per command and a BullMQ
+worker polls whether or not there is work, so an idle queue is not a free queue.
 
 ## API reference
 

@@ -27,6 +27,7 @@ export default async function PlayersPage({
   searchParams: Promise<{
     query?: string;
     region?: string;
+    district?: string;
     position?: string;
     playingStyle?: string;
     minAge?: string;
@@ -44,6 +45,7 @@ export default async function PlayersPage({
       {
         query: params?.query,
         region: params?.region,
+        district: params?.district,
         position: params?.position,
         playingStyle: params?.playingStyle as PlayingStyle | undefined,
         minAge: params?.minAge ? Number(params?.minAge) : undefined,

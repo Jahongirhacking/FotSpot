@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { IsRegionDistrictPair } from '../../common/validators/region-district.validator';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -31,8 +32,8 @@ export class CreatePlayerProfileDto {
   @IsEnum(PlayingStyle)
   playingStyle?: PlayingStyle;
 
-  @IsOptional() @IsString() region?: string;
-  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
 }
 
 export class UpdatePlayerProfileDto {
@@ -56,8 +57,8 @@ export class UpdatePlayerProfileDto {
   @IsOptional()
   @IsEnum(PlayingStyle)
   playingStyle?: PlayingStyle;
-  @IsOptional() @IsString() region?: string;
-  @IsOptional() @IsString() district?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
+  @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
 }
 
 export class UpdatePlayerStatsDto {
@@ -71,6 +72,8 @@ export class UpdatePlayerStatsDto {
 
 export class SearchPlayersDto extends PaginationDto {
   @IsOptional() @IsString() region?: string;
+  /** Only meaningful with a region — a district alone cannot be resolved. */
+  @IsOptional() @IsString() district?: string;
   @IsOptional() @IsString() position?: string;
   /** "We need a Destroyer, U16, Fergana" - README 21.3 recruitment filter. */
   @ApiPropertyOptional({ enum: PlayingStyle, enumName: 'PlayingStyle' })

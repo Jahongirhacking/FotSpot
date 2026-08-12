@@ -484,6 +484,7 @@ export const en: Dictionary = {
     featuredHint: 'Pick from your squad. They appear in the order you set.',
     featuredFull: 'Limit reached',
     editProfileTitle: 'Academy profile',
+    districtNeedsRegion: 'Choose a region first.',
     district: 'District',
     about: 'About the academy',
     aboutHint: 'Age groups, training ground, what you look for.',
@@ -519,6 +520,7 @@ export const en: Dictionary = {
     finishing: 'Finishing',
     physical: 'Physical',
     technique: 'Technique',
+    goalkeeping: 'Goalkeeping',
     highlights: 'Highlights',
   },
 
@@ -604,6 +606,8 @@ export const en: Dictionary = {
     comparedWithinPlain: 'Bars are compared within {band} only — never across age groups.',
     onThePitch: 'On the pitch',
     dominantFoot: 'Dominant foot',
+    footLeft: 'Left',
+    footRight: 'Right',
     attributes: 'Attributes',
     findPlayers: 'Find players',
     searchByName: 'Search by name',
@@ -709,6 +713,7 @@ export const en: Dictionary = {
     examDate: 'Trial date and time',
     applyDeadline: 'Applications close',
     applyDeadlineHint: 'Nobody can apply after this. It cannot be later than the trial itself.',
+    deadlineAfterExam: 'Applications cannot close after the trial has happened.',
     moveDateWarning: 'Changing the date notifies every player who has applied.',
     history: 'History',
     historyHint:
@@ -1073,6 +1078,11 @@ export const en: Dictionary = {
       player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
       goalkeeper:
         'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
+    },
+    GOALKEEPING: {
+      player: 'This one is for keepers. If you play outfield, pick another skill.',
+      goalkeeper:
+        'Show diving saves, reactions, coming for high balls, 1v1s, penalties, and distribution with your feet.',
     },
     MATCH_HIGHLIGHTS: {
       player:
