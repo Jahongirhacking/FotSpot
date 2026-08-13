@@ -31,6 +31,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ThrottleGuard } from './common/guards/throttle.guard';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { ThrottleGuard } from './common/guards/throttle.guard';
     AdminModule,
     InsightsModule,
   ],
+  controllers: [AppController],
   providers: [
     // Order matters: authenticate first, then authorize by role, then by
     // fine-grained permission. @Public() short-circuits JwtAuthGuard only.

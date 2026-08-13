@@ -1,6 +1,35 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "app_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Liveness probe, at `/health` — outside the `/api/v1` prefix on purpose.\n\nA load balancer, uptime monitor or container orchestrator is not a client of\nthe versioned API and should not have to track its version to find out\nwhether the process is up. `main.ts` excludes this one path from the prefix\nfor that reason.\n\n`@Public()` because a probe carries no token, and `@NoThrottle()` because a\nhealth check is precisely the caller that polls on a fixed schedule — two\nmonitors at one request a second would otherwise trip the default 120/minute\nand take the service out of rotation for being *watched*, which is the\nfailure this endpoint exists to prevent.\n\nDeliberately shallow: it answers \"is this process serving HTTP\", not \"is\nPostgres reachable\". A liveness probe that fails when a dependency is down\ngets the container killed and restarted, which fixes nothing and removes the\ninstance that could still serve cached reads. A readiness check that touches\nthe database is a separate endpoint and a separate decision.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/debug-sentry": {
+      "get": {
+        "operationId": "app_getError",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/v1/requests": {
       "post": {
         "operationId": "requests_create",
