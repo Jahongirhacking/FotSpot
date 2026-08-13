@@ -1,12 +1,12 @@
+import { Providers } from '@/components/layout/Providers';
+import type { Locale } from '@/lib/i18n/config';
+import { getLocale, getServerT } from '@/lib/i18n/server';
+import { siteUrl } from '@/lib/seo';
+import { getSession } from '@/lib/session';
+import { THEME_SCRIPT } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Providers } from '@/components/layout/Providers';
-import { getSession } from '@/lib/session';
-import { getLocale, getServerT } from '@/lib/i18n/server';
-import type { Locale } from '@/lib/i18n/config';
-import { THEME_SCRIPT } from '@/lib/theme';
-import { siteUrl } from '@/lib/seo';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -61,11 +61,20 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t.seo.description,
       locale: OG_LOCALE[locale],
       url: '/',
+      images: [
+        {
+          url: '/fotspot.png',
+          width: 600,
+          height: 600,
+          alt: 'FotSpot',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: t.seo.title,
       description: t.seo.description,
+      images: ['/fotspot.png'],
     },
     robots: { index: true, follow: true },
   };
