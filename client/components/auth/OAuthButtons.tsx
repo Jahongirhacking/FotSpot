@@ -1,8 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Alert } from '@/components/ui/Feedback';
+import * as React from 'react';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
 const TELEGRAM_BOT = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? '';
@@ -88,7 +88,9 @@ export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
          * the session lives in httpOnly cookies the server layout reads, and a
          * client-side transition would re-render the shell with the old session.
          */
-        window.location.assign(redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard');
+        window.location.assign(
+          redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard',
+        );
       } catch {
         setError(t.auth?.couldNotSignIn);
         setBusy(false);

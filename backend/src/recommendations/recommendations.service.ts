@@ -67,6 +67,23 @@ export class RecommendationsService {
     if (!player) throw new BadRequestException('Player not found');
 
     /*
+     * A scout cannot recommend themselves.
+     *
+     * The reputation formula counts accepted over sent (§1.5), and it exists to
+     * describe a scout's judgement about *other* people. Somebody who both files
+     * and is the subject is not exercising judgement, and an accepted
+     * self-recommendation would raise their success rate on the strength of an
+     * academy's opinion of them as a player — two different things the number
+     * would then conflate for ever.
+     *
+     * Enforced here rather than only in the UI: the endpoint is reachable
+     * directly, and hiding the button is a clarity decision, never the boundary.
+     */
+    if (player.userId === scoutId) {
+      throw new ForbiddenException('You cannot recommend your own player profile');
+    }
+
+    /*
      * One live recommendation per scout per player, and a wait after a rejection.
      *
      * The reputation formula counts accepted over sent (§1.5), so a scout who

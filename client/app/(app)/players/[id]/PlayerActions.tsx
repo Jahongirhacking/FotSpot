@@ -67,7 +67,16 @@ interface AcademyState {
  * Gated by the *active* role for clarity, not for security — every endpoint below
  * checks the caller again regardless of what is drawn.
  */
-export function PlayerActions({ playerId, playerName }: { playerId: string; playerName: string }) {
+export function PlayerActions({
+  playerId,
+  playerName,
+  playerUserId,
+}: {
+  playerId: string;
+  playerName: string;
+  /** Whose account this card belongs to — used only to recognise your own. */
+  playerUserId?: string;
+}) {
   const { t } = useI18n();
   const { activeRole, isAuthenticated } = useSession();
   const requireAuth = useRequireAuth();
@@ -82,7 +91,7 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
     queryFn: () => browserFetch<{ items: Follow[] }>('/follows/me?targetType=PLAYER'),
     // A guest has no follow list; asking for one 401s and used to bounce them to
     // the login page just for opening a profile.
-    enabled: isAuthenticated && isScout,
+    enabled: isAuthenticated,
   });
 
   // A scout gets one recommendation per player, so the panel has to know whether
@@ -93,6 +102,22 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
       browserFetch<MyRecommendation | null>(`/recommendations/player/${playerId}/mine`),
     enabled: isAuthenticated && activeRole === 'scout',
   });
+
+  /*
+   * Is this my own profile?
+   *
+   * Asked here rather than passed from the server because the session cookie
+   * carries no user id — see the note in the trial page. `/users/me` is small,
+   * already warm for a signed-in viewer, and answers definitively; a guest skips
+   * it, since a guest is nobody's own profile.
+   */
+  const { data: me } = useQuery({
+    queryKey: ['me', 'id'],
+    queryFn: () => browserFetch<{ id: string }>('/users/me'),
+    enabled: isAuthenticated,
+    staleTime: 10 * 60 * 1000,
+  });
+  const isOwnProfile = Boolean(playerUserId && me?.id && playerUserId === me.id);
 
   const isFollowing = following?.items.some((follow) => follow.targetId === playerId) ?? false;
 
@@ -120,6 +145,17 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
    * hiding the reason to make an account from the people who don't have one yet
    * is the wrong trade.
    */
+  /*
+   * Whether this card offers anything at all.
+   *
+   * Every action here — follow, recommend, send for review, assess — is something
+   * one person does about another, so your own profile offers none of them
+   * whatever role you are wearing. The backend refuses each of these on a
+   * self-target too (see RecommendationsService.create, CoachesService
+   * .createAssessment, FollowsService.follow); this is the clarity half.
+   */
+  const hasAnyAction = !isOwnProfile;
+
   return (
     <div className="space-y-4">
       <Card>
@@ -127,10 +163,15 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
           <CardTitle className="text-base">{t.player.actions}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {/* Following is a scout's tool for keeping an eye on someone they have
-              not recommended yet. A manager decides about players; they do not
-              collect them. */}
-          {isScout && (
+          {/* Following is for anybody, not only scouts.
+              It was gated to scouts on the reasoning that a manager decides about
+              players rather than collecting them — but that left a player looking
+              at another player with an empty card and nothing to do, which is the
+              one thing a profile page should never be. Keeping up with somebody
+              is not a scouting privilege.
+              Never on your own profile: following yourself is not a thing the
+              product means, and the API has nothing to do with it either. */}
+          {!isOwnProfile && (
             <Button
               variant={isFollowing ? 'outline' : 'primary'}
               className="w-full"
@@ -151,20 +192,25 @@ export function PlayerActions({ playerId, playerName }: { playerId: string; play
             </Button>
           )}
 
-          {isScout &&
+          {isScout && !isOwnProfile &&
             (mine ? (
               <RecommendationResult mine={mine} />
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
 
-          {isManager && <ManagerAction playerId={playerId} playerName={playerName} />}
+          {isManager && !isOwnProfile && <ManagerAction playerId={playerId} playerName={playerName} />}
 
-          {isCoach && <CoachReviewAction playerId={playerId} playerName={playerName} />}
+          {isCoach && !isOwnProfile && <CoachReviewAction playerId={playerId} playerName={playerName} />}
+
+          {/* Says so, rather than leaving a titled card with nothing under it.
+              An empty panel reads as something that failed to load — the reader
+              cannot tell "nothing for you here" from "this broke", and waits. */}
+          {!hasAnyAction && <p className="text-muted text-sm">{t.player?.noActions}</p>}
         </CardContent>
       </Card>
 
-      {activeRole === 'coach' && (
+      {activeRole === 'coach' && !isOwnProfile && (
         <Alert tone="info" title={t.dashboard.assessPlayer}>
           {t.player.coachAssessHint}
         </Alert>

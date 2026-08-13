@@ -13,8 +13,28 @@ export class FollowsService {
 
   // ---------- Scout -> player / academy (1.2 Scout permissions) ----------
 
+  /**
+   * Refuses a follow that points back at the caller.
+   *
+   * A self-follow is not harmful so much as meaningless — it inflates a follower
+   * count with its owner and puts your own card in your own feed. `PLAYER`
+   * targets a profile rather than an account, so the check resolves the profile's
+   * owner rather than comparing ids that are not the same kind of thing.
+   */
+  private async assertNotSelf(followerId: string, dto: CreateFollowDto) {
+    if (dto.targetType !== 'PLAYER') return;
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: dto.targetId },
+      select: { userId: true },
+    });
+    if (player?.userId === followerId) {
+      throw new ForbiddenException('You cannot follow your own profile');
+    }
+  }
+
   async follow(followerId: string, dto: CreateFollowDto) {
     await this.assertTargetExists(dto.targetType, dto.targetId);
+    await this.assertNotSelf(followerId, dto);
 
     return this.prisma.follow.upsert({
       where: {

@@ -639,6 +639,7 @@ export const ru: Dictionary = {
     recommendAgainOn: 'Вы сможете снова рекомендовать этого игрока с {value}.',
     age: 'Возраст',
     actions: 'Действия',
+    noActions: 'Для этого профиля у вас нет действий.',
     followPlayer: 'Подписаться',
     coachAssessHint: 'Оценка тренера заменяет самооценку на карточке подтверждённой.',
     alreadyRecommended: 'Вы уже рекомендовали',

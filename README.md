@@ -1425,3 +1425,140 @@ These override any design consideration — see §11 and §13.2:
 Backend and client are independent packages. See [`CLAUDE.md`](./CLAUDE.md) for repo-wide
 conventions (commits, naming, error handling, and the list of things that must not change
 without sign-off).
+
+## Role & Action Permission Matrix
+
+Who can do what, to whom, and under what conditions — as **implemented**, not as
+planned. Every row was read off a controller route and its service; anything the
+code does not do is absent rather than aspirational.
+
+Three things hold everywhere and are not repeated per row:
+
+- **The backend is the boundary.** Menus and buttons are gated by the *active*
+  role for clarity (`navForRole`, `PlayerActions`); every endpoint re-checks
+  independently. Hiding a control is never the protection.
+- **Active role, not owned roles.** Somebody who is both a scout and a coach acts
+  as whichever hat they are wearing (§1.2.1), and the API's `@Roles` guard agrees.
+- **Self-actions are refused server-side.** Recommending, assessing or following
+  your own profile is rejected by the service, not only hidden.
+
+Legend: **Yes** · **No** · **Cond.** (allowed when the stated condition holds).
+
+### 1. Cross-role — profiles, media, follows
+
+| Actor | Target | Action | Allowed? | Own profile | Conditions | Endpoint |
+|---|---|---|---|---|---|---|
+| Anyone (incl. guest) | Player profile | View | Cond. | Yes | Public unless the account set **private**; then owner + admins only | `GET /players/:id` |
+| Anyone (incl. guest) | Player search | Search | Yes | — | Private accounts excluded | `GET /players/search` |
+| Anyone (incl. guest) | Academy, trial, coach profile | View | Yes | — | `@Public()` reads | `GET /academies/:id`, `/trials/:id`, `/coaches/:id` |
+| Any signed-in user | Player / academy | Follow · Unfollow | Yes | **No** | Self-follow refused (`FollowsService.assertNotSelf`) | `POST`/`DELETE /follows` |
+| Any signed-in user | Player media | Like · Unlike | Yes | Yes | Unlike is idempotent | `POST`/`DELETE /media/:id/like` |
+| Any signed-in user | Player media | Comment | Yes | Yes | Author may delete their own comment | `POST /media/:id/comments` |
+| Anyone (incl. guest) | Player media | View (count) | Yes | — | Counted once per viewer/window | `POST /media/:id/view` |
+| Any signed-in user | Own account | Edit profile, avatar, privacy, password, sessions | Yes | — | Replacing an avatar deletes the previous object | `PATCH /users/me`, `/auth/password` |
+| Any signed-in user | Team | Request account deletion, feedback, bug | Yes | — | One open request per type; deletion also fileable **unauthenticated** with a password from `/privacy` | `POST /requests`, `/requests/delete-account` |
+
+### 2. Player
+
+| Actor | Target | Action | Allowed? | Own profile | Conditions | Endpoint |
+|---|---|---|---|---|---|---|
+| Player | Own player card | Create · Edit · Edit stats | Yes | Yes | Card is one per account | `POST`/`PATCH /players/me` |
+| Player | Own media | Upload clip | Cond. | Yes | Within tariff: **A** clips per **B** days; attribute clips must carry a 0–100 rating | `POST /media/upload-url` → `/media/confirm` |
+| Player | Own media | Edit title/description/rating · Delete | Yes | Yes | Category cannot be changed — a clip's category is the claim it makes | `PATCH`/`DELETE /media/:id` |
+| Player | **Global trial** | Apply | Cond. | — | Age inside the trial's band; before `applyDeadline`; trial not archived | `POST /trials/:id/apply` |
+| Player | **Private trial** | Apply directly | **No** | — | Private trials are reached only by invitation — see §6 | — |
+| Player | Trial invitation | Accept · Reject | Cond. | — | Only invitations addressed to them | `POST /trials/applications/:id/respond` |
+| Player | Academy invitation | Accept · Reject | Cond. | — | Only their own | `POST /academies/invitations/:id/accept`\|`/reject` |
+| Player | Another player | Recommend, assess, review | **No** | — | Not a player capability in any form | — |
+
+### 3. Scout
+
+| Actor | Target | Action | Allowed? | Own profile | Conditions | Endpoint |
+|---|---|---|---|---|---|---|
+| Scout | Player | **Recommend** | Cond. | **No** | `@Roles('scout')`; one live recommendation per scout per player; cooldown after rejection; within tariff **C** undecided recommendations. Self-recommendation refused (`RecommendationsService.create`) | `POST /recommendations` |
+| Scout | Own player profile | Recommend | **No** | **No** | Reputation measures judgement about others; a self-recommendation would raise a success rate on an academy's view of them *as a player* | — |
+| Scout | Academy | Be followed / endorsed by an academy | Cond. | — | The academy decides; a scout cannot add themselves | `PUT /follows/academy/:id/scouts` (manager) |
+| Scout | Own stats | View level, success rate, weight, quota | Yes | Yes | Computed from outcomes; not editable by anyone | `GET /recommendations/scout-stats/me` |
+| Scout | Scout profile | View | Cond. | Yes | Visible to players and academies; **not** to a coach; requires a session | `GET /recommendations/scouts/:scoutId` |
+| Scout | Trial verdict, coach review, squad | Any | **No** | — | Scouts put players forward; they decide nothing downstream | — |
+
+### 4. Academy Manager
+
+Every row requires being the manager **of that academy** (`assertAcademyManager`);
+a manager has no powers over any other academy.
+
+| Actor | Target | Action | Allowed? | Conditions | Endpoint |
+|---|---|---|---|---|---|
+| Manager | Recommendation inbox | Review, rank, clear | Cond. | Own academy; ranked by scout trust (§1.5.1) | `GET /recommendations/academy/:id/ranked` |
+| Manager | Player | **Send for Online Coach Review** | Cond. | Own academy; assigns one of its verified coaches | `POST /recommendations/players/:playerId/review` |
+| Manager | Player | **Invite to Private Trial** | Cond. | Only after a coach **accepted** the online review | `POST /recommendations/players/:playerId/invite` |
+| Manager | Player | Add to squad | Cond. | After a **Pass** verdict on the offline trial | `POST /trials/applications/:id/squad` |
+| Manager | Squad member | Edit membership · Release | Cond. | Own academy | `PATCH`/`POST /academies/:id/members/:memberId[/release]` |
+| Manager | Coach | Create · Assign to trial · Remove | Cond. | Within tariff **D** coaches | `POST /academies/:id/coaches`, `POST /trials/:id/coaches` |
+| Manager | Scout | Add to / remove from academy network | Cond. | Own academy's scout list | `PUT`/`DELETE /follows/academy/:id/scouts[/:scoutId]` |
+| Manager | Group | Create · Rename · Delete · Move members | Cond. | Within tariff **E** groups | `POST`/`PATCH`/`DELETE /academies/:id/groups` |
+| Manager | Trial | Create · Edit · Archive | Cond. | Own academy; `applyDeadline` ≤ trial date | `POST /trials/academy/:id`, `PATCH /trials/:id` |
+| Manager | Trial application | Set status | Cond. | Own academy's trial | `PATCH /trials/applications/:id/status` |
+| Manager | Own academy page | Logo, location, socials, gallery, featured lists | Cond. | Own academy | `PATCH /academies/:id`, `/photos`, `/featured` |
+| Manager | Transfer | Request · Approve · Reject · Cancel | Cond. | Both academies involved | `POST /academies/:id/transfers`, `/transfers/:id/*` |
+| Manager | Player | Trial Pass/Fail verdict | **No** | The verdict is the coach's; the manager acts on it | — |
+| Manager | Player | Recommend | **No** | Not a scout capability of theirs | — |
+
+### 5. Coach
+
+| Actor | Target | Action | Allowed? | Own profile | Conditions | Endpoint |
+|---|---|---|---|---|---|---|
+| Coach | Player | **Accept · Reject Online Coach Review** | Cond. | **No** | Only a review **assigned to them**; online, on the profile and clips | `POST /recommendations/reviews/:reviewId/decision` |
+| Coach | Trial application | **Pass · Fail** (offline verdict) | Cond. | **No** | Only a coach **working that trial**; recorded after the real-life examination | `POST /trials/applications/:id/verdict` |
+| Coach | Player | Submit assessment | Cond. | **No** | Coach profile **VERIFIED**; self-assessment refused (`CoachesService.createAssessment`) | `POST /coaches/assessments` |
+| Coach | Player clip | Rate (overrule the player's claim) | Cond. | **No** | Verified coach | `PATCH /media/:id/rating` |
+| Coach | Own coach profile | Create · Edit | Yes | Yes | Verification is an admin act | `POST /coaches/me` |
+| Coach | Scout profile | View | **No** | — | Scout profiles are for players and academies | — |
+| Coach | Squad, trials, invitations | Manage | **No** | — | Coaches judge; managers administer | — |
+
+### 6. Trial & review workflow
+
+Terminology is load-bearing. A **trial** is a real-life examination performed by
+a coach. **Online Coach Review** is a desk assessment of a profile and its clips
+and is *not* a trial.
+
+| Step | Actor | Action | Gate |
+|---|---|---|---|
+| **Global trial** 1 | Player | Apply | Age band, deadline, trial open |
+| 2 | Coach | Offline examination → **Pass/Fail** | Coach assigned to that trial |
+| 3 | Manager | Place in squad | Only on **Pass** |
+| **Private trial** 1 | Manager | Send player for Online Coach Review | Own academy, verified coach |
+| 2 | Coach | **Accept** or **Reject** the review | Review assigned to them |
+| 3 | Manager | Invite to private trial | Only after **Accept** |
+| 4 | Coach | Offline examination → **Pass/Fail** | Coach working that trial |
+| 5 | Manager | Place in squad | Only on **Pass** |
+
+On a **Pass**, the player's outstanding recommendations are cleared and the
+success rate of every scout who recommended them is recalculated, which moves
+their level and weight (§1.5). Reputation is recalculated **only** on an
+online-review rejection or a trial Pass/Fail — there is no decay job.
+
+### 7. Admin & super admin
+
+| Actor | Target | Action | Allowed? | Conditions |
+|---|---|---|---|---|
+| Admin | Coach, academy | Verify | Yes | Verification queues |
+| Admin | Report | Moderate | Yes | Moderation queue |
+| Admin | Support request | Take · Resolve · Decline | Yes | Closing requires a note |
+| Admin | User | View directory | Yes | — |
+| Super admin | User | Enable/disable · Change roles · Change tariff | Yes | Not on a super admin; not on self |
+| Super admin | User | **Delete account** | Yes | Acts on a `DELETE_ACCOUNT` request; removes card, clips and stored objects; never self, never a super admin |
+| Super admin | Tariff plans, permissions | Edit | Yes | Platform-wide settings are not a plain admin's |
+
+### Self-profile restrictions, collected
+
+| Actor | Target | Action | Own profile | Enforced by |
+|---|---|---|---|---|
+| Scout | Own player profile | Recommend | **No** | `RecommendationsService.create` + UI |
+| Coach | Own player profile | Assess | **No** | `CoachesService.createAssessment` + UI |
+| Any user | Own player profile | Follow | **No** | `FollowsService.follow` + UI |
+| Manager | Own player profile | Send for review / invite | **No** | UI; the review flow targets another account by construction |
+| Any user | Own player profile | Edit, upload clips, delete clips | **Yes** | Ownership checks |
+
+When no action applies, the profile's Actions panel says so rather than rendering
+an empty card — an empty panel reads as something that failed to load.
