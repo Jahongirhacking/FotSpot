@@ -93,7 +93,7 @@ async function bootstrap() {
   setupSwaggerUi(app);
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   // Nest's Logger rather than console.log, so startup lines carry the same
   // timestamps and formatting as everything else — a boot message that looks
