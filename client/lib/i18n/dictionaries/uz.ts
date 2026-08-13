@@ -257,7 +257,7 @@ export const uz = {
     otherPosition: 'Boshqa pozitsiya',
     notSureYet: 'Hali aniq emas',
     playingStyle: 'O‘yin uslubi',
-    styleLikeWho: 'Masalan',
+    styleLikeWho: 'Uslub',
     positionPickHint: 'Maydonda o‘z pozitsiyangizni bosing.',
     playingStyleHint: 'Qayerda emas, qanday o‘ynashingiz. Akademiyalar shuni qidiradi.',
     pickLater: 'Keyinroq tanlayman',

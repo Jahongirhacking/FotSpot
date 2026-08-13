@@ -61,7 +61,6 @@ function loadScript(src: string, attrs: Record<string, string> = {}): Promise<HT
  * offered.
  */
 export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
-  console.log('Buttons', GOOGLE_CLIENT_ID, TELEGRAM_BOT);
   const { t } = useI18n();
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
