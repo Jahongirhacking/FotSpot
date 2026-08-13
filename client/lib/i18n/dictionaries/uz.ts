@@ -609,7 +609,7 @@ export const uz = {
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
     signInToLike: 'Yoqtirish uchun tizimga kiring',
     uploadBlocked:
-      'Brauzer faylni saqlash xizmatiga yubora olmadi. Bu odatda serverdagi CORS sozlamasi yetishmasligini bildiradi — administratorga murojaat qiling.',
+      'Brauzer saqlash xizmatiga ulana olmadi. Odatda bu bucket’ning CORS sozlamasi yoki API token’ning yozish huquqi yetishmasligini bildiradi — qayta urinish yordam bermaydi, administratorga xabar bering.',
     play: 'Ijro etish',
     privateNote: 'Bu lavha siz o‘chirmaguningizcha profilingizda ochiq turadi.',
     yourClips: 'Video lavhalar',

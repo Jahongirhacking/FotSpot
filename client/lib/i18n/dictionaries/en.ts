@@ -582,7 +582,7 @@ export const en: Dictionary = {
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',
     uploadBlocked:
-      'Your browser could not reach the storage service. This usually means its CORS policy is not set up yet — retrying will not help; tell an administrator.',
+      'Your browser could not reach the storage service. That usually means either its CORS policy or the API token’s write permission — retrying will not help; tell an administrator.',
     play: 'Play',
     privateNote: 'This clip stays on your profile until you delete it.',
     yourClips: 'Clips',

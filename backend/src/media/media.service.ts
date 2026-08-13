@@ -1,4 +1,5 @@
 import {
+  Logger,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -194,6 +195,8 @@ interface FeedRow {
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     private prisma: PrismaService,
     private storage: StorageService,
@@ -764,6 +767,32 @@ export class MediaService {
       where: { id: mediaId },
       data: { status: 'REMOVED' },
     });
+
+    /*
+     * The row is kept and the objects are not.
+     *
+     * `REMOVED` is a soft delete on purpose — the rating history, the likes and
+     * the views are a record of a claim that was once made, and dropping the row
+     * would rewrite a chart retroactively. None of that needs the video, though,
+     * and a clip of a child that stays in a bucket after its owner deleted it is
+     * exactly what the privacy policy says does not happen.
+     *
+     * After the update, never before it: a failed write would otherwise leave a
+     * live row pointing at a video that no longer exists. And it cannot fail the
+     * request — the clip is already gone from the player's view, so throwing here
+     * would report failure for something that succeeded and invite a retry that
+     * has nothing left to delete. The orphan is logged with its key so it is
+     * findable.
+     */
+    for (const key of [removed.storageKey, removed.posterKey].filter(Boolean) as string[]) {
+      await this.storage.deleteObject(key).catch((error: Error) => {
+        this.logger.warn(
+          `Deleted clip ${mediaId} but could not remove "${key}": ${error.message}. The clip is ` +
+            'gone from the profile; this object is orphaned in the bucket.',
+        );
+      });
+    }
+
     await this.redis.del(RedisKeys.playerProfile(profile.id));
     return toMediaResponse(removed, this.storage);
   }
