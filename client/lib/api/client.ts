@@ -91,9 +91,12 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, activeRole, revalidate, tags, headers, ...rest } = options;
 
-  console.log(`[AUTH] api url: ${API_BASE}${path}`, rest?.method);
+  const url = `${API_BASE}${path}`;
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  console.log('[API] URL:', url);
+  console.log('[API] METHOD:', rest.method);
+
+  const response = await fetch(url, {
     ...rest,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -107,9 +110,13 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       : {}),
   });
 
+  console.log('[API] STATUS:', response.status);
+  console.log('[API] OK:', response.ok);
+
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
+  console.log('[API] RESPONSE:', text);
   const parsed = text ? tryJson(text) : { ok: true as const, value: undefined };
 
   if (!response.ok) {
