@@ -146,10 +146,15 @@ export function PlayerActions({
    * is the wrong trade.
    */
   /*
-   * Whether this card offers anything at all. Your own profile is the case that
-   * reaches zero: everything here is something one person does about another.
+   * Whether this card offers anything at all.
+   *
+   * Every action here — follow, recommend, send for review, assess — is something
+   * one person does about another, so your own profile offers none of them
+   * whatever role you are wearing. The backend refuses each of these on a
+   * self-target too (see RecommendationsService.create, CoachesService
+   * .createAssessment, FollowsService.follow); this is the clarity half.
    */
-  const hasAnyAction = !isOwnProfile || isScout || isManager || isCoach;
+  const hasAnyAction = !isOwnProfile;
 
   return (
     <div className="space-y-4">
@@ -187,16 +192,16 @@ export function PlayerActions({
             </Button>
           )}
 
-          {isScout &&
+          {isScout && !isOwnProfile &&
             (mine ? (
               <RecommendationResult mine={mine} />
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
 
-          {isManager && <ManagerAction playerId={playerId} playerName={playerName} />}
+          {isManager && !isOwnProfile && <ManagerAction playerId={playerId} playerName={playerName} />}
 
-          {isCoach && <CoachReviewAction playerId={playerId} playerName={playerName} />}
+          {isCoach && !isOwnProfile && <CoachReviewAction playerId={playerId} playerName={playerName} />}
 
           {/* Says so, rather than leaving a titled card with nothing under it.
               An empty panel reads as something that failed to load — the reader
@@ -205,7 +210,7 @@ export function PlayerActions({
         </CardContent>
       </Card>
 
-      {activeRole === 'coach' && (
+      {activeRole === 'coach' && !isOwnProfile && (
         <Alert tone="info" title={t.dashboard.assessPlayer}>
           {t.player.coachAssessHint}
         </Alert>

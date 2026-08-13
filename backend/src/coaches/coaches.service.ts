@@ -127,6 +127,19 @@ export class CoachesService {
     const player = await this.prisma.playerProfile.findUnique({ where: { id: dto.playerId } });
     if (!player) throw new BadRequestException('Player not found');
 
+    /*
+     * A coach cannot assess their own player profile.
+     *
+     * A coach assessment is the verified half of a card — it is what turns a
+     * self-reported number into one somebody stood on a pitch and vouched for.
+     * Assessing yourself collapses those into the same claim while still being
+     * drawn as verified, which is the one thing the distinction exists to
+     * prevent. Enforced here because the endpoint is reachable without the UI.
+     */
+    if (player.userId === userId) {
+      throw new ForbiddenException('You cannot assess your own player profile');
+    }
+
     await this.groups.assertCoachesPlayer(userId, dto.playerId);
 
     return this.prisma.coachAssessment.create({

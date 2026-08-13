@@ -1,5 +1,8 @@
+'use client';
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { useImageFallback } from './use-image-fallback';
 
 /**
  * Avatar image with an initials fallback.
@@ -12,6 +15,10 @@ import { cn } from '@/lib/utils';
  * For minor profiles a photo is guardian-consented content (README §11.1), so
  * initials are the correct default rather than a placeholder implying a missing
  * image.
+ *
+ * The same initials stand in when a URL is present but does not load. Without
+ * that the browser falls back to the `alt` text, which is how a broken object
+ * ends up printing a username where a face should be.
  */
 export function Avatar({
   src,
@@ -25,12 +32,14 @@ export function Avatar({
   alt?: string;
 }) {
   const base = 'grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold';
+  const { failed, onError } = useImageFallback(src);
 
-  if (src) {
+  if (src && !failed) {
     return (
       <img
         src={src}
         alt={alt}
+        onError={onError}
         referrerPolicy="no-referrer"
         className={cn(base, 'bg-surface-3 size-10 object-cover', className)}
       />
