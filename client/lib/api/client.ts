@@ -91,6 +91,8 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, activeRole, revalidate, tags, headers, ...rest } = options;
 
+  console.log(`[AUTH] api url: ${API_BASE}${path}`, rest?.method);
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...rest,
     headers: {
