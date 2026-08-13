@@ -1,4 +1,4 @@
-import { Logger, LogLevel, ValidationPipe } from '@nestjs/common';
+import { Logger, LogLevel, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
@@ -82,7 +82,11 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '256kb' });
   app.useBodyParser('urlencoded', { limit: '256kb', extended: true });
 
-  app.setGlobalPrefix('api/v1');
+  // `/health` sits outside the version prefix: a load balancer probing liveness
+  // is not a client of the API and should not have to follow its versioning.
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
 
   // Interactive reference at /docs, raw spec at /docs/openapi.json. Registered
   // after the prefix so documented paths match the real ones.
