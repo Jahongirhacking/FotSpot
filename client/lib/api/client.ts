@@ -93,9 +93,6 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   const url = `${API_BASE}${path}`;
 
-  console.log('[API] URL:', url);
-  console.log('[API] METHOD:', rest.method);
-
   const response = await fetch(url, {
     ...rest,
     headers: {
@@ -109,14 +106,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       ? { next: { ...(revalidate !== undefined ? { revalidate } : {}), ...(tags ? { tags } : {}) } }
       : {}),
   });
-
-  console.log('[API] STATUS:', response.status);
-  console.log('[API] OK:', response.ok);
-
   if (response.status === 204) return undefined as T;
-
   const text = await response.text();
-  console.log('[API] RESPONSE:', text);
   const parsed = text ? tryJson(text) : { ok: true as const, value: undefined };
 
   if (!response.ok) {
