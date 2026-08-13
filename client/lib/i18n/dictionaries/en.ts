@@ -641,6 +641,7 @@ export const en: Dictionary = {
     recommendAgainOn: 'You can put this player forward again on {value}.',
     age: 'Age',
     actions: 'Actions',
+    noActions: 'You have no actions for this profile.',
     followPlayer: 'Follow this player',
     coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',
     alreadyRecommended: 'You already recommended this player',

@@ -191,26 +191,6 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           />
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.player.selfReportedRecord}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* §1.6: self-reported numbers are labelled as such, always. Mixing them
-                with verified data in one figure would destroy the distinction the
-                platform's credibility rests on. */}
-            <div className="mb-3">
-              <Badge variant="neutral">{t.player.selfReported}</Badge>
-            </div>
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label={t.profile.matches} value={player?.matches} />
-              <Stat label={t.profile.goals} value={player?.goals} />
-              <Stat label={t.profile.assists} value={player?.assists} />
-              <Stat label={t.player.cleanSheets} value={player?.cleanSheets} />
-            </dl>
-          </CardContent>
-        </Card>
-
         {assessments?.length > 0 && (
           <Card>
             <CardHeader>
@@ -240,7 +220,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <aside>
-        <PlayerActions playerId={player?.id} playerName={player?.firstName} />
+        <PlayerActions
+          playerId={player?.id}
+          playerName={player?.firstName}
+          playerUserId={player?.userId}
+        />
       </aside>
     </div>
   );

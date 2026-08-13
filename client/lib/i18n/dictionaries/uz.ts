@@ -669,6 +669,7 @@ export const uz = {
     recommendAgainOn: 'Bu o‘yinchini {value} dan keyin qayta tavsiya qilishingiz mumkin.',
     age: 'Yosh',
     actions: 'Amallar',
+    noActions: 'Bu profil uchun sizda amallar yo‘q.',
     followPlayer: 'Kuzatish',
     coachAssessHint:
       'Murabbiy bahosi kartadagi o‘z-o‘zini baholashni tasdiqlangan bahoga almashtiradi.',
