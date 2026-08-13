@@ -24,6 +24,15 @@ export class FollowsController {
     return this.followsService.unfollow(user.userId, dto);
   }
 
+  /**
+   * Who follows you — people following your player card, and academies following
+   * you as a scout, in one list because they are one question.
+   */
+  @Get('followers')
+  listFollowers(@CurrentUser() user: AuthUser) {
+    return this.followsService.listFollowers(user.userId);
+  }
+
   @Get('me')
   listMine(@CurrentUser() user: AuthUser, @Query() dto: ListFollowsDto) {
     return this.followsService.listFollowing(user.userId, dto);

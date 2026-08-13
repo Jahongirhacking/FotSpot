@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
+import { EmailService } from '../email/email.service';
 import { avatarKey } from '../storage/storage.keys';
 
 const USER_ID = '77588691-7f87-412a-a738-53a1138728aa';
@@ -47,6 +48,9 @@ function harness(options: { storedAvatarKey?: string | null; deleteRejects?: Err
     {} as RbacService,
     storage,
     { get: () => undefined } as unknown as ConfigService,
+    // Not exercised by these tests — they are about which avatar object is
+    // deleted, and nothing in that path sends mail.
+    {} as unknown as EmailService,
   );
 
   return { service, storage, prisma, deleted, findUnique };

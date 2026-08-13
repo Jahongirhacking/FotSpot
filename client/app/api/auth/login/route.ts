@@ -29,11 +29,13 @@ export async function POST(request: Request) {
       ? '/auth/otp/verify'
       : mode === 'register'
         ? '/auth/register/email'
-        : mode === 'google'
-          ? '/auth/oauth/google'
-          : mode === 'telegram'
-            ? '/auth/oauth/telegram'
-            : '/auth/login/email';
+        : mode === 'password'
+          ? '/auth/login/email'
+          : mode === 'google'
+            ? '/auth/oauth/google'
+            : mode === 'telegram'
+              ? '/auth/oauth/telegram'
+              : '/auth/login/email';
 
   try {
     const session = await apiFetch<AuthSession>(path, {

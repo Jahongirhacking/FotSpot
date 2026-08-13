@@ -8,6 +8,7 @@ import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.de
 import {
   ChangePasswordDto,
   LoginEmailDto,
+  PhoneAuthStartDto,
   LogoutDto,
   GoogleOAuthDto,
   TelegramOAuthDto,
@@ -93,7 +94,22 @@ export class AuthController {
     return this.authService.resetPassword(dto, client);
   }
 
+  /**
+   * Which screen this phone number gets — asked before anything is sent.
+   *
+   * `PASSWORD` for an account that already has one, and no SMS is sent at all;
+   * `OTP` for a new number or an account that has never set a password. Sends
+   * nothing itself: the client still calls `otp/request`, which keeps the message
+   * behind its own cap and behind a second, deliberate press.
+   */
   @Public()
+  @Throttle({ limit: 10, windowSeconds: 60 })
+  @HttpCode(HttpStatus.OK)
+  @Post('phone/start')
+  phoneAuthStart(@Body() dto: PhoneAuthStartDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.phoneAuthStart(dto, client);
+  }
+
   /**
    * Sends a login code to a phone number.
    *
@@ -103,6 +119,7 @@ export class AuthController {
    * that. The other two message-senders below carry the same cap for the same
    * reason.
    */
+  @Public()
   @Throttle({ limit: 5, windowSeconds: 60 })
   @Post('otp/request')
   requestOtp(@Body() dto: RequestOtpDto, @ClientInfoParam() client: ClientInfo) {

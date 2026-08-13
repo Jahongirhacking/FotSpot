@@ -261,6 +261,8 @@ export const en: Dictionary = {
     followers: 'Followers',
     noAffiliations: 'No academy or coach linked yet.',
     following: 'Following',
+    noFollowersTitle: 'No followers yet',
+    noFollowersBody: 'People following your card, and academies following you as a scout, appear here.',
     notFollowingTitle: 'You are not following anyone yet',
     notFollowingBody: 'Follow a player or an academy and their clips rank higher in your feed.',
     players: 'Players',

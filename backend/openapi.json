@@ -418,6 +418,36 @@
         ]
       }
     },
+    "/api/v1/auth/phone/start": {
+      "post": {
+        "operationId": "auth_phoneAuthStart",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneAuthStartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Which screen this phone number gets — asked before anything is sent.\n\n`PASSWORD` for an account that already has one, and no SMS is sent at all;\n`OTP` for a new number or an account that has never set a password. Sends\nnothing itself: the client still calls `otp/request`, which keeps the message\nbehind its own cap and behind a second, deliberate press.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/otp/request": {
       "post": {
         "operationId": "auth_requestOtp",
@@ -449,6 +479,7 @@
             "bearer": []
           }
         ],
+        "summary": "Sends a login code to a phone number.\n\nCapped hard: every call mints a code and is meant to send a message, so an\nuncapped route is a way to make the server text a number repeatedly — costly\nonce an SMS gateway is wired in, and a way to harass somebody long before\nthat. The other two message-senders below carry the same cap for the same\nreason.",
         "tags": [
           "auth"
         ]
@@ -3655,6 +3686,26 @@
         ]
       }
     },
+    "/api/v1/follows/followers": {
+      "get": {
+        "operationId": "follows_listFollowers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who follows you — people following your player card, and academies following\nyou as a scout, in one list because they are one question.",
+        "tags": [
+          "follows"
+        ]
+      }
+    },
     "/api/v1/follows/me": {
       "get": {
         "operationId": "follows_listMine",
@@ -5960,6 +6011,10 @@
           "username": {
             "type": "string"
           },
+          "phone": {
+            "type": "string",
+            "description": "The third identifier, for an account that signed up by phone and has since\nset a password.\n\nAdded rather than given its own endpoint: what happens after the identifier\nis resolved — the throttle, the argon2 verify, the single opaque failure, the\nsession — is identical for all three, and a second copy of that is a second\nplace for the opacity to be got wrong."
+          },
           "password": {
             "type": "string"
           }
@@ -6023,6 +6078,17 @@
           "identifier",
           "code",
           "newPassword"
+        ]
+      },
+      "PhoneAuthStartDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
         ]
       },
       "RequestOtpDto": {

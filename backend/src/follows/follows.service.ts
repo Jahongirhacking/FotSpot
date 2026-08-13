@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
-import { AcademyScoutFollowState, FollowTargetType } from '@prisma/client';
+import { AcademyScoutFollowState, Follow, FollowTargetType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateFollowDto, ListFollowsDto, SetScoutFollowStateDto } from './dto/follow.dto';
@@ -84,7 +84,144 @@ export class FollowsService {
       this.prisma.follow.count({ where }),
     ]);
 
-    return { items, total, page, pageSize };
+    return { items: await this.describeTargets(items), total, page, pageSize };
+  }
+
+  /**
+   * Puts a name and a face on each row.
+   *
+   * A `Follow` stores only a type and an id, so a list built from the rows alone
+   * can show nothing but a uuid — which is exactly what the network screen was
+   * doing, printing the first eight characters of one where a name belongs.
+   *
+   * Resolved in two queries rather than one per row: a page of twenty follows
+   * would otherwise be twenty round trips for two lookups' worth of data.
+   *
+   * A row whose target has since been deleted keeps its place with a null name.
+   * Dropping it would make the list quietly shorter than the count beside it.
+   */
+  private async describeTargets(rows: Follow[]) {
+    const playerIds = rows.filter((r) => r.targetType === 'PLAYER').map((r) => r.targetId);
+    const academyIds = rows.filter((r) => r.targetType === 'ACADEMY').map((r) => r.targetId);
+
+    const [players, academies] = await Promise.all([
+      playerIds.length
+        ? this.prisma.playerProfile.findMany({
+            where: { id: { in: playerIds } },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              user: { select: { username: true, avatarKey: true } },
+            },
+          })
+        : [],
+      academyIds.length
+        ? this.prisma.academyProfile.findMany({
+            where: { id: { in: academyIds } },
+            select: { id: true, name: true, logoKey: true },
+          })
+        : [],
+    ]);
+
+    const playerById = new Map(players.map((p) => [p.id, p] as const));
+    const academyById = new Map(academies.map((a) => [a.id, a] as const));
+
+    return rows.map((row) => {
+      const player = playerById.get(row.targetId);
+      const academy = academyById.get(row.targetId);
+      return {
+        ...row,
+        name: player
+          ? [player.firstName, player.lastName].filter(Boolean).join(' ')
+          : (academy?.name ?? null),
+        username: player?.user?.username ?? null,
+        avatarUrl: this.storage.publicUrlOrNull(player?.user?.avatarKey ?? academy?.logoKey),
+      };
+    });
+  }
+
+  /**
+   * The people and academies following *you*.
+   *
+   * Two different relations, deliberately in one list, because they are one
+   * question to the person asking — and because `UsersService.summary` already
+   * adds them together for the number this list sits under. A list that did not
+   * match its own counter would be the more confusing outcome.
+   *
+   * - Somebody following your **player card** (`Follow` → your PlayerProfile).
+   * - An academy following you as a **scout** (`AcademyScoutFollow`), which is
+   *   the academy trusting your recommendations (§1.5.2).
+   *
+   * Muted scout rows are excluded: an academy that muted you is not following
+   * you, and counting it as a follower would flatter the number.
+   */
+  async listFollowers(userId: string) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    const [cardFollowers, academyFollowers] = await Promise.all([
+      player
+        ? this.prisma.follow.findMany({
+            where: { targetType: 'PLAYER', targetId: player.id },
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              createdAt: true,
+              follower: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  username: true,
+                  avatarKey: true,
+                  // The card, if they have one. A follower is an *account*, and
+                  // /players/:id wants a profile id — a different thing — so the
+                  // client cannot build a link without this and would otherwise
+                  // have to guess at one that 404s.
+                  playerProfile: { select: { id: true } },
+                },
+              },
+            },
+          })
+        : [],
+      this.prisma.academyScoutFollow.findMany({
+        where: { scoutId: userId, state: 'FOLLOWING' },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          createdAt: true,
+          academy: { select: { id: true, name: true, logoKey: true } },
+        },
+      }),
+    ]);
+
+    const items = [
+      ...cardFollowers.map((row) => ({
+        id: row.id,
+        kind: 'USER' as const,
+        createdAt: row.createdAt,
+        userId: row.follower?.id ?? null,
+        /** Where their public profile lives, or null if they never built a card. */
+        profileId: row.follower?.playerProfile?.id ?? null,
+        name: [row.follower?.firstName, row.follower?.lastName].filter(Boolean).join(' ') || null,
+        username: row.follower?.username ?? null,
+        avatarUrl: this.storage.publicUrlOrNull(row.follower?.avatarKey),
+      })),
+      ...academyFollowers.map((row) => ({
+        id: row.id,
+        kind: 'ACADEMY' as const,
+        createdAt: row.createdAt,
+        academyId: row.academy?.id ?? null,
+        name: row.academy?.name ?? null,
+        username: null,
+        avatarUrl: this.storage.publicUrlOrNull(row.academy?.logoKey),
+      })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return { items, total: items.length };
   }
 
   async countFollowers(targetType: FollowTargetType, targetId: string) {

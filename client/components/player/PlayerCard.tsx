@@ -84,14 +84,14 @@ export function PlayerCard({
       {/* Legibility floor for the name plate, independent of the photo behind it. */}
       <span
         className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5"
-        style={{ backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.82), transparent)' }}
+        style={{ backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.9), transparent)' }}
         aria-hidden
       />
 
       <div className={cn('absolute inset-0 flex flex-col', small ? 'p-2.5' : 'p-4')}>
         {/* Age band over position — the eFootball "105 / LWF" block. */}
         <div className="flex items-start justify-between gap-2">
-          <div className="drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">
+          <div className="drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">
             <p
               className={cn(
                 'leading-none font-black tracking-tight tabular-nums',
@@ -171,7 +171,6 @@ export function PlayerCard({
     card
   );
 }
-
 
 const TIER_COLOR: Record<string, string> = {
   gold: '#fbbf24',

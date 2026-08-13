@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, VerificationChannel } from '@prisma/client';
@@ -14,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { assertKeyUnder, avatarKey, avatarPrefix } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
+import { EmailService } from '../email/email.service';
 import {
   AvatarUploadUrlDto,
   RequestContactChangeDto,
@@ -33,6 +35,7 @@ export class UsersService {
     private rbac: RbacService,
     private storage: StorageService,
     private config: ConfigService,
+    private email: EmailService,
   ) {}
 
   async findMe(userId: string) {
@@ -380,16 +383,36 @@ export class UsersService {
       },
     });
 
+    /*
+     * Email goes through Resend; SMS is still the documented stub.
+     *
+     * Confirming a new address is exactly the case where an undelivered code is
+     * worst — the account keeps the old address, and the person is left believing
+     * the change is under way. So a failure is reported rather than reported as
+     * success, and the channel that has no gateway yet still says so plainly.
+     */
     const isProduction = this.config.get('NODE_ENV') === 'production';
-    if (isProduction) {
+    const isEmail = dto.channel === VerificationChannel.EMAIL;
+
+    const { sent } = isEmail
+      ? await this.email.sendCode(destination, code, 'contact-change')
+      : { sent: false };
+
+    if (isEmail && !sent && this.email.isConfigured) {
+      throw new ServiceUnavailableException(
+        'We could not send the code just now. Please try again in a moment.',
+      );
+    }
+
+    if (!sent && isProduction) {
       this.logger.warn(
         `No ${dto.channel} delivery is configured; a contact-change code was generated but not sent.`,
       );
     }
 
     return {
-      sent: !isProduction,
-      deliveryConfigured: false,
+      sent,
+      deliveryConfigured: isEmail && this.email.isConfigured,
       expiresInSeconds: CONTACT_CODE_TTL_SECONDS,
       ...(isProduction ? {} : { devCode: code }),
     };

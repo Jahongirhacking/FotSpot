@@ -16,6 +16,7 @@ import type {
   CoachProfile,
   DeviceSession,
   Follow,
+  FollowerEntry,
   FollowTargetType,
   AcademyGroup,
   AcademyMember,
@@ -1274,6 +1275,10 @@ export const clipRatings = {
 };
 
 export const follows = {
+  /** People following your card, and academies following you as a scout. */
+  followers: (opts: Opts = {}) =>
+    apiFetch<{ items: FollowerEntry[]; total: number }>('/follows/followers', opts),
+
   follow: (body: { targetType: FollowTargetType; targetId: string }, opts: Opts = {}) =>
     apiFetch<Follow>('/follows', { method: 'POST', body, ...opts }),
 

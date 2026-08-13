@@ -10,6 +10,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { RequestsModule } from './requests/requests.module';
+import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { FollowsModule } from './follows/follows.module';
@@ -69,6 +70,7 @@ import { AppController } from './app.controller';
     RateLimitModule,
     AuditModule,
     RequestsModule,
+    EmailModule,
     RbacModule,
     TariffsModule,
     AuthModule,

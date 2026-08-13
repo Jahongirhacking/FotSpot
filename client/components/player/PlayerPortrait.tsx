@@ -1,7 +1,7 @@
 'use client';
 
-import type { PlayerProfile } from '@/lib/api/types';
 import { useImageFallback } from '@/components/ui/use-image-fallback';
+import type { PlayerProfile } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
 /**
@@ -34,7 +34,7 @@ export function PlayerPortrait({ player, small }: { player: PlayerProfile; small
         onError={onError}
         loading="lazy"
         referrerPolicy="no-referrer"
-        className="absolute inset-x-0 bottom-0 h-[82%] w-full object-cover object-top"
+        className="absolute inset-x-0 bottom-0 h-[100%] w-full object-cover object-top"
       />
     );
   }
