@@ -339,3 +339,15 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+#telegram-login-FotSpot_bot {
+  width: 100%;
+}
+
+#telegram-login-FotSpot_bot .body_widget_login {
+  width: 100%;
+}
+
+#telegram-login-FotSpot_bot .tgme_widget_login_button {
+  width: 100%;
+}
