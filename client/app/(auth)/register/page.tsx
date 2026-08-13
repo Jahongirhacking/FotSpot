@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RegisterForm } from './RegisterForm';
+import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { getServerT } from '@/lib/i18n/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
@@ -21,8 +22,9 @@ export default async function RegisterPage() {
           Free, always. We&apos;ll ask what you&apos;re here for once you&apos;re in.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <RegisterForm />
+        <OAuthButtons />
         <p className="text-muted mt-6 text-center text-sm">
           {t.auth.alreadyHaveAccount}{' '}
           <Link href="/login" className="text-primary font-medium hover:underline">

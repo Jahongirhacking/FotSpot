@@ -118,6 +118,19 @@ model User {
   id       String  @id @default(uuid())
   phone    String? @unique
   email    String? @unique
+
+  /// The Telegram account that may sign in as this user, if one has been linked.
+  ///
+  /// Telegram's Login Widget identifies a person by their Telegram id and does
+  /// **not** disclose a phone number — that is only obtainable by asking inside a
+  /// chat, which a login button is not. So the id is what a returning Telegram
+  /// user is recognised by; matching on `phone` would mean matching on something
+  /// Telegram never sends.
+  ///
+  /// Unique because it is a credential: two accounts carrying the same Telegram
+  /// id would make "sign in with Telegram" ambiguous, and an ambiguity in an
+  /// authentication lookup resolves to whichever row came back first.
+  telegramId String? @unique
   /// Public handle, `colour-animal-football-number` by default (see
   /// username.util.ts). Every account gets one — it is how `/players/@handle`
   /// resolves and how someone signs in without remembering which email they used.

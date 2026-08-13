@@ -338,16 +338,16 @@
         ]
       }
     },
-    "/api/v1/auth/oauth": {
+    "/api/v1/auth/oauth/google": {
       "post": {
-        "operationId": "auth_oauthLogin",
+        "operationId": "auth_googleLogin",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OAuthLoginDto"
+                "$ref": "#/components/schemas/GoogleOAuthDto"
               }
             }
           }
@@ -362,6 +362,37 @@
             "bearer": []
           }
         ],
+        "summary": "Sign in with Google, registering the account if this is its first arrival.\n\nTakes only the ID token: the address is read from it after Google's\nsignature has been checked, so there is nothing here a caller can assert\nabout who they are.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/telegram": {
+      "post": {
+        "operationId": "auth_telegramLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramOAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sign in with Telegram, registering the account if this is its first arrival.\n\nTakes the Login Widget's payload unchanged — every field is covered by the\nsignature, so dropping one would make the hash impossible to reproduce.",
         "tags": [
           "auth"
         ]
@@ -5726,25 +5757,54 @@
           "code"
         ]
       },
-      "OAuthLoginDto": {
+      "GoogleOAuthDto": {
         "type": "object",
         "properties": {
-          "provider": {
-            "type": "object"
-          },
-          "providerToken": {
+          "idToken": {
             "type": "string",
-            "description": "Token already verified client-side / by an upstream provider SDK.\nNOTE: production must verify this server-side against the provider\nbefore trusting `email`. Wire this in AuthService.oauthLogin()."
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
+            "maxLength": 4096
           }
         },
         "required": [
-          "provider",
-          "providerToken",
-          "email"
+          "idToken"
+        ]
+      },
+      "TelegramOAuthDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "hash": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "auth_date": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "first_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "photo_url": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "hash",
+          "auth_date"
         ]
       },
       "RefreshTokenDto": {

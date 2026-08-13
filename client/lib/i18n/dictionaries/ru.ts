@@ -108,6 +108,7 @@ export const ru: Dictionary = {
     emailCodeNotice: 'На этот адрес придёт код подтверждения.',
     emailOrUsername: 'Email или логин',
     signIn: 'Войти',
+    orContinueWith: 'или',
     signOut: 'Выйти',
     welcomeBack: 'С возвращением',
     signInSubtitle: 'Войдите в свой аккаунт FotSpot.',

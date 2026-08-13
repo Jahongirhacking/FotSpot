@@ -1007,7 +1007,15 @@ export class AcademiesService {
             id: true,
             role: true,
             user: {
-              select: { id: true, firstName: true, lastName: true, avatarKey: true },
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarKey: true,
+                // The public profile a player has, which is a different id from
+                // their account — see `profileId` below.
+                playerProfile: { select: { id: true } },
+              },
             },
           },
         },
@@ -1019,6 +1027,21 @@ export class AcademiesService {
       rank: row.rank,
       memberId: row.memberId,
       userId: row.member?.user?.id ?? null,
+      /**
+       * Where this person's profile actually lives, or null if they have none.
+       *
+       * Without it the client had a `userId` and two routes keyed on other
+       * things — `/players/:playerProfileId` and `/scouts/:userId` — so a
+       * featured name could not be linked without guessing, and a guess would
+       * have produced a page of confident links to 404s.
+       *
+       * A player is the only case where the two differ: their card is a
+       * `PlayerProfile` row, and a member listed as PLAYER who has not built one
+       * yet answers null rather than a link to nothing. A scout is reached by
+       * their account, and a coach has no public page at all — so both are left
+       * for the client to decide, which it does by role.
+       */
+      profileId: row.member?.user?.playerProfile?.id ?? null,
       firstName: row.member?.user?.firstName ?? null,
       lastName: row.member?.user?.lastName ?? null,
       avatarUrl: this.storage.publicUrlOrNull(row.member?.user?.avatarKey),

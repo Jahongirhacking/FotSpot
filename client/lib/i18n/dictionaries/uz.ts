@@ -121,6 +121,7 @@ export const uz = {
     emailCodeNotice: 'Bu manzilga tasdiqlash kodi yuboriladi.',
     emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
+    orContinueWith: 'yoki',
     signOut: 'Chiqish',
     welcomeBack: 'Xush kelibsiz',
     signInSubtitle: 'FotSpot hisobingizga kiring.',

@@ -62,9 +62,10 @@ sudo docker run --name fotspot-redis \
 These are places where the spec depends on external services. Each is a real
 interface with a clearly marked stub body, not faked as if it worked:
 
-1. **OAuth** (`AuthService.oauthLogin`) — accepts a provider token but does
-   **not** verify it against Google/Facebook/OneID yet. Wire real
-   verification before trusting the email it's given.
+1. ~~**OAuth**~~ — **now implemented** for Google and Telegram; see "Social
+   sign-in" below. The old `POST /auth/oauth` is gone: it took an email
+   alongside an unverified provider token and trusted it, which made it a way to
+   sign in as any address a caller could name.
 2. **SMS delivery** (`AuthService.requestOtp`) — OTP is generated, hashed,
    and stored correctly; in non-production it's echoed back in the response
    (`devCode`) so the flow is testable without an SMS gateway (e.g. Eskiz).
@@ -165,6 +166,68 @@ Clip URLs carry the seven-day SigV4 maximum and are re-minted on every read, so 
 clip stays reachable for as long as it exists — deletion, not time, ends it. The
 signing timestamp is rounded to the hour so the URL is byte-identical within that
 window and a rewatch comes from the browser cache instead of the network.
+
+## Social sign-in (Google, Telegram)
+
+Both buttons sign in and register in one press: the API is handed a verified
+identity and decides for itself whether it already knows the account. There is no
+separate "register with Google" call, because whether this is a first visit is
+not something the client can know.
+
+**Google** — the browser gets an ID token from Google Identity Services and posts
+it to `POST /auth/oauth/google`. `GoogleOAuthService` fetches Google's published
+signing keys, checks the token's RS256 signature against the one its `kid` names,
+and only then reads the claims; `aud` must equal `GOOGLE_CLIENT_ID`, or a token
+minted for any other site — trivially obtained by running one — would be accepted.
+Tokens whose `email_verified` is false are refused outright: matching an existing
+account on an address Google has not confirmed would hand that account to whoever
+asked for it. Verified against the JWKS directly rather than by adding
+`google-auth-library`, since Node builds a public key from a JWK unaided.
+
+**Telegram** — the Login Widget signs rather than tokenises. It hands the browser
+a plain object and an HMAC; `verifyTelegramAuth` recomputes that HMAC with
+`SHA256(TELEGRAM_BOT_TOKEN)` as the key and rejects anything that does not match,
+plus anything older than a day or dated in the future. Every field is hashed,
+including ones this code does not recognise, so nothing can be added or edited in
+transit. Ten unit tests cover it, which matters more than usual: a mistake in that
+file is an authentication bypass, not a wrong answer.
+
+### Telegram identifies by id, not phone number
+
+**The Login Widget does not disclose a phone number.** It sends an id, a name, a
+username and a signature; the number is only obtainable by asking inside a chat,
+which a login button is not. So `User.telegramId` is what a returning Telegram
+user is recognised by.
+
+The consequence is worth stating plainly, because it is a product decision and not
+an oversight: somebody who registered with a phone number and later presses
+"Continue with Telegram" gets a **second account**, since nothing in the payload
+connects the two. Joining them needs a deliberate "connect Telegram" action from
+inside a signed-in session — a different feature from signing in, and one worth
+building before this is advertised to people who already have phone accounts.
+
+Google has no such gap: the email in a verified token is the same email a password
+account was registered with, so the accounts converge on their own.
+
+### Setup
+
+Neither provider works until it is configured, and each button simply does not
+render without its variable — a dead button that fails on press is worse than one
+that was never offered.
+
+| Where | Variable | From |
+| ----- | -------- | ---- |
+| backend | `GOOGLE_CLIENT_ID` | Cloud Console → Credentials → OAuth client (Web) |
+| client | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | the same value |
+| backend | `TELEGRAM_BOT_TOKEN` | @BotFather — **secret** |
+| client | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | the bot's @name, without the @ |
+
+Two settings live outside this repo and fail confusingly when missed: the Google
+client needs every serving origin under **Authorised JavaScript origins**, and the
+bot needs `/setdomain` sent to @BotFather for the site the button is on. Neither
+produces a useful error — Google declines to render, and Telegram's widget simply
+does not appear.
+
 
 ## Business logic implemented in full
 

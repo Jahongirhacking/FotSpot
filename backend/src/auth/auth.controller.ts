@@ -8,7 +8,8 @@ import {
   ChangePasswordDto,
   LoginEmailDto,
   LogoutDto,
-  OAuthLoginDto,
+  GoogleOAuthDto,
+  TelegramOAuthDto,
   RefreshTokenDto,
   ForgotPasswordDto,
   RegisterEmailDto,
@@ -98,11 +99,31 @@ export class AuthController {
     return this.authService.verifyOtp(dto, client);
   }
 
+  /**
+   * Sign in with Google, registering the account if this is its first arrival.
+   *
+   * Takes only the ID token: the address is read from it after Google's
+   * signature has been checked, so there is nothing here a caller can assert
+   * about who they are.
+   */
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Post('oauth')
-  oauthLogin(@Body() dto: OAuthLoginDto, @ClientInfoParam() client: ClientInfo) {
-    return this.authService.oauthLogin(dto, client);
+  @Post('oauth/google')
+  googleLogin(@Body() dto: GoogleOAuthDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.googleLogin(dto.idToken, client);
+  }
+
+  /**
+   * Sign in with Telegram, registering the account if this is its first arrival.
+   *
+   * Takes the Login Widget's payload unchanged — every field is covered by the
+   * signature, so dropping one would make the hash impossible to reproduce.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('oauth/telegram')
+  telegramLogin(@Body() dto: TelegramOAuthDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.telegramLogin(dto, client);
   }
 
   @Public()

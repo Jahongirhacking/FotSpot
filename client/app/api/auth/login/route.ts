@@ -13,12 +13,27 @@ import type { AuthSession } from '@/lib/api/types';
 export async function POST(request: Request) {
   const { mode, ...credentials } = await request.json();
 
+  /*
+   * The OAuth modes land here rather than in routes of their own because what
+   * happens *after* the API answers is the same in every case: httpOnly cookies,
+   * written on this server because the browser cannot write them. Splitting them
+   * out would mean four copies of that, and the copy that drifts is the one that
+   * stops being httpOnly.
+   *
+   * Google and Telegram both sign in and register in one call — the API decides
+   * which by whether it already knows the account — so there is no separate
+   * "register with Google" path to route.
+   */
   const path =
     mode === 'otp'
       ? '/auth/otp/verify'
       : mode === 'register'
         ? '/auth/register/email'
-        : '/auth/login/email';
+        : mode === 'google'
+          ? '/auth/oauth/google'
+          : mode === 'telegram'
+            ? '/auth/oauth/telegram'
+            : '/auth/login/email';
 
   try {
     const session = await apiFetch<AuthSession>(path, {

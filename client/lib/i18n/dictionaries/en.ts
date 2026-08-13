@@ -108,6 +108,7 @@ export const en: Dictionary = {
     emailCodeNotice: 'We will send a confirmation code to this address.',
     emailOrUsername: 'Email or username',
     signIn: 'Sign in',
+    orContinueWith: 'or',
     signOut: 'Sign out',
     welcomeBack: 'Welcome back',
     signInSubtitle: 'Sign in to your FotSpot account.',
