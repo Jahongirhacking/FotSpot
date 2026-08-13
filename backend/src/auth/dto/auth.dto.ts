@@ -137,18 +137,36 @@ export class LogoutDto {
   allDevices?: boolean;
 }
 
-export class OAuthLoginDto {
+/**
+ * A Google ID token, and nothing else.
+ *
+ * Deliberately no `email` field. Its predecessor took one alongside the token and
+ * trusted it, which made the endpoint a way to sign in as any address a caller
+ * could name. The address now comes out of the verified token
+ * (`GoogleOAuthService`), so there is nothing here for a caller to assert.
+ */
+export class GoogleOAuthDto {
   @IsString()
-  provider: 'google' | 'facebook' | 'oneid';
+  @MaxLength(4096)
+  idToken: string;
+}
 
-  /**
-   * Token already verified client-side / by an upstream provider SDK.
-   * NOTE: production must verify this server-side against the provider
-   * before trusting `email`. Wire this in AuthService.oauthLogin().
-   */
-  @IsString()
-  providerToken: string;
+/**
+ * The Login Widget's payload, forwarded verbatim.
+ *
+ * Every field is signed, so nothing may be dropped on the way — the hash is
+ * computed over exactly what Telegram sent, and a missing field means a
+ * signature that cannot match. That is also why this DTO does not use
+ * `forbidNonWhitelisted`'s usual strictness through named fields alone: unknown
+ * keys are carried through and hashed rather than stripped.
+ */
+export class TelegramOAuthDto {
+  @IsString() @MaxLength(64) id: string;
+  @IsString() @MaxLength(128) hash: string;
+  @IsString() @MaxLength(32) auth_date: string;
 
-  @IsEmail()
-  email: string;
+  @IsOptional() @IsString() @MaxLength(256) first_name?: string;
+  @IsOptional() @IsString() @MaxLength(256) last_name?: string;
+  @IsOptional() @IsString() @MaxLength(256) username?: string;
+  @IsOptional() @IsString() @MaxLength(1024) photo_url?: string;
 }

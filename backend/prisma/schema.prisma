@@ -118,6 +118,23 @@ model User {
   id       String  @id @default(uuid())
   phone    String? @unique
   email    String? @unique
+
+  /// The Telegram account that may sign in as this user, if one has been linked.
+  ///
+  /// Telegram's Login Widget identifies a person by their Telegram id and does
+  /// **not** disclose a phone number — that is only obtainable by asking inside a
+  /// chat, which a login button is not. So the id is what a returning Telegram
+  /// user is recognised by; matching on `phone` would mean matching on something
+  /// Telegram never sends.
+  ///
+  /// Unique because it is a credential: two accounts carrying the same Telegram
+  /// id would make "sign in with Telegram" ambiguous, and an ambiguity in an
+  /// authentication lookup resolves to whichever row came back first.
+  telegramId String? @unique
+
+  /// Support requests this account raised, and the ones it handled as an admin.
+  supportRequests        SupportRequest[] @relation("RequestsMade")
+  handledSupportRequests SupportRequest[] @relation("RequestsHandled")
   /// Public handle, `colour-animal-football-number` by default (see
   /// username.util.ts). Every account gets one — it is how `/players/@handle`
   /// resolves and how someone signs in without remembering which email they used.
@@ -1654,4 +1671,56 @@ model AuditLog {
   action    String
   meta      Json?
   createdAt DateTime @default(now())
+}
+
+/// What a user asked the team to do — the front door for anything the app has no
+/// button for.
+///
+/// Account deletion is the reason this exists. The privacy policy promises an
+/// account can be removed, and self-service erasure of a minor's profile is not
+/// a button worth building: it is irreversible, it is exactly what a hijacked
+/// session would press, and the person asking often wants something narrower
+/// (take my clips down, hide me from search) that a conversation finds and a
+/// button cannot.
+enum SupportRequestType {
+  DELETE_ACCOUNT
+  FEEDBACK
+  BUG
+  OTHER
+}
+
+/// NEW is what the admin badge counts. A request leaves that state only when
+/// somebody has actually picked it up, so the number on the navbar is a queue
+/// depth rather than a notification anybody can dismiss.
+enum SupportRequestStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  DECLINED
+}
+
+/// A request from a user to the people who run the platform.
+model SupportRequest {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("RequestsMade", fields: [userId], references: [id], onDelete: Cascade)
+
+  type    SupportRequestType
+  status  SupportRequestStatus @default(NEW)
+  /// What the user said in their own words. Optional: "delete my account" needs
+  /// no explanation, and demanding one would be a hurdle in front of a right.
+  message String?
+
+  /// Who picked it up, what they did, and when. Kept after the fact so a later
+  /// question about an account has an answer that is not somebody's memory.
+  handledById String?
+  handledBy   User?     @relation("RequestsHandled", fields: [handledById], references: [id], onDelete: SetNull)
+  handledNote String?
+  handledAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }

@@ -1,65 +1,102 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/api/v1/tariff-plans": {
-      "get": {
-        "operationId": "tariffs_list",
+    "/api/v1/requests": {
+      "post": {
+        "operationId": "requests_create",
         "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
-        "tags": [
-          "tariffs"
-        ]
-      }
-    },
-    "/api/v1/tariff-plans/me": {
-      "get": {
-        "operationId": "tariffs_mine",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The caller's own plan and how much of it they have used.",
-        "tags": [
-          "tariffs"
-        ]
-      }
-    },
-    "/api/v1/tariff-plans/{tier}": {
-      "patch": {
-        "operationId": "tariffs_update",
-        "parameters": [
-          {
-            "name": "tier",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "$ref": "#/components/schemas/PlanTier"
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTariffPlanDto"
+                "$ref": "#/components/schemas/CreateSupportRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the team for something the app has no button for — deleting the account\nabove all, which the privacy policy states as a right and this is the way to\nexercise it.\n\nFiling the same open request twice returns the first one rather than making a\nsecond: pressing a button again is not asking again.",
+        "tags": [
+          "requests"
+        ]
+      },
+      "get": {
+        "operationId": "requests_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SupportRequestStatus"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SupportRequestType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The queue, oldest open request first. Carries the contact details, because\n the workflow is to get in touch and then act.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/delete-account": {
+      "post": {
+        "operationId": "requests_requestAccountDeletion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAccountDeletionDto"
               }
             }
           }
@@ -74,9 +111,88 @@
             "bearer": []
           }
         ],
-        "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
+        "summary": "Ask for an account to be deleted, from the public privacy page.\n\nPublic, and therefore credential-checked: the caller proves the password\nbefore anything is queued. Rate limited per IP on its own counter — a burst\nhere is somebody trying to get a stranger's account erased, which is a\ndifferent attack from guessing a way in, and it must not lock the same\naddress out of signing in.",
         "tags": [
-          "tariffs"
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/mine": {
+      "get": {
+        "operationId": "requests_listMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What this account has already asked for.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/new-count": {
+      "get": {
+        "operationId": "requests_newCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The number on the navbar badge: requests nobody has picked up yet.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/{id}": {
+      "patch": {
+        "operationId": "requests_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupportRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pick a request up, or close it with a note saying what was done.",
+        "tags": [
+          "requests"
         ]
       }
     },
@@ -338,16 +454,16 @@
         ]
       }
     },
-    "/api/v1/auth/oauth": {
+    "/api/v1/auth/oauth/google": {
       "post": {
-        "operationId": "auth_oauthLogin",
+        "operationId": "auth_googleLogin",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OAuthLoginDto"
+                "$ref": "#/components/schemas/GoogleOAuthDto"
               }
             }
           }
@@ -362,6 +478,37 @@
             "bearer": []
           }
         ],
+        "summary": "Sign in with Google, registering the account if this is its first arrival.\n\nTakes only the ID token: the address is read from it after Google's\nsignature has been checked, so there is nothing here a caller can assert\nabout who they are.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/telegram": {
+      "post": {
+        "operationId": "auth_telegramLogin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramOAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sign in with Telegram, registering the account if this is its first arrival.\n\nTakes the Login Widget's payload unchanged — every field is covered by the\nsignature, so dropping one would make the hash impossible to reproduce.",
         "tags": [
           "auth"
         ]
@@ -473,6 +620,85 @@
         "summary": "\"Where am I logged in\" - README 1.21 device tracking.",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans": {
+      "get": {
+        "operationId": "tariffs_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/me": {
+      "get": {
+        "operationId": "tariffs_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own plan and how much of it they have used.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/{tier}": {
+      "patch": {
+        "operationId": "tariffs_update",
+        "parameters": [
+          {
+            "name": "tier",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PlanTier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
+        "tags": [
+          "tariffs"
         ]
       }
     },
@@ -5149,6 +5375,33 @@
         "tags": [
           "admin"
         ]
+      },
+      "delete": {
+        "operationId": "admin_deleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Erases an account — **super admin only**, and irreversible.\n\nThe end of a `DELETE_ACCOUNT` request: contact the person, confirm what they\nactually want, then this. The card, the clips and the stored objects go with\nit, which is what makes the privacy policy's promise true.",
+        "tags": [
+          "admin"
+        ]
       }
     },
     "/api/v1/admin/users/{id}/status": {
@@ -5512,6 +5765,10 @@
       "description": "Reports and their resolution."
     },
     {
+      "name": "requests",
+      "description": "What users ask the team to do — account deletion, feedback, bugs."
+    },
+    {
       "name": "admin",
       "description": "User directory, roles, permissions and audit logs."
     },
@@ -5540,48 +5797,87 @@
       }
     },
     "schemas": {
-      "PlanTier": {
+      "SupportRequestType": {
         "type": "string",
         "enum": [
-          "FREE",
-          "PRO",
-          "PREMIUM"
+          "DELETE_ACCOUNT",
+          "FEEDBACK",
+          "BUG",
+          "OTHER"
         ]
       },
-      "UpdateTariffPlanDto": {
+      "CreateSupportRequestDto": {
         "type": "object",
         "properties": {
-          "clipLimit": {
-            "type": "number",
-            "description": "A — clips a player may upload per window.",
-            "minimum": 0,
-            "maximum": 10000
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportRequestType"
+              }
+            ]
           },
-          "clipWindowDays": {
-            "type": "number",
-            "description": "B — the length of that window, in days. At least one; a zero-day window\n would refuse every upload forever.",
-            "minimum": 1,
-            "maximum": 365
-          },
-          "pendingRecommendationLimit": {
-            "type": "number",
-            "description": "C — recommendations a scout may have awaiting a verdict at once.",
-            "minimum": 0,
-            "maximum": 10000
-          },
-          "maxCoaches": {
-            "type": "number",
-            "description": "D — coaches an academy manager may create.",
-            "minimum": 0,
-            "maximum": 10000
-          },
-          "maxGroups": {
-            "type": "number",
-            "description": "E — squad groups an academy manager may create.",
-            "minimum": 0,
-            "maximum": 10000
+          "message": {
+            "type": "string",
+            "description": "Optional on purpose. \"Delete my account\" needs no explanation, and demanding\none puts a hurdle in front of something the privacy policy states as a right.",
+            "maxLength": 2000
           }
-        }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "RequestAccountDeletionDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "SupportRequestStatus": {
+        "type": "string",
+        "enum": [
+          "NEW",
+          "IN_PROGRESS",
+          "RESOLVED",
+          "DECLINED"
+        ]
+      },
+      "UpdateSupportRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportRequestStatus"
+              }
+            ]
+          },
+          "handledNote": {
+            "type": "string",
+            "description": "What was done, for whoever reads this row in six months.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
       "RequestRegistrationCodeDto": {
         "type": "object",
@@ -5726,25 +6022,54 @@
           "code"
         ]
       },
-      "OAuthLoginDto": {
+      "GoogleOAuthDto": {
         "type": "object",
         "properties": {
-          "provider": {
-            "type": "object"
-          },
-          "providerToken": {
+          "idToken": {
             "type": "string",
-            "description": "Token already verified client-side / by an upstream provider SDK.\nNOTE: production must verify this server-side against the provider\nbefore trusting `email`. Wire this in AuthService.oauthLogin()."
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
+            "maxLength": 4096
           }
         },
         "required": [
-          "provider",
-          "providerToken",
-          "email"
+          "idToken"
+        ]
+      },
+      "TelegramOAuthDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "hash": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "auth_date": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "first_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "photo_url": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "hash",
+          "auth_date"
         ]
       },
       "RefreshTokenDto": {
@@ -5782,6 +6107,49 @@
         "required": [
           "newPassword"
         ]
+      },
+      "PlanTier": {
+        "type": "string",
+        "enum": [
+          "FREE",
+          "PRO",
+          "PREMIUM"
+        ]
+      },
+      "UpdateTariffPlanDto": {
+        "type": "object",
+        "properties": {
+          "clipLimit": {
+            "type": "number",
+            "description": "A — clips a player may upload per window.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "clipWindowDays": {
+            "type": "number",
+            "description": "B — the length of that window, in days. At least one; a zero-day window\n would refuse every upload forever.",
+            "minimum": 1,
+            "maximum": 365
+          },
+          "pendingRecommendationLimit": {
+            "type": "number",
+            "description": "C — recommendations a scout may have awaiting a verdict at once.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxCoaches": {
+            "type": "number",
+            "description": "D — coaches an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxGroups": {
+            "type": "number",
+            "description": "E — squad groups an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        }
       },
       "UpdateProfileDto": {
         "type": "object",

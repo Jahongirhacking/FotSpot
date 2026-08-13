@@ -14,7 +14,16 @@ export const BLOCK_SECONDS = 30 * 60;
  */
 const STREAK_SECONDS = 60 * 60;
 
-export type ThrottleScope = 'login' | 'registration' | 'password-reset';
+/**
+ * `account-deletion` is its own bucket rather than sharing `login`'s.
+ *
+ * The two are different attacks. Someone guessing at the login form wants in;
+ * someone guessing here wants a stranger's account queued for erasure, and an
+ * admin who acts on a convincing-looking request does the attacker's work for
+ * them. Sharing a counter would also mean a burst against this form locks the
+ * same IP out of signing in, which punishes the wrong person.
+ */
+export type ThrottleScope = 'login' | 'registration' | 'password-reset' | 'account-deletion';
 
 /**
  * Counts consecutive failures per caller and locks them out after ten.

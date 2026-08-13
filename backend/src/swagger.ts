@@ -32,6 +32,7 @@ export const API_TAGS = [
   { name: 'media', description: 'Player media uploads, likes, views and comments.' },
   { name: 'notifications', description: 'Persisted notifications. Realtime push is a WebSocket.' },
   { name: 'moderation', description: 'Reports and their resolution.' },
+  { name: 'requests', description: 'What users ask the team to do — account deletion, feedback, bugs.' },
   { name: 'admin', description: 'User directory, roles, permissions and audit logs.' },
   {
     name: 'tariffs',

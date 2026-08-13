@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -14,10 +16,13 @@ import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ClientInfo } from '../common/decorators/client-info.decorator';
 import { generateUsername, normaliseUsername } from '../users/username.util';
 import { generateResetCode, normaliseResetCode } from './reset-code.util';
+import { GoogleOAuthService } from './oauth/google-oauth.service';
+import { TelegramAuthPayload, verifyTelegramAuth } from './oauth/telegram-oauth.util';
 import {
   ChangePasswordDto,
   LoginEmailDto,
-  OAuthLoginDto,
+  GoogleOAuthDto,
+  TelegramOAuthDto,
   RefreshTokenDto,
   ForgotPasswordDto,
   RegisterEmailDto,
@@ -58,12 +63,15 @@ interface RefreshClaims {
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
     private rbac: RbacService,
     private throttle: RateLimitService,
+    private google: GoogleOAuthService,
   ) {}
 
   // ---------- Email + Password ----------
@@ -165,6 +173,47 @@ export class AuthService {
     }
     // Astronomically unlikely; the unique index is the real guarantee anyway.
     return `${generateUsername()}-${crypto.randomInt(1000, 9999)}`;
+  }
+
+  /**
+   * Confirms a password without issuing a session — for an action that is not a
+   * sign-in but must still prove the person is who they say.
+   *
+   * Deleting an account is the case this exists for. It happens from a public
+   * page, so the caller may not be signed in at all, and "prove it, then queue
+   * it" is the only honest way to accept a request to erase somebody's data.
+   *
+   * Everything about it mirrors `loginEmail`, deliberately: the same opaque
+   * "Invalid credentials" for every failure, so it cannot be used to test which
+   * addresses exist, and the same failure-counting — on its own scope, because a
+   * burst here should not lock the same IP out of signing in.
+   *
+   * Returns the account rather than a token. Nothing here grants access.
+   */
+  async verifyPasswordOnly(
+    identifier: { email?: string; username?: string; password: string },
+    client: ClientInfo = {},
+  ) {
+    await this.throttle.assertAllowed('account-deletion', client.ipAddress);
+
+    if (!identifier.email && !identifier.username) {
+      throw new BadRequestException('Enter your email or username');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: identifier.email
+        ? { email: identifier.email.trim().toLowerCase() }
+        : { username: normaliseUsername(identifier.username!) },
+    });
+
+    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, identifier.password))) {
+      await this.throttle.recordFailure('account-deletion', client.ipAddress);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (!user.isActive) throw new UnauthorizedException('Account disabled');
+
+    await this.throttle.clear('account-deletion', client.ipAddress);
+    return user;
   }
 
   /**
@@ -408,7 +457,16 @@ export class AuthService {
 
   // ---------- Phone + OTP ----------
 
-  async requestOtp(dto: RequestOtpDto) {
+  async requestOtp(dto: RequestOtpDto, client: ClientInfo = {}) {
+    /*
+     * Bounded because each call mints a code and is meant to send a message. Left
+     * open, one caller could make the server text an arbitrary number of times —
+     * which costs money once an SMS gateway is wired in, and is a way to harass a
+     * phone number long before that. The per-route cap in `@Throttle` is the
+     * ceiling on how fast; this is the lockout once somebody is clearly abusing it.
+     */
+    await this.throttle.assertAllowed('login', client.ipAddress);
+
     const code = crypto.randomInt(100000, 999999).toString();
     const codeHash = await argon2.hash(code);
     const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000);
@@ -455,18 +513,103 @@ export class AuthService {
     return this.issueTokens(user.id, client);
   }
 
-  // ---------- OAuth (extension point) ----------
+  // ---------- OAuth ----------
 
-  async oauthLogin(dto: OAuthLoginDto, client: ClientInfo = {}) {
-    // NOTE (minimal MVP): server-side verification of `providerToken` against
-    // Google/Facebook/OneID must be added here before trusting `dto.email`.
-    // Left as an explicit extension point rather than faked.
-    let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: { email: dto.email, username: await this.mintUsername(this.prisma) },
-      });
+  /**
+   * Sign in with Google, registering on first arrival.
+   *
+   * The token is verified against Google's own signing keys before a single
+   * claim is read — see `GoogleOAuthService` for why that is the whole security
+   * of this endpoint.
+   *
+   * ## Matched on the email Google vouched for
+   *
+   * A verified Google address and a FotSpot account with that address are the
+   * same person, so signing in with Google adopts the existing account rather
+   * than creating a second one beside it. That is only safe because the verifier
+   * refuses tokens whose `email_verified` is false: without that check this would
+   * hand any account to whoever could name its address at Google.
+   *
+   * The email is marked verified on the account, since Google has just proved
+   * ownership more thoroughly than this platform's own code would have.
+   */
+  async googleLogin(idToken: string, client: ClientInfo = {}) {
+    const identity = await this.google.verify(idToken);
+
+    const existing = await this.prisma.user.findUnique({ where: { email: identity.email } });
+    if (existing) {
+      if (!existing.isActive) throw new UnauthorizedException('Account disabled');
+      if (!existing.emailVerifiedAt) {
+        await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { emailVerifiedAt: new Date() },
+        });
+      }
+      return this.issueTokens(existing.id, client);
     }
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: identity.email,
+        emailVerifiedAt: new Date(),
+        // Only used when the account has none of its own — a name is the
+        // person's to set, and Google's is a reasonable first guess.
+        firstName: identity.firstName ?? null,
+        lastName: identity.lastName ?? null,
+        username: await this.mintUsername(this.prisma),
+      },
+    });
+    return this.issueTokens(user.id, client);
+  }
+
+  /**
+   * Sign in with Telegram, registering on first arrival.
+   *
+   * ## Matched on the Telegram id, not a phone number
+   *
+   * The Login Widget does not disclose a phone number. It sends an id, a name, a
+   * username and a signature; the number is only obtainable by asking inside a
+   * chat, which a login button is not. So a returning user is recognised by
+   * `telegramId`, and there is no address to match a password account on.
+   *
+   * The practical consequence is worth stating plainly: somebody who registered
+   * with a phone number and later presses "Continue with Telegram" gets a
+   * *second* account, because nothing in the payload connects the two. Linking
+   * them needs a deliberate "connect Telegram" action from inside a signed-in
+   * session, which is a different feature from signing in.
+   */
+  async telegramLogin(payload: TelegramOAuthDto, client: ClientInfo = {}) {
+    const botToken = (this.config.get<string>('TELEGRAM_BOT_TOKEN') ?? '').trim();
+    if (!botToken) {
+      throw new ServiceUnavailableException(
+        'Telegram sign-in is not configured on this server (TELEGRAM_BOT_TOKEN is unset).',
+      );
+    }
+
+    const result = verifyTelegramAuth(payload as unknown as TelegramAuthPayload, botToken);
+    if (!result.ok) {
+      // The reason is logged, not returned: which check failed tells an attacker
+      // where to push and tells a user nothing they can act on.
+      this.logger.warn(`Rejected a Telegram sign-in: ${result.reason}`);
+      throw new UnauthorizedException('That Telegram sign-in could not be verified');
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { telegramId: result.telegramId },
+    });
+    if (existing) {
+      if (!existing.isActive) throw new UnauthorizedException('Account disabled');
+      return this.issueTokens(existing.id, client);
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        telegramId: result.telegramId,
+        firstName: result.firstName ?? null,
+        lastName: result.lastName ?? null,
+        username: await this.mintUsername(this.prisma),
+      },
+    });
     return this.issueTokens(user.id, client);
   }
 

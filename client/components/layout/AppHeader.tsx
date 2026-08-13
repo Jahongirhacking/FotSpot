@@ -70,9 +70,33 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
     staleTime: 5 * 60 * 1000,
   });
 
+  /*
+   * The Requests badge: what users have asked the team to do and nobody has
+   * picked up yet.
+   *
+   * Counts NEW only, and there is nothing to mark as seen — a request stops being
+   * counted when an admin actually takes it, not when one glances at the menu. So
+   * the number is a queue depth, and it going up means somebody is waiting.
+   *
+   * Only asked for while acting as an admin, since Requests is only in that menu.
+   */
+  const { data: newRequests } = useQuery({
+    queryKey: ['support-requests-new'],
+    queryFn: () => browserFetch<{ count: number }>('/requests/new-count'),
+    enabled: isAuthenticated && (activeRole === 'admin' || activeRole === 'super_admin'),
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
   /** Which menu entries carry a count, so the two lists below stay in step. */
   const badgeFor = (label: string) =>
-    label === 'trials' ? unseenTrials?.count : label === 'inbox' ? inbox?.count : undefined;
+    label === 'trials'
+      ? unseenTrials?.count
+      : label === 'inbox'
+        ? inbox?.count
+        : label === 'requests'
+          ? newRequests?.count
+          : undefined;
 
   return (
     <header className="bg-surface/85 border-border sticky top-0 z-40 border-b backdrop-blur">

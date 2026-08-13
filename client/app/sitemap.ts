@@ -25,6 +25,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/trials'), changeFrequency: 'daily', priority: 0.7 },
     { url: absoluteUrl('/login'), changeFrequency: 'yearly', priority: 0.3 },
     { url: absoluteUrl('/register'), changeFrequency: 'yearly', priority: 0.5 },
+    // Linked only from the landing footer, so a crawler would otherwise reach it
+    // by that one link or not at all — and it is a page somebody may well look
+    // for by name before trusting the platform with a child's details.
+    { url: absoluteUrl('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: absoluteUrl('/terms'), changeFrequency: 'yearly', priority: 0.3 },
   ];
 
   const [playerPage, academyList, trialList] = await Promise.all([

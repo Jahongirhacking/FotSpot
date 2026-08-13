@@ -390,6 +390,14 @@ export interface AcademyFeatured {
   rank: number;
   memberId: string;
   userId: string | null;
+  /**
+   * The player card this person has, if any — `/players/:profileId`.
+   *
+   * Null for a coach or a scout, and for a member listed as PLAYER who has not
+   * built a card yet. A player's profile id is not their account id, which is
+   * why the API sends both.
+   */
+  profileId: string | null;
   firstName: string | null;
   lastName: string | null;
   avatarUrl: string | null;
