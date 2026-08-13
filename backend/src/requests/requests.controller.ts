@@ -1,10 +1,14 @@
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { RequestsService } from './requests.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
+import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.decorator';
+import { AuthService } from '../auth/auth.service';
 import {
   CreateSupportRequestDto,
+  RequestAccountDeletionDto,
   ListSupportRequestsDto,
   UpdateSupportRequestDto,
 } from './dto/request.dto';
@@ -13,7 +17,10 @@ import {
 @ApiBearerAuth('bearer')
 @Controller('requests')
 export class RequestsController {
-  constructor(private requests: RequestsService) {}
+  constructor(
+    private requests: RequestsService,
+    private auth: AuthService,
+  ) {}
 
   /**
    * Ask the team for something the app has no button for — deleting the account
@@ -26,6 +33,26 @@ export class RequestsController {
   @Post()
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateSupportRequestDto) {
     return this.requests.create(user.userId, dto);
+  }
+
+  /**
+   * Ask for an account to be deleted, from the public privacy page.
+   *
+   * Public, and therefore credential-checked: the caller proves the password
+   * before anything is queued. Rate limited per IP on its own counter — a burst
+   * here is somebody trying to get a stranger's account erased, which is a
+   * different attack from guessing a way in, and it must not lock the same
+   * address out of signing in.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('delete-account')
+  async requestAccountDeletion(
+    @Body() dto: RequestAccountDeletionDto,
+    @ClientInfoParam() client: ClientInfo,
+  ) {
+    const user = await this.auth.verifyPasswordOnly(dto, client);
+    return this.requests.requestDeletionWithPassword(user.id, dto.message);
   }
 
   /** What this account has already asked for. */

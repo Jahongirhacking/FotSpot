@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { getServerT } from '@/lib/i18n/server';
 import { TERMS_LAST_UPDATED, termsDocument } from '@/lib/legal/terms';
 import { formatDate } from '@/lib/utils';
@@ -32,13 +33,19 @@ export default async function TermsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-      <Link
-        href="/"
-        className="text-muted hover:text-foreground mb-8 inline-flex items-center gap-1.5 text-sm transition-colors"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        {t.common?.back}
-      </Link>
+      {/* The switcher belongs on these pages specifically: they are read by
+          people who are not signed in and therefore never saw the app header,
+          and a policy in a language you do not read is not a policy. */}
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <Link
+          href="/"
+          className="text-muted hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t.common?.back}
+        </Link>
+        <LanguageSwitcher />
+      </div>
 
       <header className="mb-8">
         <h1 className="text-2xl font-bold sm:text-3xl">{policy.title}</h1>

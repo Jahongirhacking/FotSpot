@@ -44,3 +44,36 @@ export class ListSupportRequestsDto extends PaginationDto {
   @IsEnum(SupportRequestType)
   type?: SupportRequestType;
 }
+
+/**
+ * Deleting an account from the public privacy page.
+ *
+ * Takes credentials rather than a session because the page is public — somebody
+ * who has already stopped using the app, or who is reading the policy on another
+ * device, still has the right the policy describes. Proving the password is what
+ * stands between that and anybody queueing a stranger's account for erasure.
+ */
+export class RequestAccountDeletionDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(320)
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  username?: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(256)
+  password: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  message?: string;
+}

@@ -176,6 +176,47 @@ export class AuthService {
   }
 
   /**
+   * Confirms a password without issuing a session — for an action that is not a
+   * sign-in but must still prove the person is who they say.
+   *
+   * Deleting an account is the case this exists for. It happens from a public
+   * page, so the caller may not be signed in at all, and "prove it, then queue
+   * it" is the only honest way to accept a request to erase somebody's data.
+   *
+   * Everything about it mirrors `loginEmail`, deliberately: the same opaque
+   * "Invalid credentials" for every failure, so it cannot be used to test which
+   * addresses exist, and the same failure-counting — on its own scope, because a
+   * burst here should not lock the same IP out of signing in.
+   *
+   * Returns the account rather than a token. Nothing here grants access.
+   */
+  async verifyPasswordOnly(
+    identifier: { email?: string; username?: string; password: string },
+    client: ClientInfo = {},
+  ) {
+    await this.throttle.assertAllowed('account-deletion', client.ipAddress);
+
+    if (!identifier.email && !identifier.username) {
+      throw new BadRequestException('Enter your email or username');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: identifier.email
+        ? { email: identifier.email.trim().toLowerCase() }
+        : { username: normaliseUsername(identifier.username!) },
+    });
+
+    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, identifier.password))) {
+      await this.throttle.recordFailure('account-deletion', client.ipAddress);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (!user.isActive) throw new UnauthorizedException('Account disabled');
+
+    await this.throttle.clear('account-deletion', client.ipAddress);
+    return user;
+  }
+
+  /**
    * Password sign-in by email or username.
    *
    * Every failure returns the same "Invalid credentials": distinguishing "no such

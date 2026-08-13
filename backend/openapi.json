@@ -87,6 +87,36 @@
         ]
       }
     },
+    "/api/v1/requests/delete-account": {
+      "post": {
+        "operationId": "requests_requestAccountDeletion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAccountDeletionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask for an account to be deleted, from the public privacy page.\n\nPublic, and therefore credential-checked: the caller proves the password\nbefore anything is queued. Rate limited per IP on its own counter — a burst\nhere is somebody trying to get a stranger's account erased, which is a\ndifferent attack from guessing a way in, and it must not lock the same\naddress out of signing in.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
     "/api/v1/requests/mine": {
       "get": {
         "operationId": "requests_listMine",
@@ -163,85 +193,6 @@
         "summary": "Pick a request up, or close it with a note saying what was done.",
         "tags": [
           "requests"
-        ]
-      }
-    },
-    "/api/v1/tariff-plans": {
-      "get": {
-        "operationId": "tariffs_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
-        "tags": [
-          "tariffs"
-        ]
-      }
-    },
-    "/api/v1/tariff-plans/me": {
-      "get": {
-        "operationId": "tariffs_mine",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The caller's own plan and how much of it they have used.",
-        "tags": [
-          "tariffs"
-        ]
-      }
-    },
-    "/api/v1/tariff-plans/{tier}": {
-      "patch": {
-        "operationId": "tariffs_update",
-        "parameters": [
-          {
-            "name": "tier",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "$ref": "#/components/schemas/PlanTier"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTariffPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
-        "tags": [
-          "tariffs"
         ]
       }
     },
@@ -669,6 +620,85 @@
         "summary": "\"Where am I logged in\" - README 1.21 device tracking.",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans": {
+      "get": {
+        "operationId": "tariffs_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The three tiers and their limits.\n\nReadable by any signed-in account, not just admins: the numbers are what a\nplayer is told when an upload is refused, and a limit nobody can look up is\na limit that reads as a bug.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/me": {
+      "get": {
+        "operationId": "tariffs_mine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own plan and how much of it they have used.",
+        "tags": [
+          "tariffs"
+        ]
+      }
+    },
+    "/api/v1/tariff-plans/{tier}": {
+      "patch": {
+        "operationId": "tariffs_update",
+        "parameters": [
+          {
+            "name": "tier",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PlanTier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTariffPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit one tier's numbers — **super admin only** (§1.2: feature flags and\nplatform-wide settings are not a plain admin's power).",
+        "tags": [
+          "tariffs"
         ]
       }
     },
@@ -5796,6 +5826,30 @@
           "type"
         ]
       },
+      "RequestAccountDeletionDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
       "SupportRequestStatus": {
         "type": "string",
         "enum": [
@@ -5824,49 +5878,6 @@
         "required": [
           "status"
         ]
-      },
-      "PlanTier": {
-        "type": "string",
-        "enum": [
-          "FREE",
-          "PRO",
-          "PREMIUM"
-        ]
-      },
-      "UpdateTariffPlanDto": {
-        "type": "object",
-        "properties": {
-          "clipLimit": {
-            "type": "number",
-            "description": "A — clips a player may upload per window.",
-            "minimum": 0,
-            "maximum": 10000
-          },
-          "clipWindowDays": {
-            "type": "number",
-            "description": "B — the length of that window, in days. At least one; a zero-day window\n would refuse every upload forever.",
-            "minimum": 1,
-            "maximum": 365
-          },
-          "pendingRecommendationLimit": {
-            "type": "number",
-            "description": "C — recommendations a scout may have awaiting a verdict at once.",
-            "minimum": 0,
-            "maximum": 10000
-          },
-          "maxCoaches": {
-            "type": "number",
-            "description": "D — coaches an academy manager may create.",
-            "minimum": 0,
-            "maximum": 10000
-          },
-          "maxGroups": {
-            "type": "number",
-            "description": "E — squad groups an academy manager may create.",
-            "minimum": 0,
-            "maximum": 10000
-          }
-        }
       },
       "RequestRegistrationCodeDto": {
         "type": "object",
@@ -6096,6 +6107,49 @@
         "required": [
           "newPassword"
         ]
+      },
+      "PlanTier": {
+        "type": "string",
+        "enum": [
+          "FREE",
+          "PRO",
+          "PREMIUM"
+        ]
+      },
+      "UpdateTariffPlanDto": {
+        "type": "object",
+        "properties": {
+          "clipLimit": {
+            "type": "number",
+            "description": "A — clips a player may upload per window.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "clipWindowDays": {
+            "type": "number",
+            "description": "B — the length of that window, in days. At least one; a zero-day window\n would refuse every upload forever.",
+            "minimum": 1,
+            "maximum": 365
+          },
+          "pendingRecommendationLimit": {
+            "type": "number",
+            "description": "C — recommendations a scout may have awaiting a verdict at once.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxCoaches": {
+            "type": "number",
+            "description": "D — coaches an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "maxGroups": {
+            "type": "number",
+            "description": "E — squad groups an academy manager may create.",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        }
       },
       "UpdateProfileDto": {
         "type": "object",

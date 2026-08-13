@@ -164,6 +164,27 @@ export class RequestsService {
     return updated;
   }
 
+  /**
+   * The public route: prove the password, then queue the deletion.
+   *
+   * Verification and filing are one call on purpose. Splitting them would leave a
+   * "you are verified" answer sitting in a browser, which is a token in all but
+   * name and one an attacker would happily collect; here the proof is spent
+   * immediately on the only thing it authorises.
+   *
+   * The answer is the same whether the request is new or already open, for the
+   * same reason the login form says "Invalid credentials" either way: a public
+   * endpoint that distinguishes them tells a stranger whether an account has
+   * asked to be deleted.
+   */
+  async requestDeletionWithPassword(userId: string, message?: string) {
+    await this.create(userId, { type: 'DELETE_ACCOUNT', message });
+    // Deliberately just an acknowledgement. Returning the row's id would hand an
+    // unauthenticated caller a handle to something they cannot use, and the
+    // answer is meant to be identical whether or not a request already existed.
+    return { received: true };
+  }
+
   /** Convenience for the client: the types it may offer. */
   types(): SupportRequestType[] {
     return ['DELETE_ACCOUNT', 'FEEDBACK', 'BUG', 'OTHER'];

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import { DeleteAccountDialog } from '@/components/legal/DeleteAccountDialog';
 import { getServerT } from '@/lib/i18n/server';
 import { PRIVACY_LAST_UPDATED, privacyPolicy } from '@/lib/legal/privacy';
 import { formatDate } from '@/lib/utils';
@@ -32,13 +34,19 @@ export default async function PrivacyPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
-      <Link
-        href="/"
-        className="text-muted hover:text-foreground mb-8 inline-flex items-center gap-1.5 text-sm transition-colors"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        {t.common?.back}
-      </Link>
+      {/* The switcher belongs on these pages specifically: they are read by
+          people who are not signed in and therefore never saw the app header,
+          and a policy in a language you do not read is not a policy. */}
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <Link
+          href="/"
+          className="text-muted hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          {t.common?.back}
+        </Link>
+        <LanguageSwitcher />
+      </div>
 
       <header className="mb-8">
         <h1 className="text-2xl font-bold sm:text-3xl">{policy.title}</h1>
@@ -78,6 +86,14 @@ export default async function PrivacyPage() {
           </section>
         ))}
       </div>
+
+      {/* Where somebody who has just read "you can ask us to delete this" acts
+          on it. On the policy page only: the terms are the rules of use, and a
+          destructive action does not belong under them. */}
+      <section className="border-border bg-surface-2/40 mt-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+        <p className="text-muted min-w-0 text-sm">{t.requests?.askDeleteBody}</p>
+        <DeleteAccountDialog />
+      </section>
 
       <footer className="text-muted border-border mt-12 border-t pt-6 text-center text-xs">
         FotSpot · Bulalar Team
