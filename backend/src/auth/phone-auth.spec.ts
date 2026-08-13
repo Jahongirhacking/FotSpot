@@ -28,6 +28,7 @@ describe('AuthService.phoneAuthStart — when an SMS is sent', () => {
       {} as never,
       throttle as never,
       {} as never,
+      {} as never,
     );
     return { service, throttle, prisma };
   }

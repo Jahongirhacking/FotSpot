@@ -17,6 +17,7 @@ import { ClientInfo } from '../common/decorators/client-info.decorator';
 import { generateUsername, normaliseUsername } from '../users/username.util';
 import { generateResetCode, normaliseResetCode } from './reset-code.util';
 import { GoogleOAuthService } from './oauth/google-oauth.service';
+import { EmailService } from '../email/email.service';
 import { TelegramAuthPayload, verifyTelegramAuth } from './oauth/telegram-oauth.util';
 import {
   ChangePasswordDto,
@@ -73,6 +74,7 @@ export class AuthService {
     private rbac: RbacService,
     private throttle: RateLimitService,
     private google: GoogleOAuthService,
+    private email: EmailService,
   ) {}
 
   // ---------- Email + Password ----------
@@ -106,11 +108,30 @@ export class AuthService {
       },
     });
 
+    const { sent } = await this.email.sendCode(email, code, 'registration');
+
+    /*
+     * A failed send is reported, not smoothed over.
+     *
+     * Registration cannot continue without the code, so answering "sent" when
+     * nothing went leaves somebody watching an inbox for ever. The stored row is
+     * left to expire on its own — it is hashed and short-lived, and deleting it
+     * here would buy nothing.
+     *
+     * Unconfigured is different from failed: with no API key the flow still works
+     * in development, where the code comes back in the response.
+     */
     const isProd = this.config.get('NODE_ENV') === 'production';
+    if (!sent && this.email.isConfigured) {
+      throw new ServiceUnavailableException(
+        'We could not send the code just now. Please try again in a moment.',
+      );
+    }
+
     return {
-      sent: true,
+      sent,
       expiresInSeconds: REGISTRATION_CODE_TTL_SECONDS,
-      ...(isProd ? { emailNotConfigured: true } : { devCode: code }),
+      ...(isProd ? (sent ? {} : { emailNotConfigured: true }) : { devCode: code }),
     };
   }
 
@@ -351,6 +372,17 @@ export class AuthService {
     // built to deny. The dev echo is the same affordance registration already has:
     // no email gateway is wired up (backend README), and without it the flow could
     // not be exercised at all.
+    /*
+     * Sent, and the outcome deliberately discarded.
+     *
+     * This endpoint answers identically whether or not the account exists, which
+     * is what stops it being a directory of registered addresses. Reporting a
+     * send failure here would reintroduce exactly that difference — a caller
+     * could tell "no such account" (silent success) from "mail is down"
+     * (error) — so a failure is logged inside EmailService and nothing else.
+     */
+    await this.email.sendCode(user.email, code, 'password-reset');
+
     return isProd ? nothingToSay : { ...nothingToSay, devCode: code };
   }
 
