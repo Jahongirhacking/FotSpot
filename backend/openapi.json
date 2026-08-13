@@ -3655,6 +3655,26 @@
         ]
       }
     },
+    "/api/v1/follows/followers": {
+      "get": {
+        "operationId": "follows_listFollowers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Who follows you — people following your player card, and academies following\nyou as a scout, in one list because they are one question.",
+        "tags": [
+          "follows"
+        ]
+      }
+    },
     "/api/v1/follows/me": {
       "get": {
         "operationId": "follows_listMine",

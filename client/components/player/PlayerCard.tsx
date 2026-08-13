@@ -84,7 +84,7 @@ export function PlayerCard({
       {/* Legibility floor for the name plate, independent of the photo behind it. */}
       <span
         className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5"
-        style={{ backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.82), transparent)' }}
+        style={{ backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.9), transparent)' }}
         aria-hidden
       />
 
@@ -171,7 +171,6 @@ export function PlayerCard({
     card
   );
 }
-
 
 const TIER_COLOR: Record<string, string> = {
   gold: '#fbbf24',

@@ -710,6 +710,33 @@ export interface Follow {
   targetType: FollowTargetType;
   targetId: string;
   createdAt: string;
+  /**
+   * Resolved server-side from the target, because a `Follow` row stores only a
+   * type and an id — a list built from the rows alone can show nothing but a
+   * uuid. Null when the target has since been deleted, which keeps the row in
+   * place rather than making the list shorter than the count beside it.
+   */
+  name?: string | null;
+  username?: string | null;
+  avatarUrl?: string | null;
+}
+
+/**
+ * Somebody following you: a person following your player card, or an academy
+ * following you as a scout. One list, because it is one question — and because
+ * the counter above it already adds the two together.
+ */
+export interface FollowerEntry {
+  id: string;
+  kind: 'USER' | 'ACADEMY';
+  createdAt: string;
+  userId?: string | null;
+  /** Their player card, when they have one — `/players/:profileId`. */
+  profileId?: string | null;
+  academyId?: string | null;
+  name: string | null;
+  username: string | null;
+  avatarUrl: string | null;
 }
 
 export interface AcademyScoutFollow {

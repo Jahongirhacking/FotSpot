@@ -282,6 +282,8 @@ export const uz = {
     followers: 'Obunachilar',
     noAffiliations: 'Hozircha akademiya yoki murabbiy biriktirilmagan.',
     following: 'Obunalar',
+    noFollowersTitle: 'Hozircha kuzatuvchilar yo‘q',
+    noFollowersBody: 'Kartangizni kuzatganlar va sizni skaut sifatida kuzatayotgan akademiyalar shu yerda ko‘rinadi.',
     notFollowingTitle: 'Hozircha hech kimni kuzatmayapsiz',
     notFollowingBody:
       'O‘yinchi yoki akademiyani kuzatsangiz, ularning yangiliklari lentangizda ko‘proq ko‘rinadi.',
