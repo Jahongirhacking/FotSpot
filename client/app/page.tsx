@@ -262,8 +262,19 @@ export default async function LandingPage() {
         </section>
       </main>
 
+      {/* The policy is linked here and nowhere else. It belongs in front of
+          somebody deciding whether to sign their child up, not in the navigation
+          of an app they are already using — a menu entry would put it in the way
+          of the twenty screens people actually came for. */}
       <footer className="text-muted border-border border-t px-4 py-6 text-center text-xs">
-        FotSpot · {t.common.tagline}
+        <p>
+          FotSpot · {t.common.tagline} · Bulalar Team
+        </p>
+        <p className="mt-2">
+          <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">
+            {t.landing.privacyPolicy}
+          </Link>
+        </p>
       </footer>
     </>
   );

@@ -1406,6 +1406,7 @@ export const uz = {
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
     safetyBody:
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',
+    privacyPolicy: 'Maxfiylik siyosati',
   },
 };
 
