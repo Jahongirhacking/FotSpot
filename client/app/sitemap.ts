@@ -29,6 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // by that one link or not at all — and it is a page somebody may well look
     // for by name before trusting the platform with a child's details.
     { url: absoluteUrl('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: absoluteUrl('/terms'), changeFrequency: 'yearly', priority: 0.3 },
   ];
 
   const [playerPage, academyList, trialList] = await Promise.all([

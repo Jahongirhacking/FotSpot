@@ -8,6 +8,7 @@ import {
   Gauge,
   Home,
   Inbox,
+  LifeBuoy,
   Search,
   ShieldCheck,
   Sparkles,
@@ -101,6 +102,7 @@ export function navForRole(role: Role | null): NavItem[] {
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/admin/academies', label: 'academies', icon: Building2 },
         { href: '/admin/users', label: 'users', icon: Users },
+        { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
         { href: '/players', label: 'players', icon: Search },
       ];
@@ -114,6 +116,7 @@ export function navForRole(role: Role | null): NavItem[] {
         { href: '/admin/academies', label: 'academies', icon: Building2 },
         { href: '/admin/users', label: 'users', icon: Users },
         { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
+        { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
         { href: '/players', label: 'players', icon: Search },
       ];

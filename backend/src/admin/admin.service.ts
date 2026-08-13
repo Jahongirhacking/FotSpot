@@ -211,6 +211,81 @@ export class AdminService {
    * (AuthService checks `isActive`), but their recommendations, assessments and
    * the reputation other people earned around them stay intact.
    */
+  /**
+   * Erases an account, for a deletion request that has been acted on.
+   *
+   * ## Why this exists at all
+   *
+   * The privacy policy says an account can be removed. Without this, that
+   * sentence was a promise the code could not keep — and a policy describing a
+   * more generous product than the one shipped is the worst kind of untrue,
+   * because people read it before deciding what to expose about a child.
+   *
+   * ## Why only a super admin, and never to oneself
+   *
+   * It is irreversible and it cascades: the player card, every clip, every
+   * recommendation and assessment about them goes. That is the point — a partial
+   * deletion is not a deletion — but it also means a mistake cannot be undone, so
+   * it sits with the smallest possible group. A super admin cannot be deleted at
+   * all, for the same reason one cannot be disabled: it is the account that fixes
+   * everything else.
+   *
+   * ## Objects first, row second
+   *
+   * The stored keys live on rows the cascade is about to remove, so they are read
+   * and deleted before the row goes. Get that order wrong and the database
+   * forgets where the video was while the video stays in the bucket — the exact
+   * outcome someone asking to be erased was trying to avoid. A failed object
+   * delete is logged and does not stop the erasure: leaving the account behind
+   * because one file would not delete serves nobody.
+   */
+  async deleteUser(actorId: string, userId: string) {
+    if (actorId === userId) {
+      throw new BadRequestException('You cannot delete your own account');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        avatarKey: true,
+        roles: { select: { role: { select: { name: true } } } },
+        playerProfile: { select: { media: { select: { storageKey: true, posterKey: true } } } },
+      },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    if (target.roles.some((entry) => entry.role.name === 'super_admin')) {
+      throw new ForbiddenException('A super admin account cannot be deleted');
+    }
+
+    const keys = [
+      target.avatarKey,
+      ...(target.playerProfile?.media ?? []).flatMap((clip) => [clip.storageKey, clip.posterKey]),
+    ].filter((key): key is string => Boolean(key));
+
+    for (const key of keys) {
+      await this.storage.deleteObject(key).catch((error: Error) => {
+        this.logger.warn(
+          `Deleting user ${userId}: could not remove "${key}" (${error.message}). The account is ` +
+            'still being erased; this object is orphaned in the bucket.',
+        );
+      });
+    }
+
+    // Recorded before the row goes, and deliberately without the address: the
+    // audit trail has to outlive the account, and re-storing the email of
+    // somebody who asked to be erased would defeat the erasure.
+    await this.audit.record(actorId, AuditAction.USER_DELETED, {
+      userId,
+      objectsRemoved: keys.length,
+    });
+
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { deleted: true, objectsRemoved: keys.length };
+  }
+
   async setUserActive(actorId: string, userId: string, isActive: boolean) {
     if (actorId === userId && !isActive) {
       throw new BadRequestException('You cannot disable your own account');

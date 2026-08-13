@@ -1,6 +1,171 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/requests": {
+      "post": {
+        "operationId": "requests_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupportRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the team for something the app has no button for — deleting the account\nabove all, which the privacy policy states as a right and this is the way to\nexercise it.\n\nFiling the same open request twice returns the first one rather than making a\nsecond: pressing a button again is not asking again.",
+        "tags": [
+          "requests"
+        ]
+      },
+      "get": {
+        "operationId": "requests_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SupportRequestStatus"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SupportRequestType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The queue, oldest open request first. Carries the contact details, because\n the workflow is to get in touch and then act.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/mine": {
+      "get": {
+        "operationId": "requests_listMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What this account has already asked for.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/new-count": {
+      "get": {
+        "operationId": "requests_newCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The number on the navbar badge: requests nobody has picked up yet.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/v1/requests/{id}": {
+      "patch": {
+        "operationId": "requests_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSupportRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pick a request up, or close it with a note saying what was done.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
     "/api/v1/tariff-plans": {
       "get": {
         "operationId": "tariffs_list",
@@ -5180,6 +5345,33 @@
         "tags": [
           "admin"
         ]
+      },
+      "delete": {
+        "operationId": "admin_deleteUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Erases an account — **super admin only**, and irreversible.\n\nThe end of a `DELETE_ACCOUNT` request: contact the person, confirm what they\nactually want, then this. The card, the clips and the stored objects go with\nit, which is what makes the privacy policy's promise true.",
+        "tags": [
+          "admin"
+        ]
       }
     },
     "/api/v1/admin/users/{id}/status": {
@@ -5543,6 +5735,10 @@
       "description": "Reports and their resolution."
     },
     {
+      "name": "requests",
+      "description": "What users ask the team to do — account deletion, feedback, bugs."
+    },
+    {
       "name": "admin",
       "description": "User directory, roles, permissions and audit logs."
     },
@@ -5571,6 +5767,64 @@
       }
     },
     "schemas": {
+      "SupportRequestType": {
+        "type": "string",
+        "enum": [
+          "DELETE_ACCOUNT",
+          "FEEDBACK",
+          "BUG",
+          "OTHER"
+        ]
+      },
+      "CreateSupportRequestDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportRequestType"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Optional on purpose. \"Delete my account\" needs no explanation, and demanding\none puts a hurdle in front of something the privacy policy states as a right.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "SupportRequestStatus": {
+        "type": "string",
+        "enum": [
+          "NEW",
+          "IN_PROGRESS",
+          "RESOLVED",
+          "DECLINED"
+        ]
+      },
+      "UpdateSupportRequestDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportRequestStatus"
+              }
+            ]
+          },
+          "handledNote": {
+            "type": "string",
+            "description": "What was done, for whoever reads this row in six months.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "PlanTier": {
         "type": "string",
         "enum": [

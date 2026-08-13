@@ -270,9 +270,13 @@ export default async function LandingPage() {
         <p>
           FotSpot · {t.common.tagline} · Bulalar Team
         </p>
-        <p className="mt-2">
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">
             {t.landing.privacyPolicy}
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/terms" className="hover:text-foreground underline underline-offset-2">
+            {t.landing.termsOfService}
           </Link>
         </p>
       </footer>

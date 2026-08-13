@@ -1,5 +1,5 @@
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
@@ -63,6 +63,19 @@ export class AdminController {
     @Body() dto: SetUserActiveDto,
   ) {
     return this.adminService.setUserActive(user.userId, id, dto.isActive);
+  }
+
+  /**
+   * Erases an account — **super admin only**, and irreversible.
+   *
+   * The end of a `DELETE_ACCOUNT` request: contact the person, confirm what they
+   * actually want, then this. The card, the clips and the stored objects go with
+   * it, which is what makes the privacy policy's promise true.
+   */
+  @Roles('super_admin')
+  @Delete('users/:id')
+  deleteUser(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.adminService.deleteUser(user.userId, id);
   }
 
   @Roles('super_admin')

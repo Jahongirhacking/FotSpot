@@ -8,6 +8,7 @@ import { SessionList } from './SessionList';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { AccountRequests } from './AccountRequests';
 import { PrivacyToggle } from './PrivacyToggle';
 import { Badge } from '@/components/ui/Badge';
 import { getServerT } from '@/lib/i18n/server';
@@ -80,6 +81,8 @@ export default async function SettingsPage() {
           <SessionList devices={devices} currentSessionId={null} />
         </CardContent>
       </Card>
+      <AccountRequests />
+
     </div>
   );
 }

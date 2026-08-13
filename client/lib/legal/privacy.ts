@@ -121,7 +121,9 @@ const uz: PrivacyPolicy = {
       heading: 'Sizning huquqingiz',
       body: [
         'Profilingizni istalgan vaqtda tahrirlashingiz, kliplarni o‘chirishingiz va hisobni “Yopiq” qilib qo‘yishingiz mumkin.',
-        `Hozircha hisobni o‘zingiz o‘chiradigan tugma yo‘q. Hisobni o‘chirish yoki ma’lumot nusxasini olish uchun ${PRIVACY_CONTACT_EMAIL} manziliga yozing — so‘rovni o‘zimiz bajaramiz.`,
+        'Hisobni o‘chirish so‘rov asosida bajariladi. Sozlamalar sahifasidagi “Hisobni o‘chirishni so‘rash” tugmasini bosing — so‘rov bizga tushadi, biz siz bilan bog‘lanamiz va hisobni kartangiz hamda kliplaringiz bilan birga o‘chiramiz.',
+        'Nega tugmaning o‘zi darhol o‘chirmaydi: o‘chirish qaytarilmaydi, va ko‘pincha odam butun hisobni emas, balki bitta klipni olib tashlashni yoki qidiruvda ko‘rinmaslikni xohlaydi. Suhbat buni aniqlaydi, tugma esa so‘ramaydi.',
+        `Ma’lumot nusxasini olish uchun ${PRIVACY_CONTACT_EMAIL} manziliga yozing.`,
       ],
     },
     {
@@ -204,7 +206,9 @@ const en: PrivacyPolicy = {
       heading: 'Your choices',
       body: [
         'You can edit your profile, delete clips and switch your account to private at any time.',
-        `There is no self-service delete button yet. To have an account removed, or to get a copy of your data, write to ${PRIVACY_CONTACT_EMAIL} and we will do it ourselves.`,
+        'Deleting an account is done by request. Press “Request account deletion” in Settings; it reaches us, we get in touch, and we remove the account together with your card and clips.',
+        'Why the button does not simply erase everything on the spot: deletion cannot be undone, and people asking for it often want something narrower — one clip taken down, or to stop appearing in search. A conversation finds that out; a button never asks.',
+        `For a copy of your data, write to ${PRIVACY_CONTACT_EMAIL}.`,
       ],
     },
     {
@@ -287,7 +291,9 @@ const ru: PrivacyPolicy = {
       heading: 'Ваши права',
       body: [
         'Вы можете в любой момент изменить профиль, удалить ролики и сделать аккаунт закрытым.',
-        `Кнопки самостоятельного удаления аккаунта пока нет. Чтобы удалить аккаунт или получить копию данных, напишите на ${PRIVACY_CONTACT_EMAIL} — мы сделаем это сами.`,
+        'Аккаунт удаляется по запросу. Нажмите «Запрос на удаление аккаунта» в настройках — запрос придёт к нам, мы свяжемся с вами и удалим аккаунт вместе с карточкой и роликами.',
+        'Почему кнопка не стирает всё сразу: удаление необратимо, и часто человек хочет меньшего — убрать один ролик или перестать показываться в поиске. Разговор это выясняет, кнопка не спрашивает.',
+        `Чтобы получить копию данных, напишите на ${PRIVACY_CONTACT_EMAIL}.`,
       ],
     },
     {
