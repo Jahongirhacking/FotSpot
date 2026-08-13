@@ -229,12 +229,3 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     </div>
   );
 }
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-surface-2 rounded-lg p-3">
-      <dt className="text-muted text-xs">{label}</dt>
-      <dd className="text-lg font-semibold">{value}</dd>
-    </div>
-  );
-}
