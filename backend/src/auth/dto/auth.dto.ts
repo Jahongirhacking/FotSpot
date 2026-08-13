@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
@@ -161,9 +162,30 @@ export class GoogleOAuthDto {
  * keys are carried through and hashed rather than stripped.
  */
 export class TelegramOAuthDto {
-  @IsString() @MaxLength(64) id: string;
+  /*
+   * `id` and `auth_date` arrive as JSON **numbers**, not strings — the widget
+   * hands the browser `{ id: 123456789, auth_date: 1699999999 }` — so declaring
+   * them as strings rejected every real sign-in with "id must be a string".
+   *
+   * Coerced rather than typed as `string | number`, because everything
+   * downstream wants a string: the check-string is built with `String(value)`,
+   * and `telegramId` is a text column. Coercing here means one representation
+   * from the edge inward.
+   *
+   * Safe for the signature: Telegram signs `id=123456789`, which is exactly what
+   * `String(123456789)` produces. A number that arrived as a string is unchanged.
+   */
+  @Transform(({ value }) => (value === undefined || value === null ? value : String(value)))
+  @IsString()
+  @MaxLength(64)
+  id: string;
+
   @IsString() @MaxLength(128) hash: string;
-  @IsString() @MaxLength(32) auth_date: string;
+
+  @Transform(({ value }) => (value === undefined || value === null ? value : String(value)))
+  @IsString()
+  @MaxLength(32)
+  auth_date: string;
 
   @IsOptional() @IsString() @MaxLength(256) first_name?: string;
   @IsOptional() @IsString() @MaxLength(256) last_name?: string;

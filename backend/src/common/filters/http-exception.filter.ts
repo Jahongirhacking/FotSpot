@@ -26,18 +26,29 @@ import { AuthUser } from '../decorators/current-user.decorator';
  * development left the terminal blank and the only way to find out what broke was
  * to add a `console.log` and reproduce it.
  *
- * ## Development only
+ * ## 5xx is logged everywhere; 4xx only in development
  *
- * These lines are for the person with the terminal open. **In production nothing
- * is logged from here** — `instrument.ts` wires Sentry, `@SentryExceptionCaptured`
- * below reports every exception to it, and that is the production record. Writing
- * the same stack traces to stdout as well would duplicate what Sentry already
- * has, into a place with no retention, no grouping and no alerting, while
- * spilling internals into container logs and anything that ships them onward.
+ * This used to log nothing at all in production, on the reasoning that Sentry is
+ * the production record and stdout has no retention, grouping or alerting. That
+ * reasoning was wrong for where this actually runs: on Cloud Run stdout *is*
+ * Cloud Logging, which has all three — and the risk the old comment named came
+ * true, with a 500 in production whose only trace was a Sentry event nobody was
+ * watching.
  *
- * The trade-off, stated plainly: if Sentry is ever unreachable or switched off,
- * production loses its error trail entirely. Flip `shouldLog` to always-on (or
- * gate it on a `LOG_ERRORS` env var) if that ever stops being an acceptable risk.
+ * So a server error is now written wherever the app runs. It is our fault by
+ * definition, it is never routine, and the volume is bounded by how broken the
+ * service is rather than by traffic.
+ *
+ * Client errors stay development-only. A 401 refresh cycle or a validation
+ * failure is the API working, and at production traffic those would bury the
+ * lines that matter — which is the same argument as before, still correct for
+ * 4xx.
+ *
+ * Note that a **502** is usually not us: it is the load balancer or Cloud Run
+ * saying the container did not answer. Nothing reaches this filter in that case,
+ * because the process either never got the request or died holding it. If 502s
+ * appear with no matching line here, look at container startup, the health check
+ * and memory limits rather than at application code.
  *
  * ## Severity follows the status, because noise is the enemy of logs
  *
@@ -63,8 +74,13 @@ import { AuthUser } from '../decorators/current-user.decorator';
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('HttpException');
 
-  /** Read once at construction — this runs on every failed request. */
-  private readonly shouldLog = process.env.NODE_ENV !== 'production';
+  /*
+   * Read once at construction — this runs on every failed request.
+   *
+   * Server errors are always logged. Client errors are development-only, where
+   * their volume is a handful a minute rather than a share of production traffic.
+   */
+  private readonly logClientErrors = process.env.NODE_ENV !== 'production';
 
   @SentryExceptionCaptured()
   catch(exception: unknown, host: ArgumentsHost) {
@@ -78,13 +94,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
 
-    // Only for 5xx, and only when there is a log line for it to point at.
-    // Quoting this id in a bug report is what connects a user's "it broke" to
-    // the stack trace that explains it — so it is not issued in production,
-    // where no such line exists and the id would be a dead end.
-    const errorId = this.shouldLog && status >= 500 ? crypto.randomUUID() : undefined;
+    // Issued for every 5xx now, in every environment, because there is always a
+    // log line for it to point at. Quoting this id in a bug report is what
+    // connects a user's "it broke" to the stack trace that explains it.
+    const errorId = status >= 500 ? crypto.randomUUID() : undefined;
 
-    if (this.shouldLog) this.log(status, request, exception, errorId);
+    if (status >= 500 || this.logClientErrors) {
+      this.log(status, request, exception, errorId);
+    }
 
     response.status(status).json({
       statusCode: status,

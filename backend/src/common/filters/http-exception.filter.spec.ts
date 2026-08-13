@@ -137,24 +137,36 @@ describe('HttpExceptionFilter', () => {
       process.env.NODE_ENV = 'production';
     });
 
-    it('logs nothing at all — Sentry is the record there', () => {
+    it('logs a server error, because it is ours and never routine', () => {
+      // This used to assert the opposite — that production logged nothing and
+      // Sentry was the only record. That cost a real 500 in production whose
+      // only trace was a Sentry event nobody was watching, and on Cloud Run
+      // stdout *is* Cloud Logging, so the reason for staying quiet did not hold.
       const log = spies();
       const { host } = hostFor();
       new HttpExceptionFilter().catch(new Error('boom'), host);
+
+      expect(log.error).toHaveBeenCalledTimes(1);
+    });
+
+    it('still says nothing about client errors, which are the API working', () => {
+      // A 401 refresh cycle and a validation failure are routine, and at
+      // production traffic they would bury the lines that matter.
+      const log = spies();
+      const { host } = hostFor();
       new HttpExceptionFilter().catch(new ForbiddenException(), host);
       new HttpExceptionFilter().catch(new NotFoundException(), host);
 
-      expect(log.error).not.toHaveBeenCalled();
       expect(log.warn).not.toHaveBeenCalled();
       expect(log.debug).not.toHaveBeenCalled();
     });
 
-    it('withholds the error id, which would point at a log line that does not exist', () => {
+    it('issues the error id, which now points at a log line that exists', () => {
       spies();
       const { host, json } = hostFor();
       new HttpExceptionFilter().catch(new Error('boom'), host);
 
-      expect(json.mock.calls[0][0].errorId).toBeUndefined();
+      expect(json.mock.calls[0][0].errorId).toEqual(expect.any(String));
     });
 
     it('still answers with the documented shape', () => {
