@@ -4,6 +4,7 @@ import { RequestsService } from './requests.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { Throttle } from '../common/decorators/throttle.decorator';
 import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.decorator';
 import { AuthService } from '../auth/auth.service';
 import {
@@ -44,6 +45,7 @@ export class RequestsController {
    * different attack from guessing a way in, and it must not lock the same
    * address out of signing in.
    */
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('delete-account')

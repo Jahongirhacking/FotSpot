@@ -457,7 +457,16 @@ export class AuthService {
 
   // ---------- Phone + OTP ----------
 
-  async requestOtp(dto: RequestOtpDto) {
+  async requestOtp(dto: RequestOtpDto, client: ClientInfo = {}) {
+    /*
+     * Bounded because each call mints a code and is meant to send a message. Left
+     * open, one caller could make the server text an arbitrary number of times —
+     * which costs money once an SMS gateway is wired in, and is a way to harass a
+     * phone number long before that. The per-route cap in `@Throttle` is the
+     * ceiling on how fast; this is the lockout once somebody is clearly abusing it.
+     */
+    await this.throttle.assertAllowed('login', client.ipAddress);
+
     const code = crypto.randomInt(100000, 999999).toString();
     const codeHash = await argon2.hash(code);
     const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000);

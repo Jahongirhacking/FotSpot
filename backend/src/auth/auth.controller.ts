@@ -2,6 +2,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
+import { Throttle } from '../common/decorators/throttle.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { ClientInfo, ClientInfoParam } from '../common/decorators/client-info.decorator';
 import {
@@ -29,6 +30,7 @@ export class AuthController {
   /** Step 1 of signing up: proves the address before an account exists for it. */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 5, windowSeconds: 60 })
   @Post('register/request-code')
   requestRegistrationCode(
     @Body() dto: RequestRegistrationCodeDto,
@@ -39,6 +41,7 @@ export class AuthController {
 
   /** Step 2: creates the account, only against a code that checks out. */
   @Public()
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Post('register/email')
   registerEmail(@Body() dto: RegisterEmailDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.registerEmail(dto, client);
@@ -46,6 +49,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Post('login/email')
   loginEmail(@Body() dto: LoginEmailDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.loginEmail(dto, client);
@@ -59,6 +63,7 @@ export class AuthController {
    */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 5, windowSeconds: 60 })
   @Post('password/forgot')
   forgotPassword(@Body() dto: ForgotPasswordDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.forgotPassword(dto, client);
@@ -73,6 +78,7 @@ export class AuthController {
    */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Post('password/verify-code')
   verifyResetCode(@Body() dto: VerifyResetCodeDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.verifyResetCode(dto, client);
@@ -81,19 +87,31 @@ export class AuthController {
   /** Sets a new password against the code, and signs every device out. */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Post('password/reset')
   resetPassword(@Body() dto: ResetPasswordDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.resetPassword(dto, client);
   }
 
   @Public()
+  /**
+   * Sends a login code to a phone number.
+   *
+   * Capped hard: every call mints a code and is meant to send a message, so an
+   * uncapped route is a way to make the server text a number repeatedly — costly
+   * once an SMS gateway is wired in, and a way to harass somebody long before
+   * that. The other two message-senders below carry the same cap for the same
+   * reason.
+   */
+  @Throttle({ limit: 5, windowSeconds: 60 })
   @Post('otp/request')
-  requestOtp(@Body() dto: RequestOtpDto) {
-    return this.authService.requestOtp(dto);
+  requestOtp(@Body() dto: RequestOtpDto, @ClientInfoParam() client: ClientInfo) {
+    return this.authService.requestOtp(dto, client);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 10, windowSeconds: 60 })
   @Post('otp/verify')
   verifyOtp(@Body() dto: VerifyOtpDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.verifyOtp(dto, client);
@@ -108,6 +126,7 @@ export class AuthController {
    */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 20, windowSeconds: 60 })
   @Post('oauth/google')
   googleLogin(@Body() dto: GoogleOAuthDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.googleLogin(dto.idToken, client);
@@ -121,6 +140,7 @@ export class AuthController {
    */
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 20, windowSeconds: 60 })
   @Post('oauth/telegram')
   telegramLogin(@Body() dto: TelegramOAuthDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.telegramLogin(dto, client);
@@ -128,6 +148,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ limit: 30, windowSeconds: 60 })
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.refresh(dto, client);
