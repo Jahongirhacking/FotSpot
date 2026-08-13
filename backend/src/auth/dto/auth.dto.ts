@@ -57,6 +57,19 @@ export class LoginEmailDto {
   @IsString()
   username?: string;
 
+  /**
+   * The third identifier, for an account that signed up by phone and has since
+   * set a password.
+   *
+   * Added rather than given its own endpoint: what happens after the identifier
+   * is resolved — the throttle, the argon2 verify, the single opaque failure, the
+   * session — is identical for all three, and a second copy of that is a second
+   * place for the opacity to be got wrong.
+   */
+  @IsOptional()
+  @IsPhoneNumber()
+  phone?: string;
+
   @IsString()
   password: string;
 }
@@ -191,4 +204,15 @@ export class TelegramOAuthDto {
   @IsOptional() @IsString() @MaxLength(256) last_name?: string;
   @IsOptional() @IsString() @MaxLength(256) username?: string;
   @IsOptional() @IsString() @MaxLength(1024) photo_url?: string;
+}
+
+/**
+ * "I want to sign in with this number" — asked before anything is sent.
+ *
+ * The point of the whole change: an account that already has a password is asked
+ * for it, and no SMS is sent at all.
+ */
+export class PhoneAuthStartDto {
+  @IsPhoneNumber()
+  phone: string;
 }

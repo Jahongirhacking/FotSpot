@@ -1,10 +1,11 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Phone } from 'lucide-react';
+import { useI18n } from '@/components/layout/I18nProvider';
+import { homeHrefForRole } from '@/components/layout/nav';
+import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Feedback';
+import { Field, Input, PasswordInput } from '@/components/ui/Field';
+import { resolveActiveRole } from '@/lib/roles';
 import {
   loginBody,
   loginEmailSchema,
@@ -14,13 +15,12 @@ import {
   type RequestOtpValues,
   type VerifyOtpValues,
 } from '@/lib/schemas/auth';
-import { Button } from '@/components/ui/Button';
-import { Field, Input, PasswordInput } from '@/components/ui/Field';
-import { Alert } from '@/components/ui/Feedback';
 import { cn } from '@/lib/utils';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { homeHrefForRole } from '@/components/layout/nav';
-import { resolveActiveRole } from '@/lib/roles';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Mail, Phone } from 'lucide-react';
+import Link from 'next/link';
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
 
 type Method = 'phone' | 'email';
 
@@ -30,7 +30,7 @@ type Method = 'phone' | 'email';
  */
 export function LoginForm({ redirectTo }: { redirectTo?: string }) {
   const { t } = useI18n();
-  const [method, setMethod] = React.useState<Method>('phone');
+  const [method, setMethod] = React.useState<Method>('email');
 
   return (
     <div className="space-y-5">
@@ -40,16 +40,16 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
         className="bg-surface-2 grid grid-cols-2 gap-1 rounded-lg p-1"
       >
         <MethodTab
-          active={method === 'phone'}
-          onClick={() => setMethod('phone')}
-          icon={Phone}
-          label="Phone"
-        />
-        <MethodTab
           active={method === 'email'}
           onClick={() => setMethod('email')}
           icon={Mail}
-          label="Email"
+          label={t.auth.email}
+        />
+        <MethodTab
+          active={method === 'phone'}
+          onClick={() => setMethod('phone')}
+          icon={Phone}
+          label={t.auth.phone}
         />
       </div>
 
@@ -210,7 +210,12 @@ function EmailLogin({ redirectTo }: { redirectTo?: string }) {
 
 function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
   const { t, f } = useI18n();
-  const [stage, setStage] = React.useState<'phone' | 'code'>('phone');
+  /*
+   * `phone` asks the server which of the other two comes next, so the button on
+   * the first screen is "Continue" rather than "Send code" — pressing it does not
+   * necessarily send anything, and most of the time it must not.
+   */
+  const [stage, setStage] = React.useState<'phone' | 'password' | 'code'>('phone');
   const [phone, setPhone] = React.useState('');
   const [devCode, setDevCode] = React.useState<string | null>(null);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -221,17 +226,52 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
     defaultValues: { phone: '+998' },
   });
 
+  const passwordForm = useForm<{ phone: string; password: string }>({
+    defaultValues: { phone: '', password: '' },
+  });
+
   const codeForm = useForm<VerifyOtpValues>({
     resolver: zodResolver(verifyOtpSchema),
     defaultValues: { phone: '', code: '' },
   });
 
-  async function requestCode(values: RequestOtpValues) {
+  /**
+   * Asks which screen this number gets, and only sends a code if it needs one.
+   *
+   * An account that already has a password is asked for it and no SMS is sent —
+   * which is the entire point: the old flow texted a code on every single phone
+   * login, and each one costs money.
+   */
+  async function startPhone(values: RequestOtpValues) {
     setServerError(null);
+    setPhone(values?.phone);
+
+    const decided = await fetch('/api/auth/phone/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: values?.phone }),
+    });
+    const decision = await decided?.json().catch(() => ({}));
+    if (!decided?.ok) {
+      setServerError(decision?.message ?? t.auth.couldNotSignIn);
+      return;
+    }
+
+    if (decision?.next === 'PASSWORD') {
+      passwordForm.setValue('phone', values?.phone);
+      setStage('password');
+      return;
+    }
+
+    await sendCode(values?.phone);
+  }
+
+  /** The one place a message is actually asked for. */
+  async function sendCode(target: string) {
     const response = await fetch('/api/auth/otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
+      body: JSON.stringify({ phone: target }),
     });
 
     const body = await response?.json().catch(() => ({}));
@@ -240,12 +280,29 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
       return;
     }
 
-    setPhone(values?.phone);
-    codeForm.setValue('phone', values?.phone);
+    codeForm.setValue('phone', target);
     // The SMS gateway is a documented stub (backend README): in non-production the
     // API echoes the code back so the flow is testable without SMS credentials.
     setDevCode(body?.devCode ?? null);
     setStage('code');
+  }
+
+  /** Phone + password, through the same route every other password login uses. */
+  async function loginWithPassword(values: { phone: string; password: string }) {
+    setServerError(null);
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'password', phone: values?.phone, password: values?.password }),
+    });
+
+    if (!response?.ok) {
+      const body = await response?.json().catch(() => ({}));
+      setServerError(body?.message ?? t.auth.couldNotSignIn);
+      return;
+    }
+    const { roles } = await response?.json().catch(() => ({ roles: [] }));
+    afterLogin(roles);
   }
 
   async function verify(values: VerifyOtpValues) {
@@ -267,7 +324,7 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
 
   if (stage === 'phone') {
     return (
-      <form onSubmit={phoneForm.handleSubmit(requestCode)} className="space-y-4" noValidate>
+      <form onSubmit={phoneForm.handleSubmit(startPhone)} className="space-y-4" noValidate>
         {serverError && <Alert tone="danger">{serverError}</Alert>}
 
         <Field
@@ -289,6 +346,43 @@ function PhoneLogin({ redirectTo }: { redirectTo?: string }) {
         </Field>
 
         <Button type="submit" className="w-full" loading={phoneForm.formState.isSubmitting}>
+          {t.common.continue}
+        </Button>
+      </form>
+    );
+  }
+
+  if (stage === 'password') {
+    return (
+      <form
+        onSubmit={passwordForm.handleSubmit(loginWithPassword)}
+        className="space-y-4"
+        noValidate
+      >
+        {serverError && <Alert tone="danger">{serverError}</Alert>}
+
+        <p className="text-muted text-sm">{f(t.auth.sentTo, { destination: phone })}</p>
+
+        <Field label={t.auth.password} htmlFor="phone-password" required>
+          <PasswordInput
+            id="phone-password"
+            autoComplete="current-password"
+            {...passwordForm.register('password', { required: true })}
+          />
+        </Field>
+
+        <Button type="submit" className="w-full" loading={passwordForm.formState.isSubmitting}>
+          {t.auth.signIn}
+        </Button>
+
+        {/* The way out for somebody who has forgotten it: a code still works,
+            because the account can always prove the number. */}
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full"
+          onClick={() => void sendCode(phone)}
+        >
           {t.auth.sendCode}
         </Button>
       </form>

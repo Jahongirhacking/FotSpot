@@ -21,6 +21,7 @@ import { TelegramAuthPayload, verifyTelegramAuth } from './oauth/telegram-oauth.
 import {
   ChangePasswordDto,
   LoginEmailDto,
+  PhoneAuthStartDto,
   GoogleOAuthDto,
   TelegramOAuthDto,
   RefreshTokenDto,
@@ -228,8 +229,8 @@ export class AuthService {
     // or the error message to learn whether their guess was right.
     await this.throttle.assertAllowed('login', client.ipAddress);
 
-    if (!dto.email && !dto.username) {
-      throw new BadRequestException('Enter your email or username');
+    if (!dto.email && !dto.username && !dto.phone) {
+      throw new BadRequestException('Enter your email, username or phone number');
     }
 
     // Normalised, so a pasted "@Joxa" signs in the same as "joxa" — the handle is
@@ -237,7 +238,9 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: dto.email
         ? { email: dto.email.trim().toLowerCase() }
-        : { username: normaliseUsername(dto.username!) },
+        : dto.phone
+          ? { phone: dto.phone.trim() }
+          : { username: normaliseUsername(dto.username!) },
     });
     if (!user || !user.passwordHash) {
       await this.throttle.recordFailure('login', client.ipAddress);
@@ -509,8 +512,66 @@ export class AuthService {
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
+    /*
+     * A code proved the number; it did not give the account a password.
+     *
+     * Without one, the next sign-in has to send another SMS — which is the cost
+     * this whole flow exists to remove. So the account is handed the same lock an
+     * admin-created one gets: `mustChangePassword` holds it on the password
+     * screen (see the app layout's ALLOWED_WHILE_LOCKED) and `changePassword`
+     * already accepts a new password with no current one while it is set.
+     *
+     * Reusing that rather than inventing a half-authenticated session: a second
+     * kind of "signed in but not really" is a second thing every guard has to
+     * know about, and this one is already understood across the app.
+     */
+    if (!user.passwordHash && !user.mustChangePassword) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { mustChangePassword: true },
+      });
+      this.logger.log('[AUTH] OTP verified for an account with no password — password setup required');
+    }
+
     await this.throttle.clear('login', client.ipAddress);
     return this.issueTokens(user.id, client);
+  }
+
+  /**
+   * Decides which screen a phone number gets, before anything is sent.
+   *
+   * This is the change: an account that already has a password is asked for it,
+   * and **no SMS is sent at all**. Only an account without one — a brand-new
+   * number, or a legacy account that has never set a password — gets the code.
+   *
+   * ## What this necessarily reveals, and what it does not
+   *
+   * A screen that adapts to the number cannot be blind to the number. So this
+   * answers "does an account with a password exist here", and that much is a real
+   * enumeration signal — there is no version of the feature without it.
+   *
+   * What it deliberately does not distinguish is a number nobody has registered
+   * from one registered without a password: both answer OTP. So an attacker
+   * sweeping numbers learns which have password-bearing accounts, and nothing
+   * about the rest.
+   *
+   * It sends nothing itself. The client still calls `otp/request` for that, which
+   * keeps the SMS behind its own per-IP cap and behind a second, deliberate press
+   * rather than behind a probe.
+   */
+  async phoneAuthStart(dto: PhoneAuthStartDto, client: ClientInfo = {}) {
+    await this.throttle.assertAllowed('login', client.ipAddress);
+
+    const user = await this.prisma.user.findUnique({
+      where: { phone: dto.phone.trim() },
+      select: { passwordHash: true, isActive: true },
+    });
+
+    // A disabled account is told the same thing as any other. Saying "disabled"
+    // here would confirm it exists, and the sign-in it leads to says so anyway.
+    const next: 'PASSWORD' | 'OTP' = user?.passwordHash && user.isActive ? 'PASSWORD' : 'OTP';
+    this.logger.log(`[AUTH] Phone sign-in requested — next=${next}`);
+    return { next };
   }
 
   // ---------- OAuth ----------
