@@ -267,9 +267,7 @@ export default async function LandingPage() {
           of an app they are already using — a menu entry would put it in the way
           of the twenty screens people actually came for. */}
       <footer className="text-muted border-border border-t px-4 py-6 text-center text-xs">
-        <p>
-          FotSpot · {t.common.tagline} · Bulalar Team
-        </p>
+        <p>FotSpot · {t.common.tagline} · Bulalar Team</p>
         <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">
             {t.landing.privacyPolicy}
@@ -277,6 +275,10 @@ export default async function LandingPage() {
           <span aria-hidden>·</span>
           <Link href="/terms" className="hover:text-foreground underline underline-offset-2">
             {t.landing.termsOfService}
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/contact-us" className="hover:text-foreground underline underline-offset-2">
+            {t.landing.contactUs}
           </Link>
         </p>
       </footer>

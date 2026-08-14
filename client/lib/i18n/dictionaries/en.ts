@@ -1449,5 +1449,6 @@ export const en: Dictionary = {
       'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',
     privacyPolicy: 'Privacy policy',
     termsOfService: 'Terms of service',
+    contactUs: 'Contact us',
   },
 };
