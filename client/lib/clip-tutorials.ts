@@ -66,10 +66,10 @@ const getTutorialPath = (category: MediaCategory): string | null => {
       return 'tutorial_juggling.mp4';
     case 'GOALKEEPING':
       return 'tutorial_goalkeeping.mp4';
-    // Highlights evidence no single skill, so there is nothing to demonstrate —
-    // "show your best moments from a real match" is the whole instruction.
+    // Highlights evidence no single skill, so this one demonstrates the cut
+    // rather than a technique — what to keep in and what to leave out.
     case 'MATCH_HIGHLIGHTS':
-      return null;
+      return 'tutorial_highlight.mp4';
   }
 };
 
