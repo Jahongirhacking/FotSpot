@@ -136,7 +136,6 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/admin/users', label: 'users', icon: Users },
         { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
-        { href: '/players', label: 'players', icon: Search },
       ];
 
     // Tariff plans only for the super admin: §1.2 keeps platform-wide settings
@@ -150,9 +149,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
         { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
-        { href: '/players', label: 'players', icon: Search },
       ];
-
     default:
       return COMMON;
   }
