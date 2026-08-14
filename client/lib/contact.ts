@@ -25,7 +25,7 @@ import type { SocialNetwork } from '@/lib/social-marks';
  */
 
 /** Flip to false when the values below are real. */
-export const PLACEHOLDER = true;
+export const PLACEHOLDER = false;
 
 /** General enquiries. Separate from the privacy address, which is a legal one. */
 export const CONTACT_EMAIL = 'bulalarteam@gmail.com';

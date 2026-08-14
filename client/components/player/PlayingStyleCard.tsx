@@ -51,7 +51,7 @@ export function PlayingStyleCard({
         <ExemplarCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} imageSize="xl" />
 
         <span className="min-w-0 flex-1 text-center [@container(min-width:320px)]:text-start">
-          <span className="block text-sm font-semibold text-[#35c26d]">{humanizeEnum(style)}</span>
+          <span className="text-primary block text-sm font-semibold">{humanizeEnum(style)}</span>
           <span className="text-muted mt-1 block text-xs leading-snug">
             {info ? t.playingStyles?.[info?.key] : ''}
           </span>

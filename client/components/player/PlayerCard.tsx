@@ -103,7 +103,7 @@ export function PlayerCard({
             </p>
             <p
               className={cn(
-                'mt-0.5 rounded-md bg-black/35 px-1.5 py-0.5 leading-none font-bold tracking-widest',
+                'mt-0.5 w-min rounded-md bg-black/20 px-1.5 py-0.5 leading-none font-bold tracking-widest',
                 small ? 'text-[10px]' : 'text-lg',
               )}
               style={{ color: theme.ring }}
