@@ -23,7 +23,7 @@ export interface NavItem {
 }
 
 const COMMON: NavItem[] = [
-  { href: '/dashboard', label: 'home', icon: Home },
+  { href: '/feed', label: 'feed', icon: Clapperboard },
   { href: '/players', label: 'players', icon: Search },
   { href: '/academies', label: 'academies', icon: Building2 },
   { href: '/trials', label: 'trials', icon: CalendarDays },
@@ -76,6 +76,7 @@ export function navForRole(role: Role | null): NavItem[] {
       return [
         { href: '/academies/mine', label: 'myAcademy', icon: Building2 },
         { href: '/groups/mine', label: 'myGroup', icon: Users },
+        { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/trials', label: 'trials', icon: ClipboardCheck },
         { href: '/players', label: 'players', icon: Search },
       ];

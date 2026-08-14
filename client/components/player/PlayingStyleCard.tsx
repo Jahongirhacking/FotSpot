@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
+import Link from 'next/link';
 
 /**
  * One playing style, as a card.
@@ -41,30 +41,32 @@ export function PlayingStyleCard({
   const info = PLAYING_STYLE_INFO?.[style];
 
   const body = (
-    <>
-      <ExemplarCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} />
-
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{humanizeEnum(style)}</span>
-        <span className="text-muted mt-1 block text-xs leading-snug">
-          {info ? t.playingStyles?.[info?.key] : ''}
-        </span>
-        {info?.exemplar && (
-          <span className="text-muted mt-1.5 block text-[11px] italic">
-            {t.onboarding?.styleLikeWho}: {info?.exemplar}
-          </span>
+    <div className="[container-type:inline-size] h-full">
+      <div
+        className={cn(
+          'border-border bg-surface flex h-full flex-col items-center gap-3 rounded-xl border p-3 text-left [@container(min-width:320px)]:!flex-row',
+          className,
         )}
-      </span>
-    </>
-  );
+      >
+        <ExemplarCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} imageSize="xl" />
 
-  const shared = cn(
-    'border-border bg-surface flex h-full items-start gap-3 rounded-xl border p-3 text-left',
-    className,
+        <span className="min-w-0 flex-1 text-center [@container(min-width:320px)]:text-start">
+          <span className="block text-sm font-semibold text-[#35c26d]">{humanizeEnum(style)}</span>
+          <span className="text-muted mt-1 block text-xs leading-snug">
+            {info ? t.playingStyles?.[info?.key] : ''}
+          </span>
+          {info?.exemplar && (
+            <span className="text-muted mt-1.5 block text-[11px] italic">
+              {t.onboarding?.styleLikeWho}: {info?.exemplar}
+            </span>
+          )}
+        </span>
+      </div>
+    </div>
   );
 
   if (!clickable) {
-    return <div className={shared}>{body}</div>;
+    return body;
   }
 
   return (
@@ -72,7 +74,6 @@ export function PlayingStyleCard({
       href={`?showPlayingStyle=${encodeURIComponent(style)}`}
       scroll={false}
       className={cn(
-        shared,
         'hover:border-primary/50 hover:bg-surface-2 transition-colors',
         'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
       )}
@@ -82,6 +83,23 @@ export function PlayingStyleCard({
   );
 }
 
+type ImageSizeType = 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+
+const getImageSize = (size: ImageSizeType) => {
+  switch (size) {
+    case 'sm':
+      return 'size-16';
+    case 'md':
+      return 'size-20';
+    case 'lg':
+      return 'size-24';
+    case 'xl':
+      return 'size-28';
+    case 'xxl':
+      return 'size-32';
+  }
+};
+
 /**
  * The exemplar, as a crest.
  *
@@ -89,14 +107,22 @@ export function PlayingStyleCard({
  * why no image ships. If `imageUrl` is ever set it is used instead, so adding a
  * licensed picture is a one-line change and no component edit.
  */
-function ExemplarCrest({ name, imageUrl }: { name: string; imageUrl?: string }) {
+function ExemplarCrest({
+  name,
+  imageUrl,
+  imageSize = 'md',
+}: {
+  name: string;
+  imageUrl?: string;
+  imageSize?: ImageSizeType;
+}) {
   if (imageUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a local static asset; next/image adds a loader for no gain here
       <img
         src={imageUrl}
         alt={name}
-        className="size-20 shrink-0 rounded-lg object-contain"
+        className={cn('shrink-0 rounded-lg object-contain', getImageSize(imageSize))}
         loading="lazy"
       />
     );

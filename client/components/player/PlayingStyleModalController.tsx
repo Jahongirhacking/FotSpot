@@ -1,10 +1,7 @@
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Users } from 'lucide-react';
-import { PLAYING_STYLE_INFO } from '@/lib/playing-styles';
-import { PlayingStyleCard } from '@/components/player/PlayingStyleCard';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { PlayingStyleCard } from '@/components/player/PlayingStyleCard';
 import { Button } from '@/components/ui/Button';
 import {
   Dialog,
@@ -15,7 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog';
+import { PLAYING_STYLE_INFO } from '@/lib/playing-styles';
 import { humanizeEnum } from '@/lib/utils';
+import { Users } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 /** The one query parameter this whole feature is driven by. */
 export const PLAYING_STYLE_PARAM = 'showPlayingStyle';
@@ -83,16 +84,24 @@ export function PlayingStyleModalController() {
         </DialogBody>
 
         <DialogFooter>
-          <Button
-            className="w-full"
-            onClick={() => {
-              // Client navigation, and the style value encoded exactly as stored —
-              // /players reads `PlayingStyle` as its own filter.
-              router.push(`/players?PlayingStyle=${encodeURIComponent(style)}`);
-            }}
-          >
-            <Users aria-hidden /> {t.playingStyleModal?.showPlayers}
-          </Button>
+          <div className="flex w-full flex-col gap-4">
+            <Button
+              className="w-full"
+              onClick={() => {
+                // Client navigation, and the style value encoded exactly as stored —
+                // /players reads `PlayingStyle` as its own filter.
+                router.push(`/players?playingStyle=${encodeURIComponent(style)}`);
+              }}
+            >
+              <Users aria-hidden /> {t.playingStyleModal?.showPlayers}
+            </Button>
+            <Link
+              href={'/playing-styles'}
+              className="text-muted mt-1 !mb-2 block text-center text-xs leading-snug"
+            >
+              {t.onboarding.playingStyle}?
+            </Link>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

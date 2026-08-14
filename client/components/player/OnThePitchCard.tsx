@@ -4,6 +4,7 @@ import type { PlayerProfile } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
+import Link from 'next/link';
 
 /**
  * Position, dominant foot and playing style, as pictures.
@@ -66,23 +67,25 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
   const description = info?.key ? t.playingStyles?.[info?.key] : undefined;
 
   return (
-    <div className="border-border bg-surface-2 flex max-w-[min(180px,100%)] flex-col items-center gap-3 rounded-lg border p-2.5">
-      <StyleCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} />
+    <Link href={`?showPlayingStyle=${encodeURIComponent(style)}`} className="w-min">
+      <div className="border-border bg-surface-2 flex max-w-[min(180px,100%)] flex-col items-center gap-3 rounded-lg border p-2.5">
+        <StyleCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} />
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{humanizeEnum(style)}</p>
-        {description && (
-          <p title={description} className="text-muted mt-0.5 line-clamp-2 text-xs leading-snug">
-            {description}
-          </p>
-        )}
-        {info?.exemplar && (
-          <p className="text-muted mt-0.5 truncate text-[11px] italic">
-            {t.onboarding?.styleLikeWho}: {info?.exemplar}
-          </p>
-        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{humanizeEnum(style)}</p>
+          {description && (
+            <p title={description} className="text-muted mt-0.5 line-clamp-2 text-xs leading-snug">
+              {description}
+            </p>
+          )}
+          {info?.exemplar && (
+            <p className="text-muted mt-0.5 truncate text-[11px] italic">
+              {t.onboarding?.styleLikeWho}: {info?.exemplar}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
