@@ -87,13 +87,14 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
                         {invitation?.academy.name}
                       </Link>
                       <p className="text-muted truncate text-sm">
-                        {[invitation?.academy.district, invitation?.academy.region]
+                        {[invitation?.academy?.district, invitation?.academy?.region]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
                       <p className="text-muted mt-1 text-xs">
                         {t.invitations.invitedAs}:{' '}
-                        {t.roles[invitation?.role.toLowerCase() as 'coach']} ·{' '}
+                        {t.roles?.[invitation?.role?.toLowerCase() as 'coach'] ?? invitation?.role}{' '}
+                        ·{' '}
                         {relativeTime(invitation?.createdAt)}
                       </p>
                     </div>
