@@ -554,6 +554,27 @@ export const en: Dictionary = {
     endorsedScouts: 'Endorsed scouts',
     endorsedCoaches: 'Endorsed coaches',
     following: 'Following',
+
+    // ---- Contact ----
+    contactTitle: 'Contact',
+    contactHint: 'The numbers parents ring. Not the manager’s personal phone.',
+    primaryPhone: 'Primary phone',
+    backupPhone: 'Backup phone',
+    backupPhoneHint: 'The number to try when nobody answers the first one.',
+
+    // ---- Location ----
+    locationHint:
+      'The pin is the address a parent drives to on a Saturday. Region and district are what search filters on.',
+    currentLocation: 'Saved point:',
+    noLocationYet: 'Not set yet',
+    unsavedLocation: 'Unsaved change: {coords}. It stays off the profile until you save.',
+    revertLocation: 'Back to saved point',
+
+    // ---- Trial announcements ----
+    followForTrials: 'Follow for trials',
+    followingForTrials: 'Following for trials',
+    followForTrialsHint:
+      'You will be notified when this academy publishes a trial matching your position and age.',
   },
 
   relation: {

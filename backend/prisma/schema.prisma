@@ -464,6 +464,20 @@ model AcademyProfile {
   instagramUrl String?
   youtubeUrl   String?
 
+  /**
+   * How to phone the academy, and where to try when the first one rings out.
+   * Two columns rather than one, because these are two different numbers with
+   * two different jobs: the primary is the one printed on the profile, and the
+   * backup is what a parent tries at eight in the evening when nobody answers
+   * the office. An array would store the same thing while losing which is which.
+   * Not the manager's `User.phone`. That is how the platform reaches the person
+   * who signs in; this is how a family reaches the club, and a manager who
+   * leaves should not take the academy's number with them.
+   * E.164, validated at the edge like every other phone in the schema.
+   */
+  primaryPhone String?
+  backupPhone  String?
+
   photos   AcademyPhoto[]
   featured AcademyFeatured[]
 

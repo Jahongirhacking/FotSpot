@@ -15,6 +15,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -113,6 +114,32 @@ export class UpdateAcademyDto {
   @IsOptional() @IsString() @MaxLength(300) facebookUrl?: string;
   @IsOptional() @IsString() @MaxLength(300) instagramUrl?: string;
   @IsOptional() @IsString() @MaxLength(300) youtubeUrl?: string;
+
+  /*
+   * The academy's two contact numbers.
+   *
+   * `@ValidateIf` rather than `@IsOptional` alone, because clearing a number and
+   * never setting one are different requests and both have to be expressible:
+   * omitting the field leaves the stored value alone, and sending `''` removes
+   * it. `@IsOptional` only covers the first, so without this a manager who
+   * deleted the contents of the box would be told an empty string is not a
+   * phone number — with no other way to take a dead line off the profile.
+   *
+   * Otherwise `@IsPhoneNumber()`, the same validator every other phone in the
+   * API uses, so "07123" fails here rather than being printed on a public page
+   * as something to ring.
+   */
+  @ApiPropertyOptional({ description: 'E.164, or "" to clear' })
+  @IsOptional()
+  @ValidateIf((dto: UpdateAcademyDto) => dto.primaryPhone !== '')
+  @IsPhoneNumber()
+  primaryPhone?: string;
+
+  @ApiPropertyOptional({ description: 'E.164, or "" to clear' })
+  @IsOptional()
+  @ValidateIf((dto: UpdateAcademyDto) => dto.backupPhone !== '')
+  @IsPhoneNumber()
+  backupPhone?: string;
 }
 
 /** Asking for a presigned PUT. The key is minted server-side from the id. */

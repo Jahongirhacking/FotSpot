@@ -581,6 +581,27 @@ export const uz = {
     endorsedScouts: 'Tasdiqlangan skautlar',
     endorsedCoaches: 'Tasdiqlangan murabbiylar',
     following: 'Kuzatilmoqda',
+
+    // ---- Aloqa ----
+    contactTitle: 'Bog‘lanish',
+    contactHint: 'Ota-onalar shu raqamlarga qo‘ng‘iroq qiladi. Menejerning shaxsiy raqami emas.',
+    primaryPhone: 'Asosiy telefon',
+    backupPhone: 'Zaxira telefon',
+    backupPhoneHint: 'Birinchi raqamga javob bo‘lmaganda uriniladigan raqam.',
+
+    // ---- Joylashuv ----
+    locationHint:
+      'Xaritadagi nuqta — ota-ona shanba kuni bolasini olib boradigan aniq manzil. Viloyat va tuman esa qidiruv uchun.',
+    currentLocation: 'Saqlangan nuqta:',
+    noLocationYet: 'Hali belgilanmagan',
+    unsavedLocation: 'Saqlanmagan o‘zgarish: {coords}. Saqlaguningizcha profilda ko‘rinmaydi.',
+    revertLocation: 'Saqlangan nuqtaga qaytarish',
+
+    // ---- Sinovlarga obuna ----
+    followForTrials: 'Sinovlar uchun kuzatish',
+    followingForTrials: 'Sinovlar kuzatilmoqda',
+    followForTrialsHint:
+      'Bu akademiya sizning pozitsiyangiz va yoshingizga mos sinov e’lon qilganda xabar olasiz.',
   },
 
   relation: {

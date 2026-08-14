@@ -468,12 +468,27 @@ export class AcademiesService {
       if (value !== undefined) socials[field] = normaliseSocialUrl(field, value);
     }
 
+    /*
+     * An emptied box means "take this number off the profile".
+     *
+     * The DTO lets `''` through so that clearing is expressible at all; storing
+     * it verbatim would leave the profile rendering a `tel:` link to nothing,
+     * which looks like a working number until somebody rings it. Null is the
+     * absence the read side already checks for.
+     */
+    const phones: Record<string, string | null> = {};
+    for (const field of ['primaryPhone', 'backupPhone'] as const) {
+      const value = dto[field];
+      if (value !== undefined) phones[field] = value === '' ? null : value;
+    }
+
     const updated = await this.prisma.academyProfile.update({
       where: { id: academyId },
       data: {
         ...dto,
         ...socials,
         ...location,
+        ...phones,
         // The one field that carries markup. Cleaned here because this endpoint
         // is reachable without the editor that cleans it on the way in.
         ...(dto.defaultTrialNote !== undefined

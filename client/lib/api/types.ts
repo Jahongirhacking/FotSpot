@@ -370,6 +370,13 @@ export interface AcademyProfile {
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
 
+  /**
+   * How to ring the academy. E.164, and `''` on write clears one.
+   * Not the manager's personal number — see the schema note on the model.
+   */
+  primaryPhone?: string | null;
+  backupPhone?: string | null;
+
   members?: AcademyMemberRef[];
   createdAt: string;
 }
