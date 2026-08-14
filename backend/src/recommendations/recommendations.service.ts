@@ -28,6 +28,7 @@ import {
   computeScoutLevel,
   computeSuccessRate,
 } from './scout-level.util';
+import { assertNotLocalTeam } from '../academies/academy-kind.util';
 
 /**
  * Roles that may read a scout's profile.
@@ -495,6 +496,16 @@ export class RecommendationsService {
     if (!membership) throw new ForbiddenException('Only an academy manager can do that');
     const academyId = membership.academyId;
 
+    /*
+     * The online coach review is an academy's pipeline, not a local team's.
+     *
+     * A local team has no coaches, so there is nobody to assign this to — and
+     * the review is the step whose verdict later settles recommendations and
+     * moves a scout's success rate. Refusing here keeps a local team out of
+     * that lifecycle at the only point it could enter it.
+     */
+    await this.assertIsAcademy(academyId, 'send players for coach review');
+
     // If a scout did recommend this player to us, the review records which one,
     // so accepting it later still moves that scout's reputation.
     const target = await this.prisma.recommendationTarget.findFirst({
@@ -814,6 +825,11 @@ export class RecommendationsService {
     });
     if (!membership) throw new ForbiddenException('Only an academy manager can do that');
     const academyId = membership.academyId;
+
+    // Unreachable for a local team by construction — the approved review below
+    // can never exist for one — but stated rather than relied upon, so the rule
+    // survives somebody relaxing that precondition.
+    await this.assertIsAcademy(academyId, 'invite players from a coach review');
 
     const review = await this.prisma.recommendationReview.findUnique({
       where: { playerId_academyId: { playerId, academyId } },
@@ -1865,6 +1881,16 @@ export class RecommendationsService {
         weight: tier.weight,
       },
     });
+  }
+
+  /** Refuses the coach-review pipeline to a local team. See academy-kind.util. */
+  private async assertIsAcademy(academyId: string, action: string) {
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { kind: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+    assertNotLocalTeam(academy.kind, action);
   }
 
   private async assertAcademyManager(userId: string, academyId: string) {

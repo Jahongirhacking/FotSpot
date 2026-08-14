@@ -34,7 +34,20 @@ const COMMON: NavItem[] = [
  * switching roles actually changes. It is not a permission gate: hiding a link is a
  * clarity decision, and the backend still guards every route behind it.
  */
-export function navForRole(role: Role | null): NavItem[] {
+/**
+ * What else the menu needs to know beyond the role.
+ *
+ * One flag, not an object of them: the only thing that changes a menu after the
+ * role is whether a manager runs an academy or a local team, and a wider
+ * parameter would invite the menu to start depending on request state it cannot
+ * see. Defaults to false so every existing caller keeps the menu it had.
+ */
+export interface NavContext {
+  /** True when the signed-in manager's organisation is a local team. */
+  isLocalTeam?: boolean;
+}
+
+export function navForRole(role: Role | null, context: NavContext = {}): NavItem[] {
   switch (role) {
     case 'player':
       return [
@@ -85,6 +98,22 @@ export function navForRole(role: Role | null): NavItem[] {
     // their home screen; the only thing the directory would offer them is a list
     // of rivals they cannot edit. Browsing to /academies still works — this is a
     // clarity decision about what the menu is *for*, not a permission gate.
+    /*
+     * A local team manager gets the same menu without Trials.
+     *
+     * Not a separate `local_team_manager` role: the role says what somebody is
+     * to the platform, and both of these are the manager of an organisation.
+     * What differs is the organisation, which is why it is read from the
+     * academy rather than from the account — and why an admin turning a record
+     * into a local team does not have to go and reissue anybody's roles.
+     *
+     * Trials is the only entry that goes. Dashboard, feed, inbox, squad and
+     * players all mean the same thing for a local team, and dropping any of
+     * them would be taking away a screen that works (§5).
+     *
+     * The menu is a clarity decision, never the boundary: `TrialsService
+     * .create` refuses a local team whether or not this link is drawn.
+     */
     case 'academy_manager':
       return [
         { href: '/dashboard', label: 'home', icon: Home },
@@ -95,7 +124,9 @@ export function navForRole(role: Role | null): NavItem[] {
         // it is one way of adding a coach, not a separate destination.
         { href: '/academies/mine/squad', label: 'squad', icon: Users },
         { href: '/players', label: 'findPlayers', icon: Search },
-        { href: '/trials', label: 'trials', icon: CalendarDays },
+        ...(context.isLocalTeam
+          ? []
+          : [{ href: '/trials', label: 'trials', icon: CalendarDays } as NavItem]),
       ];
 
     case 'admin':
@@ -139,6 +170,6 @@ export function navForRole(role: Role | null): NavItem[] {
  * Deliberately derived from `navForRole` rather than listed separately: two
  * lists would agree today and disagree the first time somebody reorders a menu.
  */
-export function homeHrefForRole(role: Role | null): string {
-  return navForRole(role)[0]?.href ?? '/dashboard';
+export function homeHrefForRole(role: Role | null, context: NavContext = {}): string {
+  return navForRole(role, context)[0]?.href ?? '/dashboard';
 }

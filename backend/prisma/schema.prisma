@@ -417,9 +417,33 @@ model CoachProfile {
 
 // ---------- ACADEMY (1.10) ----------
 
+/**
+ * Whether this row is a real academy or a local team.
+ * ## Why not another `VerificationStatus` value
+ * `status` answers "has an admin checked this", and `VerificationStatus` is
+ * shared with `CoachProfile` — adding `UNVERIFIED` there would put a value on
+ * every coach that means nothing about coaches. Worse, `PENDING` and `REJECTED`
+ * already mean "waiting to be reviewed" and "archived", and a local team is
+ * neither: it is not queued for promotion into an academy, and it is not dead.
+ * So this is a second, independent axis. A row has a kind *and* a status, and
+ * every existing academy is `ACADEMY` by default — the migration changes no
+ * row's behaviour, which is the whole point.
+ * ## What the kind decides
+ * The professional evaluation pipeline: coaches, online coach review, trials,
+ * pass/fail, and the recommendation settlement that hangs off them. A local team
+ * has none of it. What it shares is the squad — invitations, membership, groups,
+ * scouts — because that half is the same job at both.
+ */
+enum AcademyKind {
+  ACADEMY
+  LOCAL_TEAM
+}
+
 model AcademyProfile {
   id               String             @id @default(uuid())
   name             String
+  /// Academy or local team. See AcademyKind — this gates the coach/trial half.
+  kind             AcademyKind        @default(ACADEMY)
   region           String?
   district         String?
   description      String?
@@ -496,6 +520,9 @@ model AcademyProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Every public listing filters on both halves, so they are indexed together.
+  @@index([kind, status])
 }
 
 enum AcademyMemberRole {

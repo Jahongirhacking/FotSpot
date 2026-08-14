@@ -575,6 +575,17 @@ export const en: Dictionary = {
     followingForTrials: 'Following for trials',
     followForTrialsHint:
       'You will be notified when this academy publishes a trial matching your position and age.',
+
+    // ---- Local team ----
+    localTeam: 'Local Team',
+    verifiedAcademyType: 'Verified Academy',
+    localTeamNoTrials: 'Local teams do not hold trials — players join by invitation.',
+    localTeamNoCoaches: 'A local team has no coaches.',
+
+    // ---- Current squad ----
+    currentSquad: 'Current squad',
+    noSquad: 'Not currently in an academy or local team squad.',
+    squadReserve: 'Reserve',
   },
 
   relation: {
@@ -1304,6 +1315,9 @@ export const en: Dictionary = {
     manageAcademiesHint:
       'Academies are onboarded by the platform team. A created academy counts as verified immediately.',
     newAcademy: 'New academy',
+    organisationType: 'Organisation type',
+    kindHint:
+      'A local team stays out of the academy directory and has no coaches or trials. It cannot be changed later.',
     academyName: 'Name',
     assignManager: 'Assign a manager',
     assignManagerHint: 'Optional. Can be assigned later.',

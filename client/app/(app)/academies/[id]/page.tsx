@@ -155,6 +155,16 @@ export default async function AcademyDetailPage({
   const located = typeof academy?.latitude === 'number' && typeof academy?.longitude === 'number';
 
   /*
+   * A local team holds no trials, so the page has no trials card.
+   *
+   * Hidden rather than shown empty: "No trials right now" is true of an academy
+   * between trials and misleading about an organisation that will never hold
+   * any — it reads as "check back later". `TrialsService.create` refuses one
+   * regardless; this is about not describing something that cannot happen.
+   */
+  const isLocalTeam = academy?.kind === 'LOCAL_TEAM';
+
+  /*
    * Where it is, in words and as a link.
    *
    * The words fall back to the country because a profile with no region still
@@ -230,7 +240,14 @@ export default async function AcademyDetailPage({
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {academy?.status === 'VERIFIED' ? (
+              {/* What this organisation *is* comes before whether it was checked.
+                  A local team is not an academy waiting to be verified — it is a
+                  different thing that never gets verified — so giving it the
+                  verification badge would answer a question nobody asked and
+                  imply a promotion that does not exist (§20). */}
+              {isLocalTeam ? (
+                <Badge variant="neutral">{t.academy?.localTeam}</Badge>
+              ) : academy?.status === 'VERIFIED' ? (
                 <Badge variant="success">{t.academy?.verifiedAcademy}</Badge>
               ) : (
                 <Badge variant="warning">{t.academy?.awaitingVerification}</Badge>
@@ -316,45 +333,49 @@ export default async function AcademyDetailPage({
           )}
 
           {/* ---------- Trials, and where to find them ---------- */}
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CalendarDays className="text-primary size-4" aria-hidden />{' '}
-                  {t.trials?.openTrials}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {academyTrials?.length === 0 ? (
-                  <p className="text-muted text-sm">{t.academy?.noTrialsNow}</p>
-                ) : (
-                  <ul className="divide-border divide-y">
-                    {academyTrials?.map((trial) => (
-                      <li
-                        key={trial?.id}
-                        className="flex flex-wrap items-center justify-between gap-3 py-3"
-                      >
-                        <div className="min-w-0">
-                          <Link
-                            href={`/trials/${trial?.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {trial?.title}
-                          </Link>
-                          <p className="text-muted text-xs">
-                            {formatDate(trial?.date)} · {trial?.location} · {trial?.ageRangeMin}–
-                            {trial?.ageRangeMax}
-                          </p>
-                        </div>
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/trials/${trial?.id}`}>{t.common?.open}</Link>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+          <div
+            className={isLocalTeam ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'}
+          >
+            {!isLocalTeam && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CalendarDays className="text-primary size-4" aria-hidden />{' '}
+                    {t.trials?.openTrials}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {academyTrials?.length === 0 ? (
+                    <p className="text-muted text-sm">{t.academy?.noTrialsNow}</p>
+                  ) : (
+                    <ul className="divide-border divide-y">
+                      {academyTrials?.map((trial) => (
+                        <li
+                          key={trial?.id}
+                          className="flex flex-wrap items-center justify-between gap-3 py-3"
+                        >
+                          <div className="min-w-0">
+                            <Link
+                              href={`/trials/${trial?.id}`}
+                              className="font-medium hover:underline"
+                            >
+                              {trial?.title}
+                            </Link>
+                            <p className="text-muted text-xs">
+                              {formatDate(trial?.date)} · {trial?.location} · {trial?.ageRangeMin}–
+                              {trial?.ageRangeMax}
+                            </p>
+                          </div>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/trials/${trial?.id}`}>{t.common?.open}</Link>
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <div className="space-y-4">
               {located && (

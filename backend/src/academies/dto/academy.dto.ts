@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsRegionDistrictPair } from '../../common/validators/region-district.validator';
-import { AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
+import { AcademyKind, AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsEnum,
   IsIn,
   IsNumber,
   IsOptional,
@@ -45,6 +46,24 @@ export class NewManagerDto {
  */
 export class CreateAcademyDto {
   @IsString() name: string;
+
+  /**
+   * Academy or local team, chosen once at creation.
+   *
+   * Deliberately absent from `UpdateAcademyDto`: promoting a local team to an
+   * academy is not an edit, it is a vetting decision with consequences that
+   * reach past this record — its staff would gain sight of private players'
+   * profiles the moment the field flipped. That belongs behind its own reviewed
+   * action if the product ever wants it, not behind a PATCH the manager can
+   * send.
+   *
+   * Optional, and the column defaults to ACADEMY, so every existing caller and
+   * every existing row keeps meaning exactly what it meant before.
+   */
+  @ApiPropertyOptional({ enum: AcademyKind, enumName: 'AcademyKind' })
+  @IsOptional()
+  @IsEnum(AcademyKind)
+  kind?: AcademyKind;
   @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
   @IsOptional() @IsString() description?: string;

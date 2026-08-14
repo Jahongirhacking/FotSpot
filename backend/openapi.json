@@ -6512,6 +6512,13 @@
           "body"
         ]
       },
+      "AcademyKind": {
+        "type": "string",
+        "enum": [
+          "ACADEMY",
+          "LOCAL_TEAM"
+        ]
+      },
       "NewManagerDto": {
         "type": "object",
         "properties": {
@@ -6538,6 +6545,14 @@
       "CreateAcademyDto": {
         "type": "object",
         "properties": {
+          "kind": {
+            "description": "Academy or local team, chosen once at creation.\n\nDeliberately absent from `UpdateAcademyDto`: promoting a local team to an\nacademy is not an edit, it is a vetting decision with consequences that\nreach past this record — its staff would gain sight of private players'\nprofiles the moment the field flipped. That belongs behind its own reviewed\naction if the product ever wants it, not behind a PATCH the manager can\nsend.\n\nOptional, and the column defaults to ACADEMY, so every existing caller and\nevery existing row keeps meaning exactly what it meant before.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AcademyKind"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },

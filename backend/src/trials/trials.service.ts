@@ -21,6 +21,7 @@ import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
 import { sanitizeRichText } from '../common/rich-text.util';
+import { assertNotLocalTeam } from '../academies/academy-kind.util';
 
 @Injectable()
 export class TrialsService {
@@ -35,6 +36,22 @@ export class TrialsService {
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
     await this.assertAcademyManager(userId, academyId);
+
+    /*
+     * A local team does not hold trials.
+     *
+     * Refused at creation and nowhere else, deliberately: applying, accepting,
+     * rejecting and the coach's pass/fail all hang off a trial row, so a kind
+     * that can never own one cannot reach any of them. Guarding each of those
+     * separately would be five checks defending a door that has no room behind
+     * it — and five places for the rule to drift.
+     */
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { kind: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+    assertNotLocalTeam(academy.kind, 'hold trials');
 
     const date = new Date(dto.date);
     const applyDeadline = new Date(dto.applyDeadline);

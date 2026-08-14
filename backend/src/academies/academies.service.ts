@@ -18,6 +18,7 @@ import { AuditAction } from '../audit/audit.actions';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
+import { assertNotLocalTeam } from './academy-kind.util';
 import {
   isValidRegionDistrict,
   normaliseDistrict,
@@ -398,10 +399,21 @@ export class AcademiesService {
     return { ...rest, logoUrl: this.storage.publicUrlOrNull(logoKey) };
   }
 
+  /**
+   * The public academy directory.
+   *
+   * `kind: ACADEMY` alongside the existing status filter, so a local team never
+   * appears here however it is verified — the directory is what a parent browses
+   * looking for an academy, and a neighbourhood team listed among them would be
+   * read as one. The filter is inside the `redis.wrap` callback rather than
+   * applied to its result, so the cached value can never contain a local team to
+   * begin with (§18): a cache that holds rows it must not serve is one refactor
+   * away from serving them.
+   */
   async listPublic(region?: string) {
     return this.redis.wrap(RedisKeys.academyList(region), CacheTtl.academyList, () =>
       this.prisma.academyProfile.findMany({
-        where: { status: 'VERIFIED', ...(region ? { region } : {}) },
+        where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
         orderBy: { createdAt: 'desc' },
       }),
     );
@@ -587,6 +599,10 @@ export class AcademiesService {
    */
   async createCoach(actorId: string, academyId: string, dto: CreateCoachDto) {
     await this.assertManager(actorId, academyId);
+    // A local team has no coaches at all, so this is refused before the plan
+    // check for the same reason the plan check comes before minting: the first
+    // answer that is "no" should be the one the manager is given.
+    await this.assertIsAcademy(academyId, 'create coaches');
     // Checked before anything is minted: a plan refusal must not leave behind a
     // half-created account with credentials nobody will ever be shown.
     await this.tariffs.assertCanAddCoach(actorId, academyId);
@@ -1106,6 +1122,23 @@ export class AcademiesService {
 
     await this.invalidate(academyId);
     return this.listFeatured(academyId);
+  }
+
+  /**
+   * Refuses one of the academy-only actions for a local team.
+   *
+   * Reads the kind rather than taking it from the caller: every one of these
+   * call sites has an academy id and none of them had a reason to load the row,
+   * so passing the kind in would mean each of them fetching it correctly. One
+   * indexed lookup by primary key is the cheaper mistake to not make.
+   */
+  private async assertIsAcademy(academyId: string, action: string) {
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { kind: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+    assertNotLocalTeam(academy.kind, action);
   }
 
   private async assertManager(userId: string, academyId: string) {

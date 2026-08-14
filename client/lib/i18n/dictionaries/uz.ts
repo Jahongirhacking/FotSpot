@@ -602,6 +602,18 @@ export const uz = {
     followingForTrials: 'Sinovlar kuzatilmoqda',
     followForTrialsHint:
       'Bu akademiya sizning pozitsiyangiz va yoshingizga mos sinov e’lon qilganda xabar olasiz.',
+
+    // ---- Mahalliy jamoa ----
+    localTeam: 'Mahalliy jamoa',
+    verifiedAcademyType: 'Tasdiqlangan akademiya',
+    localTeamNoTrials:
+      'Mahalliy jamoalar sinov o‘tkazmaydi — o‘yinchilar taklif orqali qo‘shiladi.',
+    localTeamNoCoaches: 'Mahalliy jamoada murabbiylar bo‘lmaydi.',
+
+    // ---- Joriy tarkib ----
+    currentSquad: 'Joriy tarkib',
+    noSquad: 'Hozircha hech qaysi akademiya yoki mahalliy jamoa tarkibida emas.',
+    squadReserve: 'Zaxira',
   },
 
   relation: {
@@ -1360,6 +1372,9 @@ export const uz = {
     manageAcademiesHint:
       'Akademiyalarni platforma jamoasi qo‘shadi. Yaratilgan akademiya darhol tasdiqlangan hisoblanadi.',
     newAcademy: 'Yangi akademiya',
+    organisationType: 'Tashkilot turi',
+    kindHint:
+      'Mahalliy jamoa akademiyalar ro‘yxatida ko‘rinmaydi, murabbiy va sinovlarga ega bo‘lmaydi. Keyinchalik o‘zgartirib bo‘lmaydi.',
     academyName: 'Nomi',
     assignManager: 'Rahbar tayinlash',
     assignManagerHint: 'Ixtiyoriy. Keyinroq ham tayinlash mumkin.',

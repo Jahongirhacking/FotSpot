@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { NotificationsService } from '../notifications/notifications.service';
 import { InviteMemberDto } from './dto/invitation.dto';
+import { assertNotLocalTeam } from './academy-kind.util';
 
 /**
  * An academy asking somebody to join, and their answer.
@@ -48,6 +49,27 @@ export class InvitationsService {
   async invite(userId: string, academyId: string, dto: InviteMemberDto) {
     await this.assertManager(userId, academyId);
     if (dto.userId === userId) throw new BadRequestException('You already run this academy');
+
+    /*
+     * A local team may invite players and scouts, and no coaches at all.
+     *
+     * This is the door that matters: `createCoach` mints an account, but an
+     * invitation is how an existing coach would be attached, and blocking only
+     * the first would leave the rule enforced on one route out of two.
+     *
+     * Before the target is even looked up, because the answer does not depend
+     * on them: telling a local team's manager "that account is not a coach"
+     * sends them looking for a different person to invite, when the thing that
+     * cannot happen is the invitation.
+     */
+    if (dto.role === 'COACH') {
+      const academy = await this.prisma.academyProfile.findUnique({
+        where: { id: academyId },
+        select: { kind: true },
+      });
+      if (!academy) throw new NotFoundException('Academy not found');
+      assertNotLocalTeam(academy.kind, 'have coaches');
+    }
 
     const target = await this.prisma.user.findUnique({
       where: { id: dto.userId },

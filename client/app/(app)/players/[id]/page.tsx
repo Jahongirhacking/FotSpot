@@ -1,5 +1,6 @@
 import { AttributeBoard } from '@/components/player/AttributeBoard';
 import { OnThePitchCard } from '@/components/player/OnThePitchCard';
+import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import { RecommendationSummary } from '@/components/player/RecommendationSummary';
 import { RelationBadge } from '@/components/shared/RelationBadge';
@@ -180,6 +181,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
             />
           </div>
         </div>
+
+        {/* Above the recommendations, because "who is he with now" is the
+            question a reader has before "who vouched for him". */}
+        <CurrentSquadCard squad={player?.squad} t={t} />
 
         {summary && (
           <RecommendationSummary

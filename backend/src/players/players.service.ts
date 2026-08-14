@@ -194,7 +194,8 @@ export class PlayersService {
     });
     if (!profile) throw new NotFoundException('Player profile not found');
     const stars = await this.starsFor([profile.id]);
-    return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0 };
+    const squad = await this.currentSquadFor(userId);
+    return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0, squad };
   }
 
   /**
@@ -232,7 +233,58 @@ export class PlayersService {
    *
    * A pending or archived academy grants nothing: verification is what makes the
    * accountability real rather than asserted.
+   *
+   * Neither does a local team. Nobody checked it — that is what makes it a local
+   * team rather than an academy — so its staff are exactly the unaccountable
+   * viewers this rule exists to keep away from a hidden child's profile. A local
+   * team's manager and scouts see what any signed-in user sees.
    */
+  /**
+   * The academy or local team this player is currently in, or null.
+   *
+   * ## Why the backend answers this
+   *
+   * The screen has to say "Verified Academy" or "Local Team", and a frontend
+   * that inferred it would be inferring from a field it should not have to know
+   * the rules of. The row's own `kind` and `status` come back and the UI picks
+   * words for them (§14).
+   *
+   * ## Outside the profile cache, on purpose
+   *
+   * `RedisKeys.playerProfile` is invalidated by clip and profile writes and by
+   * nothing that changes a membership — accepting an invitation and being
+   * expelled both leave it alone. Folding the squad into that cached object
+   * would make a player who joined this morning still show as unattached for
+   * the rest of the TTL, and fixing it properly would mean adding an
+   * invalidation call to every membership mutation in three services. One
+   * indexed lookup per profile read is the cheaper and more honest answer.
+   *
+   * ACTIVE only, and the earliest join if somehow there are two: a released or
+   * inactive membership is a person who *was* somewhere, which is a history the
+   * MVP does not show (README §3–8 is Phase 2).
+   */
+  private async currentSquadFor(playerUserId: string) {
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId: playerUserId, role: 'PLAYER', status: 'ACTIVE' },
+      orderBy: { joinedAt: 'asc' },
+      select: {
+        academyId: true,
+        groupId: true,
+        academy: { select: { name: true, kind: true, status: true } },
+      },
+    });
+    if (!membership) return null;
+
+    return {
+      academyId: membership.academyId,
+      academyName: membership.academy.name,
+      kind: membership.academy.kind,
+      status: membership.academy.status,
+      /** Null means the academy's reserve — see AcademyMember.groupId. */
+      groupId: membership.groupId,
+    };
+  }
+
   private async isAcademyStaff(viewer?: AuthUser): Promise<boolean> {
     if (!viewer) return false;
     const membership = await this.prisma.academyMember.findFirst({
@@ -240,7 +292,7 @@ export class PlayersService {
         userId: viewer.userId,
         role: { in: ['MANAGER', 'COACH', 'SCOUT'] },
         status: 'ACTIVE',
-        academy: { status: 'VERIFIED' },
+        academy: { kind: 'ACADEMY', status: 'VERIFIED' },
       },
       select: { id: true },
     });
@@ -285,7 +337,7 @@ export class PlayersService {
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
-    return profile;
+    return { ...profile, squad: await this.currentSquadFor(owner.userId) };
   }
 
   /**

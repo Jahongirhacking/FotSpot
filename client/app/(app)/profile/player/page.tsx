@@ -10,6 +10,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { EditPlayerDetails } from './EditPlayerDetails';
+import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
 
 export const metadata: Metadata = { title: 'Player details' };
 
@@ -41,15 +42,23 @@ export default async function PlayerDetailsPage() {
           {t.profile.noPlayerCardHint}
         </Alert>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.profile.cardDetails}</CardTitle>
-            <CardDescription>{t.profile.cardDetailsHint}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <EditPlayerDetails player={player} />
-          </CardContent>
-        </Card>
+        <>
+          {/* Read-only here: which squad you are in is not something the player
+              edits, it is the result of an invitation somebody else sent. It is
+              on this screen because this is where a player checks what the rest
+              of the platform currently says about them. */}
+          <CurrentSquadCard squad={player?.squad} t={t} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.profile.cardDetails}</CardTitle>
+              <CardDescription>{t.profile.cardDetailsHint}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EditPlayerDetails player={player} />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

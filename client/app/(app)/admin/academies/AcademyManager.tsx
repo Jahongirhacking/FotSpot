@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Building2, Check, KeyRound, Pencil, Plus, UserCog, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { ManagerCredentials } from '@/lib/api/resources';
-import type { AcademyProfile } from '@/lib/api/types';
+import type { AcademyKind, AcademyProfile } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import {
@@ -181,7 +181,9 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setManagingId(managingId === academy?.id ? null : academy?.id)}
+                        onClick={() =>
+                          setManagingId(managingId === academy?.id ? null : academy?.id)
+                        }
                       >
                         <UserCog aria-hidden /> {t.admin.manager}
                       </Button>
@@ -260,6 +262,17 @@ function AcademyForm({
   const [district, setDistrict] = React.useState(defaults?.district ?? '');
   const [description, setDescription] = React.useState(defaults?.description ?? '');
   const [manager, setManagerChoice] = React.useState<ManagerChoice>(EMPTY_MANAGER);
+  /*
+   * Academy or local team, and only while creating.
+   *
+   * `withManager` is true exactly on the create form, which is also the only
+   * moment the kind can be chosen — the API leaves it out of `UpdateAcademyDto`
+   * on purpose, because promoting a local team would hand its staff sight of
+   * private players' profiles and that is a vetting decision, not an edit.
+   * Showing a control here that the edit form cannot honour would be worse than
+   * not showing one.
+   */
+  const [kind, setKind] = React.useState<AcademyKind>(defaults?.kind ?? 'ACADEMY');
 
   return (
     <Card>
@@ -279,6 +292,7 @@ function AcademyForm({
               ...(district.trim() ? { district: district.trim() } : {}),
               ...(description.trim() ? { description: description.trim() } : {}),
               ...(withManager ? managerBody(manager) : {}),
+              ...(withManager && kind === 'LOCAL_TEAM' ? { kind } : {}),
             });
           }}
         >
@@ -290,6 +304,19 @@ function AcademyForm({
               placeholder={t.placeholders.academyName}
             />
           </Field>
+
+          {withManager && (
+            <Field label={t.admin?.organisationType} htmlFor="ac-kind" hint={t.admin?.kindHint}>
+              <Select
+                id="ac-kind"
+                value={kind}
+                onChange={(e) => setKind(e.target.value as AcademyKind)}
+              >
+                <option value="ACADEMY">{t.academy?.verifiedAcademyType}</option>
+                <option value="LOCAL_TEAM">{t.academy?.localTeam}</option>
+              </Select>
+            </Field>
+          )}
 
           <RegionDistrictPicker
             idPrefix="ac"

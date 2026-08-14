@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { browserFetch } from '@/lib/api/browser';
+import type { AcademyKind } from '@/lib/api/types';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -36,7 +37,27 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
   const mobileOpen = openedOnPath === pathname;
   const setMobileOpen = (open: boolean) => setOpenedOnPath(open ? pathname : null);
 
-  const nav = navForRole(activeRole);
+  /*
+   * Which organisation this manager runs.
+   *
+   * Asked only while acting as a manager, and cached for the session: a
+   * record's kind is set once at creation and never edited, so refetching it
+   * every five minutes would be polling for an event that cannot happen.
+   *
+   * The menu waits for nothing — while this is in flight `isLocalTeam` is
+   * false, so a local team manager may see Trials for the length of one
+   * request. That is the right way round: the alternative is every academy
+   * manager's menu missing an entry until a request lands, and pressing Trials
+   * early reaches a page whose actions the API refuses anyway.
+   */
+  const { data: myAcademy } = useQuery({
+    queryKey: ['my-academy-kind'],
+    queryFn: () => browserFetch<{ kind?: AcademyKind } | null>('/academies/mine'),
+    enabled: isAuthenticated && activeRole === 'academy_manager',
+    staleTime: Infinity,
+  });
+
+  const nav = navForRole(activeRole, { isLocalTeam: myAcademy?.kind === 'LOCAL_TEAM' });
 
   /*
    * The Trials badge.

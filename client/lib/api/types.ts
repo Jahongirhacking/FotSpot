@@ -309,8 +309,26 @@ export interface MemberTransfer {
   };
 }
 
+/**
+ * The squad a player is in right now, as the API reports it.
+ *
+ * `kind` and `status` come from the server rather than being inferred here —
+ * whether a squad counts as a verified academy is the backend's rule, and a
+ * screen that decided it locally would be a second copy of that rule.
+ */
+export interface CurrentSquad {
+  academyId: string;
+  academyName: string;
+  kind: AcademyKind;
+  status: VerificationStatus;
+  /** Null means the academy's reserve rather than a named group. */
+  groupId: string | null;
+}
+
 export interface PlayerProfile {
   id: string;
+  /** Null when the player is in no academy or local team squad. */
+  squad?: CurrentSquad | null;
   /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
@@ -347,9 +365,16 @@ export interface PlayerProfile {
   createdAt: string;
 }
 
+/**
+ * Academy or local team. Set once at creation; see the Prisma enum's note.
+ * Never rendered raw — `LOCAL_TEAM` reads as "Local Team / Mahalliy Jamoa".
+ */
+export type AcademyKind = 'ACADEMY' | 'LOCAL_TEAM';
+
 export interface AcademyProfile {
   id: string;
   name: string;
+  kind: AcademyKind;
   region?: string | null;
   district?: string | null;
   description?: string | null;
