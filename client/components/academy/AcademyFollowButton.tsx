@@ -111,6 +111,25 @@ export function AcademyFollowButton({
         {following ? <BellRing aria-hidden /> : <Bell aria-hidden />}
         {following ? t.academy?.followingForTrials : t.academy?.followForTrials}
       </Button>
+
+      {/*
+       * Only when it failed, so the happy path costs no layout — which is the
+       * point of the hint having moved into the button's tooltip.
+       *
+       * Something has to say this. `onError` puts the cache back, so a failed
+       * press ends with the button flipped to where it started; without a line
+       * here that reads as "I pressed it and nothing happened", and the player's
+       * next move is to press it again.
+       *
+       * `role="status"` because the button's own label is identical before and
+       * after the failure — there is nothing for a screen reader to notice
+       * unless the message announces itself.
+       */}
+      {error && (
+        <p role="status" className="text-danger mt-1.5 max-w-[26ch] text-xs leading-snug">
+          {t.common?.somethingWrong}
+        </p>
+      )}
     </div>
   );
 }
