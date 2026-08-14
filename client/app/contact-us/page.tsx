@@ -1,20 +1,20 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeft, Clock, Mail, MapPin, Phone } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Alert } from '@/components/ui/Feedback';
-import { getServerT } from '@/lib/i18n/server';
 import {
   CONTACT_EMAIL,
   LOCATION,
   PHONES,
   PLACEHOLDER,
   SOCIAL_ACCOUNTS,
-  SUPPORT_EMAIL,
+  SUPPORT_BOT,
   contactCopy,
 } from '@/lib/contact';
+import { getServerT } from '@/lib/i18n/server';
 import { SOCIAL_MARKS } from '@/lib/social-marks';
 import { cn } from '@/lib/utils';
+import { ArrowLeft, Clock, Link2, Mail, MapPin, Phone } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
 
 /**
  * A top-level route, deliberately outside `(app)` — same reasoning as `/privacy`
@@ -41,10 +41,7 @@ export default async function ContactUsPage() {
   const { locale, t } = await getServerT();
   const copy = contactCopy(locale);
 
-  const emails = [
-    { label: copy.emailGeneral, address: CONTACT_EMAIL },
-    { label: copy.emailSupport, address: SUPPORT_EMAIL },
-  ];
+  const emails = [{ label: copy.emailGeneral, address: CONTACT_EMAIL }];
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
@@ -84,7 +81,7 @@ export default async function ContactUsPage() {
           title={copy.emailHeading}
         >
           <ul className="space-y-3">
-            {emails.map((entry) => (
+            {emails?.map((entry) => (
               <li key={entry?.address}>
                 <p className="text-muted text-xs">{entry?.label}</p>
                 <a
@@ -95,6 +92,13 @@ export default async function ContactUsPage() {
                 </a>
               </li>
             ))}
+
+            <li>
+              <p className="text-muted text-xs">{copy?.emailSupport}</p>
+              <a href={SUPPORT_BOT} className="text-primary font-medium break-all hover:underline">
+                FotSpot Q&A bot
+              </a>
+            </li>
           </ul>
         </Section>
 
@@ -120,19 +124,7 @@ export default async function ContactUsPage() {
           </p>
         </Section>
 
-        <Section
-          icon={
-            <svg
-              viewBox="0 0 24 24"
-              className="text-primary size-4"
-              fill="currentColor"
-              aria-hidden
-            >
-              <path d={SOCIAL_MARKS.telegram?.path} />
-            </svg>
-          }
-          title={copy.socialHeading}
-        >
+        <Section icon={<Link2 className="text-primary size-4" />} title={copy.socialHeading}>
           <p className="text-muted mb-4 text-sm leading-relaxed">{copy.socialIntro}</p>
 
           <ul className="grid gap-3 sm:grid-cols-2">

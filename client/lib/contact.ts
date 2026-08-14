@@ -28,9 +28,9 @@ import type { SocialNetwork } from '@/lib/social-marks';
 export const PLACEHOLDER = true;
 
 /** General enquiries. Separate from the privacy address, which is a legal one. */
-export const CONTACT_EMAIL = 'hello@fotspot.uz';
+export const CONTACT_EMAIL = 'bulalarteam@gmail.com';
 /** Anything about a child's data or an account deletion. */
-export const SUPPORT_EMAIL = 'support@fotspot.uz';
+export const SUPPORT_BOT = 'https://t.me/fotspot_qa_bot';
 
 /**
  * E.164, because that is what a `tel:` link should carry — a number written
@@ -47,8 +47,8 @@ export interface PhoneNumber {
 }
 
 export const PHONES: PhoneNumber[] = [
-  { e164: '+998900000000', display: '+998 90 000 00 00', labelKey: 'phonePrimary' },
-  { e164: '+998910000000', display: '+998 91 000 00 00', labelKey: 'phoneSupport' },
+  { e164: '+9989500780577', display: '+998(50)-078-05-77', labelKey: 'phonePrimary' },
+  // { e164: '+998910000000', display: '+998 91 000 00 00', labelKey: 'phoneSupport' },
 ];
 
 export interface SocialAccount {
@@ -59,10 +59,10 @@ export interface SocialAccount {
 }
 
 export const SOCIAL_ACCOUNTS: SocialAccount[] = [
-  { network: 'telegram', handle: '@fotspot', href: 'https://t.me/fotspot' },
-  { network: 'instagram', handle: '@fotspot', href: 'https://instagram.com/fotspot' },
-  { network: 'facebook', handle: 'FotSpot', href: 'https://facebook.com/fotspot' },
-  { network: 'youtube', handle: 'FotSpot', href: 'https://youtube.com/@fotspot' },
+  { network: 'telegram', handle: '@fotspot_uz', href: 'https://t.me/FotSpot_uz' },
+  // { network: 'instagram', handle: '@fotspot', href: 'https://instagram.com/fotspot' },
+  // { network: 'facebook', handle: 'FotSpot', href: 'https://facebook.com/fotspot' },
+  { network: 'youtube', handle: '@FotSpot_uz', href: 'https://www.youtube.com/@fotspot_uz' },
 ];
 
 /** Where the team is, roughly. No street address — this is not an office. */
@@ -88,7 +88,7 @@ export interface ContactCopy {
 const uz: ContactCopy = {
   title: 'Biz bilan bog‘lanish',
   intro:
-    'FotSpot’ni Bulalar Team — O‘zbekistondagi kichik IT jamoa — yuritadi. Savolingiz, taklifingiz yoki shikoyatingiz bo‘lsa, quyidagi yo‘llardan biri bilan yozing.',
+    'FotSpot O‘zbekistondagi IT jamoa — Bulalar Team tomonidan ishlab chiqiladi va boshqariladi. Savolingiz, taklifingiz yoki shikoyatingiz bormi? Biz sizni tinglashga va yordam berishga tayyormiz. Quyidagi kanallardan biri orqali biz bilan bog‘laning.',
   placeholderNotice:
     'Quyidagi manzil va raqamlar hozircha namuna sifatida turibdi — haqiqiylari tez orada qo‘shiladi.',
   emailHeading: 'Elektron pochta',
@@ -126,7 +126,7 @@ const ru: ContactCopy = {
 const en: ContactCopy = {
   title: 'Contact us',
   intro:
-    'FotSpot is run by Bulalar Team, a small IT team in Uzbekistan. If you have a question, a suggestion or a complaint, reach us any of these ways.',
+    'FotSpot разработан и управляется IT-командой Bulalar Team из Узбекистана. У вас есть вопрос, предложение или жалоба? Мы готовы вас выслушать и помочь. Свяжитесь с нами любым удобным способом через каналы ниже.',
   placeholderNotice:
     'The addresses and numbers below are placeholders for now — the real ones are coming shortly.',
   emailHeading: 'Email',
