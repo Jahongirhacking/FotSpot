@@ -1790,9 +1790,21 @@ export class RecommendationsService {
    * button to a scout whose next attempt is going to be refused.
    */
   async getScoutStats(userId: string) {
-    const [stats, pending] = await Promise.all([
+    const [stats, pending, sentRecommendations] = await Promise.all([
       this.prisma.scoutStats.findUnique({ where: { userId } }),
       this.tariffs.pendingRecommendationQuota(userId),
+      /*
+       * How many recommendations this scout has actually filed.
+       *
+       * Deliberately *not* `stats.totalRecommendations`, which counts target rows
+       * because that is the denominator the §1.5 success rate is defined on — a
+       * GLOBAL recommendation has no targets and is free until an academy takes
+       * it up. That is correct for reputation and wrong for a card labelled
+       * "Yuborilgan": a scout who had sent two was reading zero.
+       *
+       * So the formula keeps its denominator and the label gets its own number.
+       */
+      this.prisma.recommendation.count({ where: { scoutId: userId } }),
     ]);
 
     return {
@@ -1805,6 +1817,7 @@ export class RecommendationsService {
         weight: 1,
       }),
       pending,
+      sentRecommendations,
     };
   }
 

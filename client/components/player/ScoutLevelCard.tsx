@@ -47,7 +47,7 @@ export function ScoutLevelCard({
         </div>
 
         <dl className="grid grid-cols-3 gap-2 text-center">
-          <Stat label={t.scouts.sent} value={stats?.totalRecommendations} />
+          <Stat label={t.scouts.sent} value={stats?.sentRecommendations ?? stats?.totalRecommendations} />
           <Stat label={t.profile.accepted} value={stats?.acceptedRecommendations} />
           <Stat label={t.profile.successRate} value={`${Math.round(stats?.successRate)}%`} />
         </dl>

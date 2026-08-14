@@ -422,6 +422,15 @@ export interface CoachProfile {
 }
 
 export interface ScoutStats {
+  /**
+   * Recommendations this scout has actually filed.
+   *
+   * Separate from `totalRecommendations`, which counts *target rows* because that
+   * is the denominator §1.5's success rate is defined on — a GLOBAL
+   * recommendation has no targets until an academy takes it up. Correct for
+   * reputation, wrong for a card labelled "sent", which is why both exist.
+   */
+  sentRecommendations?: number;
   userId: string;
   totalRecommendations: number;
   acceptedRecommendations: number;

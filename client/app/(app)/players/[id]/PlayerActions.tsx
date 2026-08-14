@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { Check, Heart, Mail, Send, UserPlus, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Follow, MyCoachReview } from '@/lib/api/types';
@@ -409,6 +410,8 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
 
 function RecommendDialog({ playerId, playerName }: { playerId: string; playerName: string }) {
   const { t } = useI18n();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [academyId, setAcademyId] = React.useState('');
   const [note, setNote] = React.useState('');
@@ -438,7 +441,27 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
           note: note || undefined,
         },
       }),
-    onSuccess: () => setOpen(false),
+    /*
+     * Filing a recommendation changes two things this component does not own, and
+     * closing the dialog told neither of them.
+     *
+     * `router.refresh()` is for the scout's own statistics. They are rendered by
+     * Server Components — ScoutHome on the dashboard and the aside on
+     * /recommendations — which fetch with `cache: 'no-store'`, so the *fetch* was
+     * never stale. What was stale is Next's router cache: nothing asked those
+     * segments to render again, so the scout filed two recommendations and kept
+     * reading "Yuborilgan: 0" and "0/10" until a hard reload. This is the same
+     * call AcademyTrials and TrialAdmin already make after their mutations.
+     *
+     * The invalidation is for this page: `RecommendationResult` above swaps the
+     * button for "already recommended" from `player-recommendation`, and it would
+     * otherwise keep offering to file the one just filed.
+     */
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['my-recommendation', playerId] });
+      router.refresh();
+    },
     meta: { success: t.recommendations.recommendationSent },
   });
 
