@@ -182,15 +182,21 @@ export default async function AcademyDetailPage({
   });
 
   /*
-   * Following is a player's action.
+   * Following is a player's action, and only on an academy.
    *
    * It exists to make trial announcements arrive, and `announceToMatchingPlayers`
    * only ever looks at players — a coach who followed would be writing a row
    * nothing reads. Guests see it too and are sent to sign in, the same trade the
    * player profile makes: hiding the reason to make an account from exactly the
    * people who have not made one is the wrong way round.
+   *
+   * Never on a local team. `TrialsService.create` refuses one a trial, so the
+   * announcement this button subscribes to cannot ever be written — the button
+   * would be a promise the product has no way of keeping, and the player would
+   * be left waiting for a notification rather than checking the team's page.
+   * This is the same reason the trials card is absent from a local team above.
    */
-  const canFollowForTrials = !session || session?.activeRole === 'player';
+  const canFollowForTrials = !isLocalTeam && (!session || session?.activeRole === 'player');
 
   return (
     <div className="space-y-6">
