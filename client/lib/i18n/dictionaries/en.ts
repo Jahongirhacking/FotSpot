@@ -586,6 +586,19 @@ export const en: Dictionary = {
     currentSquad: 'Current squad',
     noSquad: 'Not currently in an academy or local team squad.',
     squadReserve: 'Reserve',
+
+    // ---- Squad and history ----
+    currentAcademy: 'Current academy',
+    noCurrentAcademy: 'You are not with an academy right now.',
+    localTeams: 'Local teams',
+    noLocalTeams: 'You are not playing for a local team right now.',
+    academyHistory: 'Academy history',
+    viewAcademy: 'View academy',
+    viewTeam: 'View team',
+    leaveTeam: 'Leave team',
+    leaveTeamConfirm: 'Leave {team}?',
+    leaveTeamWarning:
+      'You will be removed from this team’s squad. To come back, the team has to invite you again. Your academy is not affected.',
   },
 
   relation: {
@@ -1029,6 +1042,8 @@ export const en: Dictionary = {
   },
 
   notifications: {
+    squadJoined: 'A player joined your squad',
+    squadLeft: 'A player left your squad',
     joinInvitation: 'Congratulations — an academy is inviting you to join',
     joinAnswer: 'Your invitation has been answered',
     academyInvitation: 'An academy is inviting you for a trial',

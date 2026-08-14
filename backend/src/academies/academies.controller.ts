@@ -308,6 +308,22 @@ export class AcademiesController {
   }
 
   /** Let a member go, so another academy can take them on. */
+  /**
+   * A player leaving a local team of their own accord.
+   *
+   * `:id/membership` and not `:id/members/:memberId`, because the caller is not
+   * naming a row — they are ending *their own* membership, and the only id they
+   * should have to know is the team's. It also removes the shape of the request
+   * that would let somebody pass a member id that is not theirs.
+   *
+   * Academies refuse: that membership ends when another academy takes the player
+   * on or when this one releases them (PLAYER_SQUAD.md §5C).
+   */
+  @Delete(':id/membership')
+  leaveTeam(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.academiesService.leaveTeam(user.userId, id);
+  }
+
   @Post(':id/members/:memberId/release')
   releaseMember(
     @CurrentUser() user: AuthUser,

@@ -184,7 +184,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
         {/* Above the recommendations, because "who is he with now" is the
             question a reader has before "who vouched for him". */}
-        <CurrentSquadCard squad={player?.squad} t={t} />
+        <CurrentSquadCard memberships={player?.memberships} t={t} canLeave={isSelf} />
 
         {summary && (
           <RecommendationSummary

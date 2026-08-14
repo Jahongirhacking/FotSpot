@@ -585,6 +585,19 @@ export const ru: Dictionary = {
     currentSquad: 'Текущий состав',
     noSquad: 'Сейчас не состоит ни в академии, ни в локальной команде.',
     squadReserve: 'Резерв',
+
+    // ---- Состав и история ----
+    currentAcademy: 'Текущая академия',
+    noCurrentAcademy: 'Вы пока не состоите ни в одной академии.',
+    localTeams: 'Локальные команды',
+    noLocalTeams: 'Вы пока не играете ни в одной локальной команде.',
+    academyHistory: 'История академий',
+    viewAcademy: 'Открыть академию',
+    viewTeam: 'Открыть команду',
+    leaveTeam: 'Покинуть команду',
+    leaveTeamConfirm: 'Покинуть {team}?',
+    leaveTeamWarning:
+      'Вас удалят из состава этой команды. Чтобы вернуться, команда должна пригласить вас снова. На вашу академию это не повлияет.',
   },
 
   relation: {
@@ -1026,6 +1039,8 @@ export const ru: Dictionary = {
   },
 
   notifications: {
+    squadJoined: 'В ваш состав пришёл игрок',
+    squadLeft: 'Игрок покинул ваш состав',
     joinInvitation: 'Поздравляем! Вас приглашают в академию',
     joinAnswer: 'Есть ответ на приглашение',
     academyInvitation: 'Академия приглашает вас на просмотр',

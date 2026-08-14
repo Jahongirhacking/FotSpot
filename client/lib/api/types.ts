@@ -310,25 +310,45 @@ export interface MemberTransfer {
 }
 
 /**
- * The squad a player is in right now, as the API reports it.
+ * One membership, current or ended, as the API reports it.
  *
  * `kind` and `status` come from the server rather than being inferred here —
  * whether a squad counts as a verified academy is the backend's rule, and a
  * screen that decided it locally would be a second copy of that rule.
  */
-export interface CurrentSquad {
+export interface SquadMembership {
   academyId: string;
   academyName: string;
   kind: AcademyKind;
   status: VerificationStatus;
   /** Null means the academy's reserve rather than a named group. */
   groupId: string | null;
+  groupName: string | null;
+  joinedAt: string;
+  /** Null while the membership is current. */
+  leftAt: string | null;
+}
+
+/**
+ * Where a player plays, and where they used to.
+ *
+ * Three fields because they answer three questions the product treats
+ * differently: one academy at a time, any number of local teams at once, and a
+ * history that is never rewritten. A single list would flatten all three.
+ */
+export interface PlayerMemberships {
+  /** The one current academy, or null when they are with none. */
+  academy: SquadMembership | null;
+  /** Every local team they currently play for. */
+  localTeams: SquadMembership[];
+  /** Academies they have left. Never contains the current one. */
+  academyHistory: SquadMembership[];
 }
 
 export interface PlayerProfile {
   id: string;
-  /** Null when the player is in no academy or local team squad. */
-  squad?: CurrentSquad | null;
+  /** Absent on responses that predate the field; never null once present. */
+  memberships?: PlayerMemberships;
   /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
@@ -710,6 +730,8 @@ export type NotificationEvent =
   | 'TRIAL_RESCHEDULED'
   | 'TRIAL_RESULT'
   | 'SQUAD_PLACEMENT'
+  | 'SQUAD_JOINED'
+  | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT';
 
 export interface AppNotification {

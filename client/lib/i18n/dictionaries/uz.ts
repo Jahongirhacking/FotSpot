@@ -614,6 +614,19 @@ export const uz = {
     currentSquad: 'Joriy tarkib',
     noSquad: 'Hozircha hech qaysi akademiya yoki mahalliy jamoa tarkibida emas.',
     squadReserve: 'Zaxira',
+
+    // ---- Tarkib va tarix ----
+    currentAcademy: 'Joriy akademiya',
+    noCurrentAcademy: 'Hozircha hech qaysi akademiyada emassiz.',
+    localTeams: 'Mahalliy jamoalar',
+    noLocalTeams: 'Hozircha mahalliy jamoada o‘ynamayapsiz.',
+    academyHistory: 'Akademiya tarixi',
+    viewAcademy: 'Akademiyani ochish',
+    viewTeam: 'Jamoani ochish',
+    leaveTeam: 'Jamoadan chiqish',
+    leaveTeamConfirm: '{team} jamoasidan chiqasizmi?',
+    leaveTeamWarning:
+      'Siz bu jamoa tarkibidan chiqarilasiz. Qaytish uchun jamoa sizni yana taklif qilishi kerak. Akademiyangizga bu ta’sir qilmaydi.',
   },
 
   relation: {
@@ -1067,6 +1080,8 @@ export const uz = {
   },
 
   notifications: {
+    squadJoined: 'Tarkibingizga yangi futbolchi qo‘shildi',
+    squadLeft: 'Futbolchi tarkibingizdan chiqdi',
     joinInvitation: 'Tabriklaymiz! Sizni akademiyaga taklif qilishmoqda',
     joinAnswer: 'Taklifga javob keldi',
     academyInvitation: 'Akademiya sizni sinovga chaqirmoqda',

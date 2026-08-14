@@ -19,6 +19,7 @@ import { TariffsService } from '../tariffs/tariffs.service';
 import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
 import { assertNotLocalTeam } from './academy-kind.util';
+import { SquadNotificationsService } from './squad-notifications.service';
 import {
   isValidRegionDistrict,
   normaliseDistrict,
@@ -56,6 +57,7 @@ export class AcademiesService {
     private audit: AuditService,
     private storage: StorageService,
     private tariffs: TariffsService,
+    private squads: SquadNotificationsService,
   ) {}
 
   /**
@@ -834,8 +836,72 @@ export class AcademiesService {
       });
     });
     await this.invalidate(academyId);
+    // After the write, so a rolled-back release cannot leave a manager reading
+    // that somebody left a squad they are still in (§17). The actor is skipped
+    // inside — a manager who pressed remove does not need telling.
+    if (member.role === 'PLAYER') {
+      await this.squads.announceLeft(academyId, member.userId, userId);
+    }
     await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, { memberId, academyId });
     return released;
+  }
+
+  /**
+   * A player walking out of a local team of their own accord.
+   *
+   * ## Only a local team, and this is the whole rule
+   *
+   * An academy membership is not the player's to end (PLAYER_SQUAD.md §5C): it
+   * changes when another academy takes them on or when the academy lets them
+   * go, and both of those are somebody else's decision by design. A local team
+   * is a different arrangement — people join one for a season and stop turning
+   * up — and holding somebody in a neighbourhood squad they have left is a
+   * record that is simply wrong.
+   *
+   * Refused rather than hidden. There is no "leave academy" control anywhere in
+   * the UI, and this is what makes that true rather than merely tidy: a player
+   * calling this endpoint against their academy gets 403.
+   *
+   * ## The row goes, rather than becoming history
+   *
+   * Local team history is explicitly not required (§8), and keeping a RELEASED
+   * row would have a second cost: `InvitationsService.invite` treats any
+   * non-RELEASED membership as "already here", so the row would sit in the way
+   * of the team ever inviting them back. Deleting it makes rejoining the same
+   * act as joining.
+   */
+  async leaveTeam(userId: string, academyId: string) {
+    const membership = await this.prisma.academyMember.findUnique({
+      where: { academyId_userId: { academyId, userId } },
+      select: { id: true, role: true, academy: { select: { kind: true } } },
+    });
+    if (!membership) throw new NotFoundException('You are not in this squad');
+
+    if (membership.academy.kind !== 'LOCAL_TEAM') {
+      throw new ForbiddenException(
+        'An academy membership ends when another academy takes you on, or when this one releases you',
+      );
+    }
+    // The manager *is* the team here; letting them delete their own membership
+    // would leave a squad nobody can run.
+    if (membership.role === 'MANAGER') {
+      throw new ForbiddenException('A manager cannot leave their own team');
+    }
+
+    await this.prisma.academyMember.delete({ where: { id: membership.id } });
+    await this.invalidate(academyId);
+    if (membership.role === 'PLAYER') {
+      // The actor is the player themselves, so the manager — a different person
+      // — is the one who hears about it.
+      await this.squads.announceLeft(academyId, userId, userId);
+    }
+    await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, {
+      academyId,
+      memberId: membership.id,
+      voluntary: true,
+    });
+
+    return { left: true };
   }
 
   /** Everyone any academy has released — the transfer list. */

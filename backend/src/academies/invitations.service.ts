@@ -10,6 +10,9 @@ import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SquadNotificationsService } from './squad-notifications.service';
+import { RedisService } from '../redis/redis.service';
+import { RedisKeys } from '../redis/redis.keys';
 import { InviteMemberDto } from './dto/invitation.dto';
 import { assertNotLocalTeam } from './academy-kind.util';
 
@@ -37,6 +40,8 @@ export class InvitationsService {
     private storage: StorageService,
     private audit: AuditService,
     private notifications: NotificationsService,
+    private squads: SquadNotificationsService,
+    private redis: RedisService,
   ) {}
 
   /**
@@ -199,7 +204,7 @@ export class InvitationsService {
   async decide(userId: string, invitationId: string, accept: boolean) {
     const invitation = await this.prisma.academyInvitation.findUnique({
       where: { id: invitationId },
-      include: { academy: { select: { id: true, name: true } } },
+      include: { academy: { select: { id: true, name: true, kind: true } } },
     });
     if (!invitation) throw new NotFoundException('Invitation not found');
     if (invitation.userId !== userId) {
@@ -233,7 +238,53 @@ export class InvitationsService {
         ? await this.prisma.coachProfile.findUnique({ where: { userId }, select: { id: true } })
         : null;
 
+    /*
+     * Who they are leaving, if anybody.
+     *
+     * A player belongs to at most one academy at a time (PLAYER_SQUAD.md §3),
+     * and accepting an academy's invitation is one of only two ways that can
+     * change — the other is the manager removing them. Local teams are not in
+     * this query: a player may be in any number of those at once, and joining
+     * an academy takes them out of none of them (§7).
+     *
+     * Read before the transaction and closed inside it. Reading it here costs
+     * one indexed lookup and keeps the transaction to writes; the row cannot
+     * meaningfully change in between, because the only two things that would
+     * change it are this endpoint and a manager acting on the same player, and
+     * whichever lands second leaves a consistent state either way.
+     */
+    const leaving =
+      invitation.role === 'PLAYER' && invitation.academy.kind === 'ACADEMY'
+        ? await this.prisma.academyMember.findFirst({
+            where: {
+              userId,
+              role: 'PLAYER',
+              status: 'ACTIVE',
+              academyId: { not: invitation.academyId },
+              academy: { kind: 'ACADEMY' },
+            },
+            select: { id: true, academyId: true, academy: { select: { name: true } } },
+          })
+        : null;
+
     const accepted = await this.prisma.$transaction(async (tx) => {
+      /*
+       * The old academy closes in the same transaction that opens the new one.
+       *
+       * Either both happen or neither does — the two states this rules out are
+       * a player showing at two academies, and a player showing at none after
+       * accepting an invitation. RELEASED rather than deleted, because the
+       * membership is the history: `joinedAt` stays, `releasedAt` records the
+       * end, and the academy that trained them keeps its record of having done
+       * so (§4).
+       */
+      if (leaving) {
+        await tx.academyMember.update({
+          where: { id: leaving.id },
+          data: { status: 'RELEASED', releasedAt: new Date(), groupId: null },
+        });
+      }
+
       await tx.academyMember.upsert({
         where: { academyId_userId: { academyId: invitation.academyId, userId } },
         // Rejoining after a release starts over: reserve, active, no squad.
@@ -274,6 +325,38 @@ export class InvitationsService {
     });
 
     await this.announce(invitation.invitedByUserId, invitation, true);
+    /*
+     * The squads that changed, told after the write landed (§17).
+     *
+     * Inside the transaction a rollback would leave a manager reading that
+     * somebody joined a squad they are not in. Out here the worst case is the
+     * opposite and much cheaper: the membership is real and one message did not
+     * arrive.
+     *
+     * Two messages, not one: the academy taking the player on and the academy
+     * losing them are different people who each need to know, and the departure
+     * is the one nobody would otherwise be told about.
+     */
+    await this.squads.announceJoined(invitation.academyId, userId, userId);
+    if (leaving) {
+      await this.squads.announceLeft(leaving.academyId, userId, userId);
+    }
+
+    /*
+     * Both academies' cached profiles, because both squads changed.
+     *
+     * `AcademiesService.getPublicProfile` caches the academy *with its members*
+     * for five minutes, and nothing on this path was clearing it — so a manager
+     * who watched somebody accept saw the old member count until the TTL ran
+     * out, which reads as the acceptance not having worked. A transfer touches
+     * two academies, and the one losing the player is the one that would
+     * otherwise keep showing them (§25).
+     */
+    await this.redis.del(
+      RedisKeys.academyProfile(invitation.academyId),
+      ...(leaving ? [RedisKeys.academyProfile(leaving.academyId)] : []),
+    );
+
     await this.audit.record(userId, AuditAction.ACADEMY_INVITATION_ANSWERED, {
       invitationId,
       academyId: invitation.academyId,

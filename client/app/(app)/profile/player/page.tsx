@@ -47,7 +47,7 @@ export default async function PlayerDetailsPage() {
               edits, it is the result of an invitation somebody else sent. It is
               on this screen because this is where a player checks what the rest
               of the platform currently says about them. */}
-          <CurrentSquadCard squad={player?.squad} t={t} />
+          <CurrentSquadCard memberships={player?.memberships} t={t} canLeave />
 
           <Card>
             <CardHeader>

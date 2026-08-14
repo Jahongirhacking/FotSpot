@@ -2688,6 +2688,35 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/membership": {
+      "delete": {
+        "operationId": "academies_leaveTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Let a member go, so another academy can take them on.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/members/{memberId}/release": {
       "post": {
         "operationId": "academies_releaseMember",
@@ -2719,7 +2748,6 @@
             "bearer": []
           }
         ],
-        "summary": "Let a member go, so another academy can take them on.",
         "tags": [
           "academies"
         ]
