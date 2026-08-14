@@ -608,6 +608,7 @@ export const uz = {
       'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',
     seek: 'Vaqtni o‘zgartirish',
+    views: 'Ko‘rishlar',
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
     signInToLike: 'Yoqtirish uchun tizimga kiring',
     uploadBlocked:
