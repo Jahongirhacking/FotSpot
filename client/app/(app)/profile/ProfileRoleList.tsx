@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Check } from 'lucide-react';
+import { Check, UserCircle } from 'lucide-react';
 import { ROLE_META, type Role } from '@/lib/roles';
 import { useSession } from '@/components/layout/SessionProvider';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -35,7 +35,17 @@ export function ProfileRoleList({
     <ul className="space-y-2">
       {roles.map((role) => {
         const meta = ROLE_META[role];
-        const Icon = meta?.icon;
+        /*
+         * `?? UserCircle` rather than `meta?.icon` alone.
+         *
+         * `role` is a string from the session, and `ROLE_META` is a client-side
+         * table of the roles this build knows about. A role the server grants
+         * that is not in that table made `Icon` undefined, and rendering
+         * `<undefined />` is not a missing icon — React throws "element type is
+         * invalid" and the whole list goes to an error boundary. The copy below
+         * already falls back the same way.
+         */
+        const Icon = meta?.icon ?? UserCircle;
         const isActive = role === activeRole;
         const copy = labels[role] ?? { label: role, blurb: '' };
 

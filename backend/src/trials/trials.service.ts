@@ -21,6 +21,7 @@ import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
 import { sanitizeRichText } from '../common/rich-text.util';
+import { assertNotLocalTeam } from '../academies/academy-kind.util';
 
 @Injectable()
 export class TrialsService {
@@ -35,6 +36,22 @@ export class TrialsService {
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
     await this.assertAcademyManager(userId, academyId);
+
+    /*
+     * A local team does not hold trials.
+     *
+     * Refused at creation and nowhere else, deliberately: applying, accepting,
+     * rejecting and the coach's pass/fail all hang off a trial row, so a kind
+     * that can never own one cannot reach any of them. Guarding each of those
+     * separately would be five checks defending a door that has no room behind
+     * it — and five places for the rule to drift.
+     */
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { kind: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+    assertNotLocalTeam(academy.kind, 'hold trials');
 
     const date = new Date(dto.date);
     const applyDeadline = new Date(dto.applyDeadline);
@@ -99,9 +116,22 @@ export class TrialsService {
      * that creates a trial. Ages become dates once, here, and the database uses
      * its index on the column.
      */
-    const bounds: { gte?: Date; lte?: Date } = {};
-    // Oldest allowed: born no earlier than (trial date − maxAge − 1 year + 1 day).
-    if (trial.ageRangeMax != null) bounds.gte = birthDateForAge(trial.date, trial.ageRangeMax + 1);
+    const bounds: { gt?: Date; lte?: Date } = {};
+    /*
+     * Oldest allowed, and the boundary is **exclusive**.
+     *
+     * `birthDateForAge(date, max + 1)` is the day somebody turns `max + 1` on the
+     * trial date — already a year too old. `gte` therefore let them through: a
+     * trial for 16–18-year-olds notified a player born exactly nineteen years
+     * before it, because the bound included its own edge. Caught by seeding a
+     * player at exactly max + 1 and watching them get the notification.
+     *
+     * `gt` excludes that day and keeps every day after it, which is the rule the
+     * range states. The lower bound below stays `lte` for the mirror reason:
+     * somebody turning `min` *on* the trial date is old enough, and inclusive is
+     * what makes that true.
+     */
+    if (trial.ageRangeMax != null) bounds.gt = birthDateForAge(trial.date, trial.ageRangeMax + 1);
     // Youngest allowed: born no later than (trial date − minAge).
     if (trial.ageRangeMin != null) bounds.lte = birthDateForAge(trial.date, trial.ageRangeMin);
 
@@ -111,10 +141,30 @@ export class TrialsService {
           { primaryPosition: { in: trial.positions } },
           { secondaryPosition: { in: trial.positions } },
         ],
-        ...(bounds.gte || bounds.lte ? { birthDate: bounds } : {}),
-        // A private account has asked not to be found; an unannounced trial is
-        // part of what that buys.
-        user: { isPrivate: false, isActive: true },
+        ...(bounds.gt || bounds.lte ? { birthDate: bounds } : {}),
+        user: {
+          // A private account has asked not to be found; an unannounced trial is
+          // part of what that buys.
+          isPrivate: false,
+          isActive: true,
+          /*
+           * And they must have asked to hear from *this* academy.
+           *
+           * Position and age already made the message true, but true is not the
+           * same as wanted: a fifteen-year-old goalkeeper matches every U16
+           * goalkeeping trial in the country, and a product that texts them all
+           * of them is a product they mute. Following an academy is the player
+           * saying which ones they want.
+           *
+           * Reuses the existing `Follow` row — `targetType: ACADEMY` already
+           * means exactly this, and its `@@unique([followerId, targetType,
+           * targetId])` already makes a duplicate follow impossible. A second
+           * table for the same statement would need its own uniqueness, its own
+           * cleanup on account deletion, and a rule for what it means when the
+           * two disagree.
+           */
+          follows: { some: { targetType: 'ACADEMY', targetId: trial.academyId } },
+        },
       },
       select: { userId: true },
     });

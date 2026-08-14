@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, UserCircle } from 'lucide-react';
 import { ROLE_META, type Role } from '@/lib/roles';
 import { homeHrefForRole } from './nav';
 import { useSession } from './SessionProvider';
@@ -56,7 +56,9 @@ export function RoleSwitcher() {
         <MenuLabel>{t.roles.viewAs}</MenuLabel>
         {roles.map((role) => {
           const meta = ROLE_META[role];
-          const Icon = meta?.icon;
+          // A role this build has no entry for still switches — see the note in
+          // ProfileRoleList. `<undefined />` throws; a generic glyph does not.
+          const Icon = meta?.icon ?? UserCircle;
           return (
             <MenuRadioItem key={role} checked={role === activeRole} onSelect={() => switchTo(role)}>
               <Icon className="text-muted size-4" aria-hidden />

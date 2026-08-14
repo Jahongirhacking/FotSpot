@@ -224,6 +224,20 @@ export class FollowsService {
     return { items, total: items.length };
   }
 
+  /**
+   * Does this caller follow this target?
+   *
+   * Reads the unique index directly rather than counting, so the answer costs
+   * one index lookup no matter how many followers the target has.
+   */
+  async status(followerId: string, targetType: FollowTargetType, targetId: string) {
+    const row = await this.prisma.follow.findUnique({
+      where: { followerId_targetType_targetId: { followerId, targetType, targetId } },
+      select: { createdAt: true },
+    });
+    return { targetType, targetId, following: row !== null, since: row?.createdAt ?? null };
+  }
+
   async countFollowers(targetType: FollowTargetType, targetId: string) {
     const followers = await this.prisma.follow.count({ where: { targetType, targetId } });
     return { targetType, targetId, followers };

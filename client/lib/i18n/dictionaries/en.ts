@@ -412,6 +412,12 @@ export const en: Dictionary = {
     askMessagePlaceholder: 'Optional — tell us what you mean if it helps',
   },
 
+  playingStyleModal: {
+    title: 'Playing styles',
+    subtitle: 'Each style is a way of playing. Tap one to read more.',
+    showPlayers: 'Players in this style',
+  },
+
   academy: {
     memberType: 'Member type',
     pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
@@ -548,6 +554,51 @@ export const en: Dictionary = {
     endorsedScouts: 'Endorsed scouts',
     endorsedCoaches: 'Endorsed coaches',
     following: 'Following',
+
+    // ---- Contact ----
+    contactTitle: 'Contact',
+    contactHint: 'The numbers parents ring. Not the manager’s personal phone.',
+    primaryPhone: 'Primary phone',
+    backupPhone: 'Backup phone',
+    backupPhoneHint: 'The number to try when nobody answers the first one.',
+
+    // ---- Location ----
+    locationHint:
+      'The pin is the address a parent drives to on a Saturday. Region and district are what search filters on.',
+    currentLocation: 'Saved point:',
+    noLocationYet: 'Not set yet',
+    unsavedLocation: 'Unsaved change: {coords}. It stays off the profile until you save.',
+    revertLocation: 'Back to saved point',
+
+    // ---- Trial announcements ----
+    followForTrials: 'Follow for trials',
+    followingForTrials: 'Following for trials',
+    followForTrialsHint:
+      'You will be notified when this academy publishes a trial matching your position and age.',
+
+    // ---- Local team ----
+    localTeam: 'Local Team',
+    verifiedAcademyType: 'Verified Academy',
+    localTeamNoTrials: 'Local teams do not hold trials — players join by invitation.',
+    localTeamNoCoaches: 'A local team has no coaches.',
+
+    // ---- Current squad ----
+    currentSquad: 'Current squad',
+    noSquad: 'Not currently in an academy or local team squad.',
+    squadReserve: 'Reserve',
+
+    // ---- Squad and history ----
+    currentAcademy: 'Current academy',
+    noCurrentAcademy: 'You are not with an academy right now.',
+    localTeams: 'Local teams',
+    noLocalTeams: 'You are not playing for a local team right now.',
+    academyHistory: 'Academy history',
+    viewAcademy: 'View academy',
+    viewTeam: 'View team',
+    leaveTeam: 'Leave team',
+    leaveTeamConfirm: 'Leave {team}?',
+    leaveTeamWarning:
+      'You will be removed from this team’s squad. To come back, the team has to invite you again. Your academy is not affected.',
   },
 
   relation: {
@@ -581,6 +632,7 @@ export const en: Dictionary = {
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
+    views: 'Views',
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',
     uploadBlocked:
@@ -990,6 +1042,8 @@ export const en: Dictionary = {
   },
 
   notifications: {
+    squadJoined: 'A player joined your squad',
+    squadLeft: 'A player left your squad',
     joinInvitation: 'Congratulations — an academy is inviting you to join',
     joinAnswer: 'Your invitation has been answered',
     academyInvitation: 'An academy is inviting you for a trial',
@@ -1276,6 +1330,9 @@ export const en: Dictionary = {
     manageAcademiesHint:
       'Academies are onboarded by the platform team. A created academy counts as verified immediately.',
     newAcademy: 'New academy',
+    organisationType: 'Organisation type',
+    kindHint:
+      'A local team stays out of the academy directory and has no coaches or trials. It cannot be changed later.',
     academyName: 'Name',
     assignManager: 'Assign a manager',
     assignManagerHint: 'Optional. Can be assigned later.',
@@ -1392,5 +1449,6 @@ export const en: Dictionary = {
       'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',
     privacyPolicy: 'Privacy policy',
     termsOfService: 'Terms of service',
+    contactUs: 'Contact us',
   },
 };

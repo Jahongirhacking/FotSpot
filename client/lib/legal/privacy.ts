@@ -30,7 +30,7 @@ import type { Locale } from '@/lib/i18n';
  * a policy inviting people to write somewhere nobody looks is worse than one
  * that gives no address at all, since it converts a request into silence.
  */
-export const PRIVACY_CONTACT_EMAIL = 'privacy@fotspot.uz';
+export const PRIVACY_CONTACT_EMAIL = 'bulalarteam@gmail.com';
 
 /** Shown at the top so a reader can tell whether they have seen this version. */
 export const PRIVACY_LAST_UPDATED = '2026-08-13';

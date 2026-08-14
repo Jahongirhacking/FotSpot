@@ -1291,6 +1291,13 @@ export const follows = {
   countFollowers: (targetType: FollowTargetType, targetId: string, opts: Opts = {}) =>
     apiFetch<{ followers: number }>(`/follows/count/${targetType}/${targetId}`, opts),
 
+  /** Whether the caller follows one target. Requires a session — 401 for guests. */
+  status: (targetType: FollowTargetType, targetId: string, opts: Opts = {}) =>
+    apiFetch<{ following: boolean; since: string | null }>(
+      `/follows/status/${targetType}/${targetId}`,
+      opts,
+    ),
+
   /** Academy → scout trust (README §1.5.2). */
   setScoutState: (
     academyId: string,

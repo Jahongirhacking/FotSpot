@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { MapPin, ExternalLink } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { yandexMapsUrl } from '@/lib/maps';
 
 /**
  * `ssr: false` is not allowed in a Server Component (Next 16), and Leaflet
@@ -28,9 +29,9 @@ const AcademyMapView = dynamic(
  * region line already does — and worse, it looks like a located academy until
  * you read it.
  *
- * The link out matters as much as the map: a pin says where, and a phone's own
- * maps app is what turns that into a route. It carries the academy's name so the
- * destination arrives labelled rather than as bare coordinates.
+ * The link out matters as much as the map: a pin says where, and a maps app is
+ * what turns that into a route. It goes to Yandex, which is the provider with
+ * real street data for Uzbekistan — see lib/maps.ts.
  */
 export function AcademyMap({
   latitude,
@@ -60,7 +61,7 @@ export function AcademyMap({
         </span>
         <a
           className="text-primary inline-flex items-center gap-1 hover:underline"
-          href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
+          href={yandexMapsUrl({ latitude, longitude, address: name }) ?? undefined}
           target="_blank"
           rel="noopener noreferrer"
         >

@@ -436,6 +436,12 @@ export const uz = {
     askMessagePlaceholder: 'Ixtiyoriy — nimani nazarda tutayotganingizni yozishingiz mumkin',
   },
 
+  playingStyleModal: {
+    title: 'O‘yin uslublari',
+    subtitle: 'Har bir uslub — maydonda o‘ynash usuli. Batafsil ko‘rish uchun bosing.',
+    showPlayers: 'Shu stildagi futbolchilar',
+  },
+
   academy: {
     memberType: 'A’zo turi',
     pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',
@@ -575,6 +581,52 @@ export const uz = {
     endorsedScouts: 'Tasdiqlangan skautlar',
     endorsedCoaches: 'Tasdiqlangan murabbiylar',
     following: 'Kuzatilmoqda',
+
+    // ---- Aloqa ----
+    contactTitle: 'Bog‘lanish',
+    contactHint: 'Ota-onalar shu raqamlarga qo‘ng‘iroq qiladi. Menejerning shaxsiy raqami emas.',
+    primaryPhone: 'Asosiy telefon',
+    backupPhone: 'Zaxira telefon',
+    backupPhoneHint: 'Birinchi raqamga javob bo‘lmaganda uriniladigan raqam.',
+
+    // ---- Joylashuv ----
+    locationHint:
+      'Xaritadagi nuqta — ota-ona shanba kuni bolasini olib boradigan aniq manzil. Viloyat va tuman esa qidiruv uchun.',
+    currentLocation: 'Saqlangan nuqta:',
+    noLocationYet: 'Hali belgilanmagan',
+    unsavedLocation: 'Saqlanmagan o‘zgarish: {coords}. Saqlaguningizcha profilda ko‘rinmaydi.',
+    revertLocation: 'Saqlangan nuqtaga qaytarish',
+
+    // ---- Sinovlarga obuna ----
+    followForTrials: 'Sinovlar uchun kuzatish',
+    followingForTrials: 'Sinovlar kuzatilmoqda',
+    followForTrialsHint:
+      'Bu akademiya sizning pozitsiyangiz va yoshingizga mos sinov e’lon qilganda xabar olasiz.',
+
+    // ---- Mahalliy jamoa ----
+    localTeam: 'Mahalliy jamoa',
+    verifiedAcademyType: 'Tasdiqlangan akademiya',
+    localTeamNoTrials:
+      'Mahalliy jamoalar sinov o‘tkazmaydi — o‘yinchilar taklif orqali qo‘shiladi.',
+    localTeamNoCoaches: 'Mahalliy jamoada murabbiylar bo‘lmaydi.',
+
+    // ---- Joriy tarkib ----
+    currentSquad: 'Joriy tarkib',
+    noSquad: 'Hozircha hech qaysi akademiya yoki mahalliy jamoa tarkibida emas.',
+    squadReserve: 'Zaxira',
+
+    // ---- Tarkib va tarix ----
+    currentAcademy: 'Joriy akademiya',
+    noCurrentAcademy: 'Hozircha hech qaysi akademiyada emassiz.',
+    localTeams: 'Mahalliy jamoalar',
+    noLocalTeams: 'Hozircha mahalliy jamoada o‘ynamayapsiz.',
+    academyHistory: 'Akademiya tarixi',
+    viewAcademy: 'Akademiyani ochish',
+    viewTeam: 'Jamoani ochish',
+    leaveTeam: 'Jamoadan chiqish',
+    leaveTeamConfirm: '{team} jamoasidan chiqasizmi?',
+    leaveTeamWarning:
+      'Siz bu jamoa tarkibidan chiqarilasiz. Qaytish uchun jamoa sizni yana taklif qilishi kerak. Akademiyangizga bu ta’sir qilmaydi.',
   },
 
   relation: {
@@ -608,6 +660,7 @@ export const uz = {
       'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',
     seek: 'Vaqtni o‘zgartirish',
+    views: 'Ko‘rishlar',
     likeOnce: 'Har bir hisob bitta marta yoqtira oladi — rol almashtirish hisobga olinmaydi.',
     signInToLike: 'Yoqtirish uchun tizimga kiring',
     uploadBlocked:
@@ -1027,6 +1080,8 @@ export const uz = {
   },
 
   notifications: {
+    squadJoined: 'Tarkibingizga yangi futbolchi qo‘shildi',
+    squadLeft: 'Futbolchi tarkibingizdan chiqdi',
     joinInvitation: 'Tabriklaymiz! Sizni akademiyaga taklif qilishmoqda',
     joinAnswer: 'Taklifga javob keldi',
     academyInvitation: 'Akademiya sizni sinovga chaqirmoqda',
@@ -1332,6 +1387,9 @@ export const uz = {
     manageAcademiesHint:
       'Akademiyalarni platforma jamoasi qo‘shadi. Yaratilgan akademiya darhol tasdiqlangan hisoblanadi.',
     newAcademy: 'Yangi akademiya',
+    organisationType: 'Tashkilot turi',
+    kindHint:
+      'Mahalliy jamoa akademiyalar ro‘yxatida ko‘rinmaydi, murabbiy va sinovlarga ega bo‘lmaydi. Keyinchalik o‘zgartirib bo‘lmaydi.',
     academyName: 'Nomi',
     assignManager: 'Rahbar tayinlash',
     assignManagerHint: 'Ixtiyoriy. Keyinroq ham tayinlash mumkin.',
@@ -1448,6 +1506,7 @@ export const uz = {
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',
     privacyPolicy: 'Maxfiylik siyosati',
     termsOfService: 'Foydalanish shartlari',
+    contactUs: 'Biz bilan bog‘lanish',
   },
 };
 

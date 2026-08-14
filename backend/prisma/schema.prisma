@@ -417,9 +417,33 @@ model CoachProfile {
 
 // ---------- ACADEMY (1.10) ----------
 
+/**
+ * Whether this row is a real academy or a local team.
+ * ## Why not another `VerificationStatus` value
+ * `status` answers "has an admin checked this", and `VerificationStatus` is
+ * shared with `CoachProfile` — adding `UNVERIFIED` there would put a value on
+ * every coach that means nothing about coaches. Worse, `PENDING` and `REJECTED`
+ * already mean "waiting to be reviewed" and "archived", and a local team is
+ * neither: it is not queued for promotion into an academy, and it is not dead.
+ * So this is a second, independent axis. A row has a kind *and* a status, and
+ * every existing academy is `ACADEMY` by default — the migration changes no
+ * row's behaviour, which is the whole point.
+ * ## What the kind decides
+ * The professional evaluation pipeline: coaches, online coach review, trials,
+ * pass/fail, and the recommendation settlement that hangs off them. A local team
+ * has none of it. What it shares is the squad — invitations, membership, groups,
+ * scouts — because that half is the same job at both.
+ */
+enum AcademyKind {
+  ACADEMY
+  LOCAL_TEAM
+}
+
 model AcademyProfile {
   id               String             @id @default(uuid())
   name             String
+  /// Academy or local team. See AcademyKind — this gates the coach/trial half.
+  kind             AcademyKind        @default(ACADEMY)
   region           String?
   district         String?
   description      String?
@@ -464,6 +488,20 @@ model AcademyProfile {
   instagramUrl String?
   youtubeUrl   String?
 
+  /**
+   * How to phone the academy, and where to try when the first one rings out.
+   * Two columns rather than one, because these are two different numbers with
+   * two different jobs: the primary is the one printed on the profile, and the
+   * backup is what a parent tries at eight in the evening when nobody answers
+   * the office. An array would store the same thing while losing which is which.
+   * Not the manager's `User.phone`. That is how the platform reaches the person
+   * who signs in; this is how a family reaches the club, and a manager who
+   * leaves should not take the academy's number with them.
+   * E.164, validated at the edge like every other phone in the schema.
+   */
+  primaryPhone String?
+  backupPhone  String?
+
   photos   AcademyPhoto[]
   featured AcademyFeatured[]
 
@@ -482,6 +520,9 @@ model AcademyProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Every public listing filters on both halves, so they are indexed together.
+  @@index([kind, status])
 }
 
 enum AcademyMemberRole {
@@ -706,6 +747,8 @@ model AcademyMember {
   createdAt DateTime @default(now())
 
   @@unique([academyId, userId])
+  /// "Where does this person currently play" — asked on every profile read.
+  @@index([userId, status])
 }
 
 // ---------- MEDIA (1.7) ----------
@@ -1596,6 +1639,21 @@ enum NotificationEvent {
    * should be told they passed and were wanted, not only handed a form.
    */
   SQUAD_PLACEMENT
+  /**
+   * Somebody joined a squad this manager runs.
+   *
+   * Separate from ACADEMY_JOIN_ANSWER, which is the answer to *one* invitation
+   * and is sent to whoever asked. This is the squad changing, and it is sent
+   * however the change happened — an invitation accepted, a transfer imported —
+   * so a manager who did not send the invitation still learns their squad grew.
+   */
+  SQUAD_JOINED
+  /**
+   * Somebody left a squad this manager runs, and why does not change who needs
+   * to know. A player removed by the manager, a player who left a local team of
+   * their own accord, and a player who accepted another academy all end here.
+   */
+  SQUAD_LEFT
   VERIFICATION_RESULT
 }
 

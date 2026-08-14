@@ -194,7 +194,8 @@ export class PlayersService {
     });
     if (!profile) throw new NotFoundException('Player profile not found');
     const stars = await this.starsFor([profile.id]);
-    return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0 };
+    const memberships = await this.membershipsFor(userId);
+    return { ...this.withAvatar(profile), stars: stars.get(profile.id) ?? 0, memberships };
   }
 
   /**
@@ -232,7 +233,92 @@ export class PlayersService {
    *
    * A pending or archived academy grants nothing: verification is what makes the
    * accountability real rather than asserted.
+   *
+   * Neither does a local team. Nobody checked it — that is what makes it a local
+   * team rather than an academy — so its staff are exactly the unaccountable
+   * viewers this rule exists to keep away from a hidden child's profile. A local
+   * team's manager and scouts see what any signed-in user sees.
    */
+  /**
+   * Every squad this player is in, and every academy they used to be in.
+   *
+   * ## Three lists, because they are three different questions
+   *
+   * A player has at most one academy and any number of local teams
+   * (PLAYER_SQUAD.md §3, §7), so a single "current squad" could only ever
+   * answer one of them — it was the shape this returned before local teams
+   * could be several. The academy is a scalar because the domain says so; the
+   * teams are a list for the same reason.
+   *
+   * History is the academies they have left, which the schema already keeps:
+   * a membership is never deleted, it becomes RELEASED with `releasedAt` set
+   * (see `releaseMember`). So this reads history rather than maintaining a
+   * second table that would have to agree with it. Local team history is not
+   * kept and not asked for (§8) — leaving one deletes the row.
+   *
+   * ## Never inferred from history
+   *
+   * "Current" means an ACTIVE row and nothing else (§18). A player who left
+   * Bunyodkor for Paxtakor has two academy rows and only one of them is
+   * current; deriving the answer from "most recent" would make the transfer
+   * look like it had not happened for as long as the clocks disagreed.
+   *
+   * ## Outside the profile cache, on purpose
+   *
+   * `RedisKeys.playerProfile` is invalidated by clip and profile writes and by
+   * nothing that changes a membership — accepting an invitation, being
+   * released, and leaving a team all leave it alone. Folding these into that
+   * cached object would show a player who transferred this morning at their old
+   * academy for the rest of the TTL, and fixing it properly would mean an
+   * invalidation call in every membership mutation across three services. One
+   * indexed lookup per profile read is the cheaper and more honest answer, and
+   * it is why `@@index([userId, status])` exists.
+   */
+  private async membershipsFor(playerUserId: string) {
+    const rows = await this.prisma.academyMember.findMany({
+      where: { userId: playerUserId, role: 'PLAYER' },
+      orderBy: { joinedAt: 'desc' },
+      select: {
+        academyId: true,
+        groupId: true,
+        status: true,
+        joinedAt: true,
+        releasedAt: true,
+        group: { select: { name: true } },
+        academy: { select: { name: true, kind: true, status: true } },
+      },
+    });
+
+    const describe = (row: (typeof rows)[number]) => ({
+      academyId: row.academyId,
+      academyName: row.academy.name,
+      kind: row.academy.kind,
+      status: row.academy.status,
+      /** Null means the academy's reserve — see AcademyMember.groupId. */
+      groupId: row.groupId,
+      groupName: row.group?.name ?? null,
+      joinedAt: row.joinedAt,
+      leftAt: row.releasedAt,
+    });
+
+    const active = rows.filter((row) => row.status === 'ACTIVE');
+
+    return {
+      /** The one current academy, or null. */
+      academy: active.filter((row) => row.academy.kind === 'ACADEMY').map(describe)[0] ?? null,
+      /** Every local team they currently play for, newest first. */
+      localTeams: active.filter((row) => row.academy.kind === 'LOCAL_TEAM').map(describe),
+      /**
+       * Academies they have left. A current membership is never repeated here —
+       * it has not ended, and listing it under history alongside itself would
+       * read as having been there twice (§19).
+       */
+      academyHistory: rows
+        .filter((row) => row.academy.kind === 'ACADEMY' && row.status !== 'ACTIVE')
+        .map(describe),
+    };
+  }
+
   private async isAcademyStaff(viewer?: AuthUser): Promise<boolean> {
     if (!viewer) return false;
     const membership = await this.prisma.academyMember.findFirst({
@@ -240,7 +326,7 @@ export class PlayersService {
         userId: viewer.userId,
         role: { in: ['MANAGER', 'COACH', 'SCOUT'] },
         status: 'ACTIVE',
-        academy: { status: 'VERIFIED' },
+        academy: { kind: 'ACADEMY', status: 'VERIFIED' },
       },
       select: { id: true },
     });
@@ -285,7 +371,7 @@ export class PlayersService {
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
-    return profile;
+    return { ...profile, memberships: await this.membershipsFor(owner.userId) };
   }
 
   /**

@@ -38,6 +38,28 @@ export class FollowsController {
     return this.followsService.listFollowing(user.userId, dto);
   }
 
+  /**
+   * Whether the caller follows one specific thing.
+   *
+   * A page showing a follow button needs one boolean, and the alternatives are
+   * both wrong for it: `GET /follows/me` pages through everything the caller
+   * follows, so the answer for an academy on page three is "no" until somebody
+   * scrolls, and counting followers says how many without saying whether you are
+   * one of them.
+   *
+   * Not `@Public()`. The question is "do *I* follow this", which needs a caller
+   * to be about — a guest gets 401 rather than a `false` they could mistake for
+   * a state they can toggle.
+   */
+  @Get('status/:targetType/:targetId')
+  status(
+    @CurrentUser() user: AuthUser,
+    @Param('targetType') targetType: FollowTargetType,
+    @Param('targetId') targetId: string,
+  ) {
+    return this.followsService.status(user.userId, targetType, targetId);
+  }
+
   @Public()
   @Get('count/:targetType/:targetId')
   countFollowers(

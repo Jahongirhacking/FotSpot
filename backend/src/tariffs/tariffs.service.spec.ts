@@ -102,15 +102,21 @@ describe('TariffsService — pending recommendations (C)', () => {
   });
 
   /**
-   * The slot is held by an undecided *target*, never by `Recommendation.status`.
+   * A slot is held by an undecided target **or** by a live global.
    *
-   * That column is only mirrored from the verdict for single-academy rows, so
-   * reading it would leave a three-academy recommendation counted for ever once
-   * all three had answered — a slot the scout could never get back. And a GLOBAL
-   * recommendation has no targets at all, so it can never be answered and must
-   * not occupy one.
+   * The target branch is why `Recommendation.status` is not read: that column is
+   * only mirrored from the verdict for single-academy rows, so reading it would
+   * leave a three-academy recommendation counted for ever once all three had
+   * answered — a slot the scout could never get back.
+   *
+   * The second branch was missing, and it mattered. A GLOBAL recommendation has
+   * no targets, so `some` was false and it occupied nothing: a scout who never
+   * picked an academy consumed no slots at all, walked straight past the limit,
+   * and read "0/10" after filing ten. Nobody has decided a live global, which is
+   * exactly what pending means — `clearedAt: null` already separates live from
+   * finished, so the branch needs nothing more.
    */
-  it('asks the target rows, so a fully answered recommendation frees its slot', async () => {
+  it('counts undecided targets and live globals, and frees an answered slot', async () => {
     const { service, prisma } = build({ recommendations: 3 });
     await service.pendingRecommendationQuota('scout-1');
 
@@ -118,7 +124,10 @@ describe('TariffsService — pending recommendations (C)', () => {
       where: {
         scoutId: 'scout-1',
         clearedAt: null,
-        targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } },
+        OR: [
+          { targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } } },
+          { targets: { none: {} } },
+        ],
       },
     });
   });

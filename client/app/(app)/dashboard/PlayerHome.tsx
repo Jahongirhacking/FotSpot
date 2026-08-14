@@ -1,4 +1,5 @@
 import { AttributeBoard } from '@/components/player/AttributeBoard';
+import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
 import { OnThePitchCard } from '@/components/player/OnThePitchCard';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import { Badge } from '@/components/ui/Badge';
@@ -85,6 +86,11 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
             <AttributeBoard player={profile} assessments={assessments} clips={clips} canUpload />
           </div>
         </div>
+
+        {/* Where they actually play, under the card that describes how.
+            `canLeave`: this is the player's own screen, and a local team is the
+            one membership that is theirs to end (§8). */}
+        <CurrentSquadCard memberships={profile?.memberships} t={t} canLeave />
       </div>
 
       <aside className="space-y-6">

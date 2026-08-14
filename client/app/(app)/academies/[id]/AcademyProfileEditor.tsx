@@ -2,9 +2,20 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, GripVertical, ImagePlus, MapPin, Share2, Trash2, Trophy } from 'lucide-react';
+import {
+  Check,
+  GripVertical,
+  ImagePlus,
+  MapPin,
+  Phone,
+  Share2,
+  Trash2,
+  Trophy,
+  X,
+} from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { uploadToStorage } from '@/lib/api/upload';
 import type { AcademyFeatured, AcademyMember, AcademyPhoto, AcademyProfile } from '@/lib/api/types';
@@ -17,6 +28,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { Alert, Skeleton } from '@/components/ui/Feedback';
 import type { LatLng } from '@/components/academy/LocationPicker';
 import { cn, initials } from '@/lib/utils';
+import { yandexMapsUrl } from '@/lib/maps';
 
 /**
  * Leaflet only exists on this screen.
@@ -49,31 +61,72 @@ const FEATURED_ROLES = [
  *
  * ## Sections save independently
  *
- * Location, identity, links, photos and the featured lists are five unrelated
- * decisions, and a single "save" across all of them means a manager who dragged
- * a pin has to think about whether their Instagram link is still right. Each
- * card commits its own change; nothing here is a wizard.
+ * Contact, location, identity, links, photos and the featured lists are
+ * unrelated decisions, and a single "save" across all of them means a manager
+ * who dragged a pin has to think about whether their Instagram link is still
+ * right. Each card commits its own change; nothing here is a wizard.
+ *
+ * ## Saving a form returns to preview; touching a collection does not
+ *
+ * The three field forms — contact, location, links — end on their save button,
+ * so that is where the edit finishes and the manager is shown the result on the
+ * profile itself. Photos and the featured lists have no save button at all:
+ * adding a picture or dragging somebody up a list commits as you go, and bouncing
+ * out to preview after each one would make building a gallery a loop of pressing
+ * "Tahrirlash" again. Same rule stated once, applied where it fits.
  *
  * ## Only the manager sees it
  *
- * Rendered by the academy page when the viewer manages this academy. The API
- * refuses every one of these routes to anybody else, so this is a matter of not
- * showing controls that would 403 rather than the boundary itself.
+ * Rendered by the academy page when the viewer manages this academy *and* asked
+ * to edit. The API refuses every one of these routes to anybody else, so this is
+ * a matter of not showing controls that would 403 rather than the boundary
+ * itself.
  */
 export function AcademyProfileEditor({
   academy,
   members,
+  backHref,
 }: {
   academy: AcademyProfile;
   members: AcademyMember[];
+  /** Preview mode — where "done" and every successful save lead back to. */
+  backHref: string;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
+
+  /**
+   * Leaving edit mode, with the saved data on screen.
+   *
+   * `replace` rather than `push` so that pressing back after saving does not
+   * reopen the form the manager just finished with, and `refresh` because the
+   * page they are returning to is a Server Component holding the values from
+   * before the edit — without it they would land on the preview and see the old
+   * phone number, which reads as the save having failed.
+   */
+  const toPreview = () => {
+    router.replace(backHref);
+    router.refresh();
+  };
 
   return (
     <div className="space-y-4">
+      {/* The way out, at the top where it is found without scrolling past five
+          cards. Cancel is honest here: nothing on this screen is staged, so
+          leaving discards only the fields nobody pressed save on. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">{t.academy?.editProfileTitle}</h2>
+        <Button asChild variant="outline" size="sm">
+          <Link href={backHref}>
+            <X aria-hidden /> {t.common?.cancel}
+          </Link>
+        </Button>
+      </div>
+
+      <ContactCard academy={academy} onSaved={toPreview} />
       <IdentityCard academy={academy} />
-      <LocationCard academy={academy} />
-      <SocialCard academy={academy} />
+      <LocationCard academy={academy} onSaved={toPreview} />
+      <SocialCard academy={academy} onSaved={toPreview} />
       <PhotosCard academyId={academy?.id} />
 
       <Card>
@@ -97,6 +150,96 @@ export function AcademyProfileEditor({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * The two numbers a family rings.
+ *
+ * Both optional and both clearable: an academy with one line should not have to
+ * invent a second, and one whose backup number was disconnected needs a way to
+ * take it down. Emptying a box sends `''`, which the API stores as null — see
+ * `UpdateAcademyDto`, where that distinction is spelled out.
+ *
+ * Sent together in one PATCH because they are one decision ("here is how to
+ * reach us"), unlike the location and the links, which are not.
+ */
+function ContactCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: () => void }) {
+  const { t } = useI18n();
+
+  const [form, setForm] = React.useState({
+    primaryPhone: academy?.primaryPhone ?? '',
+    backupPhone: academy?.backupPhone ?? '',
+  });
+  const [error, setError] = React.useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: () =>
+      browserFetch<AcademyProfile>(`/academies/${academy?.id}`, {
+        method: 'PATCH',
+        // Trimmed, because a trailing space is the difference between a valid
+        // E.164 number and a 400 the manager cannot see the cause of.
+        body: {
+          primaryPhone: form?.primaryPhone?.trim(),
+          backupPhone: form?.backupPhone?.trim(),
+        },
+      }),
+    onSuccess: () => {
+      setError(null);
+      onSaved();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Phone className="text-primary size-4" aria-hidden /> {t.academy?.contactTitle}
+        </CardTitle>
+        <p className="text-muted text-xs">{t.academy?.contactHint}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t.academy?.primaryPhone} htmlFor="primaryPhone">
+            <Input
+              id="primaryPhone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+998 90 123 45 67"
+              value={form?.primaryPhone ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, primaryPhone: event.target.value }))
+              }
+            />
+          </Field>
+
+          <Field
+            label={`${t.academy?.backupPhone} · ${t.common?.optional}`}
+            htmlFor="backupPhone"
+            hint={t.academy?.backupPhoneHint}
+          >
+            <Input
+              id="backupPhone"
+              type="tel"
+              inputMode="tel"
+              placeholder="+998 91 234 56 78"
+              value={form?.backupPhone ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, backupPhone: event.target.value }))
+              }
+            />
+          </Field>
+        </div>
+
+        <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>
+          <Check aria-hidden /> {t.common.save}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -168,10 +311,21 @@ function IdentityCard({ academy }: { academy: AcademyProfile }) {
   );
 }
 
-/** Where the academy is. Saved explicitly, so a stray tap is not a change. */
-function LocationCard({ academy }: { academy: AcademyProfile }) {
+/**
+ * Where the academy is. Saved explicitly, so a stray tap is not a change.
+ *
+ * ## The same map, told what it is for
+ *
+ * The picker itself is unchanged — OpenStreetMap tiles, drag or tap or use my
+ * location. What was missing around it was any statement of what the pin means
+ * and whether the one on screen is the stored one: a manager who tapped the map
+ * and wandered off left a card that looked identical to a saved change. So the
+ * heading says what the point answers, the coordinates are labelled saved or
+ * unsaved, and there is a way back to the stored point that does not involve
+ * remembering where it was.
+ */
+function LocationCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: () => void }) {
   const { t } = useI18n();
-  const router = useRouter();
 
   const saved: LatLng | null =
     academy?.latitude != null && academy?.longitude != null
@@ -189,7 +343,7 @@ function LocationCard({ academy }: { academy: AcademyProfile }) {
       }),
     onSuccess: () => {
       setError(null);
-      router.refresh();
+      onSaved();
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -197,35 +351,82 @@ function LocationCard({ academy }: { academy: AcademyProfile }) {
   const moved =
     draft && (draft.latitude !== saved?.latitude || draft.longitude !== saved?.longitude);
 
+  const savedHref = saved ? yandexMapsUrl({ ...saved, address: academy?.name }) : null;
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <MapPin className="text-primary size-4" aria-hidden /> {t.academy?.locationLabel}
         </CardTitle>
+        <p className="text-muted text-xs">{t.academy?.locationHint}</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {error && <Alert tone="danger">{error}</Alert>}
 
+        {/* What is stored right now, before any of this session's dragging.
+            An academy that has never set a point says so plainly — the map
+            centred on Tashkent otherwise reads as "we are in Tashkent". */}
+        <div className="border-border bg-surface-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-xs">
+          <span className="text-muted">{t.academy?.currentLocation}</span>
+          {saved ? (
+            <>
+              <span className="font-mono">
+                {saved?.latitude?.toFixed(5)}, {saved?.longitude?.toFixed(5)}
+              </span>
+              {savedHref && (
+                <a
+                  href={savedHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {t.academy?.openInMaps}
+                </a>
+              )}
+            </>
+          ) : (
+            <span className="font-medium">{t.academy?.noLocationYet}</span>
+          )}
+        </div>
+
         <LocationPicker value={draft} onChange={setDraft} />
 
-        <Button
-          size="sm"
-          disabled={!moved}
-          loading={save.isPending}
-          onClick={() => draft && save.mutate(draft)}
-        >
-          <Check aria-hidden /> {t.common.save}
-        </Button>
+        {/* Only while there is something to save, so the card is quiet until the
+            manager has actually changed the answer. */}
+        {moved && (
+          <p className="text-warning text-xs">
+            {t.academy?.unsavedLocation?.replace(
+              '{coords}',
+              `${draft?.latitude?.toFixed(5)}, ${draft?.longitude?.toFixed(5)}`,
+            )}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            disabled={!moved}
+            loading={save.isPending}
+            onClick={() => draft && save.mutate(draft)}
+          >
+            <Check aria-hidden /> {t.common.save}
+          </Button>
+
+          {moved && (
+            <Button size="sm" variant="ghost" onClick={() => setDraft(saved)}>
+              {t.academy?.revertLocation}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
 /** The four allowed platforms. Hosts are validated server-side. */
-function SocialCard({ academy }: { academy: AcademyProfile }) {
+function SocialCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: () => void }) {
   const { t } = useI18n();
-  const router = useRouter();
 
   const [form, setForm] = React.useState<Record<SocialField, string>>(() => ({
     telegramUrl: academy?.telegramUrl ?? '',
@@ -242,7 +443,7 @@ function SocialCard({ academy }: { academy: AcademyProfile }) {
     onSuccess: () => {
       setError(null);
       setSaved(true);
-      router.refresh();
+      onSaved();
     },
     onError: (err: Error) => {
       setSaved(false);

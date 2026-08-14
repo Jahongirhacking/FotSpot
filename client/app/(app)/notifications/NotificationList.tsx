@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
+  UserMinus,
+  UserPlus,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -134,6 +136,26 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       tone: 'text-success',
       href: '/invitations?action=JOIN_ACADEMY',
     },
+    /*
+     * The squad changed. Straight to the squad screen, which is where the
+     * manager either welcomes somebody or notices a gap to fill.
+     *
+     * Two events rather than one with a direction in the payload: a manager
+     * scanning a list of notifications reads the icons and the tone before the
+     * words, and "arrived" and "gone" should not look the same at a glance.
+     */
+    SQUAD_JOINED: {
+      icon: UserPlus,
+      title: t.notifications.squadJoined,
+      tone: 'text-success',
+      href: '/academies/mine/squad',
+    },
+    SQUAD_LEFT: {
+      icon: UserMinus,
+      title: t.notifications.squadLeft,
+      tone: 'text-muted',
+      href: '/academies/mine/squad',
+    },
     VERIFICATION_RESULT: {
       icon: ShieldCheck,
       title: t.notifications.verificationResult,
@@ -208,7 +230,19 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
                 : meta?.href
               : null);
 
-          const detail = [notification?.payload?.academyName, notification?.payload?.note]
+          /*
+           * The line under the title: who, and where.
+           *
+           * `playerName` leads because on a squad notification it is the whole
+           * content — "a player joined your squad" without a name is a message
+           * that asks the manager to go and find out what happened. The other
+           * two are unchanged and absent from payloads that never carried them.
+           */
+          const detail = [
+            notification?.payload?.playerName,
+            notification?.payload?.academyName,
+            notification?.payload?.note,
+          ]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)
             .join(' · ');
 

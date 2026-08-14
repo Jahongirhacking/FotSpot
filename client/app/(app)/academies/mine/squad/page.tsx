@@ -53,6 +53,7 @@ export default async function SquadPage() {
         initialMembers={members}
         initialGroups={list.groups}
         initialReserveCount={list.reserveCount}
+        isLocalTeam={academy?.kind === 'LOCAL_TEAM'}
       />
     </div>
   );

@@ -2688,6 +2688,35 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/membership": {
+      "delete": {
+        "operationId": "academies_leaveTeam",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Let a member go, so another academy can take them on.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/members/{memberId}/release": {
       "post": {
         "operationId": "academies_releaseMember",
@@ -2719,7 +2748,6 @@
             "bearer": []
           }
         ],
-        "summary": "Let a member go, so another academy can take them on.",
         "tags": [
           "academies"
         ]
@@ -3750,6 +3778,43 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "follows"
+        ]
+      }
+    },
+    "/api/v1/follows/status/{targetType}/{targetId}": {
+      "get": {
+        "operationId": "follows_status",
+        "parameters": [
+          {
+            "name": "targetType",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether the caller follows one specific thing.\n\nA page showing a follow button needs one boolean, and the alternatives are\nboth wrong for it: `GET /follows/me` pages through everything the caller\nfollows, so the answer for an academy on page three is \"no\" until somebody\nscrolls, and counting followers says how many without saying whether you are\none of them.\n\nNot `@Public()`. The question is \"do *I* follow this\", which needs a caller\nto be about — a guest gets 401 rather than a `false` they could mistake for\na state they can toggle.",
         "tags": [
           "follows"
         ]
@@ -6475,6 +6540,13 @@
           "body"
         ]
       },
+      "AcademyKind": {
+        "type": "string",
+        "enum": [
+          "ACADEMY",
+          "LOCAL_TEAM"
+        ]
+      },
       "NewManagerDto": {
         "type": "object",
         "properties": {
@@ -6501,6 +6573,14 @@
       "CreateAcademyDto": {
         "type": "object",
         "properties": {
+          "kind": {
+            "description": "Academy or local team, chosen once at creation.\n\nDeliberately absent from `UpdateAcademyDto`: promoting a local team to an\nacademy is not an edit, it is a vetting decision with consequences that\nreach past this record — its staff would gain sight of private players'\nprofiles the moment the field flipped. That belongs behind its own reviewed\naction if the product ever wants it, not behind a PATCH the manager can\nsend.\n\nOptional, and the column defaults to ACADEMY, so every existing caller and\nevery existing row keeps meaning exactly what it meant before.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AcademyKind"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -6548,6 +6628,14 @@
             "type": "number",
             "minimum": -180,
             "maximum": 180
+          },
+          "primaryPhone": {
+            "type": "string",
+            "description": "E.164, or \"\" to clear"
+          },
+          "backupPhone": {
+            "type": "string",
+            "description": "E.164, or \"\" to clear"
           },
           "name": {
             "type": "string"

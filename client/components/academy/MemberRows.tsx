@@ -135,7 +135,7 @@ export function MemberRow({
                 className="w-36 shrink-0 sm:w-40"
               >
                 <option value={RESERVE}>{t.nav.reserve}</option>
-                {controls.groups.map((group) => (
+                {controls?.groups?.map((group) => (
                   <option key={group?.id} value={group?.id}>
                     {group?.name}
                   </option>

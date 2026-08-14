@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Field, Select } from '@/components/ui/Field';
 import { UZBEK_REGIONS, districtsOf, normaliseDistrict } from '@/lib/uzbekistan';
@@ -63,7 +62,12 @@ export function RegionDistrictPicker({
 
   return (
     <div className={className ?? 'grid gap-3 sm:grid-cols-2'}>
-      <Field label={t.onboarding?.region} htmlFor={`${idPrefix}-region`} required={required}>
+      <Field
+        label={t.onboarding?.region}
+        htmlFor={`${idPrefix}-region`}
+        required={required}
+        hint={region ? undefined : t.academy?.districtNeedsRegion}
+      >
         <Select
           id={`${idPrefix}-region`}
           value={region ?? ''}

@@ -18,6 +18,7 @@ import {
   RequestTransferDto,
   UpdateGroupDto,
 } from './dto/group.dto';
+import { assertNotLocalTeam } from './academy-kind.util';
 
 /**
  * Squads inside an academy, and moving people between them.
@@ -325,9 +326,20 @@ export class GroupsService {
 
     const destination = await this.prisma.academyProfile.findUnique({
       where: { id: dto.toAcademyId },
-      select: { id: true },
+      select: { id: true, kind: true },
     });
     if (!destination) throw new BadRequestException('That academy does not exist');
+
+    /*
+     * A coach cannot be transferred into a local team.
+     *
+     * The other direction needs no check: a local team has no coaches to send,
+     * because neither door that creates one is open to it. Players and scouts
+     * transfer freely either way — that is squad movement, which both kinds do.
+     */
+    if (member.role === 'COACH') {
+      assertNotLocalTeam(destination.kind, 'take on coaches');
+    }
 
     const open = await this.prisma.memberTransfer.findFirst({
       where: { memberId: dto.memberId, status: 'PENDING' },

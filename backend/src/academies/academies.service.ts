@@ -18,6 +18,8 @@ import { AuditAction } from '../audit/audit.actions';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
+import { assertNotLocalTeam } from './academy-kind.util';
+import { SquadNotificationsService } from './squad-notifications.service';
 import {
   isValidRegionDistrict,
   normaliseDistrict,
@@ -55,6 +57,7 @@ export class AcademiesService {
     private audit: AuditService,
     private storage: StorageService,
     private tariffs: TariffsService,
+    private squads: SquadNotificationsService,
   ) {}
 
   /**
@@ -398,10 +401,21 @@ export class AcademiesService {
     return { ...rest, logoUrl: this.storage.publicUrlOrNull(logoKey) };
   }
 
+  /**
+   * The public academy directory.
+   *
+   * `kind: ACADEMY` alongside the existing status filter, so a local team never
+   * appears here however it is verified — the directory is what a parent browses
+   * looking for an academy, and a neighbourhood team listed among them would be
+   * read as one. The filter is inside the `redis.wrap` callback rather than
+   * applied to its result, so the cached value can never contain a local team to
+   * begin with (§18): a cache that holds rows it must not serve is one refactor
+   * away from serving them.
+   */
   async listPublic(region?: string) {
     return this.redis.wrap(RedisKeys.academyList(region), CacheTtl.academyList, () =>
       this.prisma.academyProfile.findMany({
-        where: { status: 'VERIFIED', ...(region ? { region } : {}) },
+        where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
         orderBy: { createdAt: 'desc' },
       }),
     );
@@ -468,12 +482,27 @@ export class AcademiesService {
       if (value !== undefined) socials[field] = normaliseSocialUrl(field, value);
     }
 
+    /*
+     * An emptied box means "take this number off the profile".
+     *
+     * The DTO lets `''` through so that clearing is expressible at all; storing
+     * it verbatim would leave the profile rendering a `tel:` link to nothing,
+     * which looks like a working number until somebody rings it. Null is the
+     * absence the read side already checks for.
+     */
+    const phones: Record<string, string | null> = {};
+    for (const field of ['primaryPhone', 'backupPhone'] as const) {
+      const value = dto[field];
+      if (value !== undefined) phones[field] = value === '' ? null : value;
+    }
+
     const updated = await this.prisma.academyProfile.update({
       where: { id: academyId },
       data: {
         ...dto,
         ...socials,
         ...location,
+        ...phones,
         // The one field that carries markup. Cleaned here because this endpoint
         // is reachable without the editor that cleans it on the way in.
         ...(dto.defaultTrialNote !== undefined
@@ -572,6 +601,10 @@ export class AcademiesService {
    */
   async createCoach(actorId: string, academyId: string, dto: CreateCoachDto) {
     await this.assertManager(actorId, academyId);
+    // A local team has no coaches at all, so this is refused before the plan
+    // check for the same reason the plan check comes before minting: the first
+    // answer that is "no" should be the one the manager is given.
+    await this.assertIsAcademy(academyId, 'create coaches');
     // Checked before anything is minted: a plan refusal must not leave behind a
     // half-created account with credentials nobody will ever be shown.
     await this.tariffs.assertCanAddCoach(actorId, academyId);
@@ -803,8 +836,72 @@ export class AcademiesService {
       });
     });
     await this.invalidate(academyId);
+    // After the write, so a rolled-back release cannot leave a manager reading
+    // that somebody left a squad they are still in (§17). The actor is skipped
+    // inside — a manager who pressed remove does not need telling.
+    if (member.role === 'PLAYER') {
+      await this.squads.announceLeft(academyId, member.userId, userId);
+    }
     await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, { memberId, academyId });
     return released;
+  }
+
+  /**
+   * A player walking out of a local team of their own accord.
+   *
+   * ## Only a local team, and this is the whole rule
+   *
+   * An academy membership is not the player's to end (PLAYER_SQUAD.md §5C): it
+   * changes when another academy takes them on or when the academy lets them
+   * go, and both of those are somebody else's decision by design. A local team
+   * is a different arrangement — people join one for a season and stop turning
+   * up — and holding somebody in a neighbourhood squad they have left is a
+   * record that is simply wrong.
+   *
+   * Refused rather than hidden. There is no "leave academy" control anywhere in
+   * the UI, and this is what makes that true rather than merely tidy: a player
+   * calling this endpoint against their academy gets 403.
+   *
+   * ## The row goes, rather than becoming history
+   *
+   * Local team history is explicitly not required (§8), and keeping a RELEASED
+   * row would have a second cost: `InvitationsService.invite` treats any
+   * non-RELEASED membership as "already here", so the row would sit in the way
+   * of the team ever inviting them back. Deleting it makes rejoining the same
+   * act as joining.
+   */
+  async leaveTeam(userId: string, academyId: string) {
+    const membership = await this.prisma.academyMember.findUnique({
+      where: { academyId_userId: { academyId, userId } },
+      select: { id: true, role: true, academy: { select: { kind: true } } },
+    });
+    if (!membership) throw new NotFoundException('You are not in this squad');
+
+    if (membership.academy.kind !== 'LOCAL_TEAM') {
+      throw new ForbiddenException(
+        'An academy membership ends when another academy takes you on, or when this one releases you',
+      );
+    }
+    // The manager *is* the team here; letting them delete their own membership
+    // would leave a squad nobody can run.
+    if (membership.role === 'MANAGER') {
+      throw new ForbiddenException('A manager cannot leave their own team');
+    }
+
+    await this.prisma.academyMember.delete({ where: { id: membership.id } });
+    await this.invalidate(academyId);
+    if (membership.role === 'PLAYER') {
+      // The actor is the player themselves, so the manager — a different person
+      // — is the one who hears about it.
+      await this.squads.announceLeft(academyId, userId, userId);
+    }
+    await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_RELEASED, {
+      academyId,
+      memberId: membership.id,
+      voluntary: true,
+    });
+
+    return { left: true };
   }
 
   /** Everyone any academy has released — the transfer list. */
@@ -1091,6 +1188,23 @@ export class AcademiesService {
 
     await this.invalidate(academyId);
     return this.listFeatured(academyId);
+  }
+
+  /**
+   * Refuses one of the academy-only actions for a local team.
+   *
+   * Reads the kind rather than taking it from the caller: every one of these
+   * call sites has an academy id and none of them had a reason to load the row,
+   * so passing the kind in would mean each of them fetching it correctly. One
+   * indexed lookup by primary key is the cheaper mistake to not make.
+   */
+  private async assertIsAcademy(academyId: string, action: string) {
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: academyId },
+      select: { kind: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+    assertNotLocalTeam(academy.kind, action);
   }
 
   private async assertManager(userId: string, academyId: string) {

@@ -3,12 +3,21 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Heart, Pause, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import { Eye, Heart, Pause, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { FeedClip } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn, initials } from '@/lib/utils';
+
+/**
+ * How long a slide must actually play before it counts as watched.
+ *
+ * Slides auto-play as the feed scrolls, so counting on play would measure
+ * scrolling rather than watching. Two seconds is the shortest span that separates
+ * "stopped for this one" from "went past it".
+ */
+const VIEW_AFTER_SECONDS = 2;
 
 /**
  * The clip, full screen, in the short-video idiom the audience already knows.
@@ -145,6 +154,63 @@ function Slide({
   const [paused, setPaused] = React.useState(false);
   const [liked, setLiked] = React.useState(clip?.likedByMe);
   const [likes, setLikes] = React.useState(clip?.likes);
+  const [views, setViews] = React.useState(clip?.views ?? 0);
+
+  /*
+   * Whether this slide has already been counted.
+   *
+   * A ref rather than state: changing it must not re-render, and it must survive
+   * the re-renders that pausing, liking and muting cause. Keyed on the clip id so
+   * a recycled component counts a genuinely different clip.
+   */
+  const countedId = React.useRef<string | null>(null);
+
+  /**
+   * Counts a view after two seconds of actual playback.
+   *
+   * Not on mount, and not on `play`. This is a feed whose slides auto-play as you
+   * scroll, so both would count every clip you swipe past — the number would
+   * measure scrolling rather than watching. Two seconds is the shortest span that
+   * distinguishes "stopped to watch this" from "went by".
+   *
+   * The endpoint already refuses to count the same viewer twice
+   * (`MediaService.recordView`'s claimOnce), so this guard is about not spending
+   * requests, not about correctness of the total.
+   */
+  const markViewed = React.useCallback(() => {
+    if (!clip?.id || countedId.current === clip?.id) return;
+    countedId.current = clip?.id;
+
+    setViews((current) => current + 1);
+
+    /*
+     * The grid behind this viewer reads the same clip from the `feed` query, so
+     * the cached page is corrected in place. Invalidating instead would refetch
+     * every loaded page — on a scroll feed that is a lot of work, and it can move
+     * the ground under the reader — and doing nothing would send them back to a
+     * grid still showing the count they just changed.
+     */
+    queryClient.setQueryData(
+      ['feed'],
+      (cached: { pages?: { items?: { id: string; views: number }[] }[] } | undefined) =>
+        cached && {
+          ...cached,
+          pages: cached.pages?.map((page) => ({
+            ...page,
+            items: page.items?.map((item) =>
+              item.id === clip?.id ? { ...item, views: item.views + 1 } : item,
+            ),
+          })),
+        },
+    );
+
+    void browserFetch(`/media/${clip?.id}/view`, { method: 'POST' }).catch(() => {
+      // Put the number back and allow a later attempt: an unsent view is not
+      // worth a visible error on a feed nobody is reading numbers on.
+      countedId.current = null;
+      setViews((current) => Math.max(0, current - 1));
+    });
+  }, [clip?.id, queryClient]);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -188,6 +254,9 @@ function Slide({
             loop
             playsInline
             preload="metadata"
+            onTimeUpdate={(event) => {
+              if (event.currentTarget.currentTime >= VIEW_AFTER_SECONDS) markViewed();
+            }}
             className="size-full object-contain"
           />
         ) : clip?.posterUrl ? (
@@ -245,6 +314,18 @@ function Slide({
           </span>
           <span className="text-xs font-medium tabular-nums">{likes}</span>
         </button>
+
+        {/* Views, beside the heart. Not a button — it counts itself once the clip
+            has actually played, so there is nothing here to press. */}
+        <span
+          className="flex shrink-0 flex-col items-center gap-1 text-white"
+          aria-label={t.clips?.views}
+        >
+          <span className="grid size-12 place-items-center rounded-full bg-white/15 backdrop-blur-sm">
+            <Eye className="size-6" aria-hidden />
+          </span>
+          <span className="text-xs font-medium tabular-nums">{views}</span>
+        </span>
       </div>
     </section>
   );

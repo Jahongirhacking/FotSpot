@@ -309,8 +309,46 @@ export interface MemberTransfer {
   };
 }
 
+/**
+ * One membership, current or ended, as the API reports it.
+ *
+ * `kind` and `status` come from the server rather than being inferred here —
+ * whether a squad counts as a verified academy is the backend's rule, and a
+ * screen that decided it locally would be a second copy of that rule.
+ */
+export interface SquadMembership {
+  academyId: string;
+  academyName: string;
+  kind: AcademyKind;
+  status: VerificationStatus;
+  /** Null means the academy's reserve rather than a named group. */
+  groupId: string | null;
+  groupName: string | null;
+  joinedAt: string;
+  /** Null while the membership is current. */
+  leftAt: string | null;
+}
+
+/**
+ * Where a player plays, and where they used to.
+ *
+ * Three fields because they answer three questions the product treats
+ * differently: one academy at a time, any number of local teams at once, and a
+ * history that is never rewritten. A single list would flatten all three.
+ */
+export interface PlayerMemberships {
+  /** The one current academy, or null when they are with none. */
+  academy: SquadMembership | null;
+  /** Every local team they currently play for. */
+  localTeams: SquadMembership[];
+  /** Academies they have left. Never contains the current one. */
+  academyHistory: SquadMembership[];
+}
+
 export interface PlayerProfile {
   id: string;
+  /** Absent on responses that predate the field; never null once present. */
+  memberships?: PlayerMemberships;
   /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
@@ -347,9 +385,16 @@ export interface PlayerProfile {
   createdAt: string;
 }
 
+/**
+ * Academy or local team. Set once at creation; see the Prisma enum's note.
+ * Never rendered raw — `LOCAL_TEAM` reads as "Local Team / Mahalliy Jamoa".
+ */
+export type AcademyKind = 'ACADEMY' | 'LOCAL_TEAM';
+
 export interface AcademyProfile {
   id: string;
   name: string;
+  kind: AcademyKind;
   region?: string | null;
   district?: string | null;
   description?: string | null;
@@ -369,6 +414,13 @@ export interface AcademyProfile {
   facebookUrl?: string | null;
   instagramUrl?: string | null;
   youtubeUrl?: string | null;
+
+  /**
+   * How to ring the academy. E.164, and `''` on write clears one.
+   * Not the manager's personal number — see the schema note on the model.
+   */
+  primaryPhone?: string | null;
+  backupPhone?: string | null;
 
   members?: AcademyMemberRef[];
   createdAt: string;
@@ -422,6 +474,15 @@ export interface CoachProfile {
 }
 
 export interface ScoutStats {
+  /**
+   * Recommendations this scout has actually filed.
+   *
+   * Separate from `totalRecommendations`, which counts *target rows* because that
+   * is the denominator §1.5's success rate is defined on — a GLOBAL
+   * recommendation has no targets until an academy takes it up. Correct for
+   * reputation, wrong for a card labelled "sent", which is why both exist.
+   */
+  sentRecommendations?: number;
   userId: string;
   totalRecommendations: number;
   acceptedRecommendations: number;
@@ -669,6 +730,8 @@ export type NotificationEvent =
   | 'TRIAL_RESCHEDULED'
   | 'TRIAL_RESULT'
   | 'SQUAD_PLACEMENT'
+  | 'SQUAD_JOINED'
+  | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT';
 
 export interface AppNotification {

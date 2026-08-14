@@ -58,6 +58,12 @@ function fakePrisma() {
     $transaction: jest.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
     trial: {
       findUnique: jest.fn(async (): Promise<unknown> => TRIAL),
+      // Only `create` needs a fixture: it is the one write the local-team check
+      // guards, and asserting it was *not* called is how "refused" is proved.
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        ...TRIAL,
+        ...data,
+      })),
       // Echoes the edit back over the fixture, so `update` returns the trial as
       // it now stands — which is what the reschedule notice reads its date from.
       update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -93,6 +99,12 @@ function fakePrisma() {
       findFirst: jest.fn(async (): Promise<unknown> => ({ userId: 'manager-1' })),
     },
     playerProfile: { findUnique: jest.fn(async () => PLAYER) },
+    // An academy by default, which is what every test here was implicitly
+    // asserting before local teams existed — `create` reads the kind to decide
+    // whether this organisation holds trials at all.
+    academyProfile: {
+      findUnique: jest.fn(async (): Promise<unknown> => ({ kind: 'ACADEMY' })),
+    },
   };
 
   return { prisma, tx };
@@ -444,5 +456,50 @@ describe('TrialsService.addToSquad — the gate is a trial PASS (Rule 8)', () =>
     prisma.academyMember.findUnique.mockResolvedValue({ role: 'COACH' });
 
     await expect(service.addToSquad('coach-1', 'app-1')).rejects.toThrow(ForbiddenException);
+  });
+});
+
+/**
+ * Local teams do not hold trials (LOCAL_TEAM.md §8).
+ *
+ * Refused at creation, which is the only door: applying, accepting, rejecting
+ * and the coach's pass/fail all hang off a trial row, so an organisation that
+ * cannot own one cannot reach any of them.
+ */
+describe('TrialsService.create — local teams', () => {
+  const validTrial = {
+    title: 'U16 open day',
+    location: 'Tashkent',
+    date: '2030-06-01T09:00:00.000Z',
+    applyDeadline: '2030-05-01T09:00:00.000Z',
+    ageRangeMin: 10,
+    ageRangeMax: 20,
+    positions: [],
+  };
+
+  it('refuses a local team', async () => {
+    const { service, prisma } = build();
+    prisma.academyProfile.findUnique.mockResolvedValue({ kind: 'LOCAL_TEAM' });
+
+    await expect(service.create('manager-1', 'team-1', validTrial)).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('writes nothing when it refuses', async () => {
+    const { service, prisma } = build();
+    prisma.academyProfile.findUnique.mockResolvedValue({ kind: 'LOCAL_TEAM' });
+
+    await service.create('manager-1', 'team-1', validTrial).catch(() => undefined);
+
+    expect(prisma.trial.create).not.toHaveBeenCalled();
+  });
+
+  // The regression half: an academy is untouched by any of the above.
+  it('still creates one for an academy', async () => {
+    const { service, prisma } = build();
+
+    await expect(service.create('manager-1', 'academy-1', validTrial)).resolves.toBeDefined();
+    expect(prisma.trial.create).toHaveBeenCalled();
   });
 });

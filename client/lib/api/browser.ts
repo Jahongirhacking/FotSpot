@@ -9,7 +9,51 @@ import { ApiError, extractMessage, type RequestOptions } from './client';
  * requests are proxied through `/api/proxy/*` on the Next server, which attaches the
  * token and transparently refreshes it on a 401. This keeps the token out of JS
  * entirely (client/CLAUDE.md §2) at the cost of one extra hop.
+ *
+ * ## Refreshing is shared, and that is a correctness requirement
+ *
+ * The backend rotates the refresh token on every use and treats a *second* use of
+ * an already-rotated token as a replay — it revokes the whole session, which is
+ * the right response to a stolen token.
+ *
+ * The access token lasts fifteen minutes, and a page fires several queries at
+ * once (the header alone asks for unseen trials, the inbox count and the requests
+ * badge). So when it expired, every one of those 401'd and every one called
+ * refresh: the first rotated the token, the rest presented the old one, and the
+ * server did exactly what it should — killed the session and signed the user out.
+ *
+ * That is why "the refresh token is not used automatically" looked like the
+ * symptom. It was used, several times at once, and the replay detector was right.
+ *
+ * `inFlightRefresh` makes every caller in a burst await the same request, so one
+ * rotation happens and the rest retry behind it.
  */
+
+/**
+ * The one refresh in flight, or null.
+ *
+ * Module scope on purpose: it has to be shared by every caller in the tab, which
+ * is precisely what a per-call variable could not do.
+ */
+let inFlightRefresh: Promise<boolean> | null = null;
+
+/**
+ * Refreshes once per burst, whoever asks first.
+ *
+ * Cleared in `finally` so the *next* expiry refreshes again rather than reusing a
+ * settled promise — a shared promise that is never released would turn one
+ * successful refresh into the only one this tab ever performs.
+ */
+function refreshOnce(): Promise<boolean> {
+  inFlightRefresh ??= fetch('/api/auth/refresh', { method: 'POST' })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      inFlightRefresh = null;
+    });
+
+  return inFlightRefresh;
+}
 export async function browserFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const run = () =>
     fetch(`/api/proxy${path}`, {
@@ -33,8 +77,12 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
       throw new ApiError(401, 'Sign in to do that.');
     }
 
-    const refreshed = await fetch('/api/auth/refresh', { method: 'POST' });
-    if (refreshed.ok) {
+    // Shared: five simultaneous 401s make one refresh, not five. See above —
+    // five would be four replays and a revoked session.
+    const refreshed = await refreshOnce();
+    if (refreshed) {
+      // Retried exactly once. A second 401 after a fresh token is not an expiry,
+      // so retrying again would loop on something a new token cannot fix.
       response = await run();
     } else {
       // Terminal: cookies are cleared by the refresh route. Send the user to login

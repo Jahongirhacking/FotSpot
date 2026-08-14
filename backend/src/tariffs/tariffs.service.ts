@@ -212,11 +212,27 @@ export class TariffsService {
    */
   async pendingRecommendationQuota(scoutId: string): Promise<Quota> {
     const plan = await this.planFor(scoutId);
+    /*
+     * A GLOBAL recommendation counts too, and used not to.
+     *
+     * `targets: { some: … }` is false for a recommendation with no targets, which
+     * is exactly what a GLOBAL one is until an academy picks it up. So a scout who
+     * never chose an academy consumed no slots at all — the limit this quota
+     * exists to enforce could be walked straight past by leaving the dropdown
+     * empty, and their card read "0/10" after filing ten.
+     *
+     * "Pending" means nobody has decided it yet, and nobody has decided a live
+     * global. `clearedAt: null` is what already distinguishes live from finished,
+     * so the second branch needs nothing else.
+     */
     const used = await this.prisma.recommendation.count({
       where: {
         scoutId,
         clearedAt: null,
-        targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } },
+        OR: [
+          { targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } } },
+          { targets: { none: {} } },
+        ],
       },
     });
     return quota(used, plan.pendingRecommendationLimit);

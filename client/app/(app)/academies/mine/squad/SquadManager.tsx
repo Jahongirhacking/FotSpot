@@ -27,6 +27,15 @@ import { cn } from '@/lib/utils';
 const TABS: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
 
 /**
+ * A local team's squad has no coaches in it, so it has no tab for them.
+ *
+ * Not an empty Coaches tab: an empty list reads as "none yet", which invites the
+ * manager to look for the button that adds one. The tab is absent because the
+ * concept is, and the API refuses `invite` with role COACH either way.
+ */
+const LOCAL_TEAM_TABS: AcademyMemberRole[] = ['PLAYER', 'SCOUT'];
+
+/**
  * The academy's people, and the squads they are cut into.
  *
  * ## Two sections, because they answer two questions
@@ -52,19 +61,25 @@ export function SquadManager({
   initialMembers,
   initialGroups,
   initialReserveCount,
+  isLocalTeam = false,
 }: {
   academyId: string;
   initialMembers: AcademyMember[];
   initialGroups: AcademyGroup[];
   initialReserveCount: number;
+  /** Local teams have no coaches — see LOCAL_TEAM_TABS. */
+  isLocalTeam?: boolean;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   // `?tab=SCOUT` is how the dashboard's scout-network button lands here: the
   // scouts are part of the squad now, not a screen of their own.
   const requested = useSearchParams().get('tab');
+  const tabs = isLocalTeam ? LOCAL_TEAM_TABS : TABS;
+  // `?tab=COACH` on a local team falls back to players rather than selecting a
+  // tab that is not drawn, which would leave the strip with nothing highlighted.
   const [tab, setTab] = React.useState<AcademyMemberRole>(
-    TABS.includes(requested as AcademyMemberRole) ? (requested as AcademyMemberRole) : 'PLAYER',
+    tabs.includes(requested as AcademyMemberRole) ? (requested as AcademyMemberRole) : 'PLAYER',
   );
   const [filters, setFilters] = React.useState<MemberFilterState>(EMPTY_FILTERS);
   const [adding, setAdding] = React.useState(false);
@@ -129,7 +144,7 @@ export function SquadManager({
 
         <CardContent className="space-y-3 p-2">
           <div role="tablist" className="bg-surface-2 grid grid-cols-3 gap-1 rounded-lg p-1">
-            {TABS.map((role) => (
+            {tabs.map((role) => (
               <button
                 key={role}
                 type="button"
@@ -158,7 +173,7 @@ export function SquadManager({
           <div className="flex flex-wrap justify-end gap-2">
             {/* Minting a brand-new account is a different act from listing
                 somebody who already has one, so it keeps its own page. */}
-            {tab === 'COACH' && (
+            {tab === 'COACH' && !isLocalTeam && (
               <Button size="sm" variant="ghost" asChild>
                 <Link href="/academies/mine/coaches/new">
                   <Plus aria-hidden /> {t.academy.addCoach}
@@ -275,7 +290,11 @@ export function SquadManager({
             >
               {group?.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL
-                <img src={group?.imageUrl} alt="" className="size-8 shrink-0 rounded object-cover" />
+                <img
+                  src={group?.imageUrl}
+                  alt=""
+                  className="size-8 shrink-0 rounded object-cover"
+                />
               ) : (
                 <span className="bg-surface-3 grid size-8 shrink-0 place-items-center rounded">
                   <Users className="text-muted size-4" aria-hidden />

@@ -1,4 +1,5 @@
 import { Providers } from '@/components/layout/Providers';
+import { PlayingStyleModalController } from '@/components/player/PlayingStyleModalController';
 import type { Locale } from '@/lib/i18n/config';
 import { getLocale, getServerT } from '@/lib/i18n/server';
 import { siteUrl } from '@/lib/seo';
@@ -6,6 +7,8 @@ import { getSession } from '@/lib/session';
 import { THEME_SCRIPT } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import Script from 'next/script';
+import { Suspense } from 'react';
 import './globals.css';
 
 const geistSans = Geist({
@@ -128,6 +131,21 @@ export default async function RootLayout({
           React hydrates. That mismatch is the extension's, not ours, and React
           cannot tell the difference.
         */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-F9HZSNS42B"
+          strategy="afterInteractive"
+        />
+
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){window.dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-F9HZSNS42B');
+        `}
+        </Script>
+
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
@@ -144,6 +162,22 @@ export default async function RootLayout({
           }
         >
           {children}
+
+          {/*
+            Mounted here rather than in `(app)/layout.tsx` so it genuinely works
+            "from any page": the landing page, /privacy and the auth screens are
+            outside that group, and `/?showPlayingStyle=PLAYMAKER` is one of the
+            cases this has to handle.
+
+            `Suspense` is not optional. `useSearchParams` opts a subtree into
+            client-side rendering, and without a boundary it would drag every
+            statically rendered page with it — Next fails the build rather than
+            let that happen quietly. The fallback is nothing, because a closed
+            modal looks like nothing.
+          */}
+          <Suspense fallback={null}>
+            <PlayingStyleModalController />
+          </Suspense>
         </Providers>
       </body>
     </html>

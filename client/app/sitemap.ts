@@ -30,6 +30,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // for by name before trusting the platform with a child's details.
     { url: absoluteUrl('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
     { url: absoluteUrl('/terms'), changeFrequency: 'yearly', priority: 0.3 },
+    // Higher than the policies: "how do I contact them" is a question people
+    // actually search for, where a privacy policy is one they arrive at.
+    { url: absoluteUrl('/contact-us'), changeFrequency: 'yearly', priority: 0.4 },
   ];
 
   const [playerPage, academyList, trialList] = await Promise.all([
