@@ -1,12 +1,12 @@
 'use client';
 
+import { useI18n } from '@/components/layout/I18nProvider';
+import { Button } from '@/components/ui/Button';
+import { browserFetch } from '@/lib/api/browser';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, BellRing } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { Button } from '@/components/ui/Button';
-import { browserFetch } from '@/lib/api/browser';
 
 /** One key for the whole feature, so the button and any list of follows agree. */
 const followKey = (academyId: string) => ['follows', 'academy', academyId] as const;
@@ -103,6 +103,7 @@ export function AcademyFollowButton({
   return (
     <div className={className}>
       <Button
+        title={t.academy?.followForTrialsHint}
         variant={following ? 'outline' : 'primary'}
         aria-pressed={following}
         onClick={() => toggle.mutate(!following)}
@@ -110,10 +111,6 @@ export function AcademyFollowButton({
         {following ? <BellRing aria-hidden /> : <Bell aria-hidden />}
         {following ? t.academy?.followingForTrials : t.academy?.followForTrials}
       </Button>
-
-      <p className="text-muted mt-1.5 max-w-[26ch] text-xs leading-snug">
-        {error ? t.common?.somethingWrong : t.academy?.followForTrialsHint}
-      </p>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { Providers } from '@/components/layout/Providers';
 import { PlayingStyleModalController } from '@/components/player/PlayingStyleModalController';
 import type { Locale } from '@/lib/i18n/config';
@@ -9,6 +8,7 @@ import { THEME_SCRIPT } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Script from 'next/script';
+import { Suspense } from 'react';
 import './globals.css';
 
 const geistSans = Geist({
