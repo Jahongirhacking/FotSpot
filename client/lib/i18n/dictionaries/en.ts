@@ -415,7 +415,7 @@ export const en: Dictionary = {
   playingStyleModal: {
     title: 'Playing styles',
     subtitle: 'Each style is a way of playing. Tap one to read more.',
-    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+    showPlayers: 'Players in this style',
   },
 
   academy: {

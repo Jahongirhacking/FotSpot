@@ -412,7 +412,7 @@ export const ru: Dictionary = {
   playingStyleModal: {
     title: 'Стили игры',
     subtitle: 'Каждый стиль — это манера игры. Нажмите, чтобы узнать больше.',
-    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+    showPlayers: 'Игроки этого стиля',
   },
 
   academy: {

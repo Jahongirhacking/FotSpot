@@ -439,7 +439,7 @@ export const uz = {
   playingStyleModal: {
     title: 'O‘yin uslublari',
     subtitle: 'Har bir uslub — maydonda o‘ynash usuli. Batafsil ko‘rish uchun bosing.',
-    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+    showPlayers: 'Shu stildagi futbolchilar',
   },
 
   academy: {
