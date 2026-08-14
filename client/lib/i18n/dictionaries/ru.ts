@@ -409,6 +409,12 @@ export const ru: Dictionary = {
     askMessagePlaceholder: 'Необязательно — можно пояснить, что именно вы имеете в виду',
   },
 
+  playingStyleModal: {
+    title: 'Стили игры',
+    subtitle: 'Каждый стиль — это манера игры. Нажмите, чтобы узнать больше.',
+    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+  },
+
   academy: {
     memberType: 'Тип участника',
     pickMemberTypeHint: 'Сначала выберите тип участника — затем появятся подходящие фильтры.',

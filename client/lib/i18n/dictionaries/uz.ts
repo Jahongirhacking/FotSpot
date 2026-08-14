@@ -436,6 +436,12 @@ export const uz = {
     askMessagePlaceholder: 'Ixtiyoriy — nimani nazarda tutayotganingizni yozishingiz mumkin',
   },
 
+  playingStyleModal: {
+    title: 'O‘yin uslublari',
+    subtitle: 'Har bir uslub — maydonda o‘ynash usuli. Batafsil ko‘rish uchun bosing.',
+    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+  },
+
   academy: {
     memberType: 'A’zo turi',
     pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',

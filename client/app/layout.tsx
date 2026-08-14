@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { Providers } from '@/components/layout/Providers';
+import { PlayingStyleModalController } from '@/components/player/PlayingStyleModalController';
 import type { Locale } from '@/lib/i18n/config';
 import { getLocale, getServerT } from '@/lib/i18n/server';
 import { siteUrl } from '@/lib/seo';
@@ -160,6 +162,22 @@ export default async function RootLayout({
           }
         >
           {children}
+
+          {/*
+            Mounted here rather than in `(app)/layout.tsx` so it genuinely works
+            "from any page": the landing page, /privacy and the auth screens are
+            outside that group, and `/?showPlayingStyle=PLAYMAKER` is one of the
+            cases this has to handle.
+
+            `Suspense` is not optional. `useSearchParams` opts a subtree into
+            client-side rendering, and without a boundary it would drag every
+            statically rendered page with it — Next fails the build rather than
+            let that happen quietly. The fallback is nothing, because a closed
+            modal looks like nothing.
+          */}
+          <Suspense fallback={null}>
+            <PlayingStyleModalController />
+          </Suspense>
         </Providers>
       </body>
     </html>

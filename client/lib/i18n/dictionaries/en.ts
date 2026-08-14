@@ -412,6 +412,12 @@ export const en: Dictionary = {
     askMessagePlaceholder: 'Optional — tell us what you mean if it helps',
   },
 
+  playingStyleModal: {
+    title: 'Playing styles',
+    subtitle: 'Each style is a way of playing. Tap one to read more.',
+    showPlayers: 'Ushbu styleda o‘ynaydigan futbolchilarni ko‘rsatish',
+  },
+
   academy: {
     memberType: 'Member type',
     pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
