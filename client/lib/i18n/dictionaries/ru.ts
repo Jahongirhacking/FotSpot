@@ -1373,6 +1373,7 @@ export const ru: Dictionary = {
     pillar3Body: 'Находите подходящих игроков по возрасту, позиции, региону и стилю игры.',
 
     recentlyJoined: 'Недавно присоединились',
+    recentlyJoinedBody: 'Игроки, присоединившиеся к платформе последними.',
     viewMyCard: 'Моя карточка',
     watchHighlights: 'Смотреть видео',
     latestClips: 'Новые видео',

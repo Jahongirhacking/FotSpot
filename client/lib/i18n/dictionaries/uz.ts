@@ -1437,6 +1437,7 @@ export const uz = {
     pillar3Body: 'Yosh, pozitsiya, hudud va o‘yin uslubi bo‘yicha kerakli futbolchini tez toping.',
 
     recentlyJoined: 'Yaqinda qo‘shilganlar',
+    recentlyJoinedBody: 'Platformaga eng so‘nggi qo‘shilgan futbolchilar.',
     viewMyCard: 'Kartamni ko‘rish',
     watchHighlights: 'Videoni ko‘rish',
     latestClips: 'Yangi videolar',

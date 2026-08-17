@@ -22,6 +22,7 @@ import {
   CalendarDays,
   Search,
   Send,
+  Sparkles,
   ShieldCheck,
   Users,
   Video,
@@ -181,18 +182,21 @@ export default async function LandingPage() {
         {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
           <Reveal>
             <section className="mx-auto max-w-6xl px-4 pb-8">
+              {/* `block` on each link: an inline anchor wrapping a card leaves
+                  the card its own width and a baseline gap under it, which is
+                  what made this row sit unevenly against the sections below. */}
               <dl className="grid grid-cols-3 gap-3">
-                <Link href={`/players`}>
+                <Link href="/players" className="block">
                   <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
                 </Link>
-                <Link href={`/academies`}>
+                <Link href="/academies" className="block">
                   <Stat
                     icon={Building2}
                     label={t.landing.statAcademies}
                     value={academyList?.length}
                   />
                 </Link>
-                <Link href={`/trials`}>
+                <Link href="/trials" className="block">
                   <Stat
                     icon={CalendarDays}
                     label={t.landing.statTrials}
@@ -208,17 +212,13 @@ export default async function LandingPage() {
             happens on the player's own page (§21.6). */}
         <Reveal>
           <section className="mx-auto max-w-6xl px-4 pb-14">
-            <div className="mb-4 flex items-end justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Video className="text-primary size-5" aria-hidden /> {t.landing.latestClips}
-                </h2>
-                <p className="text-muted text-sm">{t.landing.latestClipsBody}</p>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/players">{t.common.seeAll}</Link>
-              </Button>
-            </div>
+            <SectionHeading
+              icon={Video}
+              title={t.landing.latestClips}
+              body={t.landing.latestClipsBody}
+              actionHref="/players"
+              actionLabel={t.common.seeAll}
+            />
 
             {clips?.length === 0 ? (
               <Card>
@@ -274,7 +274,13 @@ export default async function LandingPage() {
         {recent.items.length > 0 && (
           <Reveal>
             <section className="mx-auto max-w-6xl px-4 pb-14">
-              <h2 className="mb-4 text-lg font-semibold">{t.landing.recentlyJoined}</h2>
+              <SectionHeading
+                icon={Sparkles}
+                title={t.landing.recentlyJoined}
+                body={t.landing.recentlyJoinedBody}
+                actionHref="/players"
+                actionLabel={t.common.seeAll}
+              />
               <div className="grid gap-3 sm:grid-cols-3">
                 {recent.items.slice(0, 3).map((player) => (
                   <Card
@@ -466,6 +472,46 @@ async function resolvePlayerCta(
     }
     return { href: '/onboarding/player', hasCard: false };
   }
+}
+
+/**
+ * The heading every listing section on this page wears.
+ *
+ * They had drifted: the clips section had an icon, a subtitle and a "see all",
+ * and the players below it had a bare `h2` and nothing else — so two sections
+ * doing the same job announced themselves in two different voices. One
+ * component means a section cannot quietly grow its own style, and the icon and
+ * action are optional so a section without one is still the same heading.
+ */
+function SectionHeading({
+  icon: Icon,
+  title,
+  body,
+  actionHref,
+  actionLabel,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body?: string;
+  actionHref?: string;
+  actionLabel?: string;
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Icon className="text-primary size-5 shrink-0" aria-hidden />
+          {title}
+        </h2>
+        {body && <p className="text-muted mt-0.5 text-sm">{body}</p>}
+      </div>
+      {actionHref && actionLabel && (
+        <Button asChild variant="ghost" size="sm" className="shrink-0">
+          <Link href={actionHref}>{actionLabel}</Link>
+        </Button>
+      )}
+    </div>
+  );
 }
 
 function Stat({

@@ -1380,6 +1380,7 @@ export const en: Dictionary = {
     pillar3Body: 'Find the right Players by age, position, location, and playing style.',
 
     recentlyJoined: 'Recently Joined',
+    recentlyJoinedBody: 'The players who joined the platform most recently.',
     viewMyCard: 'View My Card',
     watchHighlights: 'Watch Videos',
     latestClips: 'Latest Videos',
