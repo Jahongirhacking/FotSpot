@@ -152,6 +152,60 @@
   --font-mono: var(--font-geist-mono);
 
   --radius-card: var(--radius);
+
+  /*
+   * Motion, as theme tokens rather than one-off classes.
+   *
+   * Tailwind v4 turns `--animate-x` into `animate-x`, so the timings live beside
+   * the colours and a screen cannot invent its own easing. Three, deliberately:
+   * a landing page that moves in four directions reads as a demo of animation
+   * rather than as a product.
+   *
+   * Every one ends in `both`, so the element holds its final frame instead of
+   * snapping back — and holds its *first* frame before it starts, which is what
+   * stops a staggered group flashing into place before the delay elapses.
+   *
+   * All of it is neutralised by the `prefers-reduced-motion` block further down.
+   * That guard is why these can be added at all: motion here is decoration, and
+   * decoration must be refusable.
+   */
+  --animate-rise: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.5s ease-out both;
+  --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Up and in — the one the hero and every revealed section uses. 12px, because
+   a longer travel turns a page into a slideshow on a slow phone. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The ball arrives with a roll. Only the hero mark uses it, and only once. */
+@keyframes ball {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-140deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @layer base {
