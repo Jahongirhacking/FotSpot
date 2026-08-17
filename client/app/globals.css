@@ -240,6 +240,11 @@
  * height, the penumbra widens with height, and the same light spread over more
  * ground is weaker light. All three are functions of the one thing.
  *
+ * The endpoints are pinned to what contact means rather than to what looked
+ * right. At d=0 the shadow is exactly the ball's outline and perfectly sharp,
+ * because an object resting on a surface hides its own shadow and casts no
+ * penumbra. Everything else is that state, spread out.
+ *
  * Worth being precise about what this buys: because dx and dy are themselves
  * `--ball-h` times a constant, `--shadow-d` is just `--ball-h` × 7.81. Computing
  * it through hypot rather than folding the constant in is deliberate — it keeps
@@ -273,16 +278,32 @@
   --shadow-d: hypot(var(--shadow-dx), var(--shadow-dy));
 
   transform: translate(calc(var(--shadow-dx) * 1px), calc(var(--shadow-dy) * 1px))
-    /* 0.6 on the ground — a shade inside the ball's own outline, which is what
-       contact looks like — widening to about 1.35 at the top. */
-    scale(calc(0.6 + var(--shadow-d) * 0.096));
+    /*
+     * 0.6667 at contact is not a taste: the shadow circle is r=15 and the ball
+     * r=10, so two thirds is the scale at which the shadow is *exactly* the
+     * ball's own outline. A ball resting on grass hides its shadow completely,
+     * and any other number here would leave a rim showing — which reads as two
+     * objects rather than one touching the ground.
+     *
+     * It only reaches 0.9 at the apex. A shadow that doubled would say the
+     * light is a few centimetres above the pitch; a few tenths is what height
+     * on a football field actually looks like from above.
+     */
+    scale(calc(0.6667 + var(--shadow-d) * 0.02988));
 
-  /* Contact is the only thing that gives a shadow a hard edge. */
-  filter: blur(calc(0.4px + var(--shadow-d) * 0.256px));
+  /*
+   * Zero at contact, and that matters more than the maximum.
+   *
+   * Blur comes from the penumbra, and at the moment of contact there is no
+   * penumbra — the occluder is on the surface, so the edge is geometrically
+   * sharp. Any blur left at d=0 makes the ball look like it is hovering a
+   * millimetre off the ground for the whole bounce.
+   */
+  filter: blur(calc(var(--shadow-d) * 0.23047px));
 
-  /* The same light over more ground is weaker light: it cannot spread without
-     fading, and doing one without the other is the tell. */
-  opacity: calc(0.38 - var(--shadow-d) * 0.032);
+  /* Darkest where it is tightest: the same light over more ground is weaker
+     light, so spread and strength move opposite each other. */
+  opacity: calc(0.42 - var(--shadow-d) * 0.03585);
 }
 
 @keyframes bounce-x {
