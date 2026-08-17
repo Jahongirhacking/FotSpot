@@ -1,9 +1,9 @@
 'use client';
 
-import * as React from 'react';
-import { Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PitchBackdrop, FootballBall } from './FootballArt';
+import { Play } from 'lucide-react';
+import * as React from 'react';
+import { FootballBall, PitchBackdrop } from './FootballArt';
 
 /**
  * Optional hero video, tap-to-play.
@@ -64,16 +64,25 @@ export function HeroVideo({ label, className }: { label: string; className?: str
         )
       ) : (
         <>
-          <PitchBackdrop />
+          <PitchBackdrop live />
           <div className="absolute inset-0 grid place-items-center">
             {src ? (
-              <button
-                type="button"
-                onClick={() => setPlaying(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary-strong flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold shadow-lg transition-colors"
-              >
-                <Play className="size-4" aria-hidden /> {label}
-              </button>
+              <div className="relative">
+                {/* A ring leaving the button, not a ring around it: it is
+                    behind and `pointer-events-none`, so it can never sit
+                    between a finger and the thing it is advertising. */}
+                <span
+                  aria-hidden
+                  className="bg-primary/30 animate-halo pointer-events-none absolute inset-0 rounded-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPlaying(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary-strong relative flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-sm font-semibold shadow-lg transition-[background-color,transform] duration-200 hover:scale-[1.03] active:scale-100"
+                >
+                  <Play className="size-4" aria-hidden /> {label}
+                </button>
+              </div>
             ) : (
               <FootballBall className="size-24 drop-shadow-lg sm:size-32" spin />
             )}

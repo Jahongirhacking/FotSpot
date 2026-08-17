@@ -15,7 +15,20 @@ import { cn } from '@/lib/utils';
  */
 
 /** Pitch markings, for use as a section backdrop. */
-export function PitchBackdrop({ className }: { className?: string }) {
+export function PitchBackdrop({
+  className,
+  live = false,
+}: {
+  className?: string;
+  /**
+   * Play a move on it — a ball passed between four points on the pitch.
+   *
+   * Off by default: this backdrop sits behind text on several screens, and a
+   * moving object under a paragraph is a thing to look away from. The hero
+   * turns it on because there the pitch *is* the content.
+   */
+  live?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 400 260"
@@ -35,6 +48,28 @@ export function PitchBackdrop({ className }: { className?: string }) {
         <path d="M70 92a46 46 0 0 1 0 76" />
         <path d="M330 92a46 46 0 0 0 0 76" />
       </g>
+
+      {/*
+       * The ball, and a halo that lands with it.
+       *
+       * Drawn after the lines so it passes over them rather than under. Both
+       * share one animation and one timing, so the glow cannot drift out of
+       * step with the ball it belongs to.
+       *
+       * Brighter than the pitch it moves across — the lines are `text-primary/25`
+       * and this is full strength, which is what makes a 5px dot readable
+       * against them at hero size without making the pitch itself louder.
+       *
+       * The global `prefers-reduced-motion` rule flattens the animation to
+       * nothing, which parks the ball on the centre spot. That is the right
+       * still frame: it is where the keyframes start and end.
+       */}
+      {live && (
+        <g className="animate-pass">
+          <circle r="14" className="fill-primary/10" />
+          <circle r="5" className="fill-primary" />
+        </g>
+      )}
     </svg>
   );
 }
