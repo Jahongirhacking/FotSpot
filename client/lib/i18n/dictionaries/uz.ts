@@ -1514,19 +1514,21 @@ export const uz = {
         ],
       },
     },
-    academyTitle: 'Akademiyangizni platformaga qo‘shmoqchimisiz?',
+    academyTitle: 'Akademiyangizni FotSpot’ga qo‘shmoqchimisiz?',
     academyBody:
-      'Akademiya — murabbiylar, saralash sinovlari va onlayn ko‘rikka ega tashkilot. Har bir akademiyani platforma jamoasi tekshiradi: bu bolalar ma’lumotiga kim kirishini nazorat qilish uchun. Tasdiqlangach siz tarkib, sinovlar va skautlar tavsiyalarini yuritasiz.',
-    academyCta: 'Akademiya uchun yozish',
-    academyMessage: 'Assalomu alaykum! Men FotSpot’ga futbol akademiyamni qo‘shmoqchiman.',
+      'Akademiya — murabbiylar, saralash sinovlari va onlayn ko‘rik jarayonlariga ega futbol tashkiloti. Har bir akademiya platforma jamoasi tomonidan tekshiriladi. Bu bolalar haqidagi ma’lumotlarga faqat ishonchli tashkilotlar kirishini ta’minlash uchun kerak. Tasdiqlangach, siz tarkib, sinovlar va skautlar tavsiyalarini boshqarishingiz mumkin.',
+    academyCta: 'Akademiya qo‘shishni so‘rash',
+    academyMessage: 'Assalomu alaykum! Men futbol akademiyamni FotSpot’ga qo‘shmoqchiman.',
+
     localTeamTitle: 'Mahalliy jamoa ochmoqchimisiz?',
     localTeamBody:
-      'Mahalliy jamoa — mahalladagi, maktabdagi yoki tumandagi futbol jamoasi. Akademiya emas: murabbiy va saralash sinovlari bo‘lmaydi, tarkibga taklif orqali qo‘shiladi. Sizga tarkibni yuritish, o‘yinchilarni taklif qilish va skautlar bilan ishlash imkoniyati beriladi.',
-    localTeamCta: 'Ochishni so‘rash',
-    localTeamMessage: 'Assalomu alaykum! Men FotSpot’da Mahalliy Jamoa ochmoqchiman.',
-    safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
+      'Mahalliy jamoa — mahalla, maktab yoki tumanda faoliyat yuritadigan futbol jamoasi. Bu akademiya emas: unda murabbiylar va saralash sinovlari bo‘lmaydi. O‘yinchilar jamoa tarkibiga taklif orqali qo‘shiladi. Siz tarkibni boshqarish, o‘yinchilarni taklif qilish va skautlar bilan ishlash imkoniyatiga ega bo‘lasiz.',
+    localTeamCta: 'Jamoa ochishni so‘rash',
+    localTeamMessage: 'Assalomu alaykum! Men FotSpot’da mahalliy jamoa ochmoqchiman.',
+
+    safetyTitle: '18 yoshgacha bo‘lganlar uchun — xavfsizlik birinchi o‘rinda.',
     safetyBody:
-      'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',
+      'Voyaga yetmagan o‘yinchilar profillari sukut bo‘yicha yopiq bo‘ladi. FotSpot’da kattalar va bolalar o‘rtasida shaxsiy yozishmalar mavjud emas. Biz hech qachon bola profilining ko‘rinishini yoki unga kirishni sotmaymiz.',
     privacyPolicy: 'Maxfiylik siyosati',
     termsOfService: 'Foydalanish shartlari',
     contactUs: 'Biz bilan bog‘lanish',
