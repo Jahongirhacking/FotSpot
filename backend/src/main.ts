@@ -23,6 +23,7 @@ function logLevels(): LogLevel[] {
 }
 
 async function bootstrap() {
+  console.log('🔥 BOOT START');
   // Before anything binds a port: a process with a forgeable signing key should
   // never reach the point of accepting a request.
   assertProductionSecrets();
@@ -92,15 +93,17 @@ async function bootstrap() {
   // after the prefix so documented paths match the real ones.
   setupSwaggerUi(app);
 
-  const port = Number(process.env.PORT) ?? 3000;
+  const port = Number(process.env.PORT) || 3000;
+  console.log('🔥 WILL LISTEN ON:', port);
   await app.listen(port, '0.0.0.0');
+  console.log('🔥 LISTEN SUCCESS');
 
   // Nest's Logger rather than console.log, so startup lines carry the same
   // timestamps and formatting as everything else — a boot message that looks
   // unlike the rest of the log is one that gets scrolled past.
   const logger = new Logger('Bootstrap');
-  logger.log(`FotSpot API running on http://localhost:${port}/api/v1`);
-  logger.log(`API reference at    http://localhost:${port}/docs`);
+  logger.log(`FotSpot API running on http://api.hotspot.uz/api/v1`);
+  logger.log(`API reference at    http://api.hotspot.uz/docs`);
 }
 
 /**
