@@ -72,8 +72,42 @@ export function PitchBackdrop({
         // bounce works without any collision code.
         <g className="hero-ball-x animate-bounce-x">
           <g className="hero-ball-y animate-bounce-y">
-            <circle r="14" className="fill-primary/10" />
-            <circle r="5" className="fill-primary" />
+            {/* The glow stays, and stays behind: it is what keeps a 20px ball
+                readable against the pitch lines without making the ball itself
+                larger than the centre circle. */}
+            <circle r="15" className="fill-primary/15" />
+
+            {/*
+             * A nested `<svg>` rather than a scaled group.
+             *
+             * The faces are drawn in a 64-unit square and this gives them their
+             * own viewport inside the pitch's 400×260 one, so the ball keeps its
+             * proportions without anybody computing a scale factor. `x`/`y` are
+             * half the size, which centres it on the point the two bounce
+             * animations are translating.
+             *
+             * It also spins as it travels — a football that slid across a pitch
+             * without turning would be the one detail giving the trick away.
+             * Its own animation, so the rotation is unaffected by the two that
+             * move it around.
+             */}
+            <svg
+              x="-10"
+              y="-10"
+              width="20"
+              height="20"
+              viewBox="0 0 64 64"
+              className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]"
+            >
+              {/* Explicitly white and near-black, not theme colours: a
+                  football is white in both modes, and a ball that turned dark
+                  at night would stop reading as a ball at all. */}
+              <BallFaces
+                body="fill-white stroke-black/25"
+                panel="fill-[#14171f]"
+                seam="stroke-black/30"
+              />
+            </svg>
           </g>
         </g>
       )}
@@ -82,6 +116,35 @@ export function PitchBackdrop({
 }
 
 /** A football. `spin` adds a slow rotation, disabled under reduced-motion. */
+/**
+ * The ball's faces, in a 64-unit square, with no viewport of its own.
+ *
+ * Extracted so the same geometry can be drawn standalone *and* dropped inside
+ * another SVG — the hero pitch needs a ball in its own 400×260 space, and a
+ * second copy of these paths is one that drifts the first time either is
+ * touched.
+ *
+ * The two fills are parameters because the ball means different things in
+ * different places. On a button it should belong to the theme; on a pitch it
+ * should look like a football, which is white with dark panels whether or not
+ * the reader is in dark mode.
+ */
+function BallFaces({ body, panel, seam }: { body: string; panel: string; seam: string }) {
+  return (
+    <>
+      <circle cx="32" cy="32" r="30" className={body} strokeWidth="1.5" />
+      <path d="M32 12l9 6.5-3.4 10.6h-11.2L23 18.5z" className={panel} />
+      <path
+        d="M32 12V4M41 18.5l7.6-2.5M23 18.5L15.4 16M37.6 29.1l6.6 9M26.4 29.1l-6.6 9"
+        className={seam}
+        strokeWidth="1.5"
+        fill="none"
+      />
+      <path d="M20 47l6-8.9h12l6 8.9-6 5.6H26z" className={panel} opacity="0.55" />
+    </>
+  );
+}
+
 export function FootballBall({ className, spin = false }: { className?: string; spin?: boolean }) {
   return (
     <svg
@@ -93,21 +156,13 @@ export function FootballBall({ className, spin = false }: { className?: string; 
         className,
       )}
     >
-      <circle
-        cx="32"
-        cy="32"
-        r="30"
-        className="fill-surface stroke-foreground/20"
-        strokeWidth="1.5"
+      {/* Theme-coloured: this one sits on buttons and surfaces, where a hard
+          white circle would be the loudest thing on the control. */}
+      <BallFaces
+        body="fill-surface stroke-foreground/20"
+        panel="fill-foreground/85"
+        seam="stroke-foreground/25"
       />
-      <path d="M32 12l9 6.5-3.4 10.6h-11.2L23 18.5z" className="fill-foreground/85" />
-      <path
-        d="M32 12V4M41 18.5l7.6-2.5M23 18.5L15.4 16M37.6 29.1l6.6 9M26.4 29.1l-6.6 9"
-        className="stroke-foreground/25"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path d="M20 47l6-8.9h12l6 8.9-6 5.6H26z" className="fill-foreground/20" />
     </svg>
   );
 }
