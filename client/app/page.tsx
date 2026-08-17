@@ -316,20 +316,23 @@ export default async function LandingPage() {
             is better off knowing now. */}
         <Reveal>
           <section className="mx-auto max-w-6xl px-4 pb-6">
-            <Card className="border-accent/40 hover:border-accent/60 border-2 transition-colors duration-200">
-              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <Card className="border-primary/30 from-primary/[0.10] to-accent/[0.06] hover:border-primary/50 overflow-hidden border-2 bg-gradient-to-br transition-colors duration-200">
+              <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                 <div className="max-w-2xl min-w-0">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold">
-                    <Building2 className="text-accent size-5 shrink-0" aria-hidden />
-                    {t.landing.academyTitle}
-                  </h2>
+                  {/* The icon in a filled tile rather than inline: it gives the
+                      card a mark of its own, which is most of what separates the
+                      thing being offered from the one mentioned below it. */}
+                  <span className="bg-primary text-primary-foreground mb-3 grid size-11 place-items-center rounded-xl shadow-sm">
+                    <Building2 className="size-6" aria-hidden />
+                  </span>
+                  <h2 className="text-xl font-bold sm:text-2xl">{t.landing.academyTitle}</h2>
                   <p className="text-muted mt-2 text-sm leading-relaxed">{t.landing.academyBody}</p>
                 </div>
 
                 {/* Same bot, different sentence — one address, and the message
                     says which of the two the writer is asking for so nobody has
                     to be asked back. */}
-                <Button asChild size="lg" variant="outline" className="border-accent/50 shrink-0">
+                <Button asChild size="lg" className="shrink-0 shadow-sm">
                   <a
                     href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
                     target="_blank"
@@ -355,13 +358,16 @@ export default async function LandingPage() {
             that somebody has to clear by hand anyway. */}
         <Reveal>
           <section className="mx-auto max-w-6xl px-4 pb-14">
-            <Card className="border-primary/25 bg-primary/[0.04] hover:border-primary/40 transition-colors duration-200">
-              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            {/* Quieter on purpose. Both asks are real, but an academy is what
+                this platform is built around — and two cards at the same volume
+                make a reader decide which to read rather than which is theirs. */}
+            <Card className="hover:border-border/80 transition-colors duration-200">
+              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="max-w-2xl min-w-0">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold">
-                    <Users className="text-primary size-5 shrink-0" aria-hidden />
+                  <h3 className="text-muted flex items-center gap-2 text-base font-semibold">
+                    <Users className="size-4 shrink-0" aria-hidden />
                     {t.landing.localTeamTitle}
-                  </h2>
+                  </h3>
                   <p className="text-muted mt-2 text-sm leading-relaxed">
                     {t.landing.localTeamBody}
                   </p>
@@ -380,7 +386,7 @@ export default async function LandingPage() {
                  * links to the same bot, and two copies of an address is one that
                  * gets changed in one place.
                  */}
-                <Button asChild size="lg" className="shrink-0">
+                <Button asChild size="sm" variant="outline" className="shrink-0">
                   <a
                     href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.localTeamMessage)}`}
                     target="_blank"
