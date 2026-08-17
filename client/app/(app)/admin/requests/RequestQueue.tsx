@@ -89,11 +89,25 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
   });
 
   const remove = useMutation({
-    mutationFn: (userId: string) =>
-      browserFetch(`/admin/users/${userId}`, { method: 'DELETE' }),
+    mutationFn: (userId: string) => browserFetch(`/admin/users/${userId}`, { method: 'DELETE' }),
     onSuccess: refresh,
     onError: (problem: Error) => setError(problem?.message),
   });
+
+  /*
+   * Which button is actually working.
+   *
+   * One mutation serves every button on every row, so `update.isPending` is true
+   * for all of them at once — pressing "Resolve" on one request put a spinner on
+   * "Take" and "Decline" too, and on every other request in the queue. It reads
+   * as the whole page having been submitted.
+   *
+   * `variables` is what the mutation was called with and is defined while it is
+   * in flight, so the row and the status it carries identify the one button that
+   * was pressed. No extra state to keep in step with the request.
+   */
+  const isUpdating = (id: string, status: RequestStatus) =>
+    update.isPending && update.variables?.id === id && update.variables?.status === status;
 
   if (queue.isLoading) return <p className="text-muted text-sm">{t.common?.loading}</p>;
   if (queue.isError) return <Alert tone="danger">{t.common?.couldNotLoad}</Alert>;
@@ -151,12 +165,18 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
                 </p>
                 <p className="text-muted flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                   {person?.email && (
-                    <a href={`mailto:${person?.email}`} className="hover:text-primary inline-flex items-center gap-1">
+                    <a
+                      href={`mailto:${person?.email}`}
+                      className="hover:text-primary inline-flex items-center gap-1"
+                    >
                       <Mail className="size-3.5" aria-hidden /> {person?.email}
                     </a>
                   )}
                   {person?.phone && (
-                    <a href={`tel:${person?.phone}`} className="hover:text-primary inline-flex items-center gap-1">
+                    <a
+                      href={`tel:${person?.phone}`}
+                      className="hover:text-primary inline-flex items-center gap-1"
+                    >
                       <Phone className="size-3.5" aria-hidden /> {person?.phone}
                     </a>
                   )}
@@ -186,7 +206,7 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
                       <Button
                         size="sm"
                         variant="outline"
-                        loading={update.isPending}
+                        loading={isUpdating(request?.id, 'IN_PROGRESS')}
                         onClick={() => update.mutate({ id: request?.id, status: 'IN_PROGRESS' })}
                       >
                         {t.requests?.take}
@@ -194,7 +214,7 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
                     )}
                     <Button
                       size="sm"
-                      loading={update.isPending}
+                      loading={isUpdating(request?.id, 'RESOLVED')}
                       onClick={() => update.mutate({ id: request?.id, status: 'RESOLVED' })}
                     >
                       {t.requests?.resolve}
@@ -202,7 +222,7 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      loading={update.isPending}
+                      loading={isUpdating(request?.id, 'DECLINED')}
                       onClick={() => update.mutate({ id: request?.id, status: 'DECLINED' })}
                     >
                       {t.requests?.decline}
@@ -215,7 +235,7 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
                       <Button
                         size="sm"
                         variant="danger"
-                        loading={remove.isPending}
+                        loading={remove.isPending && remove.variables === person?.id}
                         onClick={() => {
                           if (window.confirm(`${t.requests?.typeDELETE_ACCOUNT}: ${name}?`)) {
                             remove.mutate(person?.id);

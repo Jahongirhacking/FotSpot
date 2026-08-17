@@ -403,6 +403,7 @@ export const en: Dictionary = {
     statusIN_PROGRESS: 'In progress',
     statusRESOLVED: 'Resolved',
     statusDECLINED: 'Declined',
+    send: 'Send',
     askTitle: 'Contact the team',
     askDeleteTitle: 'Request account deletion',
     askDeleteBody:
@@ -1455,6 +1456,11 @@ export const en: Dictionary = {
         ],
       },
     },
+    localTeamTitle: 'Want to start a local team?',
+    localTeamBody:
+      'A local team is a neighbourhood, school or district side. Not an academy: there are no coaches and no selection trials, and players join by invitation. You get a squad to run, players to invite and scouts to work with.',
+    localTeamCta: 'Ask to create one',
+    localTeamMessage: 'Hello! I would like to create a Local Team on FotSpot.',
     safetyTitle: 'Built for under-18s, carefully.',
     safetyBody:
       'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',

@@ -152,6 +152,105 @@
   --font-mono: var(--font-geist-mono);
 
   --radius-card: var(--radius);
+
+  /*
+   * Motion, as theme tokens rather than one-off classes.
+   *
+  * Tailwind v4 turns `--animate-x` into `animate-x`, so the timings live beside
+   * the colours and a screen cannot invent its own easing. They stay few on
+   * purpose: a landing page that moves in four directions reads as a demo of
+   * animation rather than as a product.
+   *
+   * `rise` and `fade` are entrances. `ball` is the roll on the hero button.
+   * `bounce-x`/`bounce-y` are the two axes that send the pitch ball off the
+   * touchlines. `halo` is the ring leaving the play button.
+   *
+   * Every one ends in `both`, so the element holds its final frame instead of
+   * snapping back — and holds its *first* frame before it starts, which is what
+   * stops a staggered group flashing into place before the delay elapses.
+   *
+   * All of it is neutralised by the `prefers-reduced-motion` block further down.
+   * That guard is why these can be added at all: motion here is decoration, and
+   * decoration must be refusable.
+   */
+  --animate-rise: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.5s ease-out both;
+  --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-bounce-x: bounce-x 7s linear infinite alternate;
+  --animate-bounce-y: bounce-y 4.3s linear infinite alternate;
+  --animate-halo: halo 2.8s ease-out infinite;
+}
+
+/* Up and in — the one the hero and every revealed section uses. 12px, because
+   a longer travel turns a page into a slideshow on a slow phone. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The ball, loose on the pitch.
+ *
+ * Two independent axes rather than one path: X ping-pongs between the touchlines
+ * and Y between the goal lines, each `linear` so the pace never changes and each
+ * `alternate` so it reverses the moment it reaches a wall. Combined, that is a
+ * ball bouncing off the sides — and off a corner when both reverse together —
+ * without a line of JavaScript or any collision maths.
+ *
+ * The durations are deliberately not multiples of each other (7s and 4.3s), so
+ * the pair only returns to its starting state after roughly five minutes. A
+ * fixed path was the previous shape and it read as a recording; this never
+ * visibly repeats.
+ *
+ * The bounds are the pitch box inset by the ball's radius (10), in the nested
+ * viewport's own coordinates: 0..384 across and 0..208 down, so the ball's edge
+ * meets the line rather than its centre crossing it. That viewport also clips,
+ * so these numbers being wrong would show as a ball cut off at the line rather
+ * than as one loose on the page.
+ */
+@keyframes bounce-x {
+  from {
+    transform: translateX(10px);
+  }
+  to {
+    transform: translateX(374px);
+  }
+}
+
+@keyframes bounce-y {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: translateY(198px);
+  }
+}
+
+/* The ball arrives with a roll. Only the hero mark uses it, and only once. */
+@keyframes ball {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-140deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @layer base {
@@ -337,6 +436,28 @@
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * Park the hero ball on the centre spot.
+   *
+   * Collapsing the duration leaves an `alternate` animation resting at whichever
+   * end it happened to stop at — a ball wedged in a corner, which reads as a
+   * layout fault rather than as a still. Stopping the animation outright and
+   * placing it deliberately gives somebody who has asked for no motion the
+   * composition the pitch was drawn around.
+   *
+   * `!important` because an animation beats a plain declaration even at a
+   * duration of nothing.
+   */
+  .hero-ball-x {
+    animation: none !important;
+    transform: translateX(200px) !important;
+  }
+
+  .hero-ball-y {
+    animation: none !important;
+    transform: translateY(130px) !important;
   }
 }
 

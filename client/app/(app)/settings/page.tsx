@@ -1,17 +1,17 @@
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/session';
-import { auth, users } from '@/lib/api/resources';
-import type { DeviceSession } from '@/lib/api/types';
-import { ROLE_META, type Role } from '@/lib/roles';
-import { SessionList } from './SessionList';
-import Link from 'next/link';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { auth, users } from '@/lib/api/resources';
+import type { DeviceSession } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { ROLE_META, type Role } from '@/lib/roles';
+import { getSession } from '@/lib/session';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { AccountRequests } from './AccountRequests';
 import { PrivacyToggle } from './PrivacyToggle';
-import { Badge } from '@/components/ui/Badge';
-import { getServerT } from '@/lib/i18n/server';
+import { SessionList } from './SessionList';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -82,7 +82,6 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
       <AccountRequests />
-
     </div>
   );
 }

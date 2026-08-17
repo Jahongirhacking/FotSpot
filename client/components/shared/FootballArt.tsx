@@ -15,7 +15,20 @@ import { cn } from '@/lib/utils';
  */
 
 /** Pitch markings, for use as a section backdrop. */
-export function PitchBackdrop({ className }: { className?: string }) {
+export function PitchBackdrop({
+  className,
+  live = false,
+}: {
+  className?: string;
+  /**
+   * Let a ball loose on it — bouncing off the touchlines at a steady pace.
+   *
+   * Off by default: this backdrop sits behind text on several screens, and a
+   * moving object under a paragraph is a thing to look away from. The hero
+   * turns it on because there the pitch *is* the content.
+   */
+  live?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 400 260"
@@ -23,23 +36,121 @@ export function PitchBackdrop({ className }: { className?: string }) {
       aria-hidden
       className={cn('text-primary/25 absolute inset-0 size-full', className)}
     >
+      {/*
+       * The touchlines sit at y=26 and y=234, not at the 8 the rest of the
+       * frame uses.
+       *
+       * `slice` scales this to cover a 16:9 box, and a 400×260 viewBox is taller
+       * than that, so 17.5 units are cropped off the top and bottom. Lines drawn
+       * at y=8 were never on screen — which is why a ball turning against them
+       * looked like it turned against nothing. Everything vertical is inset far
+       * enough to survive the crop.
+       */}
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="8" y="8" width="384" height="244" rx="2" />
-        <line x1="200" y1="8" x2="200" y2="252" />
+        <rect x="8" y="26" width="384" height="208" rx="2" />
+        <line x1="200" y1="26" x2="200" y2="234" />
         <circle cx="200" cy="130" r="46" />
         <circle cx="200" cy="130" r="3" fill="currentColor" stroke="none" />
-        <rect x="8" y="62" width="62" height="136" />
-        <rect x="330" y="62" width="62" height="136" />
+        <rect x="8" y="64" width="62" height="132" />
+        <rect x="330" y="64" width="62" height="132" />
         <rect x="8" y="100" width="22" height="60" />
         <rect x="370" y="100" width="22" height="60" />
         <path d="M70 92a46 46 0 0 1 0 76" />
         <path d="M330 92a46 46 0 0 0 0 76" />
       </g>
+
+      {/*
+       * The ball, and a halo that lands with it.
+       *
+       * Drawn after the lines so it passes over them rather than under. Both
+       * share one animation and one timing, so the glow cannot drift out of
+       * step with the ball it belongs to.
+       *
+       * Brighter than the pitch it moves across — the lines are `text-primary/25`
+       * and this is full strength, which is what makes a 5px dot readable
+       * against them at hero size without making the pitch itself louder.
+       *
+       * The global `prefers-reduced-motion` rule flattens the animation to
+       * nothing, which parks the ball on the centre spot. That is the right
+       * still frame: it is where the keyframes start and end.
+       */}
+      {live && (
+        /*
+         * The pitch, as a viewport of its own.
+         *
+         * A nested `<svg>` clips to its own bounds, so the ball *cannot* be
+         * drawn outside the rectangle whatever the transforms do. The bounds
+         * were arithmetically correct before and the ball still escaped, which
+         * is the point: this stops depending on arithmetic that has to agree
+         * with a `slice` crop, a container aspect ratio and two keyframe ranges
+         * all at once. Get any of those wrong and the clip still holds.
+         *
+         * Its origin is the pitch's top-left corner, so everything inside is in
+         * pitch coordinates: 0..384 across, 0..208 down. The bounce ranges are
+         * that box inset by the ball's radius, which is the whole geometry now.
+         */
+        <svg x="8" y="26" width="384" height="208">
+          {/* Two groups because one element cannot hold two independent
+              `transform` animations — the outer carries the ball across, the
+              inner up and down, and SVG composes them. That is why the bounce
+              needs no collision code. */}
+          <g className="hero-ball-x animate-bounce-x">
+            <g className="hero-ball-y animate-bounce-y">
+              <svg
+                x="-10"
+                y="-10"
+                width="20"
+                height="20"
+                viewBox="0 0 64 64"
+                className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]"
+              >
+                {/* Explicitly white and near-black rather than theme colours: a
+                    football is white in both modes, and one that turned dark at
+                    night would stop reading as a ball at all. */}
+                <BallFaces
+                  body="fill-white stroke-black/25"
+                  panel="fill-[#14171f]"
+                  seam="stroke-black/30"
+                />
+              </svg>
+            </g>
+          </g>
+        </svg>
+      )}
     </svg>
   );
 }
 
 /** A football. `spin` adds a slow rotation, disabled under reduced-motion. */
+/**
+ * The ball's faces, in a 64-unit square, with no viewport of its own.
+ *
+ * Extracted so the same geometry can be drawn standalone *and* dropped inside
+ * another SVG — the hero pitch needs a ball in its own 400×260 space, and a
+ * second copy of these paths is one that drifts the first time either is
+ * touched.
+ *
+ * The two fills are parameters because the ball means different things in
+ * different places. On a button it should belong to the theme; on a pitch it
+ * should look like a football, which is white with dark panels whether or not
+ * the reader is in dark mode.
+ */
+function BallFaces({ body, panel, seam }: { body: string; panel: string; seam: string }) {
+  return (
+    <>
+      <circle cx="32" cy="32" r="30" className={body} strokeWidth="1.5" />
+      <path d="M32 12l9 6.5-3.4 10.6h-11.2L23 18.5z" className={panel} />
+      <path
+        d="M32 12V4M41 18.5l7.6-2.5M23 18.5L15.4 16M37.6 29.1l6.6 9M26.4 29.1l-6.6 9"
+        className={seam}
+        strokeWidth="1.5"
+        fill="none"
+      />
+      <path d="M20 47l6-8.9h12l6 8.9-6 5.6H26z" className={panel} opacity="0.55" />
+    </>
+  );
+}
+
 export function FootballBall({ className, spin = false }: { className?: string; spin?: boolean }) {
   return (
     <svg
@@ -51,21 +162,13 @@ export function FootballBall({ className, spin = false }: { className?: string; 
         className,
       )}
     >
-      <circle
-        cx="32"
-        cy="32"
-        r="30"
-        className="fill-surface stroke-foreground/20"
-        strokeWidth="1.5"
+      {/* Theme-coloured: this one sits on buttons and surfaces, where a hard
+          white circle would be the loudest thing on the control. */}
+      <BallFaces
+        body="fill-surface stroke-foreground/20"
+        panel="fill-foreground/85"
+        seam="stroke-foreground/25"
       />
-      <path d="M32 12l9 6.5-3.4 10.6h-11.2L23 18.5z" className="fill-foreground/85" />
-      <path
-        d="M32 12V4M41 18.5l7.6-2.5M23 18.5L15.4 16M37.6 29.1l6.6 9M26.4 29.1l-6.6 9"
-        className="stroke-foreground/25"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path d="M20 47l6-8.9h12l6 8.9-6 5.6H26z" className="fill-foreground/20" />
     </svg>
   );
 }
