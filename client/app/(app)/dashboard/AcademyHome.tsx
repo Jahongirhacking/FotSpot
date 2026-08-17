@@ -1,5 +1,20 @@
-import * as React from 'react';
-import Link from 'next/link';
+import { CredibilityMeter } from '@/components/player/CredibilityMeter';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
+import {
+  academies,
+  insights,
+  recommendations,
+  trials,
+  type AcademySummary,
+  type WeeklyInsights,
+} from '@/lib/api/resources';
+import type { AcademyProfile, RankedRecommendation, Trial } from '@/lib/api/types';
+import type { Dictionary } from '@/lib/i18n';
+import { ageBand, formatDate, initials } from '@/lib/utils';
 import {
   Building2,
   CalendarDays,
@@ -11,23 +26,8 @@ import {
   Trophy,
   Users,
 } from 'lucide-react';
-import {
-  academies,
-  insights,
-  recommendations,
-  trials,
-  type AcademySummary,
-  type WeeklyInsights,
-} from '@/lib/api/resources';
-import type { AcademyProfile, RankedRecommendation, Trial } from '@/lib/api/types';
-import type { Dictionary } from '@/lib/i18n';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Avatar } from '@/components/ui/Avatar';
-import { EmptyState } from '@/components/ui/Feedback';
-import { CredibilityMeter } from '@/components/player/CredibilityMeter';
-import { ageBand, formatDate, initials } from '@/lib/utils';
+import Link from 'next/link';
+import * as React from 'react';
 
 /**
  * Academy manager home.
@@ -86,8 +86,8 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href="/academies/mine/squad?tab=SCOUT">
-              <ShieldCheck aria-hidden /> {t.academy.scoutNetwork}
+            <Link href="/academies/mine">
+              <ShieldCheck aria-hidden /> {t.relation.myAcademy}
             </Link>
           </Button>
           <Button asChild>
@@ -253,7 +253,8 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
               href={`/scouts/${scout?.id}`}
               avatarUrl={scout?.avatarUrl}
               name={
-                [scout?.firstName, scout?.lastName].filter(Boolean).join(' ') || scout?.id.slice(0, 8)
+                [scout?.firstName, scout?.lastName].filter(Boolean).join(' ') ||
+                scout?.id.slice(0, 8)
               }
               detail={`${t.profile.level} ${scout?.level} · ${Math.round(scout?.successRate)}%`}
               value={scout?.acceptedThisWeek}
@@ -269,7 +270,8 @@ function WeeklyBoards({ weekly, t }: { weekly: WeeklyInsights; t: Dictionary }) 
               rank={index + 1}
               avatarUrl={coach?.avatarUrl}
               name={
-                [coach?.firstName, coach?.lastName].filter(Boolean).join(' ') || coach?.id.slice(0, 8)
+                [coach?.firstName, coach?.lastName].filter(Boolean).join(' ') ||
+                coach?.id.slice(0, 8)
               }
               detail={t.academy.assessments}
               value={coach?.assessmentsThisWeek}
