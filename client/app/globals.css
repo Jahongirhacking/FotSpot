@@ -217,25 +217,26 @@
  * fixed path was the previous shape and it read as a recording; this never
  * visibly repeats.
  *
- * The bounds inset the pitch by 24 rather than sitting on the 8px touchline:
- * the halo around the ball is 14 wide, and a ball that put its glow through the
- * line would look like a rendering fault rather than a bounce.
+ * The bounds are the touchlines inset by the ball's own radius (10), so the
+ * ball's *edge* meets the line rather than its centre crossing it — 8+10=18 and
+ * 392-10=382 across, 26+10=36 and 234-10=224 down. Those are the lines the pitch
+ * is drawn at, so every turn happens against something the reader can see.
  */
 @keyframes bounce-x {
   from {
-    transform: translateX(24px);
+    transform: translateX(18px);
   }
   to {
-    transform: translateX(376px);
+    transform: translateX(382px);
   }
 }
 
 @keyframes bounce-y {
   from {
-    transform: translateY(24px);
+    transform: translateY(36px);
   }
   to {
-    transform: translateY(236px);
+    transform: translateY(224px);
   }
 }
 

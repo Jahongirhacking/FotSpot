@@ -36,13 +36,23 @@ export function PitchBackdrop({
       aria-hidden
       className={cn('text-primary/25 absolute inset-0 size-full', className)}
     >
+      {/*
+       * The touchlines sit at y=26 and y=234, not at the 8 the rest of the
+       * frame uses.
+       *
+       * `slice` scales this to cover a 16:9 box, and a 400×260 viewBox is taller
+       * than that, so 17.5 units are cropped off the top and bottom. Lines drawn
+       * at y=8 were never on screen — which is why a ball turning against them
+       * looked like it turned against nothing. Everything vertical is inset far
+       * enough to survive the crop.
+       */}
       <g fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="8" y="8" width="384" height="244" rx="2" />
-        <line x1="200" y1="8" x2="200" y2="252" />
+        <rect x="8" y="26" width="384" height="208" rx="2" />
+        <line x1="200" y1="26" x2="200" y2="234" />
         <circle cx="200" cy="130" r="46" />
         <circle cx="200" cy="130" r="3" fill="currentColor" stroke="none" />
-        <rect x="8" y="62" width="62" height="136" />
-        <rect x="330" y="62" width="62" height="136" />
+        <rect x="8" y="64" width="62" height="132" />
+        <rect x="330" y="64" width="62" height="132" />
         <rect x="8" y="100" width="22" height="60" />
         <rect x="370" y="100" width="22" height="60" />
         <path d="M70 92a46 46 0 0 1 0 76" />
@@ -64,40 +74,6 @@ export function PitchBackdrop({
        * nothing, which parks the ball on the centre spot. That is the right
        * still frame: it is where the keyframes start and end.
        */}
-      {/*
-       * The players the ball turns off.
-       *
-       * Every direction change happens on one of four lines — x=24, x=376,
-       * y=24, y=236 — because that is where each `alternate` axis reverses. The
-       * turn was already correct; what was missing was anything *at* the place
-       * it happened, so the ball looked like it changed its mind in open space.
-       *
-       * It looks like open space for a reason worth writing down: the backdrop
-       * is drawn with `preserveAspectRatio="slice"` inside a 16:9 box, so 17.5
-       * units are cropped off the top and bottom of the 400×260 viewBox. The
-       * touchlines at y=8 and y=252 are never on screen. These sit on the lines
-       * the ball actually uses, all of which are inside the visible band.
-       *
-       * Two a side rather than a full eleven: this is a hint at a rondo, not a
-       * team sheet, and eleven dots behind a play button is a diagram.
-       */}
-      {live && (
-        <g className="fill-primary/45">
-          {[
-            [24, 90],
-            [24, 170],
-            [376, 90],
-            [376, 170],
-            [140, 24],
-            [260, 24],
-            [140, 236],
-            [260, 236],
-          ].map(([x, y]) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r="4.5" />
-          ))}
-        </g>
-      )}
-
       {live && (
         // Nested because the two axes are separate animations: the outer group
         // carries the ball across the pitch and the inner one carries it up and
