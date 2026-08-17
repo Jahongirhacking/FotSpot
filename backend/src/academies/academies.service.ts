@@ -413,20 +413,49 @@ export class AcademiesService {
    * away from serving them.
    */
   async listPublic(region?: string) {
-    return this.redis.wrap(RedisKeys.academyList(region), CacheTtl.academyList, () =>
-      this.prisma.academyProfile.findMany({
-        where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
-        orderBy: { createdAt: 'desc' },
-      }),
+    const rows = await this.redis.wrap(
+      RedisKeys.academyList(region),
+      CacheTtl.academyList,
+      () =>
+        this.prisma.academyProfile.findMany({
+          where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
+          orderBy: { createdAt: 'desc' },
+        }),
     );
+
+    /*
+     * The same swap `getPublicProfile` does, and for the same two reasons.
+     *
+     * The key is an internal address: callers that hold one start building URLs
+     * themselves, which is what stops a CDN change being a config change. This
+     * list was handing it out — so the directory both leaked the key and had no
+     * `logoUrl` to render, which is why academy cards drew the fallback glyph
+     * even for academies that had uploaded a logo.
+     *
+     * Mapped on read rather than inside the cache, deliberately: what is cached
+     * stays provider-agnostic, so changing `R2_PUBLIC_BASE_URL` takes effect on
+     * the next read instead of waiting out a TTL of stale absolute URLs.
+     */
+    return rows.map(({ logoKey, ...rest }) => ({
+      ...rest,
+      logoUrl: this.storage.publicUrlOrNull(logoKey),
+    }));
   }
 
   /** Admin console: every academy regardless of status, newest first. */
   async listAll() {
-    return this.prisma.academyProfile.findMany({
+    const rows = await this.prisma.academyProfile.findMany({
       include: { members: { where: { role: 'MANAGER' }, select: { userId: true } } },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Same swap as the public list: admin-only is not a reason to hand out a
+    // storage key, and the console renders the logo from the URL like every
+    // other screen.
+    return rows.map(({ logoKey, ...rest }) => ({
+      ...rest,
+      logoUrl: this.storage.publicUrlOrNull(logoKey),
+    }));
   }
 
   async update(userId: string, academyId: string, dto: UpdateAcademyDto, isAdmin = false) {
