@@ -9,6 +9,7 @@ import { MediaCategory, Prisma } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { GroupsService } from '../academies/groups.service';
+import { startOfUtcDay } from './view-day.util';
 import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisKeys } from '../redis/redis.keys';
@@ -890,45 +891,61 @@ export class MediaService {
    * high-volume, low-value events that must never hit the notification channel.
    */
   /**
-   * Counts one view, at most once per viewer per clip per hour.
+   * Counts one view, at most once per viewer per clip per day.
    *
-   * ## Why this is deduplicated at all, when a view is an event
+   * ## The database enforces it, not a cache
    *
-   * `MediaView` is deliberately not unique per (media, user) — a view is
-   * something that happens, not a state, which is what makes "watched three
-   * times this week" answerable. That reasoning still holds; what it never
-   * accounted for is that the endpoint takes no token and writes a row, so an
-   * anonymous loop can grow the largest table in the database without limit and
-   * inflate any player's numbers to whatever it likes.
+   * This used to claim a Redis key with a day's TTL and insert only if the claim
+   * was fresh. The rule was right and the mechanism was not: `SET NX` against an
+   * unreachable Redis returns "not fresh", so an outage stopped counting views
+   * entirely and silently — and the opposite failure mode would have counted
+   * every request instead. A counter should not have either property.
    *
-   * An hour-long claim keeps both properties: repeat viewing on different days
-   * still registers as separate events, and a script gets one row an hour per
-   * address instead of one per request. `ThrottleGuard` bounds the request rate;
-   * this bounds what the requests can *write*, which is the part that persists.
+   * The unique index on `(mediaId, viewerKey, viewDate)` says the same thing
+   * where the rows are, so it holds when Redis is down, when there are several
+   * API instances, and when two requests race. A repeat is refused by Postgres
+   * rather than by a cache that had to be asked first.
    *
-   * The claim fails closed when Redis is down — an outage drops views rather
-   * than reopening unbounded insertion, and a lost view counter is recoverable
-   * while a table full of fabricated rows is not.
+   * ## What a repeat costs now
+   *
+   * One insert that fails on the constraint. No Redis round trip at all, and no
+   * second query — the previous shape read the media row *before* deduplicating,
+   * so every re-watch paid for a lookup whose result was thrown away. A feed
+   * unmounts and remounts a slide as it scrolls past, so that was not a rare
+   * path.
+   *
+   * ## Why a view is still an event
+   *
+   * `MediaView` is one row per viewer per clip per *day*, not per lifetime, so
+   * "watched on three separate days" is still answerable — which is what makes
+   * it an event rather than a like. Re-watching within a day is the same view;
+   * coming back tomorrow is a new one.
    */
   async recordView(mediaId: string, viewer: { userId?: string; ipAddress?: string }) {
-    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
-
     // The account when there is one, so the same person is counted once whatever
     // network they are on; the address otherwise, which is all a guest offers.
-    const identity = viewer.userId ?? (viewer.ipAddress ? `ip:${viewer.ipAddress}` : null);
-    if (!identity) return { recorded: false };
+    const viewerKey = viewer.userId ?? (viewer.ipAddress ? `ip:${viewer.ipAddress}` : null);
+    if (!viewerKey) return { recorded: false };
 
-    const fresh = await this.redis.claimOnce(
-      RedisKeys.mediaViewClaim(mediaId, identity),
-      VIEW_DEDUPE_SECONDS,
-    );
-    if (!fresh) return { recorded: false };
-
-    await this.prisma.mediaView.create({
-      data: { mediaId, userId: viewer.userId ?? null },
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { status: true },
     });
-    return { recorded: true };
+    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
+
+    try {
+      await this.prisma.mediaView.create({
+        data: { mediaId, userId: viewer.userId ?? null, viewerKey, viewDate: startOfUtcDay() },
+      });
+      return { recorded: true };
+    } catch (error) {
+      // P2002 is the constraint doing its job: already counted today. Anything
+      // else is a real failure and belongs to the caller.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return { recorded: false };
+      }
+      throw error;
+    }
   }
 
   /**

@@ -3,8 +3,8 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { homeHrefForRole } from '@/components/layout/nav';
 import { PitchPositionPicker } from '@/components/player/PitchPositionPicker';
-import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import { PlayingStylePicker } from '@/components/player/PlayingStylePicker';
+import { RegionDistrictPicker } from '@/components/shared/RegionDistrictPicker';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
@@ -96,7 +96,13 @@ function Steps({ current }: { current: Step }) {
   return (
     <ol className="flex items-center gap-2" aria-label={t.onboarding.progress}>
       {steps.map((step, position) => (
-        <li key={step.key} className="flex flex-1 items-center gap-2">
+        <li
+          key={step.key}
+          className={cn(
+            'flex flex-1 items-center gap-2',
+            position === steps?.length - 1 && 'flex-0',
+          )}
+        >
           <span
             className={cn(
               'grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold',
@@ -133,9 +139,22 @@ function IdentityStep({
 }) {
   const { t } = useI18n();
 
-  // If the account already has a name, don't ask for it again — show it, with a
-  // link to change it in one place (the profile) rather than duplicating the field
-  // here and letting the two drift apart.
+  /*
+   * If the account already has a name, don't ask for it again.
+   *
+   * One name per person, held on the account — a player is not a separate human
+   * from the account that holds them, and neither is a scout or a coach. So this
+   * shows what the account says and links to the one screen that changes it,
+   * rather than duplicating the field here and letting the two drift.
+   *
+   * Which matters most for OAuth: signing in with Google fills the name from the
+   * Google profile, so the field was pre-filled and read-only and there was no
+   * visible way to correct it — the link said "edit profile", which does not
+   * read as "the name is wrong, fix it here".
+   *
+   * `?next=` so the wizard is where you land after saving, instead of being
+   * dropped on the profile page having lost the step you were on.
+   */
   const nameIsKnown = Boolean(knownName.firstName.trim() && knownName.lastName.trim());
 
   const form = useForm<PlayerIdentityValues>({
@@ -167,10 +186,10 @@ function IdentityStep({
                 </p>
               </div>
               <Link
-                href="/profile/edit"
+                href="/profile/edit?next=%2Fonboarding%2Fplayer"
                 className="text-primary shrink-0 text-xs font-medium hover:underline"
               >
-                {t.profile.editProfile}
+                {t.profile.changeName}
               </Link>
               <input type="hidden" {...form.register('firstName')} />
               <input type="hidden" {...form.register('lastName')} />

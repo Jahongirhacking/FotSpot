@@ -262,7 +262,8 @@ export const en: Dictionary = {
     noAffiliations: 'No academy or coach linked yet.',
     following: 'Following',
     noFollowersTitle: 'No followers yet',
-    noFollowersBody: 'People following your card, and academies following you as a scout, appear here.',
+    noFollowersBody:
+      'People following your card, and academies following you as a scout, appear here.',
     notFollowingTitle: 'You are not following anyone yet',
     notFollowingBody: 'Follow a player or an academy and their clips rank higher in your feed.',
     players: 'Players',
@@ -284,6 +285,7 @@ export const en: Dictionary = {
     becomeScoutCta: 'Become a scout',
     title: 'Profile',
     editProfile: 'Edit profile',
+    changeName: 'Change name',
     identity: 'Personal details',
     changePhoto: 'Change photo',
     avatarHint: 'JPG or PNG, up to 2 MB.',
@@ -591,9 +593,9 @@ export const en: Dictionary = {
 
     // ---- Squad and history ----
     currentAcademy: 'Current academy',
-    noCurrentAcademy: 'You are not with an academy right now.',
-    localTeams: 'Local teams',
-    noLocalTeams: 'You are not playing for a local team right now.',
+    noCurrentAcademy: 'Not currently part of any academy.',
+    localTeams: 'Local Teams',
+    noLocalTeams: 'Not currently part of any local team.',
     academyHistory: 'Academy history',
     viewAcademy: 'View academy',
     viewTeam: 'View team',

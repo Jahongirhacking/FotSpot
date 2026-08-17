@@ -20,6 +20,22 @@ import { cn, initials } from '@/lib/utils';
 const VIEW_AFTER_SECONDS = 2;
 
 /**
+ * Clips this tab has already reported, for as long as the tab is open.
+ *
+ * A component ref alone was not enough. The feed is windowed, so a slide is
+ * unmounted once it is far enough off screen and mounted again when you scroll
+ * back — with a fresh ref each time, which meant scrolling up and down a feed of
+ * ten clips sent a POST per pass. The server refuses the duplicate either way,
+ * so the count was never wrong; the requests were simply spent proving it.
+ *
+ * Module scope rather than component state, because the point is to outlive the
+ * component. It resets on reload, which is correct — the server's daily rule is
+ * what makes a refresh not count twice, and this only stops the request being
+ * made at all.
+ */
+const reportedThisSession = new Set<string>();
+
+/**
  * The clip, full screen, in the short-video idiom the audience already knows.
  *
  * ## Scroll-snap, not a carousel
@@ -173,13 +189,19 @@ function Slide({
    * measure scrolling rather than watching. Two seconds is the shortest span that
    * distinguishes "stopped to watch this" from "went by".
    *
-   * The endpoint already refuses to count the same viewer twice
-   * (`MediaService.recordView`'s claimOnce), so this guard is about not spending
-   * requests, not about correctness of the total.
+   * The endpoint already refuses to count the same viewer twice in a day — a
+   * unique index, not a cache — so these guards are about not spending requests,
+   * never about the correctness of the total.
    */
   const markViewed = React.useCallback(() => {
     if (!clip?.id || countedId.current === clip?.id) return;
     countedId.current = clip?.id;
+
+    // Already reported since this tab opened — including by an earlier mount of
+    // this same slide. The optimistic number below is skipped too: it was added
+    // the first time and the feed cache still carries it.
+    if (reportedThisSession.has(clip?.id)) return;
+    reportedThisSession.add(clip?.id);
 
     setViews((current) => current + 1);
 
@@ -208,6 +230,7 @@ function Slide({
       // Put the number back and allow a later attempt: an unsent view is not
       // worth a visible error on a feed nobody is reading numbers on.
       countedId.current = null;
+      reportedThisSession.delete(clip?.id);
       setViews((current) => Math.max(0, current - 1));
     });
   }, [clip?.id, queryClient]);

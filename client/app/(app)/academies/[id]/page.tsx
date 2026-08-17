@@ -1,7 +1,27 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import type * as React from 'react';
+import { AcademyFeaturedList } from '@/components/academy/AcademyFeaturedList';
+import { AcademyFollowButton } from '@/components/academy/AcademyFollowButton';
+import { AcademyGallery } from '@/components/academy/AcademyGallery';
+import { AcademyMap } from '@/components/academy/AcademyMap';
+import { AcademySocialLinks } from '@/components/academy/AcademySocialLinks';
+import { RelationBadge } from '@/components/shared/RelationBadge';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ApiError } from '@/lib/api/client';
+import { academies, academyRoster, trials } from '@/lib/api/resources';
+import type {
+  AcademyFeatured,
+  AcademyMember,
+  AcademyPhoto,
+  AcademyProfile,
+  Trial,
+} from '@/lib/api/types';
+import type { Dictionary } from '@/lib/i18n';
+import { getServerT } from '@/lib/i18n/server';
+import { locationText, yandexMapsUrl } from '@/lib/maps';
+import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { getSession } from '@/lib/session';
+import { formatDate } from '@/lib/utils';
 import {
   Building2,
   CalendarDays,
@@ -13,30 +33,10 @@ import {
   Trophy,
   Users,
 } from 'lucide-react';
-import { ApiError } from '@/lib/api/client';
-import { academies, academyRoster, trials } from '@/lib/api/resources';
-import { getSession } from '@/lib/session';
-import type {
-  AcademyFeatured,
-  AcademyMember,
-  AcademyPhoto,
-  AcademyProfile,
-  Trial,
-} from '@/lib/api/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { getServerT } from '@/lib/i18n/server';
-import type { Dictionary } from '@/lib/i18n';
-import { RelationBadge } from '@/components/shared/RelationBadge';
-import { formatDate } from '@/lib/utils';
-import { locationText, yandexMapsUrl } from '@/lib/maps';
-import { absoluteUrl, jsonLd } from '@/lib/seo';
-import { AcademyFollowButton } from '@/components/academy/AcademyFollowButton';
-import { AcademyGallery } from '@/components/academy/AcademyGallery';
-import { AcademyMap } from '@/components/academy/AcademyMap';
-import { AcademySocialLinks } from '@/components/academy/AcademySocialLinks';
-import { AcademyFeaturedList } from '@/components/academy/AcademyFeaturedList';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import type * as React from 'react';
 import { AcademyProfileEditor } from './AcademyProfileEditor';
 
 /**
@@ -93,17 +93,19 @@ export async function generateMetadata({
       description: summary,
       // The logo is the only image these records have; without it the card is
       // a grey rectangle with the site's default.
-      ...(academy?.logoUrl ? { images: [{ url: academy.logoUrl, alt: academy?.name }] } : {}),
+      ...(academy?.logoUrl
+        ? { images: [{ url: academy.logoUrl, alt: academy?.name }] }
+        : { images: [{ url: '/fotspot.png', alt: academy?.name }] }),
     },
     twitter: {
       card: 'summary',
       title: academy?.name,
       description: summary,
-      ...(academy?.logoUrl ? { images: [academy.logoUrl] } : {}),
+      ...(academy?.logoUrl ? { images: [academy.logoUrl] } : { images: ['/fotspot.png'] }),
     },
     // A local team is deliberately absent from the public directory (§13), so
     // it should not be in an index either — being unlisted and being
-    //搜索-indexable are the same decision made twice.
+    //search-indexable are the same decision made twice.
     robots: isLocalTeam ? { index: false, follow: true } : { index: true, follow: true },
   };
 }

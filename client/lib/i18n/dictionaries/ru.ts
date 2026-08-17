@@ -260,7 +260,8 @@ export const ru: Dictionary = {
     noAffiliations: 'Пока нет привязки к академии или тренеру.',
     following: 'Подписки',
     noFollowersTitle: 'Подписчиков пока нет',
-    noFollowersBody: 'Здесь появятся те, кто подписан на вашу карточку, и академии, следящие за вами как за скаутом.',
+    noFollowersBody:
+      'Здесь появятся те, кто подписан на вашу карточку, и академии, следящие за вами как за скаутом.',
     notFollowingTitle: 'Вы пока ни на кого не подписаны',
     notFollowingBody: 'Подпишитесь на игрока или академию — их новости будут выше в вашей ленте.',
     players: 'Игроки',
@@ -281,6 +282,7 @@ export const ru: Dictionary = {
     becomeScoutCta: 'Стать скаутом',
     title: 'Профиль',
     editProfile: 'Редактировать профиль',
+    changeName: 'Изменить имя',
     identity: 'Личные данные',
     changePhoto: 'Изменить фото',
     avatarHint: 'JPG или PNG, до 2 МБ.',
@@ -590,9 +592,9 @@ export const ru: Dictionary = {
 
     // ---- Состав и история ----
     currentAcademy: 'Текущая академия',
-    noCurrentAcademy: 'Вы пока не состоите ни в одной академии.',
-    localTeams: 'Локальные команды',
-    noLocalTeams: 'Вы пока не играете ни в одной локальной команде.',
+    noCurrentAcademy: 'Пока не состоит ни в одной академии.',
+    localTeams: 'Местные команды',
+    noLocalTeams: 'Пока не состоит ни в одной местной команде.',
     academyHistory: 'История академий',
     viewAcademy: 'Открыть академию',
     viewTeam: 'Открыть команду',

@@ -1,6 +1,6 @@
 import { AttributeBoard } from '@/components/player/AttributeBoard';
-import { OnThePitchCard } from '@/components/player/OnThePitchCard';
 import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
+import { OnThePitchCard } from '@/components/player/OnThePitchCard';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import { RecommendationSummary } from '@/components/player/RecommendationSummary';
 import { RelationBadge } from '@/components/shared/RelationBadge';
@@ -79,7 +79,9 @@ export async function generateMetadata({
         title: name,
         description,
         url: canonical,
-        ...(player?.avatarUrl ? { images: [{ url: player?.avatarUrl }] } : {}),
+        ...(player?.avatarUrl
+          ? { images: [{ url: player?.avatarUrl }] }
+          : { images: [{ url: '/fotspot.png' }] }),
       },
       twitter: { card: 'summary', title: name, description },
     };

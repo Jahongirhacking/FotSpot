@@ -1,16 +1,16 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Building2, MapPin } from 'lucide-react';
-import { academies } from '@/lib/api/resources';
-import { getSession } from '@/lib/session';
-import { isAdminActing } from '@/lib/roles';
-import { getServerT } from '@/lib/i18n/server';
-import { interpolate } from '@/lib/i18n';
-import { absoluteUrl, jsonLd } from '@/lib/seo';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
+import { academies } from '@/lib/api/resources';
+import { interpolate } from '@/lib/i18n';
+import { getServerT } from '@/lib/i18n/server';
+import { isAdminActing } from '@/lib/roles';
+import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { getSession } from '@/lib/session';
+import { Building2, MapPin } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
 
 /**
  * The directory, described by what is actually in it.
@@ -25,7 +25,7 @@ import { EmptyState } from '@/components/ui/Feedback';
  */
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerT();
-  const list = await academies.listPublic(undefined, { revalidate: 300 }).catch(() => []);
+  const list = await academies?.listPublic(undefined, { revalidate: 300 }).catch(() => []);
 
   const regions = [...new Set(list.map((academy) => academy?.region).filter(Boolean))];
   const description = list.length
@@ -41,8 +41,21 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t.nav.academies,
     description,
     alternates: { canonical: url },
-    openGraph: { type: 'website', url, title: t.nav.academies, description },
-    twitter: { card: 'summary', title: t.nav.academies, description },
+    openGraph: {
+      type: 'website',
+      url,
+      title: t.nav.academies,
+      description,
+      images: [
+        {
+          url: '/fotspot.png',
+          width: 600,
+          height: 600,
+          alt: 'FotSpot',
+        },
+      ],
+    },
+    twitter: { card: 'summary', title: t.nav.academies, description, images: ['/fotspot.png'] },
     robots: { index: true, follow: true },
   };
 }
@@ -104,7 +117,7 @@ export default async function AcademiesPage() {
         )}
       </header>
 
-      {list.length === 0 ? (
+      {list?.length === 0 ? (
         <EmptyState
           icon={Building2}
           title={t.academy.noneListed}
@@ -119,7 +132,7 @@ export default async function AcademiesPage() {
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((academy) => (
+          {list?.map((academy) => (
             <li key={academy?.id}>
               <Card className="hover:border-primary/40 h-full transition-colors">
                 <Link href={`/academies/${academy?.id}`} className="block">
@@ -134,7 +147,7 @@ export default async function AcademiesPage() {
                         // eslint-disable-next-line @next/next/no-img-element -- bucket asset; next/image would add a loader for no gain
                         <img
                           src={academy?.logoUrl}
-                          alt=""
+                          alt={academy?.name || 'Akademiya'}
                           loading="lazy"
                           className="border-border bg-surface size-10 shrink-0 rounded-xl border object-cover"
                         />

@@ -283,7 +283,8 @@ export const uz = {
     noAffiliations: 'Hozircha akademiya yoki murabbiy biriktirilmagan.',
     following: 'Obunalar',
     noFollowersTitle: 'Hozircha kuzatuvchilar yo‘q',
-    noFollowersBody: 'Kartangizni kuzatganlar va sizni skaut sifatida kuzatayotgan akademiyalar shu yerda ko‘rinadi.',
+    noFollowersBody:
+      'Kartangizni kuzatganlar va sizni skaut sifatida kuzatayotgan akademiyalar shu yerda ko‘rinadi.',
     notFollowingTitle: 'Hozircha hech kimni kuzatmayapsiz',
     notFollowingBody:
       'O‘yinchi yoki akademiyani kuzatsangiz, ularning yangiliklari lentangizda ko‘proq ko‘rinadi.',
@@ -307,6 +308,7 @@ export const uz = {
     becomeScoutCta: 'Skaut bo‘lish',
     title: 'Profil',
     editProfile: 'Profilni tahrirlash',
+    changeName: 'Ismni o‘zgartirish',
     identity: 'Shaxsiy ma’lumot',
     changePhoto: 'Rasmni o‘zgartirish',
     avatarHint: 'JPG yoki PNG, 2 MB gacha.',
@@ -619,9 +621,9 @@ export const uz = {
 
     // ---- Tarkib va tarix ----
     currentAcademy: 'Joriy akademiya',
-    noCurrentAcademy: 'Hozircha hech qaysi akademiyada emassiz.',
+    noCurrentAcademy: 'Hozircha hech qaysi akademiyaga biriktirilmagan',
     localTeams: 'Mahalliy jamoalar',
-    noLocalTeams: 'Hozircha mahalliy jamoada o‘ynamayapsiz.',
+    noLocalTeams: 'Hozircha hech qaysi mahalliy jamoaga biriktirilmagan',
     academyHistory: 'Akademiya tarixi',
     viewAcademy: 'Akademiyani ochish',
     viewTeam: 'Jamoani ochish',
