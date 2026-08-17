@@ -303,6 +303,46 @@ export default async function LandingPage() {
           </Reveal>
         )}
 
+        {/* ---------- Academies ----------
+            Above local teams, and styled apart from them, because they are two
+            different asks and a reader should not have to compare paragraphs to
+            work out which one is theirs.
+
+            The distinction is real, not decorative: an academy is vetted before
+            it exists (§1.10) and gets coaches, trials and online review; a local
+            team is none of that. So this one is bordered and accented rather
+            than tinted, which reads as the heavier of the two — and it says
+            plainly that a check is involved, because somebody who would fail one
+            is better off knowing now. */}
+        <Reveal>
+          <section className="mx-auto max-w-6xl px-4 pb-6">
+            <Card className="border-accent/40 hover:border-accent/60 border-2 transition-colors duration-200">
+              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-2xl min-w-0">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold">
+                    <Building2 className="text-accent size-5 shrink-0" aria-hidden />
+                    {t.landing.academyTitle}
+                  </h2>
+                  <p className="text-muted mt-2 text-sm leading-relaxed">{t.landing.academyBody}</p>
+                </div>
+
+                {/* Same bot, different sentence — one address, and the message
+                    says which of the two the writer is asking for so nobody has
+                    to be asked back. */}
+                <Button asChild size="lg" variant="outline" className="border-accent/50 shrink-0">
+                  <a
+                    href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Send aria-hidden /> {t.landing.academyCta}
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </Reveal>
+
         {/* ---------- Local teams ----------
             Between the players who joined and the safety note, because it is an
             invitation rather than a claim: somebody who has just read that real

@@ -1513,6 +1513,11 @@ export const uz = {
         ],
       },
     },
+    academyTitle: 'Akademiyangizni platformaga qo‘shmoqchimisiz?',
+    academyBody:
+      'Akademiya — murabbiylar, saralash sinovlari va onlayn ko‘rikka ega tashkilot. Har bir akademiyani platforma jamoasi tekshiradi: bu bolalar ma’lumotiga kim kirishini nazorat qilish uchun. Tasdiqlangach siz tarkib, sinovlar va skautlar tavsiyalarini yuritasiz.',
+    academyCta: 'Akademiya uchun yozish',
+    academyMessage: 'Assalomu alaykum! Men FotSpot’ga futbol akademiyamni qo‘shmoqchiman.',
     localTeamTitle: 'Mahalliy jamoa ochmoqchimisiz?',
     localTeamBody:
       'Mahalliy jamoa — mahalladagi, maktabdagi yoki tumandagi futbol jamoasi. Akademiya emas: murabbiy va saralash sinovlari bo‘lmaydi, tarkibga taklif orqali qo‘shiladi. Sizga tarkibni yuritish, o‘yinchilarni taklif qilish va skautlar bilan ishlash imkoniyati beriladi.',

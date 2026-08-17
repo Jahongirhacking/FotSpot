@@ -1456,6 +1456,11 @@ export const en: Dictionary = {
         ],
       },
     },
+    academyTitle: 'Want your academy on the platform?',
+    academyBody:
+      'An academy has coaches, selection trials and online review. Every one is checked by the platform team — that is how we control who gets access to children’s data. Once verified you run the squad, the trials and the scouts’ recommendations.',
+    academyCta: 'Ask about an academy',
+    academyMessage: 'Hello! I would like to add my football academy to FotSpot.',
     localTeamTitle: 'Want to start a local team?',
     localTeamBody:
       'A local team is a neighbourhood, school or district side. Not an academy: there are no coaches and no selection trials, and players join by invitation. You get a squad to run, players to invite and scouts to work with.',
