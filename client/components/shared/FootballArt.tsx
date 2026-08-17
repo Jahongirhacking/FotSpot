@@ -75,46 +75,47 @@ export function PitchBackdrop({
        * still frame: it is where the keyframes start and end.
        */}
       {live && (
-        // Nested because the two axes are separate animations: the outer group
-        // carries the ball across the pitch and the inner one carries it up and
-        // down, and SVG composes the transforms for us. One element cannot hold
-        // two independent `transform` animations, which is the whole reason the
-        // bounce works without any collision code.
-        <g className="hero-ball-x animate-bounce-x">
-          <g className="hero-ball-y animate-bounce-y">
-            {/*
-             * A nested `<svg>` rather than a scaled group.
-             *
-             * The faces are drawn in a 64-unit square and this gives them their
-             * own viewport inside the pitch's 400×260 one, so the ball keeps its
-             * proportions without anybody computing a scale factor. `x`/`y` are
-             * half the size, which centres it on the point the two bounce
-             * animations are translating.
-             *
-             * It also spins as it travels — a football that slid across a pitch
-             * without turning would be the one detail giving the trick away.
-             * Its own animation, so the rotation is unaffected by the two that
-             * move it around.
-             */}
-            <svg
-              x="-10"
-              y="-10"
-              width="20"
-              height="20"
-              viewBox="0 0 64 64"
-              className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]"
-            >
-              {/* Explicitly white and near-black, not theme colours: a
-                  football is white in both modes, and a ball that turned dark
-                  at night would stop reading as a ball at all. */}
-              <BallFaces
-                body="fill-white stroke-black/25"
-                panel="fill-[#14171f]"
-                seam="stroke-black/30"
-              />
-            </svg>
+        /*
+         * The pitch, as a viewport of its own.
+         *
+         * A nested `<svg>` clips to its own bounds, so the ball *cannot* be
+         * drawn outside the rectangle whatever the transforms do. The bounds
+         * were arithmetically correct before and the ball still escaped, which
+         * is the point: this stops depending on arithmetic that has to agree
+         * with a `slice` crop, a container aspect ratio and two keyframe ranges
+         * all at once. Get any of those wrong and the clip still holds.
+         *
+         * Its origin is the pitch's top-left corner, so everything inside is in
+         * pitch coordinates: 0..384 across, 0..208 down. The bounce ranges are
+         * that box inset by the ball's radius, which is the whole geometry now.
+         */
+        <svg x="8" y="26" width="384" height="208">
+          {/* Two groups because one element cannot hold two independent
+              `transform` animations — the outer carries the ball across, the
+              inner up and down, and SVG composes them. That is why the bounce
+              needs no collision code. */}
+          <g className="hero-ball-x animate-bounce-x">
+            <g className="hero-ball-y animate-bounce-y">
+              <svg
+                x="-10"
+                y="-10"
+                width="20"
+                height="20"
+                viewBox="0 0 64 64"
+                className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]"
+              >
+                {/* Explicitly white and near-black rather than theme colours: a
+                    football is white in both modes, and one that turned dark at
+                    night would stop reading as a ball at all. */}
+                <BallFaces
+                  body="fill-white stroke-black/25"
+                  panel="fill-[#14171f]"
+                  seam="stroke-black/30"
+                />
+              </svg>
+            </g>
           </g>
-        </g>
+        </svg>
       )}
     </svg>
   );

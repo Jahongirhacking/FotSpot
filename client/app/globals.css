@@ -217,26 +217,27 @@
  * fixed path was the previous shape and it read as a recording; this never
  * visibly repeats.
  *
- * The bounds are the touchlines inset by the ball's own radius (10), so the
- * ball's *edge* meets the line rather than its centre crossing it — 8+10=18 and
- * 392-10=382 across, 26+10=36 and 234-10=224 down. Those are the lines the pitch
- * is drawn at, so every turn happens against something the reader can see.
+ * The bounds are the pitch box inset by the ball's radius (10), in the nested
+ * viewport's own coordinates: 0..384 across and 0..208 down, so the ball's edge
+ * meets the line rather than its centre crossing it. That viewport also clips,
+ * so these numbers being wrong would show as a ball cut off at the line rather
+ * than as one loose on the page.
  */
 @keyframes bounce-x {
   from {
-    transform: translateX(18px);
+    transform: translateX(10px);
   }
   to {
-    transform: translateX(382px);
+    transform: translateX(374px);
   }
 }
 
 @keyframes bounce-y {
   from {
-    transform: translateY(36px);
+    transform: translateY(10px);
   }
   to {
-    transform: translateY(224px);
+    transform: translateY(198px);
   }
 }
 
