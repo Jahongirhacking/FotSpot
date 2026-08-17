@@ -126,7 +126,7 @@ const ru: ContactCopy = {
 const en: ContactCopy = {
   title: 'Contact us',
   intro:
-    'FotSpot разработан и управляется IT-командой Bulalar Team из Узбекистана. У вас есть вопрос, предложение или жалоба? Мы готовы вас выслушать и помочь. Свяжитесь с нами любым удобным способом через каналы ниже.',
+    'FotSpot is built and run by Bulalar Team, an IT team in Uzbekistan. Have a question, a suggestion or a complaint? We are ready to listen and to help. Reach us through any of the channels below.',
   placeholderNotice:
     'The addresses and numbers below are placeholders for now — the real ones are coming shortly.',
   emailHeading: 'Email',

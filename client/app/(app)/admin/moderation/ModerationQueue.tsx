@@ -46,7 +46,11 @@ export function ModerationQueue({ initial }: { initial: Report[] }) {
   });
 
   if (!reports || reports.length === 0) {
-    return <EmptyState icon={ShieldOff} title={t.admin.noReports} />;
+    return <EmptyState
+        icon={ShieldOff}
+        title={t.admin.noReports}
+        description={t.admin.noReportsHint}
+      />;
   }
 
   return (

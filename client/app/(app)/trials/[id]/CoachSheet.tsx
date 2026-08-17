@@ -79,7 +79,11 @@ export function CoachSheet({ trial }: { trial: Trial }) {
         ) : applicants.isError ? (
           <Alert tone="danger">{t.trials.sheetForbidden}</Alert>
         ) : rows?.length === 0 ? (
-          <EmptyState icon={ClipboardList} title={t.academy.noApplicants} />
+          <EmptyState
+            icon={ClipboardList}
+            title={t.academy.noApplicants}
+            description={t.admin.noApplicantsHint}
+          />
         ) : (
           <ul className="divide-border divide-y">
             {rows?.map((application) => (

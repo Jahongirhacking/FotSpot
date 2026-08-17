@@ -35,7 +35,11 @@ export default async function AuditLogPage() {
       </header>
 
       {entries.length === 0 ? (
-        <EmptyState icon={ScrollText} title={t.admin.noAuditEntries} />
+        <EmptyState
+          icon={ScrollText}
+          title={t.admin.noAuditEntries}
+          description={t.admin.noAuditEntriesHint}
+        />
       ) : (
         <ul className="space-y-2">
           {entries.map((entry) => (

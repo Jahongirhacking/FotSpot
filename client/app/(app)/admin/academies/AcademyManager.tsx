@@ -128,7 +128,11 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
       )}
 
       {(academies ?? []).length === 0 ? (
-        <EmptyState icon={Building2} title={t.admin.noAcademies} />
+        <EmptyState
+          icon={Building2}
+          title={t.admin.noAcademies}
+          description={t.admin.noAcademiesHint}
+        />
       ) : (
         <ul className="space-y-3">
           {(academies ?? []).map((academy) =>

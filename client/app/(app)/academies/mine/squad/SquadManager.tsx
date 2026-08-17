@@ -208,7 +208,11 @@ export function SquadManager({
           )}
 
           {rows?.length === 0 ? (
-            <EmptyState icon={Users} title={t.academy.noMembers} />
+            <EmptyState
+              icon={Users}
+              title={t.academy.noMembers}
+              description={t.admin.noMembersHint}
+            />
           ) : (
             <ul className="divide-border divide-y">
               {rows?.map((member) => (
