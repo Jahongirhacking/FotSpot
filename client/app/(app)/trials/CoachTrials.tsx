@@ -166,7 +166,11 @@ export function CoachTrials({
 
             <CardContent className="space-y-3 p-2">
               {pending.length === 0 ? (
-                <EmptyState icon={ClipboardCheck} title={t.recommendations.noReviews} />
+                <EmptyState
+                  icon={ClipboardCheck}
+                  title={t.recommendations.noReviews}
+                  description={t.admin.noReviewsHint}
+                />
               ) : (
                 <>
                   <ul className="divide-border divide-y">

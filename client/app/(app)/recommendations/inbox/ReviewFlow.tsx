@@ -131,6 +131,7 @@ export function ReviewFlow({
         hint={t.recommendations.reviewFlowHint}
         rows={arrived}
         emptyTitle={items?.length === 0 ? t.recommendations.inboxEmpty : t.player.noMatches}
+        emptyHint={items?.length === 0 ? t.admin.noReviewsHint : t.player.noMatchesHint}
         academyId={academyId}
         coaches={(coaches?.data ?? []).map((row) => row?.user ?? { id: row?.userId })}
         assign={assign}
@@ -142,6 +143,7 @@ export function ReviewFlow({
         hint={t.recommendations.activeSectionHint}
         rows={active}
         emptyTitle={t.recommendations.activeEmpty}
+        emptyHint={t.admin.noReviewsHint}
         academyId={academyId}
         coaches={(coaches?.data ?? []).map((row) => row?.user ?? { id: row?.userId })}
         assign={assign}
@@ -157,6 +159,12 @@ export function ReviewFlow({
             <EmptyState
               icon={ClipboardCheck}
               title={historyRows.length === 0 ? t.recommendations.historyEmpty : t.player.noMatches}
+              // Two different empties: nothing has happened yet, or a filter hid
+              // it. Saying which is the difference between waiting and clearing
+              // the search box.
+              description={
+                historyRows.length === 0 ? t.admin.noReviewsHint : t.player.noMatchesHint
+              }
             />
           ) : (
             <ul className="divide-border divide-y">
@@ -187,7 +195,11 @@ export function ReviewFlow({
                       recommendation later. */}
                   <Badge
                     variant={
-                      row?.invitation ? 'primary' : row?.status === 'ACCEPTED' ? 'success' : 'neutral'
+                      row?.invitation
+                        ? 'primary'
+                        : row?.status === 'ACCEPTED'
+                          ? 'success'
+                          : 'neutral'
                     }
                   >
                     {row?.invitation
@@ -219,6 +231,7 @@ function QueueCard({
   hint,
   rows,
   emptyTitle,
+  emptyHint,
   academyId,
   coaches,
   assign,
@@ -228,6 +241,8 @@ function QueueCard({
   hint: string;
   rows: RankedRecommendation[];
   emptyTitle: string;
+  /** Passed in because this component has no dictionary of its own. */
+  emptyHint?: string;
   academyId: string;
   coaches: Coach[];
   assign: UseMutationResult<unknown, Error, { id: string; coachUserId?: string }, unknown>;
@@ -245,7 +260,7 @@ function QueueCard({
 
       <CardContent className="p-2">
         {rows?.length === 0 ? (
-          <EmptyState icon={ClipboardCheck} title={emptyTitle} />
+          <EmptyState icon={ClipboardCheck} title={emptyTitle} description={emptyHint} />
         ) : (
           <ul className="divide-border divide-y">
             {rows?.map((item) => (

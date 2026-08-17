@@ -87,7 +87,11 @@ export function Applicants({ trial }: { trial: Trial }) {
         {applicants.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : rows?.length === 0 ? (
-          <EmptyState icon={ClipboardList} title={t.academy.noApplicants} />
+          <EmptyState
+            icon={ClipboardList}
+            title={t.academy.noApplicants}
+            description={t.admin.noApplicantsHint}
+          />
         ) : (
           <ul className="divide-border divide-y">
             {rows?.map((application) => (

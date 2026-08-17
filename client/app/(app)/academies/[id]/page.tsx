@@ -31,6 +31,7 @@ import type { Dictionary } from '@/lib/i18n';
 import { RelationBadge } from '@/components/shared/RelationBadge';
 import { formatDate } from '@/lib/utils';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
+import { absoluteUrl, jsonLd } from '@/lib/seo';
 import { AcademyFollowButton } from '@/components/academy/AcademyFollowButton';
 import { AcademyGallery } from '@/components/academy/AcademyGallery';
 import { AcademyMap } from '@/components/academy/AcademyMap';
@@ -38,18 +39,73 @@ import { AcademySocialLinks } from '@/components/academy/AcademySocialLinks';
 import { AcademyFeaturedList } from '@/components/academy/AcademyFeaturedList';
 import { AcademyProfileEditor } from './AcademyProfileEditor';
 
+/**
+ * The academy's own details, as the tab title and the share card.
+ *
+ * A bare name was all this said, so a link pasted into Telegram — which is where
+ * these get shared here — unfurled as the site name and nothing else. Somebody
+ * deciding whether to open it learned nothing about which academy it was.
+ *
+ * `revalidate` rather than no-store: this runs for crawlers and link unfurlers
+ * as much as for readers, and neither needs the description to be seconds old.
+ * The same call is cached for the page below it, so the pair costs one request.
+ */
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+
+  let academy: AcademyProfile;
   try {
-    const academy = await academies.getById(id, { revalidate: 300 });
-    return { title: academy?.name };
+    academy = await academies.getById(id, { revalidate: 300 });
   } catch {
+    // A deleted or private academy still needs a title; the page itself will
+    // 404 a moment later.
     return { title: 'Academy' };
   }
+
+  const url = absoluteUrl(`/academies/${id}`);
+  const where = locationText({ region: academy?.region, district: academy?.district });
+  const isLocalTeam = academy?.kind === 'LOCAL_TEAM';
+
+  /*
+   * The description falls back rather than going missing.
+   *
+   * An academy that has not written one is the common case early on, and an
+   * unfurl with no text at all reads as a broken link. Name plus place is
+   * always true and is the pair somebody actually needs to recognise it.
+   */
+  const summary =
+    academy?.description?.trim() ||
+    [academy?.name, where].filter(Boolean).join(' · ') ||
+    academy?.name;
+
+  return {
+    title: academy?.name,
+    description: summary,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'profile',
+      url,
+      title: academy?.name,
+      description: summary,
+      // The logo is the only image these records have; without it the card is
+      // a grey rectangle with the site's default.
+      ...(academy?.logoUrl ? { images: [{ url: academy.logoUrl, alt: academy?.name }] } : {}),
+    },
+    twitter: {
+      card: 'summary',
+      title: academy?.name,
+      description: summary,
+      ...(academy?.logoUrl ? { images: [academy.logoUrl] } : {}),
+    },
+    // A local team is deliberately absent from the public directory (§13), so
+    // it should not be in an index either — being unlisted and being
+    //搜索-indexable are the same decision made twice.
+    robots: isLocalTeam ? { index: false, follow: true } : { index: true, follow: true },
+  };
 }
 
 /**
@@ -164,6 +220,14 @@ export default async function AcademyDetailPage({
    */
   const isLocalTeam = academy?.kind === 'LOCAL_TEAM';
 
+  /** Whichever of the four the academy actually linked — `sameAs` wants URLs. */
+  const socialLinks = [
+    academy?.telegramUrl,
+    academy?.facebookUrl,
+    academy?.instagramUrl,
+    academy?.youtubeUrl,
+  ].filter((link): link is string => Boolean(link));
+
   /*
    * Where it is, in words and as a link.
    *
@@ -198,8 +262,51 @@ export default async function AcademyDetailPage({
    */
   const canFollowForTrials = !isLocalTeam && (!session || session?.activeRole === 'player');
 
+  /*
+   * The same facts, in the form a crawler reads as data rather than prose.
+   *
+   * `SportsOrganization` is the closest schema.org type — it is what lets a
+   * result show the address and the phone under the name instead of a bare blue
+   * link. Only fields the academy has actually filled in are emitted: a
+   * `telephone` of null is worse than no telephone, being a claim that fails
+   * validation rather than a detail left out.
+   */
+  const structuredData = {
+    '@type': 'SportsOrganization',
+    name: academy?.name,
+    url: absoluteUrl(`/academies/${id}`),
+    sport: 'Football',
+    ...(academy?.description ? { description: academy.description } : {}),
+    ...(academy?.logoUrl ? { logo: academy.logoUrl } : {}),
+    ...(academy?.primaryPhone ? { telephone: academy.primaryPhone } : {}),
+    ...(academy?.region
+      ? {
+          address: {
+            '@type': 'PostalAddress',
+            addressCountry: 'UZ',
+            addressRegion: academy.region,
+            ...(academy?.district ? { addressLocality: academy.district } : {}),
+          },
+        }
+      : {}),
+    ...(located
+      ? {
+          geo: {
+            '@type': 'GeoCoordinates',
+            latitude: academy?.latitude,
+            longitude: academy?.longitude,
+          },
+        }
+      : {}),
+    ...(socialLinks.length > 0 ? { sameAs: socialLinks } : {}),
+  };
+
   return (
     <div className="space-y-6">
+      {/* Not rendered to the reader — the machine-readable copy of what the page
+          already says, so the two cannot disagree. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(structuredData)} />
+
       {/* ---------- Identity ---------- */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">

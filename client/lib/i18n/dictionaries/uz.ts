@@ -572,6 +572,8 @@ export const uz = {
     submitForReview: 'Ko‘rib chiqishga yuborish',
     playersCannotRegister:
       'Futbolchi hisobi akademiya ro‘yxatdan o‘tkaza olmaydi. Buning o‘rniga akademiya rahbaridan sizni xodim sifatida qo‘shishini so‘rang.',
+    directorySummary:
+      'O‘zbekiston bo‘ylab {count} ta tasdiqlangan futbol akademiyasi — {regions}. Har birining tarkibi, sinovlari va aloqa ma’lumotlari.',
     noneListed: 'Hali akademiyalar yo‘q',
     adminOnly:
       'Akademiyalar platforma jamoasi tomonidan qo‘shiladi. O‘zbekistonda ~50 akademiya bor, shuning uchun ularni faqat administrator ro‘yxatga oladi. Akademiyangizni qo‘shish uchun biz bilan bog‘laning.',
@@ -1318,6 +1320,13 @@ export const uz = {
   },
 
   admin: {
+    noReviewsHint: 'Menejer sizga futbolchi bergach, ular shu yerda ko‘rinadi.',
+    noReportsHint: 'Foydalanuvchilar shikoyat yuborsa, ular shu yerda navbatga tushadi.',
+    noAuditEntriesHint: 'Tizimdagi muhim harakatlar shu yerda yozib boriladi.',
+    noApplicantsHint: 'Futbolchilar sinovga ariza berganda, ular shu yerda ko‘rinadi.',
+    noMembersHint: 'Bu bo‘limga a’zo qo‘shilgach, ular shu yerda ko‘rinadi.',
+    noAcademiesHint: 'Yaratilgan akademiyalar shu yerda ro‘yxatga tushadi.',
+    noRequestsHint: 'Foydalanuvchilar so‘rov yuborsa, ular shu yerda kutib turadi.',
     username: 'Login',
     password: 'Parol',
     firstName: 'Ism',

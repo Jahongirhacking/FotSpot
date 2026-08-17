@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmptyIllustration } from './EmptyIllustration';
 
 export function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -56,6 +57,14 @@ export function Alert({
  * Empty states get a suggested action, never just "nothing here". An empty
  * two-sided marketplace is the default state early on (README §16) — these screens
  * are the product for the first months.
+ *
+ * ## Something is always drawn
+ *
+ * `icon` is still honoured where a screen has a glyph that means something —
+ * a calendar for trials, a building for academies. Where it does not, the
+ * fallback is a drawing rather than nothing: a bare line of text inside a dashed
+ * box reads as a section that failed to load, and "failed" and "empty" should
+ * not look alike on the screens a new user sees most.
  */
 export function EmptyState({
   icon: Icon,
@@ -64,6 +73,7 @@ export function EmptyState({
   action,
   className,
 }: {
+  /** A glyph that means something here. Omit for the default illustration. */
   icon?: React.ComponentType<{ className?: string }>;
   title: string;
   description?: string;
@@ -77,10 +87,12 @@ export function EmptyState({
         className,
       )}
     >
-      {Icon && (
+      {Icon ? (
         <div className="bg-surface-2 text-muted grid size-11 place-items-center rounded-full">
           <Icon className="size-5" />
         </div>
+      ) : (
+        <EmptyIllustration />
       )}
       <div className="space-y-1">
         <p className="font-medium">{title}</p>

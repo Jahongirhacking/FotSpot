@@ -545,6 +545,8 @@ export const en: Dictionary = {
     submitForReview: 'Submit for review',
     playersCannotRegister:
       'A player account cannot register an academy. Ask an academy manager to invite you as staff instead.',
+    directorySummary:
+      '{count} verified football academies across Uzbekistan — {regions}. Squads, trials and contact details for each.',
     noneListed: 'No academies listed yet',
     adminOnly:
       'Academies are onboarded by the platform team. There are only around 50 in Uzbekistan, so an admin registers them. Get in touch to have yours added.',
@@ -1262,6 +1264,13 @@ export const en: Dictionary = {
   },
 
   admin: {
+    noReviewsHint: 'Players a manager hands you for review will appear here.',
+    noReportsHint: 'Reports from users queue up here.',
+    noAuditEntriesHint: 'Significant actions across the platform are recorded here.',
+    noApplicantsHint: 'Players who apply to this trial will appear here.',
+    noMembersHint: 'Once somebody is added to this section they will appear here.',
+    noAcademiesHint: 'Academies you create are listed here.',
+    noRequestsHint: 'Requests from users wait here until somebody takes them.',
     username: 'Username',
     password: 'Password',
     firstName: 'First name',

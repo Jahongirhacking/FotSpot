@@ -100,7 +100,9 @@ export function RequestQueue({ canDelete }: { canDelete: boolean }) {
 
   const items = queue.data?.items ?? [];
   if (items.length === 0) {
-    return <EmptyState icon={Mail} title={t.requests?.empty} />;
+    return (
+      <EmptyState icon={Mail} title={t.requests?.empty} description={t.admin.noRequestsHint} />
+    );
   }
 
   return (
