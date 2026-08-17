@@ -53,7 +53,24 @@ import { AppController } from './app.controller';
       useFactory: (config: ConfigService) => ({
         connection: {
           url: config.get<string>('REDIS_URL') ?? 'redis://localhost:6379',
+          // Required by BullMQ: its blocking commands must not be abandoned
+          // mid-wait, which is what a finite retry count would do.
           maxRetriesPerRequest: null,
+          /*
+           * Back off hard when Redis is refusing, instead of hammering it.
+           *
+           * With the default strategy a permanently failing Redis — a hosted
+           * plan whose request quota is spent, say — is retried about once a
+           * second, for ever. Every retry is itself another request against
+           * the quota that caused the failure, so the counter can only climb
+           * and the logs fill with the same error until somebody notices.
+           *
+           * Doubling to a two-minute ceiling keeps a brief blip invisible (the
+           * first few retries are still sub-second) while turning a sustained
+           * outage into roughly thirty attempts an hour rather than three and
+           * a half thousand.
+           */
+          retryStrategy: (times: number) => Math.min(50 * 2 ** Math.min(times, 12), 120_000),
         },
         defaultJobOptions: {
           // Kept briefly so a completed job can be inspected while debugging,
