@@ -43,3 +43,15 @@ export const FINALISE_BACKOFF_MS = 5_000;
  * number the client sent.
  */
 export const MAX_CLIP_BYTES = 120 * 1024 * 1024;
+
+/**
+ * The fallback's retry shape, used when the queue cannot be reached.
+ *
+ * Deliberately shorter than the queue's five attempts across two minutes: this
+ * runs in the web process rather than a worker, so the window it holds a timer
+ * open for is a cost the API pays. Three tries over about twenty seconds covers
+ * the ordinary race between the browser's upload finishing and its confirm
+ * arriving, which is the only thing the delay is for.
+ */
+export const INLINE_FINALISE_ATTEMPTS = 3;
+export const INLINE_FINALISE_DELAY_MS = 10_000;

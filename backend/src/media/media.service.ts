@@ -31,8 +31,11 @@ import {
   RequestUploadDto,
   UpdateMediaDto,
 } from './dto/media.dto';
+import { MediaFinaliserService } from './media-finaliser.service';
 import {
   FINALISE_ATTEMPTS,
+  INLINE_FINALISE_ATTEMPTS,
+  INLINE_FINALISE_DELAY_MS,
   FINALISE_BACKOFF_MS,
   FINALISE_CLIP_JOB,
   MEDIA_QUEUE,
@@ -204,6 +207,7 @@ export class MediaService {
     private groups: GroupsService,
     private tariffs: TariffsService,
     @InjectQueue(MEDIA_QUEUE) private queue: Queue<FinaliseClipJob>,
+    private finaliser: MediaFinaliserService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -320,20 +324,78 @@ export class MediaService {
      * Enqueued after the row exists, deliberately — a worker that started first
      * would look up a media id that had not been written yet.
      */
-    await this.queue.add(
-      FINALISE_CLIP_JOB,
-      { mediaId: media.id, storageKey: media.storageKey, posterKey: media.posterKey },
-      {
+    const job: FinaliseClipJob = {
+      mediaId: media.id,
+      storageKey: media.storageKey,
+      posterKey: media.posterKey,
+    };
+
+    try {
+      await this.queue.add(FINALISE_CLIP_JOB, job, {
         jobId: media.id,
         attempts: FINALISE_ATTEMPTS,
         backoff: { type: 'exponential', delay: FINALISE_BACKOFF_MS },
-      },
-    );
+      });
+    } catch (error) {
+      /*
+       * No queue, so do it here.
+       *
+       * Redis being unreachable used to mean this row stayed at PROCESSING for
+       * good: the file was in the bucket, the upload had worked, and the player
+       * watched a clip that never appeared. An outage of the accelerator should
+       * not cost the thing it was accelerating.
+       *
+       * Not awaited. Finalising can take a couple of seconds of bucket lookups
+       * and the caller is a browser waiting on a confirm — the response says
+       * "PROCESSING" either way, and the client already polls for the change.
+       */
+      this.logger.warn(
+        `Media queue unavailable, finalising ${media.id} inline: ${(error as Error).message}`,
+      );
+      void this.finaliseInline(job);
+    }
 
     // No cache invalidation here any more: the clip is not visible yet, so there
     // is nothing stale to clear. The worker does it at the moment the clip
     // actually appears.
     return toMediaResponse(media, this.storage);
+  }
+
+  /**
+   * The worker's job, run in this process because there is no worker.
+   *
+   * Keeps the retry the queue would have given it, for the same reason the
+   * queue had one: the browser's PUT to R2 and its confirm call here are two
+   * requests, and on a slow connection the confirm can win. A single immediate
+   * check would mark a perfectly good upload as absent.
+   *
+   * Fewer attempts over a shorter window than BullMQ's five across two minutes —
+   * this is holding a timer in a web process rather than a worker slot, and a
+   * clip still missing after half a minute is one the player will re-upload
+   * long before a background retry would have helped.
+   *
+   * Swallows its own errors. Nothing is waiting on the result and the row is
+   * already written; a failure here leaves the clip at PROCESSING, which is
+   * exactly where it would have been with no fallback at all.
+   */
+  private async finaliseInline(job: FinaliseClipJob) {
+    for (let attempt = 1; attempt <= INLINE_FINALISE_ATTEMPTS; attempt++) {
+      try {
+        const outcome = await this.finaliser.finalise(job);
+        if (outcome !== 'NOT_ARRIVED') return;
+      } catch (error) {
+        this.logger.warn(`Inline finalise of ${job.mediaId} failed: ${(error as Error).message}`);
+        return;
+      }
+
+      if (attempt < INLINE_FINALISE_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, INLINE_FINALISE_DELAY_MS));
+      }
+    }
+
+    this.logger.warn(
+      `Clip ${job.mediaId} had not reached storage after the inline retries; left PROCESSING`,
+    );
   }
 
   /**
