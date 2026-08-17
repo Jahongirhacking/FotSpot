@@ -182,28 +182,45 @@ export default async function LandingPage() {
         {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
           <Reveal>
             <section className="mx-auto max-w-6xl px-4 pb-8">
-              {/* `block` on each link: an inline anchor wrapping a card leaves
-                  the card its own width and a baseline gap under it, which is
-                  what made this row sit unevenly against the sections below. */}
-              <dl className="grid grid-cols-3 gap-3">
-                <Link href="/players" className="block">
-                  <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
-                </Link>
-                <Link href="/academies" className="block">
-                  <Stat
-                    icon={Building2}
-                    label={t.landing.statAcademies}
-                    value={academyList?.length}
-                  />
-                </Link>
-                <Link href="/trials" className="block">
-                  <Stat
-                    icon={CalendarDays}
-                    label={t.landing.statTrials}
-                    value={trialList?.length}
-                  />
-                </Link>
-              </dl>
+              {/*
+               * A list of links, not a description list.
+               *
+               * This was a `<dl>` whose direct children were anchors, which the
+               * HTML spec does not allow — `<dl>` takes `<dt>`, `<dd>` or
+               * `<div>` and nothing else — and the `<dd>` inside each tile came
+               * *before* its `<dt>`, so a screen reader read every value before
+               * the word telling you what it counted. Both went unnoticed
+               * because neither shows up visually.
+               *
+               * These are three links to three screens. `<ul>`/`<li>` says that,
+               * and the number and its label are then free to sit in whatever
+               * order reads best.
+               */}
+              <ul className="grid grid-cols-3 gap-3">
+                <li>
+                  <Link href="/players" className="block">
+                    <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/academies" className="block">
+                    <Stat
+                      icon={Building2}
+                      label={t.landing.statAcademies}
+                      value={academyList?.length}
+                    />
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/trials" className="block">
+                    <Stat
+                      icon={CalendarDays}
+                      label={t.landing.statTrials}
+                      value={trialList?.length}
+                    />
+                  </Link>
+                </li>
+              </ul>
             </section>
           </Reveal>
         )}
@@ -524,13 +541,17 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex items-center gap-3 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5">
+    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex flex-col items-start gap-2 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5 sm:flex-row sm:items-center sm:gap-3">
       <span className="bg-primary/12 text-primary grid size-9 shrink-0 place-items-center rounded-lg">
         <Icon className="size-4" />
       </span>
+      {/* Stacked on a phone, side by side from `sm`. Three tiles across a 360px
+          screen leaves about a hundred pixels beside a 36px icon, which was
+          truncating every label — the one thing on the tile that says what the
+          number is. */}
       <div className="min-w-0">
-        <dd className="text-lg leading-tight font-bold">{value}</dd>
-        <dt className="text-muted truncate text-xs">{label}</dt>
+        <p className="text-lg leading-tight font-bold">{value}</p>
+        <p className="text-muted text-xs">{label}</p>
       </div>
     </div>
   );
