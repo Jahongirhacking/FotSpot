@@ -939,14 +939,38 @@ model MediaLike {
  * public media (1.2). Deliberately NOT unique per (media, user): a view is an event,
  * not a state, unlike a like.
  */
+/**
+ * One clip, watched by one viewer, on one day.
+ * ## The uniqueness is the deduplication
+ * A view used to be deduplicated by a Redis key with a day's TTL. That worked
+ * until Redis did not: a `SET NX` that cannot be reached returns "not fresh", so
+ * an outage silently stopped counting views altogether — and had it failed the
+ * other way it would have counted every request instead. Neither is a property
+ * you want a counter to have.
+ * The constraint below is the same rule expressed where the rows live, so it
+ * holds whatever else is down, and a duplicate is refused by the database rather
+ * than by a cache that has to be asked first.
+ * `viewerKey` and not `userId` because a unique index treats NULLs as distinct —
+ * with a nullable column every anonymous view would be unique and the constraint
+ * would do nothing for exactly the traffic it most needs to bound. It carries the
+ * account id when there is one and `ip:<address>` when there is not.
+ */
 model MediaView {
   id      String  @id @default(uuid())
   mediaId String
   userId  String?
   media   Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
+  /// Account id, or `ip:<address>` for a guest. Never null — see the note above.
+  viewerKey String
+  /// Midnight UTC of the day this was watched. A day everywhere, not per zone:
+  /// two viewers in different zones should not get different dedupe windows for
+  /// the same clip.
+  viewDate  DateTime @db.Date
+
   createdAt DateTime @default(now())
 
+  @@unique([mediaId, viewerKey, viewDate])
   @@index([mediaId])
 }
 
