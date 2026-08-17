@@ -279,23 +279,23 @@ export default async function LandingPage() {
                 {recent.items.slice(0, 3).map((player) => (
                   <Card
                     key={player?.id}
-                    className="hover:border-primary/40 transition-[transform,border-color] duration-200 hover:-translate-y-0.5"
+                    className="hover:border-primary/40 transition-[transform,translate,border-color] duration-200 hover:-translate-y-1"
                   >
-                    <CardContent className="flex items-center justify-between gap-3 p-4">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {player?.firstName} {player?.lastName}
-                        </p>
-                        <p className="text-muted text-xs">
-                          {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
-                        </p>
-                      </div>
-                      <Button asChild size="sm" variant="ghost">
-                        <Link href={`/players/${player?.id}`} aria-label={`${player?.firstName}`}>
-                          <ArrowRight aria-hidden />
-                        </Link>
-                      </Button>
-                    </CardContent>
+                    <Link href={`/players/${player?.id}`} aria-label={`${player?.firstName}`}>
+                      <CardContent className="flex items-center justify-between gap-3 p-4">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {player?.firstName} {player?.lastName}
+                          </p>
+                          <p className="text-muted text-xs">
+                            {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="ghost">
+                          <ArrowRight aria-hidden className="size-4 !p-0" />
+                        </Button>
+                      </CardContent>
+                    </Link>
                   </Card>
                 ))}
               </div>
@@ -432,7 +432,7 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="border-border bg-surface rounded-card flex items-center gap-3 border p-3">
+    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex items-center gap-3 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5">
       <span className="bg-primary/12 text-primary grid size-9 shrink-0 place-items-center rounded-lg">
         <Icon className="size-4" />
       </span>
