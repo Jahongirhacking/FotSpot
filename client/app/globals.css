@@ -174,7 +174,7 @@
   --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-bounce-x: bounce-x 7s linear infinite alternate;
   --animate-bounce-y: bounce-y 4.3s linear infinite alternate;
-  --animate-hover: hover 2.6s ease-in-out infinite alternate;
+  --animate-shadow: shadow 2.6s ease-out infinite alternate;
   --animate-halo: halo 2.8s ease-out infinite;
 }
 
@@ -219,29 +219,43 @@
  * line would look like a rendering fault rather than a bounce.
  */
 /*
- * The ball's height, told through its shadow.
+ * A ball's shadow, doing the four things a real one does.
  *
- * The pitch is seen from above, so height has nowhere to go — a ball that rose
- * would just be a ball. What reads as height is the shadow: tight and exactly
- * the ball's size when it is down, wide and faint when it is up. Every viewer
- * has watched a real ball do this, which is why it needs no explaining.
+ * **It moves away from the ball as the ball rises.** A shadow stays on the
+ * ground; the ball does not. With the light up and to the left, height pushes
+ * the shadow down and right, and that separation is what the eye actually reads
+ * as height — a disc locked under the ball is a glow, not a shadow.
  *
- * 0.67 is not arbitrary — the halo is drawn at r=15 and the ball at r=10, so
- * two thirds is the point where the shadow is precisely the ball's own outline
- * and the two read as touching.
+ * **It grows and fades together.** The same light spreads over more ground from
+ * further away, so a shadow cannot get bigger without getting weaker. Doing one
+ * without the other is the tell.
  *
- * 2.6s, and coprime-ish with the 7s and 4.3s of travel, so the bounce does not
- * fall into step with the walls. A ball that peaked every time it hit a
- * touchline would look scripted, which is the thing this whole pitch avoids.
+ * **It softens.** Contact gives a shadow its only hard edge. Blur rising with
+ * height is most of why this reads as a photograph of a ball rather than as two
+ * circles.
+ *
+ * **It is dark.** It was the brand colour, which made it a halo. Shadows are an
+ * absence of light and have no hue of their own.
+ *
+ * 0.6 is not arbitrary: the halo is drawn at r=15 and the ball at r=10, so this
+ * is the point where the shadow is a shade under the ball's own outline —
+ * slightly tighter than touching, which is what contact looks like.
+ *
+ * The timing function is `ease-out` and the animation `alternate`, which is
+ * gravity for free: decelerating on the way up, and — because alternate
+ * reverses the curve — accelerating on the way down. A symmetric ease would
+ * make it float.
  */
-@keyframes hover {
+@keyframes shadow {
   from {
-    transform: scale(0.67);
-    opacity: 0.32;
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0.38;
+    filter: blur(0.4px);
   }
   to {
-    transform: scale(1.4);
-    opacity: 0.12;
+    transform: translate(5px, 6px) scale(1.35);
+    opacity: 0.13;
+    filter: blur(2.4px);
   }
 }
 
