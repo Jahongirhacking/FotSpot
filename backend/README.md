@@ -468,3 +468,39 @@ pnpm prisma:migrate         # applies and verifies against the dev database
 
 Note it drops `User.refreshTokenHash` in favour of the `Session` table, so any
 existing logged-in users are signed out once applied.
+
+## Deployment: migrations run on boot
+
+`start` and `start:prod` run `prisma migrate deploy` before the API listens.
+
+This is here because forgetting it broke production twice: code that reads a new
+column shipped while the database still had the old shape, and every request
+touching that table answered 500. The symptom is never obvious from the outside
+— "column does not exist" surfaces as a generic server error on whichever screen
+happens to touch it first.
+
+`migrate deploy` is idempotent and takes an advisory lock, so several instances
+booting at once is safe; that lock is also why `DIRECT_URL` must point at the
+unpooled endpoint (see the datasource note in `schema.prisma`).
+
+A migration that fails now stops the API from starting. That is deliberate: a
+service that will answer 500 for every request touching the changed table is
+worse than one that visibly did not come up.
+
+**Render must use `pnpm start:prod` (or `npm run start:prod`) as its start
+command** for this to apply. Render's Pre-Deploy hook is the tidier home for
+migrations, but it is a paid feature — doing it in `start:prod` is what makes
+this work on the free instance type.
+
+### `pnpm seed` is a one-off, not part of the boot
+
+Do not put it in the start command. It was there once, and on a free instance
+that spins down it meant a `ts-node` compile and an argon2 hash in front of
+every cold start, paid by whoever made the first request after an idle period.
+
+Nothing it writes needs to happen more than once:
+
+- **Roles** are ensured on boot by `RbacService.onModuleInit`.
+- **Tariff plans** are ensured on boot by `TariffsService.onModuleInit`.
+- **The bootstrap super admin** is the only thing left, and a database only
+  needs one. Run `pnpm seed` by hand against a brand-new database, once.
