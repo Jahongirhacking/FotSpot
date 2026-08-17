@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,6 +47,7 @@ export function EditIdentity({
 }) {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInput = React.useRef<HTMLInputElement>(null);
 
   const [avatarUrl, setAvatarUrl] = React.useState(initial.avatarUrl);
@@ -75,6 +76,23 @@ export function EditIdentity({
       await browserFetch('/users/me', { method: 'PATCH', body: values });
       setSaved(true);
       router.refresh();
+
+      /*
+       * Go back to whatever sent us here, when something did.
+       *
+       * The onboarding wizard links in to correct a name — most often one Google
+       * filled in — and without this the reader saves, is left on the settings
+       * page, and has to find their way back to a wizard that has forgotten
+       * which step they were on. `next` is what makes the link a detour rather
+       * than an exit.
+       *
+       * Only a same-origin path is honoured. `next` is in the URL and therefore
+       * anybody's to write, and a redirect that accepts `//evil.example` is an
+       * open redirect — the leading-slash pair is exactly the case a naive
+       * `startsWith('/')` misses.
+       */
+      const next = searchParams.get('next');
+      if (next && next.startsWith('/') && !next.startsWith('//')) router.push(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.somethingWrong);
     }

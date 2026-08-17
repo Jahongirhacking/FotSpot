@@ -5,6 +5,7 @@ import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { avatarKey } from '../storage/storage.keys';
+import type { RedisService } from '../redis/redis.service';
 
 const USER_ID = '77588691-7f87-412a-a738-53a1138728aa';
 
@@ -33,6 +34,16 @@ function harness(options: { storedAvatarKey?: string | null; deleteRejects?: Err
         };
       }),
     },
+    /*
+     * The account is the source of truth for a name, and `updateProfile` pushes
+     * a rename down to the player card so the two cannot diverge. These tests
+     * are about avatars, so the card is absent — which is also the ordinary
+     * case, since most accounts are not players.
+     */
+    playerProfile: {
+      updateMany: jest.fn(async () => ({ count: 0 })),
+      findUnique: jest.fn(async () => null),
+    },
   } as unknown as PrismaService;
 
   const storage = {
@@ -51,6 +62,10 @@ function harness(options: { storedAvatarKey?: string | null; deleteRejects?: Err
     // Not exercised by these tests — they are about which avatar object is
     // deleted, and nothing in that path sends mail.
     {} as unknown as EmailService,
+    // Only reached when a name changes, which these tests never do. `del` is a
+    // no-op rather than absent so a future test that does change one fails on
+    // the assertion instead of on a missing method.
+    { del: jest.fn(async () => undefined) } as unknown as RedisService,
   );
 
   return { service, storage, prisma, deleted, findUnique };

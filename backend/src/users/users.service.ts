@@ -13,6 +13,8 @@ import * as crypto from 'crypto';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
+import { RedisService } from '../redis/redis.service';
+import { RedisKeys } from '../redis/redis.keys';
 import { assertKeyUnder, avatarKey, avatarPrefix } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
@@ -36,6 +38,7 @@ export class UsersService {
     private storage: StorageService,
     private config: ConfigService,
     private email: EmailService,
+    private redis: RedisService,
   ) {}
 
   async findMe(userId: string) {
@@ -279,6 +282,41 @@ export class UsersService {
         isPrivate: true,
       },
     });
+
+    /*
+     * A person has one name, whatever roles they hold.
+     *
+     * `PlayerProfile` carries its own `firstName`/`lastName`, copied at
+     * onboarding. Nothing kept the copy in step, so changing your name here left
+     * the player card showing the old one — the same human appearing under two
+     * names depending on which screen you were on, and no way to tell which was
+     * current. A player is not a separate person from the account that holds it.
+     *
+     * The account is the source of truth and this propagates the change; the
+     * copy is not a second opinion. `updateMany` rather than `update` because a
+     * user need not have a player profile at all, and a missing row is the
+     * ordinary case rather than an error.
+     *
+     * The duplicated columns should not exist — the proper fix is for the card
+     * to read the account's name — but that is a migration on a required column
+     * and every read of a player's name. Until then this keeps the two from
+     * diverging, which is the part users can see.
+     */
+    if (dto.firstName !== undefined || dto.lastName !== undefined) {
+      await this.prisma.playerProfile.updateMany({
+        where: { userId },
+        data: {
+          ...(dto.firstName !== undefined ? { firstName: dto.firstName.trim() } : {}),
+          ...(dto.lastName !== undefined ? { lastName: dto.lastName.trim() } : {}),
+        },
+      });
+      // The card embeds the name, so its cached copy is now stale.
+      const profile = await this.prisma.playerProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (profile) await this.redis.del(RedisKeys.playerProfile(profile.id));
+    }
 
     if (previousAvatarKey && previousAvatarKey !== user.avatarKey) {
       await this.discardAvatar(userId, previousAvatarKey);
