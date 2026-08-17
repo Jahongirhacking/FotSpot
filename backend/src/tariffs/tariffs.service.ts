@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { PlanTier, Prisma, TariffPlan } from '@prisma/client';
 import { AuditAction } from '../audit/audit.actions';
 import { AuditService } from '../audit/audit.service';
@@ -48,11 +54,42 @@ function quota(used: number, limit: number): Quota {
  * quietly diverge from what the admin screen shows.
  */
 @Injectable()
-export class TariffsService {
+export class TariffsService implements OnModuleInit {
+  private readonly logger = new Logger(TariffsService.name);
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
   ) {}
+
+  /**
+   * The three plans exist, whatever else has happened.
+   *
+   * They were only ever created by `prisma/seed.ts`, which meant the seed had
+   * to run on every deploy to be safe — and on a free instance that spins down,
+   * that is a ts-node compile and an argon2 hash in front of every cold start,
+   * paid by whoever made the first request. `RbacService` already ensures its
+   * roles this way; plans are the same kind of fact and belong in the same
+   * place.
+   *
+   * Only the tier is written. Every limit is a column default, so an upsert
+   * that touched them would quietly undo whatever a super admin had set on the
+   * tariff screen — `update: {}` is what makes running this on every boot safe.
+   *
+   * Fails soft for the same reason the RBAC one does: a database blip at boot
+   * should not stop the API coming up, and the next restart will try again.
+   */
+  async onModuleInit() {
+    try {
+      for (const tier of PLAN_TIERS) {
+        await this.prisma.tariffPlan.upsert({ where: { tier }, update: {}, create: { tier } });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Could not ensure tariff plans — limit checks will fail until the database is reachable: ${(error as Error).message}`,
+      );
+    }
+  }
 
   /** All three plans, cheapest first — the shape /admin/tariff-plans renders. */
   async list(): Promise<TariffPlan[]> {
