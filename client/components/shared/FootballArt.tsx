@@ -86,8 +86,7 @@ export function PitchBackdrop({
                 400×260 viewport and the shadow flies off the pitch. */}
             <circle
               r="15"
-              className="motion-safe:animate-shadow [transform-origin:center] fill-black [transform-box:fill-box]"
-              opacity="0.24"
+              className="ball-shadow motion-safe:animate-shadow [transform-origin:center] fill-black [transform-box:fill-box]"
             />
 
             {/*
