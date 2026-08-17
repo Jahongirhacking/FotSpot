@@ -487,10 +487,24 @@ A migration that fails now stops the API from starting. That is deliberate: a
 service that will answer 500 for every request touching the changed table is
 worse than one that visibly did not come up.
 
-**Render must use `pnpm start:prod` (or `npm run start:prod`) as its start
-command** for this to apply. Render's Pre-Deploy hook is the tidier home for
-migrations, but it is a paid feature — doing it in `start:prod` is what makes
-this work on the free instance type.
+`start` and `start:prod` are identical for this reason: whichever one a
+platform picks, the schema is current before the first request. Cloud Run's
+buildpacks run `start`; Render is configured with `start:prod`.
+
+Two things this depends on, both of which have broken a deploy before:
+
+- **`prisma` is a runtime dependency, not a dev one.** Buildpacks ship only
+  `dependencies` to the runtime image, so a devDependency CLI is absent exactly
+  where this needs it — the container then exits before it can listen, which
+  Cloud Run reports as "failed to start and listen on the port", naming nothing
+  about Prisma.
+- **`DIRECT_URL` must be set wherever the app runs**, not only where migrations
+  used to be run by hand. `migrate deploy` takes an advisory lock that has to
+  outlive a transaction, which a pooled connection cannot hold — see the
+  datasource note in `schema.prisma`.
+
+The scripts call `prisma` directly rather than through `pnpm run`, because the
+runtime image is not guaranteed to have pnpm on its path.
 
 ### `pnpm seed` is a one-off, not part of the boot
 
