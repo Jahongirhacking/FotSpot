@@ -1513,6 +1513,11 @@ export const uz = {
         ],
       },
     },
+    localTeamTitle: 'Mahalliy jamoa ochmoqchimisiz?',
+    localTeamBody:
+      'Mahalliy jamoa — mahalladagi, maktabdagi yoki tumandagi futbol jamoasi. Akademiya emas: murabbiy va saralash sinovlari bo‘lmaydi, tarkibga taklif orqali qo‘shiladi. Sizga tarkibni yuritish, o‘yinchilarni taklif qilish va skautlar bilan ishlash imkoniyati beriladi.',
+    localTeamCta: 'Ochishni so‘rash',
+    localTeamMessage: 'Assalomu alaykum! Men FotSpot’da Mahalliy Jamoa ochmoqchiman.',
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — ehtiyotkorlik bilan.',
     safetyBody:
       'Voyaga yetmaganlar profillari sukut bo‘yicha yopiq, FotSpotda kattalar bilan bolalar o‘rtasida shaxsiy yozishma yo‘q va biz hech qachon bola profilining ko‘rinishini sotmaymiz.',

@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { ApiError } from '@/lib/api/client';
 import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
 import type { PlayerProfile } from '@/lib/api/types';
+import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
 import { ageBand, humanizeEnum, initials } from '@/lib/utils';
@@ -19,6 +20,7 @@ import {
   Building2,
   CalendarDays,
   Search,
+  Send,
   ShieldCheck,
   Users,
   Video,
@@ -250,6 +252,53 @@ export default async function LandingPage() {
             </div>
           </section>
         )}
+
+        {/* ---------- Local teams ----------
+            Between the players who joined and the safety note, because it is an
+            invitation rather than a claim: somebody who has just read that real
+            people are arriving is the person most likely to wonder whether their
+            own side belongs here.
+
+            It asks rather than offers a form. A team is created by the platform
+            team — the same rule as academies, for the same reason (§1.10) — and
+            a self-service form would only be a queue of duplicates and tests
+            that somebody has to clear by hand anyway. */}
+        <section className="mx-auto max-w-6xl px-4 pb-14">
+          <Card className="border-primary/25 bg-primary/[0.04]">
+            <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-2xl min-w-0">
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <Users className="text-primary size-5 shrink-0" aria-hidden />
+                  {t.landing.localTeamTitle}
+                </h2>
+                <p className="text-muted mt-2 text-sm leading-relaxed">{t.landing.localTeamBody}</p>
+              </div>
+
+              {/*
+               * Straight into the bot with the sentence already written.
+               *
+               * `?text=` prefills the message box rather than sending anything,
+               * so the reader still presses send — which is what keeps it a
+               * request and not an accidental tap. It is localised because a
+               * request arriving in a language the reader does not write is one
+               * they have to translate before they can send it.
+               *
+               * `SUPPORT_BOT` rather than the handle inline: the contact page
+               * links to the same bot, and two copies of an address is one that
+               * gets changed in one place.
+               */}
+              <Button asChild size="lg" className="shrink-0">
+                <a
+                  href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.localTeamMessage)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Send aria-hidden /> {t.landing.localTeamCta}
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
 
         <section className="border-border border-t px-4 py-12">
           <div className="text-muted mx-auto flex max-w-3xl items-start gap-3 text-sm">
