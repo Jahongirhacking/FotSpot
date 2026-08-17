@@ -172,7 +172,8 @@
   --animate-rise: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade: fade 0.5s ease-out both;
   --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-pass: pass 12s ease-in-out infinite;
+  --animate-bounce-x: bounce-x 7s linear infinite alternate;
+  --animate-bounce-y: bounce-y 4.3s linear infinite alternate;
   --animate-halo: halo 2.8s ease-out infinite;
 }
 
@@ -199,62 +200,38 @@
 }
 
 /*
- * A move being played, on the hero pitch.
+ * The ball, loose on the pitch.
  *
- * Waypoints in the SVG's own 400×260 space, so the ball lands on the centre
- * spot, the flanks and the edge of the box rather than at arbitrary pixels —
- * it reads as football because it goes where football goes.
+ * Two independent axes rather than one path: X ping-pongs between the touchlines
+ * and Y between the goal lines, each `linear` so the pace never changes and each
+ * `alternate` so it reverses the moment it reaches a wall. Combined, that is a
+ * ball bouncing off the sides — and off a corner when both reverse together —
+ * without a line of JavaScript or any collision maths.
  *
- * Each pass is a fast leg followed by a plateau: the percentages are paired
- * (18/26, 44/52, …) so the ball arrives, sits for a beat as though somebody is
- * about to play it, then goes. Even motion would read as a screensaver.
+ * The durations are deliberately not multiples of each other (7s and 4.3s), so
+ * the pair only returns to its starting state after roughly five minutes. A
+ * fixed path was the previous shape and it read as a recording; this never
+ * visibly repeats.
  *
- * `ease-in-out` per leg is what the pairing buys — a single linear sweep
- * through every point looks like a cursor, not a pass.
+ * The bounds inset the pitch by 24 rather than sitting on the 8px touchline:
+ * the halo around the ball is 14 wide, and a ball that put its glow through the
+ * line would look like a rendering fault rather than a bounce.
  */
-/*
- * One ring, leaving.
- *
- * Behind the play button, and slow: a fast pulse is an alarm, and this is an
- * invitation. It fades as it grows so it never draws a hard edge across the
- * label it sits under.
- */
-@keyframes halo {
-  0% {
-    opacity: 0.5;
-    transform: scale(1);
+@keyframes bounce-x {
+  from {
+    transform: translateX(24px);
   }
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(1.9);
+  to {
+    transform: translateX(376px);
   }
 }
 
-@keyframes pass {
-  0% {
-    transform: translate(200px, 130px);
+@keyframes bounce-y {
+  from {
+    transform: translateY(24px);
   }
-  18% {
-    transform: translate(96px, 74px);
-  }
-  26% {
-    transform: translate(96px, 74px);
-  }
-  44% {
-    transform: translate(304px, 186px);
-  }
-  52% {
-    transform: translate(304px, 186px);
-  }
-  70% {
-    transform: translate(330px, 92px);
-  }
-  78% {
-    transform: translate(330px, 92px);
-  }
-  100% {
-    transform: translate(200px, 130px);
+  to {
+    transform: translateY(236px);
   }
 }
 
@@ -453,6 +430,28 @@
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * Park the hero ball on the centre spot.
+   *
+   * Collapsing the duration leaves an `alternate` animation resting at whichever
+   * end it happened to stop at — a ball wedged in a corner, which reads as a
+   * layout fault rather than as a still. Stopping the animation outright and
+   * placing it deliberately gives somebody who has asked for no motion the
+   * composition the pitch was drawn around.
+   *
+   * `!important` because an animation beats a plain declaration even at a
+   * duration of nothing.
+   */
+  .hero-ball-x {
+    animation: none !important;
+    transform: translateX(200px) !important;
+  }
+
+  .hero-ball-y {
+    animation: none !important;
+    transform: translateY(130px) !important;
   }
 }
 

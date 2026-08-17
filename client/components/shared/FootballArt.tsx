@@ -21,7 +21,7 @@ export function PitchBackdrop({
 }: {
   className?: string;
   /**
-   * Play a move on it — a ball passed between four points on the pitch.
+   * Let a ball loose on it — bouncing off the touchlines at a steady pace.
    *
    * Off by default: this backdrop sits behind text on several screens, and a
    * moving object under a paragraph is a thing to look away from. The hero
@@ -65,9 +65,16 @@ export function PitchBackdrop({
        * still frame: it is where the keyframes start and end.
        */}
       {live && (
-        <g className="animate-pass">
-          <circle r="14" className="fill-primary/10" />
-          <circle r="5" className="fill-primary" />
+        // Nested because the two axes are separate animations: the outer group
+        // carries the ball across the pitch and the inner one carries it up and
+        // down, and SVG composes the transforms for us. One element cannot hold
+        // two independent `transform` animations, which is the whole reason the
+        // bounce works without any collision code.
+        <g className="hero-ball-x animate-bounce-x">
+          <g className="hero-ball-y animate-bounce-y">
+            <circle r="14" className="fill-primary/10" />
+            <circle r="5" className="fill-primary" />
+          </g>
         </g>
       )}
     </svg>
