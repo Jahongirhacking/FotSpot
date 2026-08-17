@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LifeBuoy } from 'lucide-react';
+import { LifeBuoy, Send } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
@@ -10,9 +10,20 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Textarea } from '@/components/ui/Field';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 type RequestType = 'DELETE_ACCOUNT' | 'FEEDBACK' | 'BUG' | 'OTHER';
+
+/**
+ * The three a person can raise from this screen.
+ *
+ * `OTHER` exists in the API and is deliberately not offered here: a fourth tab
+ * called "other" is where every request goes when the first three are not read
+ * carefully, and an inbox of untyped messages is harder to work than three
+ * named queues.
+ */
+const REQUEST_KINDS = ['FEEDBACK', 'BUG', 'DELETE_ACCOUNT'] as const;
+type RequestKind = (typeof REQUEST_KINDS)[number];
 type RequestStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'DECLINED';
 
 interface MyRequest {
@@ -39,7 +50,26 @@ interface MyRequest {
 export function AccountRequests() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [message, setMessage] = React.useState('');
+  /**
+   * Which kind of request is being written, and the note for it.
+   *
+   * Three buttons under one shared box asked the reader to write first and
+   * choose after, which is the wrong way round — and the note they had typed
+   * for a bug report went out attached to whichever button they happened to
+   * press. Choosing first makes the box mean something.
+   *
+   * The notes are kept per kind rather than cleared on every switch: somebody
+   * who starts a bug report, glances at the deletion tab and comes back should
+   * find their paragraph still there. Only the sent one is cleared.
+   */
+  const [kind, setKind] = React.useState<RequestKind>('FEEDBACK');
+  const [notes, setNotes] = React.useState<Record<RequestKind, string>>({
+    FEEDBACK: '',
+    BUG: '',
+    DELETE_ACCOUNT: '',
+  });
+  const message = notes[kind];
+  const setMessage = (next: string) => setNotes((current) => ({ ...current, [kind]: next }));
   const [notice, setNotice] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -49,14 +79,15 @@ export function AccountRequests() {
   });
 
   const send = useMutation({
-    mutationFn: (type: RequestType) =>
+    mutationFn: (type: RequestKind) =>
       browserFetch<{ alreadyOpen: boolean }>('/requests', {
         method: 'POST',
-        body: { type, message: message.trim() || undefined },
+        body: { type, message: notes[type].trim() || undefined },
       }),
-    onSuccess: (result) => {
+    onSuccess: (result, type) => {
       setError(null);
-      setMessage('');
+      // Only the one that went out — the other tabs keep their drafts.
+      setNotes((current) => ({ ...current, [type]: '' }));
       // Pressing twice is not asking twice — the API returns the open request
       // rather than filing a second, and the wording follows suit.
       setNotice(result?.alreadyOpen ? t.requests?.askAlreadyOpen : t.requests?.askSent);
@@ -100,6 +131,38 @@ export function AccountRequests() {
           </ul>
         )}
 
+        {/* Choose what this is about, then write it.
+            A tab rather than a button per kind: the note underneath belongs to
+            one of them, and with three send buttons over a shared box there was
+            no way to see which. */}
+        <div role="tablist" className="bg-surface-2 grid grid-cols-3 gap-1 rounded-lg p-1">
+          {REQUEST_KINDS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={option === kind}
+              onClick={() => setKind(option)}
+              className={cn(
+                'min-h-10 rounded-md px-2 text-sm font-medium transition-colors',
+                option === kind ? 'bg-surface text-foreground shadow-sm' : 'text-muted',
+                // The deletion tab reads as what it is once selected, without
+                // being shouted at from the strip when it is not.
+                option === kind && option === 'DELETE_ACCOUNT' && 'text-danger',
+              )}
+            >
+              {option === 'DELETE_ACCOUNT'
+                ? t.requests?.askDeleteTitle
+                : t.requests?.[`type${option}`]}
+            </button>
+          ))}
+        </div>
+
+        {/* Said only on the tab it applies to. The policy names deletion as a
+            right, so it is offered plainly rather than hidden — but nobody
+            should arrive at it without reading what it does. */}
+        {kind === 'DELETE_ACCOUNT' && <Alert tone="warning">{t.requests?.askDeleteBody}</Alert>}
+
         <Field
           label={t.requests?.askMessageLabel}
           htmlFor="request-message"
@@ -114,35 +177,15 @@ export function AccountRequests() {
           />
         </Field>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            loading={send.isPending}
-            onClick={() => send.mutate('FEEDBACK')}
-          >
-            {t.requests?.typeFEEDBACK}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            loading={send.isPending}
-            onClick={() => send.mutate('BUG')}
-          >
-            {t.requests?.typeBUG}
-          </Button>
-          {/* Deliberately last and visually distinct, but not hidden: the policy
-              names it as a right, and a right buried behind a support email is
-              one most people never exercise. */}
-          <Button
-            size="sm"
-            variant="danger"
-            loading={send.isPending}
-            onClick={() => send.mutate('DELETE_ACCOUNT')}
-          >
-            {t.requests?.askDeleteTitle}
-          </Button>
-        </div>
+        {/* One action, so its spinner can only mean one thing. */}
+        <Button
+          size="sm"
+          variant={kind === 'DELETE_ACCOUNT' ? 'danger' : 'primary'}
+          loading={send.isPending}
+          onClick={() => send.mutate(kind)}
+        >
+          <Send aria-hidden /> {t.requests?.send}
+        </Button>
       </CardContent>
     </Card>
   );

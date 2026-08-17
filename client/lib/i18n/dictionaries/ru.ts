@@ -400,6 +400,7 @@ export const ru: Dictionary = {
     statusIN_PROGRESS: 'В работе',
     statusRESOLVED: 'Закрыт',
     statusDECLINED: 'Отклонён',
+    send: 'Отправить',
     askTitle: 'Связаться с командой',
     askDeleteTitle: 'Запрос на удаление аккаунта',
     askDeleteBody:

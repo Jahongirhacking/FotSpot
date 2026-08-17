@@ -427,6 +427,7 @@ export const uz = {
     statusIN_PROGRESS: 'Ko‘rilmoqda',
     statusRESOLVED: 'Yakunlangan',
     statusDECLINED: 'Rad etilgan',
+    send: 'Yuborish',
     askTitle: 'Jamoaga murojaat',
     askDeleteTitle: 'Hisobni o‘chirishni so‘rash',
     askDeleteBody:

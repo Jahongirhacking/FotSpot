@@ -403,6 +403,7 @@ export const en: Dictionary = {
     statusIN_PROGRESS: 'In progress',
     statusRESOLVED: 'Resolved',
     statusDECLINED: 'Declined',
+    send: 'Send',
     askTitle: 'Contact the team',
     askDeleteTitle: 'Request account deletion',
     askDeleteBody:
