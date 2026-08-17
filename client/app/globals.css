@@ -156,10 +156,14 @@
   /*
    * Motion, as theme tokens rather than one-off classes.
    *
-   * Tailwind v4 turns `--animate-x` into `animate-x`, so the timings live beside
-   * the colours and a screen cannot invent its own easing. Three, deliberately:
-   * a landing page that moves in four directions reads as a demo of animation
-   * rather than as a product.
+  * Tailwind v4 turns `--animate-x` into `animate-x`, so the timings live beside
+   * the colours and a screen cannot invent its own easing. They stay few on
+   * purpose: a landing page that moves in four directions reads as a demo of
+   * animation rather than as a product.
+   *
+   * `rise` and `fade` are entrances. `ball` is the roll on the hero button.
+   * `bounce-x`/`bounce-y` are the two axes that send the pitch ball off the
+   * touchlines. `halo` is the ring leaving the play button.
    *
    * Every one ends in `both`, so the element holds its final frame instead of
    * snapping back — and holds its *first* frame before it starts, which is what
@@ -174,7 +178,6 @@
   --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-bounce-x: bounce-x 7s linear infinite alternate;
   --animate-bounce-y: bounce-y 4.3s linear infinite alternate;
-  --animate-shadow: shadow 2.6s ease-out infinite alternate;
   --animate-halo: halo 2.8s ease-out infinite;
 }
 
@@ -218,94 +221,6 @@
  * the halo around the ball is 14 wide, and a ball that put its glow through the
  * line would look like a rendering fault rather than a bounce.
  */
-/*
- * A ball's shadow, derived rather than keyframed.
- *
- * ## One animated number, three derived properties
- *
- * Only `--ball-h` is animated — the ball's height, 0 on the ground to 1 at the
- * top of its bounce. Offset, size, softness and darkness are all `calc()` from
- * it, so the relationship between them is written once instead of being implied
- * by two keyframe endpoints that a later edit can pull out of agreement.
- *
- * `@property` is what makes it interpolate: a custom property is a string to the
- * animation engine until it is registered with a type, and an unregistered one
- * would snap from 0 to 1 rather than sweeping.
- *
- * ## The distance is the shared scalar
- *
- * `--shadow-d` is literally hypot(dx, dy) — the ball-to-shadow distance the eye
- * actually sees — and size, blur and opacity are linear in it. That is the
- * physical relationship: for a fixed light angle the offset is proportional to
- * height, the penumbra widens with height, and the same light spread over more
- * ground is weaker light. All three are functions of the one thing.
- *
- * The endpoints are pinned to what contact means rather than to what looked
- * right. At d=0 the shadow is exactly the ball's outline and perfectly sharp,
- * because an object resting on a surface hides its own shadow and casts no
- * penumbra. Everything else is that state, spread out.
- *
- * Worth being precise about what this buys: because dx and dy are themselves
- * `--ball-h` times a constant, `--shadow-d` is just `--ball-h` × 7.81. Computing
- * it through hypot rather than folding the constant in is deliberate — it keeps
- * the light direction editable in one place. Change the 5/6 to move the sun and
- * everything downstream follows, where hard-coded endpoints would have to be
- * recomputed by hand.
- */
-@property --ball-h {
-  syntax: '<number>';
-  initial-value: 0;
-  inherits: false;
-}
-
-@keyframes shadow {
-  from {
-    --ball-h: 0;
-  }
-  to {
-    --ball-h: 1;
-  }
-}
-
-.ball-shadow {
-  /* The sun, as a direction. Up and to the left, so height pushes the shadow
-     down and right. These two numbers are the only place it is stated. */
-  --shadow-dx: calc(var(--ball-h) * 5);
-  --shadow-dy: calc(var(--ball-h) * 6);
-
-  /* sqrt(dx² + dy²). Peaks at hypot(5, 6) ≈ 7.81 when the ball is at its
-     highest, which is the divisor every coefficient below is scaled against. */
-  --shadow-d: hypot(var(--shadow-dx), var(--shadow-dy));
-
-  transform: translate(calc(var(--shadow-dx) * 1px), calc(var(--shadow-dy) * 1px))
-    /*
-     * 0.6667 at contact is not a taste: the shadow circle is r=15 and the ball
-     * r=10, so two thirds is the scale at which the shadow is *exactly* the
-     * ball's own outline. A ball resting on grass hides its shadow completely,
-     * and any other number here would leave a rim showing — which reads as two
-     * objects rather than one touching the ground.
-     *
-     * It only reaches 0.9 at the apex. A shadow that doubled would say the
-     * light is a few centimetres above the pitch; a few tenths is what height
-     * on a football field actually looks like from above.
-     */
-    scale(calc(0.6667 + var(--shadow-d) * 0.02988));
-
-  /*
-   * Zero at contact, and that matters more than the maximum.
-   *
-   * Blur comes from the penumbra, and at the moment of contact there is no
-   * penumbra — the occluder is on the surface, so the edge is geometrically
-   * sharp. Any blur left at d=0 makes the ball look like it is hovering a
-   * millimetre off the ground for the whole bounce.
-   */
-  filter: blur(calc(var(--shadow-d) * 0.23047px));
-
-  /* Darkest where it is tightest: the same light over more ground is weaker
-     light, so spread and strength move opposite each other. */
-  opacity: calc(0.42 - var(--shadow-d) * 0.03585);
-}
-
 @keyframes bounce-x {
   from {
     transform: translateX(24px);
