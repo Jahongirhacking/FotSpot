@@ -72,10 +72,20 @@ export function PitchBackdrop({
         // bounce works without any collision code.
         <g className="hero-ball-x animate-bounce-x">
           <g className="hero-ball-y animate-bounce-y">
-            {/* The glow stays, and stays behind: it is what keeps a 20px ball
-                readable against the pitch lines without making the ball itself
-                larger than the centre circle. */}
-            <circle r="15" className="fill-primary/15" />
+            {/* The shadow, and the only thing on a top-down pitch that can say
+                how high the ball is: exactly the ball's outline when it is down,
+                wide and faint when it is up. It also keeps a 20px ball readable
+                against the pitch lines without the ball itself having to compete
+                with the centre circle.
+
+                `transform-box: fill-box` so it scales about its own centre —
+                without it an SVG transform-origin resolves against the whole
+                400×260 viewport and the shadow flies off the pitch. */}
+            <circle
+              r="15"
+              className="fill-primary motion-safe:animate-hover [transform-origin:center] [transform-box:fill-box]"
+              opacity="0.32"
+            />
 
             {/*
              * A nested `<svg>` rather than a scaled group.

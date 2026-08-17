@@ -174,6 +174,7 @@
   --animate-ball: ball 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-bounce-x: bounce-x 7s linear infinite alternate;
   --animate-bounce-y: bounce-y 4.3s linear infinite alternate;
+  --animate-hover: hover 2.6s ease-in-out infinite alternate;
   --animate-halo: halo 2.8s ease-out infinite;
 }
 
@@ -217,6 +218,33 @@
  * the halo around the ball is 14 wide, and a ball that put its glow through the
  * line would look like a rendering fault rather than a bounce.
  */
+/*
+ * The ball's height, told through its shadow.
+ *
+ * The pitch is seen from above, so height has nowhere to go — a ball that rose
+ * would just be a ball. What reads as height is the shadow: tight and exactly
+ * the ball's size when it is down, wide and faint when it is up. Every viewer
+ * has watched a real ball do this, which is why it needs no explaining.
+ *
+ * 0.67 is not arbitrary — the halo is drawn at r=15 and the ball at r=10, so
+ * two thirds is the point where the shadow is precisely the ball's own outline
+ * and the two read as touching.
+ *
+ * 2.6s, and coprime-ish with the 7s and 4.3s of travel, so the bounce does not
+ * fall into step with the walls. A ball that peaked every time it hit a
+ * touchline would look scripted, which is the thing this whole pitch avoids.
+ */
+@keyframes hover {
+  from {
+    transform: scale(0.67);
+    opacity: 0.32;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0.12;
+  }
+}
+
 @keyframes bounce-x {
   from {
     transform: translateX(24px);
