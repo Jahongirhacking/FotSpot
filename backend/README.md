@@ -468,3 +468,24 @@ pnpm prisma:migrate         # applies and verifies against the dev database
 
 Note it drops `User.refreshTokenHash` in favour of the `Session` table, so any
 existing logged-in users are signed out once applied.
+
+## Deployment: migrations run on boot
+
+`start` and `start:prod` run `prisma migrate deploy` before the API listens.
+
+This is here because forgetting it broke production twice: code that reads a new
+column shipped while the database still had the old shape, and every request
+touching that table answered 500. The symptom is never obvious from the outside
+— "column does not exist" surfaces as a generic server error on whichever screen
+happens to touch it first.
+
+`migrate deploy` is idempotent and takes an advisory lock, so several instances
+booting at once is safe; that lock is also why `DIRECT_URL` must point at the
+unpooled endpoint (see the datasource note in `schema.prisma`).
+
+A migration that fails now stops the API from starting. That is deliberate: a
+service that will answer 500 for every request touching the changed table is
+worse than one that visibly did not come up.
+
+**Render must use `pnpm start:prod` (or `npm run start:prod`) as its start
+command** for this to apply.
