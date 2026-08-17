@@ -80,7 +80,25 @@ export class ThrottleGuard implements CanActivate {
     const route = `${request.method}:${context.getClass().name}.${context.getHandler().name}`;
     const key = `rate:${route}:${caller}:${Math.floor(Date.now() / (windowSeconds * 1000))}`;
 
-    const count = await this.redis.incrementInWindow(key, windowSeconds);
+    /*
+     * Shared counter only where the number has to be exact.
+     *
+     * A route that opted in with `@Throttle(...)` did so because its limit
+     * protects something real — a code being texted, a password being guessed —
+     * and those must hold across every instance, so they count in Redis.
+     *
+     * Every other route gets the blanket default, which exists to stop a
+     * runaway client rather than to enforce a promise. Counting *that* in Redis
+     * meant a round trip on every single request the API served, and on a
+     * per-command Redis plan it was the largest line on the bill by a distance:
+     * a page load is five or ten API calls and each was paying for a counter
+     * nobody reads. In memory it is free, and the only thing lost is that with
+     * N instances the effective ceiling is N × limit — which for a coarse
+     * safety net is a rounding error, and the exact limits are unaffected.
+     */
+    const count = options
+      ? await this.redis.incrementInWindow(key, windowSeconds)
+      : this.countInMemory(key, windowSeconds);
     if (count === null || count <= limit) return true;
 
     throw new HttpException(
@@ -90,6 +108,34 @@ export class ThrottleGuard implements CanActivate {
       },
       HttpStatus.TOO_MANY_REQUESTS,
     );
+  }
+
+  /**
+   * The per-instance counter behind the blanket default.
+   *
+   * The key already carries the window number, so an entry belongs to exactly
+   * one window and is never re-read after it passes. Sweeping on write keeps
+   * the map bounded without a timer: whatever is left from an earlier window is
+   * dead by definition, and the cost is paid by the request that noticed.
+   */
+  private readonly counters = new Map<string, number>();
+  private lastSweep = 0;
+
+  private countInMemory(key: string, windowSeconds: number): number {
+    const now = Date.now();
+    // Once per window at most — sweeping on every request would walk the whole
+    // map to reclaim a handful of keys.
+    if (now - this.lastSweep > windowSeconds * 1000) {
+      const current = `:${Math.floor(now / (windowSeconds * 1000))}`;
+      for (const existing of this.counters.keys()) {
+        if (!existing.endsWith(current)) this.counters.delete(existing);
+      }
+      this.lastSweep = now;
+    }
+
+    const next = (this.counters.get(key) ?? 0) + 1;
+    this.counters.set(key, next);
+    return next;
   }
 
   /**

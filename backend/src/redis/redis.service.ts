@@ -34,6 +34,35 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       lazyConnect: true,
     });
 
+    /*
+     * One round trip, one billable command, still atomic.
+     *
+     * INCR then EXPIRE is two commands and a race; wrapping them in MULTI is
+     * four (`MULTI`, `INCR`, `EXPIRE`, `EXEC`) for the same one answer. A
+     * hosted Redis charges per command, and this runs on the sensitive auth
+     * routes — so the difference between one and four here is most of what the
+     * rate limiter costs to operate.
+     *
+     * The TTL is set only when the counter is created. `INCR` returning 1 is
+     * exactly that moment, so the window is anchored to the first request in it
+     * rather than sliding forward on every hit — an expiry refreshed each call
+     * never expires under sustained load and locks the caller out for good.
+     *
+     * `defineCommand` registers it as a method that sends EVALSHA and falls
+     * back to EVAL if the script is not cached, which is what makes it survive
+     * a Redis restart without any handling here.
+     */
+    this.client.defineCommand('incrementInWindow', {
+      numberOfKeys: 1,
+      lua: `
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then
+          redis.call('EXPIRE', KEYS[1], ARGV[1])
+        end
+        return count
+      `,
+    });
+
     this.client.on('error', (err: Error) => {
       // Logged once per failure, not rethrown: see the class comment.
       this.logger.warn(`Redis unavailable, serving from Postgres: ${err.message}`);
@@ -81,21 +110,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * read-modify-write loses increments and the limiter reports a fraction of the
    * real rate. INCR is a single round trip and cannot lose one.
    *
-   * The TTL is set only when the counter is created (`NX`), so the window is
-   * fixed from the first request rather than sliding forward with every hit —
-   * an expiry refreshed on each call would never expire under sustained load and
+   * The TTL is set only when the counter is created, so the window is fixed
+   * from the first request rather than sliding forward with every hit — an
+   * expiry refreshed on each call would never expire under sustained load and
    * would lock the caller out permanently.
+   *
+   * One script rather than a MULTI, because a hosted Redis bills per command
+   * and `MULTI`/`INCR`/`EXPIRE`/`EXEC` is four of them for one logical answer.
+   * `defineCommand` sends EVALSHA, so the round trip and the atomicity are the
+   * same and the meter moves by one. See the script's own note in `onModuleInit`.
    *
    * Returns null when Redis is unreachable, which callers must read as "no
    * information" and allow: see the class note on failing soft.
    */
   async incrementInWindow(key: string, windowSeconds: number): Promise<number | null> {
     try {
-      const [[, count]] = (await this.client
-        .multi()
-        .incr(key)
-        .expire(key, windowSeconds, 'NX')
-        .exec()) as [[Error | null, number], [Error | null, number]];
+      const count = await (
+        this.client as unknown as {
+          incrementInWindow(key: string, window: string): Promise<number>;
+        }
+      ).incrementInWindow(key, String(windowSeconds));
       return count;
     } catch {
       return null;

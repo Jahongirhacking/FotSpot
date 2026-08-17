@@ -26,6 +26,22 @@ import { navForRole } from './nav';
  * and pushed every page sideways — and that is measuring English, the shortest of
  * the three languages. The drawer holds them until there is genuinely room.
  */
+/**
+ * How often the three header badges re-count.
+ *
+ * Every poll is an API call and every API call costs Redis commands upstream,
+ * so this number is a standing bill paid by every open tab whether or not
+ * anybody is looking. Three badges at five minutes was ~2,600 requests a day
+ * per tab left open; at fifteen it is a third of that, and none of these
+ * numbers is urgent — an unread notification that appears twelve minutes late
+ * is indistinguishable from one that appeared on time, and the socket already
+ * pushes the ones that genuinely cannot wait.
+ *
+ * TanStack Query pauses polling for a hidden tab by default, so this is the
+ * cost of a *visible* tab only.
+ */
+const BADGE_POLL_MS = 15 * 60 * 1000;
+
 export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl: string | null }) {
   const { t } = useI18n();
   const { activeRole, isAuthenticated } = useSession();
@@ -73,8 +89,8 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
     queryKey: ['trials-unseen'],
     queryFn: () => browserFetch<{ count: number }>('/trials/unseen-count'),
     enabled: isAuthenticated,
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: BADGE_POLL_MS,
+    staleTime: BADGE_POLL_MS,
   });
 
   /*
@@ -87,8 +103,8 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
     queryKey: ['inbox-awaiting-review'],
     queryFn: () => browserFetch<{ count: number }>('/recommendations/inbox/awaiting-review-count'),
     enabled: isAuthenticated && activeRole === 'academy_manager',
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: BADGE_POLL_MS,
+    staleTime: BADGE_POLL_MS,
   });
 
   /*
@@ -105,8 +121,8 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
     queryKey: ['support-requests-new'],
     queryFn: () => browserFetch<{ count: number }>('/requests/new-count'),
     enabled: isAuthenticated && (activeRole === 'admin' || activeRole === 'super_admin'),
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: BADGE_POLL_MS,
+    staleTime: BADGE_POLL_MS,
   });
 
   /** Which menu entries carry a count, so the two lists below stay in step. */

@@ -42,7 +42,35 @@ import {
  * throwing is what schedules the next attempt; only the final attempt writes
  * FAILED, which is what `onFailed` below is for.
  */
-@Processor(MEDIA_QUEUE)
+/**
+ * How hard the worker is allowed to ask "anything for me yet?".
+ *
+ * ## These numbers are a bill, not a tuning preference
+ *
+ * BullMQ polls. With nothing queued at all the default worker still issued
+ * about 110 Redis commands a minute — a blocking pop that times out every five
+ * seconds, a stalled-job sweep every thirty, and the script calls each of those
+ * drags along. On a Redis you own that is free and invisible. On a per-command
+ * plan it is ~176,000 commands a day to do nothing, which is a 500,000/month
+ * allowance gone in under three days before a single person signs in.
+ *
+ * ## What we give up
+ *
+ * `drainDelay` is only how long the worker blocks *when the queue is empty* —
+ * a job pushed while it waits wakes it immediately, so throughput and latency
+ * for real work are unchanged. `stalledInterval` is how quickly a job orphaned
+ * by a crashed worker is noticed; five minutes rather than thirty seconds is
+ * the actual cost here, and this queue confirms uploads that already carry
+ * their own retries (FINALISE_ATTEMPTS). Nobody is waiting on that sweep.
+ */
+const IDLE_TUNING = {
+  /** Seconds the worker blocks on an empty queue. Default is 5. */
+  drainDelay: 60,
+  /** Milliseconds between stalled-job sweeps. Default is 30_000. */
+  stalledInterval: 300_000,
+} as const;
+
+@Processor(MEDIA_QUEUE, IDLE_TUNING)
 export class MediaProcessor extends WorkerHost {
   private readonly logger = new Logger(MediaProcessor.name);
 
