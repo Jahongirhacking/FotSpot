@@ -25,6 +25,14 @@ export const AuditAction = {
   SUPPORT_REQUEST_CREATED: 'support.request_created',
   SUPPORT_REQUEST_HANDLED: 'support.request_handled',
   USER_DELETED: 'admin.user_deleted',
+  /**
+   * An admin account was minted, credentials and all (AdminService.createAdmin).
+   *
+   * `ADMIN_ASSIGNED` is kept beside it because the trail is history: rows written
+   * while admins were promoted from existing accounts still carry it, and a key
+   * removed here would make those rows unreadable to anything matching on it.
+   */
+  ADMIN_CREATED: 'admin.created',
   ADMIN_ASSIGNED: 'admin.assigned',
   ADMIN_REVOKED: 'admin.revoked',
   ROLE_ASSIGNED: 'role.assigned',

@@ -5533,14 +5533,14 @@
         ]
       },
       "post": {
-        "operationId": "admin_assignAdmin",
+        "operationId": "admin_createAdmin",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssignAdminDto"
+                "$ref": "#/components/schemas/CreateAdminDto"
               }
             }
           }
@@ -7739,15 +7739,27 @@
           "tier"
         ]
       },
-      "AssignAdminDto": {
+      "CreateAdminDto": {
         "type": "object",
         "properties": {
-          "userId": {
-            "type": "string"
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "phone": {
+            "type": "string",
+            "description": "Optional, and only for reaching them later — sign-in is by username."
           }
         },
         "required": [
-          "userId"
+          "firstName",
+          "lastName"
         ]
       },
       "CreatePermissionDto": {

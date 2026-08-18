@@ -4,7 +4,7 @@ import { AdminService } from './admin.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import {
-  AssignAdminDto,
+  CreateAdminDto,
   CreatePermissionDto,
   GrantRolePermissionDto,
   VerifyDto,
@@ -104,10 +104,17 @@ export class AdminController {
 
   // ---- Super Admin only (1.2 restriction: plain Admins cannot create admins) ----
 
+  /**
+   * Creates an admin account and returns its one-time credentials.
+   *
+   * The response carries a plaintext password exactly once — see
+   * `AdminService.createAdmin`. Super admin only, like every other irreversible
+   * platform action (§1.2).
+   */
   @Roles('super_admin')
   @Post('admins')
-  assignAdmin(@CurrentUser() user: AuthUser, @Body() dto: AssignAdminDto) {
-    return this.adminService.assignAdmin(user.userId, dto.userId);
+  createAdmin(@CurrentUser() user: AuthUser, @Body() dto: CreateAdminDto) {
+    return this.adminService.createAdmin(user.userId, dto);
   }
 
   @Roles('super_admin')

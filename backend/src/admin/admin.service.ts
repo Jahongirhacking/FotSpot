@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import * as argon2 from 'argon2';
 import { PlanTier, Prisma } from '@prisma/client';
 import { AcademiesService } from '../academies/academies.service';
 import { AuditAction } from '../audit/audit.actions';
@@ -15,7 +17,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
 import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
-import { SearchUsersDto } from './dto/admin.dto';
+import { generatePassword, generateUsername } from '../academies/manager-credentials.util';
+import { CreateAdminDto, SearchUsersDto } from './dto/admin.dto';
 import { TariffsService } from '../tariffs/tariffs.service';
 
 @Injectable()
@@ -131,6 +134,9 @@ export class AdminService {
         firstName: true,
         lastName: true,
         email: true,
+        // These accounts are minted with a username and no email, so without it
+        // the list would identify a freshly created admin by nothing at all.
+        username: true,
         avatarKey: true,
         createdAt: true,
         roles: { select: { role: { select: { name: true } } } },
@@ -368,10 +374,73 @@ export class AdminService {
   // Admin itself is explicitly barred from creating admins (1.2 restriction);
   // these methods are only reachable via the super_admin-gated controller routes.
 
-  async assignAdmin(actorId: string, userId: string) {
-    await this.rbac.assignRole(userId, 'admin');
-    await this.audit.record(actorId, AuditAction.ADMIN_ASSIGNED, { userId });
-    return { assigned: true, userId };
+  /**
+   * Creates an admin account and hands back its one-time credentials.
+   *
+   * ## Created, not promoted
+   *
+   * Admins are staff, not users who happen to be on the platform already, so this
+   * mints the account rather than granting a role to one somebody searched for —
+   * see CreateAdminDto for why the search box was the wrong shape entirely.
+   *
+   * The mechanism is deliberately the same one that onboards an academy manager
+   * (§1.10, `AcademiesService.createManagerAccount`): a generated username, a
+   * generated password, and `mustChangePassword` set, because the password
+   * necessarily passes through a third party — the super admin, and whatever chat
+   * app they paste it into. It is hashed before the row is written and the
+   * plaintext is returned up the stack exactly once, so "resend their password" is
+   * impossible by construction rather than by policy.
+   *
+   * One transaction: an account created without its `admin` role is a person who
+   * can sign in and see nothing, and a role row pointing at no account is worse.
+   */
+  async createAdmin(actorId: string, dto: CreateAdminDto) {
+    if (dto.phone) {
+      const taken = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+      if (taken) {
+        throw new ConflictException('That phone number already belongs to an account');
+      }
+    }
+
+    const password = generatePassword();
+    const passwordHash = await argon2.hash(password);
+    const fullName = `${dto.firstName} ${dto.lastName}`;
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      // A username collision is a coincidence, not a conflict to surface: two
+      // admins sharing a name is perfectly ordinary, so retry rather than fail.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const username = generateUsername(fullName, 'admin');
+        if (await tx.user.findUnique({ where: { username } })) continue;
+
+        const user = await tx.user.create({
+          data: {
+            username,
+            passwordHash,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone ?? null,
+            mustChangePassword: true,
+          },
+        });
+
+        await this.rbac.assignRole(user.id, 'admin', tx);
+        return { user, username };
+      }
+
+      throw new BadRequestException('Could not generate a unique username — try a different name');
+    });
+
+    await this.audit.record(actorId, AuditAction.ADMIN_CREATED, {
+      userId: created.user.id,
+      username: created.username,
+    });
+
+    return {
+      userId: created.user.id,
+      // Shown once and never again — only the Argon2 hash is stored.
+      credentials: { username: created.username, password },
+    };
   }
 
   async revokeAdmin(actorId: string, userId: string) {

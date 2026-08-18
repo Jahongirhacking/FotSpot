@@ -1425,6 +1425,17 @@ export const uz = {
       'Administratorlar murabbiy va akademiyalarni tasdiqlaydi hamda moderatsiya qiladi. Faqat bosh administrator ularni tayinlay oladi.',
     currentAdmins: 'Joriy administratorlar',
     grantAdmin: 'Administrator qilish',
+
+    // ---- Administrator hisobini yaratish (tanlash emas — yaratish). ----
+    createAdmin: 'Administrator yaratish',
+    createAdminHint:
+      'Administratorlar platforma jamoasi tomonidan yaratiladi. Ism va familiyani kiriting — tizim login va parolni o‘zi yaratadi va ularni faqat bir marta ko‘rsatadi.',
+    adminFirstName: 'Ism',
+    adminLastName: 'Familiya',
+    adminPhone: 'Telefon (ixtiyoriy)',
+    adminPhoneHint: 'Faqat bog‘lanish uchun — kirish login orqali amalga oshiriladi.',
+    adminCreated: 'Administrator hisobi yaratildi.',
+    noAdminName: 'Ism va familiyani kiriting.',
     revokeAdmin: 'Huquqni olib tashlash',
     findUser: 'Foydalanuvchini qidiring (ism yoki email)',
     superAdminProtected: 'Bosh administrator huquqini bu yerdan olib bo‘lmaydi.',
