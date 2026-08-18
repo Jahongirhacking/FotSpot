@@ -5,6 +5,7 @@ import type { Media } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { CARD_THEME, positionGroup } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
+import { ClipModerationBadge } from '@/components/player/ClipModerationBadge';
 import { cn } from '@/lib/utils';
 
 /**
@@ -80,6 +81,19 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
           </>
         )}
       </span>
+
+      {/*
+        The moderation state, when there is one worth saying.
+        Top-left and over the wash, so it is the first thing read on a tile the
+        owner is scanning for "did my upload go through". Renders nothing for a
+        verified clip — see ClipModerationBadge — so a public profile's grid is
+        unchanged, and nothing but the owner is ever served a clip in any other
+        state to begin with.
+      */}
+      <ClipModerationBadge
+        status={clip?.moderationStatus}
+        className="absolute top-1.5 left-1.5 max-w-[calc(100%-0.75rem)]"
+      />
 
       {/* Says "this opens" without pretending to be a control. */}
       <span

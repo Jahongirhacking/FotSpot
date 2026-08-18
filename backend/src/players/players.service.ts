@@ -7,11 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthUser } from '../common/decorators/current-user.decorator';
-import {
-  isValidRegionDistrict,
-  normaliseDistrict,
-  normaliseRegion,
-} from '../common/uzbekistan';
+import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
@@ -27,6 +23,7 @@ import {
   UpdatePlayerProfileDto,
   UpdatePlayerStatsDto,
 } from './dto/player.dto';
+import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
 
 /**
  * The player's photo lives on `User`, not `PlayerProfile` — one account, one
@@ -73,7 +70,12 @@ export class PlayersService {
 
     const [clips, assessments] = await Promise.all([
       this.prisma.media.findMany({
-        where: { playerId: { in: playerIds }, status: 'ACTIVE', rating: { not: null } },
+        // The stars are a public summary of a player's evidence, so they count
+        // only evidence that is public. A self-reported 90 on a clip nobody has
+        // reviewed would otherwise raise a card in search results — moderation
+        // that stops at the video and not at what the video claims is not
+        // moderation.
+        where: { playerId: { in: playerIds }, ...PUBLIC_MEDIA_WHERE, rating: { not: null } },
         select: { playerId: true, category: true, rating: true, reportedBy: true, createdAt: true },
       }),
       this.prisma.coachAssessment.findMany({
@@ -363,7 +365,11 @@ export class PlayersService {
       async () => {
         const found = await this.prisma.playerProfile.findUnique({
           where: { id: playerId },
-          include: { media: { where: { status: 'ACTIVE' } }, ...AVATAR_INCLUDE },
+          // The public profile read, cached in Redis and served to everyone —
+          // verified clips only. The owner's own view of their clips comes from
+          // `GET /media/player/:id`, which knows who is asking; this one cannot,
+          // because the cache entry is shared.
+          include: { media: { where: PUBLIC_MEDIA_WHERE }, ...AVATAR_INCLUDE },
         });
         if (!found) return found;
         const stars = await this.starsFor([found.id]);

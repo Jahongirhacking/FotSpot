@@ -73,6 +73,12 @@ export interface AuthSession {
  * is still absent — it is an internal address, and callers that hold keys start
  * building URLs themselves, which is what stops CDN changes being config changes.
  */
+/**
+ * `BLOCKED` rather than the `block` in the product spec: it is a state a clip is
+ * in, and the backend enum spells every status that way (see MediaStatus above).
+ */
+export type MediaModerationStatus = 'UNVERIFIED' | 'VERIFIED' | 'BLOCKED';
+
 export interface Media {
   id: string;
   playerId: string;
@@ -84,6 +90,19 @@ export interface Media {
    * owner is served anything but ACTIVE — see MediaService.listForPlayer.
    */
   status: 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'FLAGGED' | 'REMOVED';
+  /**
+   * Whether an admin has watched this clip yet — the gate on public visibility.
+   *
+   * A second axis, not a replacement for `status`: `status` says whether the
+   * upload reached the bucket, this says whether anyone is allowed to see it, and
+   * a clip is routinely PROCESSING *and* UNVERIFIED. Public means both — ACTIVE
+   * and VERIFIED — and the backend enforces the pair on every query, so anything
+   * other than VERIFIED reaching this client means the viewer is the clip's own
+   * uploader or an admin working the moderation queue.
+   *
+   * Optional so an older cached response still parses.
+   */
+  moderationStatus?: MediaModerationStatus;
   title?: string | null;
   description?: string | null;
   /** The 0–100 rating this clip evidences. Null for highlights. */
@@ -131,6 +150,29 @@ export interface FeedPage {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/**
+ * One card in the admin moderation queue: the clip, plus enough of the player to
+ * judge it without opening a second screen.
+ *
+ * A moderator deciding whether a video is what it claims to be needs to know it
+ * is a fourteen-year-old's PACE clip — and a queue that fetched the player per
+ * card would be a request per decision on a screen that has to stay fast.
+ */
+export interface PendingClip extends Omit<Media, 'playerId'> {
+  player: {
+    id: string;
+    userId: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    birthDate: string;
+    primaryPosition: string | null;
+    region: string | null;
+    district: string | null;
+    avatarUrl: string | null;
+  };
 }
 
 export interface SuggestedPlayer {

@@ -39,6 +39,18 @@ export const AuditAction = {
   TARIFF_PLAN_UPDATED: 'tariff_plan.updated',
   REPORT_RESOLVED: 'report.resolved',
   MEDIA_TAKEN_DOWN: 'media.taken_down',
+  /**
+   * The three video-moderation decisions (§1.7 review).
+   *
+   * Separate keys rather than one `media.moderated` with the outcome in `meta`,
+   * because the trail is read by filtering on `action` — "show me everything a
+   * super admin has destroyed" has to be a match, not a scan with a JSON test.
+   * The meta on each carries `previousStatus`/`newStatus`, so a row is a complete
+   * transition record on its own.
+   */
+  MEDIA_VERIFIED: 'media.verified',
+  MEDIA_BLOCKED: 'media.blocked',
+  MEDIA_DELETED: 'media.deleted',
 } as const;
 
 export type AuditActionKey = (typeof AuditAction)[keyof typeof AuditAction];

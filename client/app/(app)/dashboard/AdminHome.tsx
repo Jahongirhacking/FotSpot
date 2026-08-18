@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Building2, Flag, KeyRound, ScrollText, Users } from 'lucide-react';
+import { Building2, Flag, KeyRound, ScrollText, Users, Video } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
@@ -60,6 +60,17 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
           title={t.admin.moderation}
           description={t.admin.moderationHint}
           href="/admin/moderation"
+          cta={t.common.open}
+        />
+        {/* Its own tile rather than a line inside the one above. Nothing a player
+            uploads is visible to anybody until somebody works this queue, so it
+            is the only admin screen whose being ignored has a cost measured in
+            players wondering why their video never appeared. */}
+        <AdminTile
+          icon={Video}
+          title={t.admin.videoReview}
+          description={t.admin.videoReviewHint}
+          href="/admin/moderation/videos"
           cta={t.common.open}
         />
         <AdminTile

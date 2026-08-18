@@ -1219,7 +1219,7 @@
             "bearer": []
           }
         ],
-        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nCarries permanent `url` and `posterUrl`: clips are public and stay reachable\nuntil the player deletes them.",
+        "summary": "A player's clips, newest first. `category` filters to one attribute's history.\n\nPublic, but what it returns depends on who is asking: a visitor gets the\nverified clips, the owner gets their own at every moderation stage so they\ncan see what is still waiting for review — see MediaService.listForPlayer.",
         "tags": [
           "media"
         ]
@@ -1373,7 +1373,7 @@
             "bearer": []
           }
         ],
-        "summary": "What that rating was before each change.",
+        "summary": "What that rating was before each change. Gated like the clip itself.",
         "tags": [
           "media"
         ]
@@ -5305,6 +5305,134 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/pending": {
+      "get": {
+        "operationId": "moderation_listUnverifiedMedia",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/verify": {
+      "patch": {
+        "operationId": "moderation_verifyMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve a clip: it becomes publicly visible and leaves this queue.\n\nNo confirmation on the client either — verifying is the ordinary outcome and\nthe queue has to be workable at speed. It is also the reversible direction in\npractice: a clip approved by mistake can still be reported, flagged and taken\ndown, whereas the destructive action below cannot be undone at all.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/block": {
+      "patch": {
+        "operationId": "moderation_blockMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a clip down for good, keeping the row for the moderation record.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}": {
+      "delete": {
+        "operationId": "moderation_deleteMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Erase a clip and its files — **super admin only**, and irreversible.\n\nThe same rule as deleting an account (§1.2): a plain admin moderates, only a\nsuper admin destroys. `@Roles` on the handler overrides nothing above it —\nthis controller has no class-level role gate, so each route states its own.",
         "tags": [
           "moderation"
         ]
