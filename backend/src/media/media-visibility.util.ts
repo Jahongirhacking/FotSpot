@@ -52,6 +52,22 @@ export const MODERATION_QUEUE_WHERE = {
 } as const satisfies Prisma.MediaWhereInput;
 
 /**
+ * Clips a moderator took down, for the super admin's review list.
+ *
+ * `status: ACTIVE` for the same reason the queue above uses it, and here it also
+ * draws a line the two other ways a clip leaves circulation do not cross: a
+ * player's own delete leaves `REMOVED` with its objects already gone from the
+ * bucket, and a report takedown leaves `FLAGGED`. Neither is the Block button,
+ * and neither has a video left to review. What this lists is exactly the clips an
+ * admin blocked, which are the only ones still sitting in storage awaiting a
+ * decision about whether to destroy them.
+ */
+export const BLOCKED_MEDIA_WHERE = {
+  status: 'ACTIVE',
+  moderationStatus: 'BLOCKED',
+} as const satisfies Prisma.MediaWhereInput;
+
+/**
  * What the owner sees on their own profile.
  *
  * Every moderation state, including BLOCKED. A player whose clip was taken down

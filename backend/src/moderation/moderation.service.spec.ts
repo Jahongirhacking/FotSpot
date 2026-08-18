@@ -141,6 +141,101 @@ describe('listUnverifiedMedia — what a moderator is shown', () => {
   });
 });
 
+describe("listBlockedMedia — the super admin's takedown inventory", () => {
+  it('asks for blocked clips only', async () => {
+    const { service, prisma } = build();
+
+    await service.listBlockedMedia({});
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: 'ACTIVE', moderationStatus: 'BLOCKED' },
+      }),
+    );
+  });
+
+  /*
+   * The two lists are complements, and a clip must never be in both: the queue is
+   * what nobody has judged, this is what somebody judged and refused.
+   */
+  it('never overlaps the pending queue', async () => {
+    const { service, prisma } = build();
+
+    await service.listUnverifiedMedia({});
+    await service.listBlockedMedia({});
+
+    const [pending] = prisma.media.findMany.mock.calls[0] as unknown as [
+      { where: { moderationStatus: string } },
+    ];
+    const [blocked] = prisma.media.findMany.mock.calls[1] as unknown as [
+      { where: { moderationStatus: string } },
+    ];
+    expect(pending.where.moderationStatus).toBe('UNVERIFIED');
+    expect(blocked.where.moderationStatus).toBe('BLOCKED');
+  });
+
+  /*
+   * A player's own delete leaves REMOVED with its objects already gone, and a
+   * report takedown leaves FLAGGED. Neither is the Block button, and neither has
+   * a video left to review — listing them would be rows a super admin cannot act
+   * on.
+   */
+  it('excludes clips that left circulation some other way', async () => {
+    const { service, prisma } = build();
+
+    await service.listBlockedMedia({});
+
+    const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
+      { where: { status: string } },
+    ];
+    expect(call.where.status).toBe('ACTIVE');
+  });
+
+  it('paginates, because nothing but a permanent delete shortens this list', async () => {
+    const { service, prisma } = build();
+
+    await service.listBlockedMedia({ page: 3, pageSize: 10 });
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 10 }),
+    );
+  });
+
+  it('carries the player and a signed URL, like the pending queue', async () => {
+    const { service, prisma } = build({ moderationStatus: 'BLOCKED' });
+    prisma.media.findMany.mockResolvedValue([
+      {
+        ...CLIP,
+        moderationStatus: 'BLOCKED',
+        createdAt: new Date(),
+        player: {
+          id: 'player-1',
+          firstName: 'John',
+          lastName: 'Doe',
+          birthDate: new Date('2010-01-01'),
+          primaryPosition: 'ST',
+          region: 'Tashkent',
+          district: 'Yunusabad',
+          user: { id: 'user-1', avatarKey: null, username: 'johndoe' },
+        },
+      },
+    ]);
+    prisma.media.count.mockResolvedValue(1);
+
+    const page = await service.listBlockedMedia({});
+
+    expect(page.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'clip-1',
+        url: 'https://signed.example/clip',
+        player: expect.objectContaining({ firstName: 'John' }),
+      }),
+    );
+    expect(page.items[0]).not.toHaveProperty('storageKey');
+    expect(page.total).toBe(1);
+  });
+});
+
 describe('verifyMedia — the one write that makes a clip public', () => {
   it('moves an unreviewed clip to VERIFIED', async () => {
     const { service, prisma } = build();

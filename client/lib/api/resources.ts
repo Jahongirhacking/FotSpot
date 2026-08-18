@@ -621,6 +621,15 @@ export const admin = {
   pendingMedia: (params: PageParams = {}, opts: Opts = {}) =>
     apiFetch<Page<PendingClip>>(`/moderation/media/pending${toQuery({ ...params })}`, opts),
 
+  /**
+   * Clips an admin has blocked — super admin only.
+   *
+   * Paginated: nothing shortens this list except a permanent delete, so it only
+   * ever grows.
+   */
+  blockedMedia: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<PendingClip>>(`/moderation/media/blocked${toQuery({ ...params })}`, opts),
+
   /** Approve: the clip becomes publicly visible and leaves the queue. */
   verifyMedia: (mediaId: string, opts: Opts = {}) =>
     apiFetch<Media>(`/moderation/media/${mediaId}/verify`, { method: 'PATCH', ...opts }),

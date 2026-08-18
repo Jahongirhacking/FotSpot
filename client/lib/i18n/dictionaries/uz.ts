@@ -1409,6 +1409,13 @@ export const uz = {
     clipVerified: 'Video tasdiqlandi.',
     clipBlocked: 'Video bloklandi.',
     clipDeleted: 'Video butunlay o‘chirildi.',
+
+    blockedVideos: 'Bloklangan videolar',
+    blockedVideosHint:
+      'Administratorlar bloklagan videolar. Ular hech kimga ko‘rinmaydi, lekin moderatsiya tarixi uchun saqlanadi. Faqat super administrator ularni butunlay o‘chira oladi.',
+    noBlockedVideos: 'Bloklangan video yo‘q.',
+    noBlockedVideosHint: 'Administrator videoni bloklaganda u shu yerda paydo bo‘ladi.',
+    blockedOn: 'Bloklangan',
     resolutionNote: 'Izoh',
     rolesPermissions: 'Rollar va ruxsatlar',
     rolesPermissionsHint: 'Ruxsatlar ro‘yxati va ular qaysi rollarga biriktirilgani.',

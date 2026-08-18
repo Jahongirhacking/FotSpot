@@ -1352,6 +1352,13 @@ export const en: Dictionary = {
     clipVerified: 'Video verified.',
     clipBlocked: 'Video blocked.',
     clipDeleted: 'Video permanently deleted.',
+
+    blockedVideos: 'Blocked videos',
+    blockedVideosHint:
+      'Videos an admin has blocked. They are visible to nobody, but the record is kept for moderation history. Only a super admin can delete them permanently.',
+    noBlockedVideos: 'No blocked videos.',
+    noBlockedVideosHint: 'A video appears here once an admin blocks it.',
+    blockedOn: 'Blocked',
     resolutionNote: 'Note',
     rolesPermissions: 'Roles & permissions',
     rolesPermissionsHint: 'The permission catalogue and which roles hold each one.',

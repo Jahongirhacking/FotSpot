@@ -5351,6 +5351,48 @@
         ]
       }
     },
+    "/api/v1/moderation/media/blocked": {
+      "get": {
+        "operationId": "moderation_listBlockedMedia",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clips an admin has blocked — **super admin only**.\n\nGated to the super admin because the only action on this list is the one\nonly they may take: a plain admin blocking content does not also get a\nstanding inventory of everything the platform has taken down, and the\ndecisions themselves stay readable by any admin on the audit log.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/moderation/media/{id}/verify": {
       "patch": {
         "operationId": "moderation_verifyMedia",

@@ -52,7 +52,7 @@ export default async function VideoModerationPage() {
           <Video className="text-primary size-5" aria-hidden /> {t.admin.videoReview}
         </h1>
         <p className="text-muted text-sm">{t.admin.videoReviewHint}</p>
-        <ModerationTabs />
+        <ModerationTabs canSeeBlocked={isSuperAdminActing(session.activeRole)} />
       </header>
 
       {/* README §11.5: anything involving a child jumps every other queue, and

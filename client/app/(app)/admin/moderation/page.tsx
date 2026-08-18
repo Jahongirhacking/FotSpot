@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Flag } from 'lucide-react';
 import { getSession } from '@/lib/session';
-import { isAdminActing } from '@/lib/roles';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin, type Report } from '@/lib/api/resources';
 import { ModerationQueue } from './ModerationQueue';
@@ -37,7 +37,7 @@ export default async function ModerationPage() {
         {/* Video review is the other half of this job and is easy to forget it
             exists — a queue nobody visits is a queue of clips no player can
             share. It sits beside the reports rather than behind a menu. */}
-        <ModerationTabs />
+        <ModerationTabs canSeeBlocked={isSuperAdminActing(session?.activeRole ?? null)} />
       </header>
 
       {/* README §11.5: a child-safety report is a sub-one-hour target and jumps

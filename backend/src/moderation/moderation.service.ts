@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { MediaModerationStatus } from '@prisma/client';
+import { Prisma, type MediaModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
@@ -14,6 +14,7 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { toMediaResponse } from '../media/media.service';
 import {
+  BLOCKED_MEDIA_WHERE,
   canTransition,
   MODERATION_QUEUE_WHERE,
   transitionRefusal,
@@ -149,17 +150,51 @@ export class ModerationService {
    * card would be a request per decision on the screen that must stay fast.
    */
   async listUnverifiedMedia(dto: PaginationDto = {}) {
+    return this.listMediaFor(MODERATION_QUEUE_WHERE, dto);
+  }
+
+  /**
+   * Clips an admin has blocked — **super admin only** (see the controller).
+   *
+   * ## Why this list exists and who it is for
+   *
+   * Blocking keeps the row and the video on purpose: "what did we take down, and
+   * when" is the question a moderation decision has to be able to answer months
+   * later. But kept footage that nobody can reach is still footage of a child
+   * sitting in a bucket, and the only person allowed to end that is the super
+   * admin (§1.2). Without a screen listing what has been blocked, the delete they
+   * alone can perform is reachable only from the pending queue — which by
+   * definition no longer contains any of it.
+   *
+   * So this is the other half of `deleteMedia`: the place a super admin can see
+   * the accumulated takedowns and decide which ones stop being kept.
+   *
+   * Paginated because this list only ever grows — nothing removes a row from it
+   * except a permanent delete.
+   */
+  async listBlockedMedia(dto: PaginationDto = {}) {
+    return this.listMediaFor(BLOCKED_MEDIA_WHERE, dto);
+  }
+
+  /**
+   * One page of clips with the player behind each, URLs signed on.
+   *
+   * Shared by both review lists: they differ only in which moderation state they
+   * ask for, and duplicating the player projection would be two places for
+   * "what does a review card need" to drift apart.
+   */
+  private async listMediaFor(where: Prisma.MediaWhereInput, dto: PaginationDto) {
     const { skip, take, page, pageSize } = toSkipTake(dto);
 
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.media.findMany({
-        where: MODERATION_QUEUE_WHERE,
+        where,
         orderBy: { createdAt: 'desc' },
         skip,
         take,
         include: { player: { select: QUEUE_PLAYER_SELECT } },
       }),
-      this.prisma.media.count({ where: MODERATION_QUEUE_WHERE }),
+      this.prisma.media.count({ where }),
     ]);
 
     const items = await Promise.all(

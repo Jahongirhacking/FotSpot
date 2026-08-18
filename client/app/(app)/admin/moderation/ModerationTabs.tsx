@@ -2,29 +2,44 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Flag, Video } from 'lucide-react';
+import { Flag, ShieldOff, Video } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { cn } from '@/lib/utils';
 
 /**
- * The two moderation queues, side by side.
+ * The moderation screens, side by side.
  *
- * They are genuinely different jobs and should not be one list. A report is a
+ * The first two are genuinely different jobs and should not be one list. A report is a
  * complaint about something already published, worked oldest-first because the
  * oldest one has been wrong for longest. Video review is the gate every upload
  * passes through before anyone sees it, worked newest-first because the person
  * waiting is the player who just pressed upload. Merging them would give one
  * screen two orderings and two meanings of "done".
  *
+ * The third, blocked videos, is the super admin's takedown inventory and appears
+ * only for them — the one action on that list is the permanent delete only they
+ * may perform, so a tab leading a plain admin to a screen the API refuses is
+ * worse than no tab. It is passed in rather than read here because the role lives
+ * in the session on the server, and this component is a client island.
+ *
  * A client island only because the active tab depends on the current path.
  */
-export function ModerationTabs() {
+export function ModerationTabs({ canSeeBlocked = false }: { canSeeBlocked?: boolean }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
   const tabs = [
     { href: '/admin/moderation', label: t.admin.reviewReports, icon: Flag },
     { href: '/admin/moderation/videos', label: t.admin.videoReview, icon: Video },
+    ...(canSeeBlocked
+      ? [
+          {
+            href: '/admin/moderation/blocked-videos',
+            label: t.admin.blockedVideos,
+            icon: ShieldOff,
+          },
+        ]
+      : []),
   ];
 
   return (
