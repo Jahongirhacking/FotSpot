@@ -22,6 +22,7 @@ import {
   CalendarDays,
   Search,
   Send,
+  Sparkles,
   ShieldCheck,
   Users,
   Video,
@@ -181,25 +182,45 @@ export default async function LandingPage() {
         {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
           <Reveal>
             <section className="mx-auto max-w-6xl px-4 pb-8">
-              <dl className="grid grid-cols-3 gap-3">
-                <Link href={`/players`}>
-                  <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
-                </Link>
-                <Link href={`/academies`}>
-                  <Stat
-                    icon={Building2}
-                    label={t.landing.statAcademies}
-                    value={academyList?.length}
-                  />
-                </Link>
-                <Link href={`/trials`}>
-                  <Stat
-                    icon={CalendarDays}
-                    label={t.landing.statTrials}
-                    value={trialList?.length}
-                  />
-                </Link>
-              </dl>
+              {/*
+               * A list of links, not a description list.
+               *
+               * This was a `<dl>` whose direct children were anchors, which the
+               * HTML spec does not allow — `<dl>` takes `<dt>`, `<dd>` or
+               * `<div>` and nothing else — and the `<dd>` inside each tile came
+               * *before* its `<dt>`, so a screen reader read every value before
+               * the word telling you what it counted. Both went unnoticed
+               * because neither shows up visually.
+               *
+               * These are three links to three screens. `<ul>`/`<li>` says that,
+               * and the number and its label are then free to sit in whatever
+               * order reads best.
+               */}
+              <ul className="grid grid-cols-3 gap-3">
+                <li>
+                  <Link href="/players" className="block">
+                    <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/academies" className="block">
+                    <Stat
+                      icon={Building2}
+                      label={t.landing.statAcademies}
+                      value={academyList?.length}
+                    />
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/trials" className="block">
+                    <Stat
+                      icon={CalendarDays}
+                      label={t.landing.statTrials}
+                      value={trialList?.length}
+                    />
+                  </Link>
+                </li>
+              </ul>
             </section>
           </Reveal>
         )}
@@ -208,17 +229,13 @@ export default async function LandingPage() {
             happens on the player's own page (§21.6). */}
         <Reveal>
           <section className="mx-auto max-w-6xl px-4 pb-14">
-            <div className="mb-4 flex items-end justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Video className="text-primary size-5" aria-hidden /> {t.landing.latestClips}
-                </h2>
-                <p className="text-muted text-sm">{t.landing.latestClipsBody}</p>
-              </div>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/players">{t.common.seeAll}</Link>
-              </Button>
-            </div>
+            <SectionHeading
+              icon={Video}
+              title={t.landing.latestClips}
+              body={t.landing.latestClipsBody}
+              actionHref="/players"
+              actionLabel={t.common.seeAll}
+            />
 
             {clips?.length === 0 ? (
               <Card>
@@ -274,7 +291,13 @@ export default async function LandingPage() {
         {recent.items.length > 0 && (
           <Reveal>
             <section className="mx-auto max-w-6xl px-4 pb-14">
-              <h2 className="mb-4 text-lg font-semibold">{t.landing.recentlyJoined}</h2>
+              <SectionHeading
+                icon={Sparkles}
+                title={t.landing.recentlyJoined}
+                body={t.landing.recentlyJoinedBody}
+                actionHref="/players"
+                actionLabel={t.common.seeAll}
+              />
               <div className="grid gap-3 sm:grid-cols-3">
                 {recent.items.slice(0, 3).map((player) => (
                   <Card
@@ -303,6 +326,49 @@ export default async function LandingPage() {
           </Reveal>
         )}
 
+        {/* ---------- Academies ----------
+            Above local teams, and styled apart from them, because they are two
+            different asks and a reader should not have to compare paragraphs to
+            work out which one is theirs.
+
+            The distinction is real, not decorative: an academy is vetted before
+            it exists (§1.10) and gets coaches, trials and online review; a local
+            team is none of that. So this one is bordered and accented rather
+            than tinted, which reads as the heavier of the two — and it says
+            plainly that a check is involved, because somebody who would fail one
+            is better off knowing now. */}
+        <Reveal>
+          <section className="mx-auto max-w-6xl px-4 pb-6">
+            <Card className="border-primary/30 from-primary/[0.10] to-accent/[0.06] hover:border-primary/50 overflow-hidden border-2 bg-gradient-to-br transition-colors duration-200">
+              <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+                <div className="max-w-2xl min-w-0">
+                  {/* The icon in a filled tile rather than inline: it gives the
+                      card a mark of its own, which is most of what separates the
+                      thing being offered from the one mentioned below it. */}
+                  <span className="bg-primary text-primary-foreground mb-3 grid size-11 place-items-center rounded-xl shadow-sm">
+                    <Building2 className="size-6" aria-hidden />
+                  </span>
+                  <h2 className="text-xl font-bold sm:text-2xl">{t.landing.academyTitle}</h2>
+                  <p className="text-muted mt-2 text-sm leading-relaxed">{t.landing.academyBody}</p>
+                </div>
+
+                {/* Same bot, different sentence — one address, and the message
+                    says which of the two the writer is asking for so nobody has
+                    to be asked back. */}
+                <Button asChild size="lg" className="shrink-0 shadow-sm">
+                  <a
+                    href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Send aria-hidden /> {t.landing.academyCta}
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </Reveal>
+
         {/* ---------- Local teams ----------
             Between the players who joined and the safety note, because it is an
             invitation rather than a claim: somebody who has just read that real
@@ -315,13 +381,16 @@ export default async function LandingPage() {
             that somebody has to clear by hand anyway. */}
         <Reveal>
           <section className="mx-auto max-w-6xl px-4 pb-14">
-            <Card className="border-primary/25 bg-primary/[0.04] hover:border-primary/40 transition-colors duration-200">
-              <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            {/* Quieter on purpose. Both asks are real, but an academy is what
+                this platform is built around — and two cards at the same volume
+                make a reader decide which to read rather than which is theirs. */}
+            <Card className="hover:border-border/80 transition-colors duration-200">
+              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="max-w-2xl min-w-0">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold">
-                    <Users className="text-primary size-5 shrink-0" aria-hidden />
+                  <h3 className="text-muted flex items-center gap-2 text-base font-semibold">
+                    <Users className="size-4 shrink-0" aria-hidden />
                     {t.landing.localTeamTitle}
-                  </h2>
+                  </h3>
                   <p className="text-muted mt-2 text-sm leading-relaxed">
                     {t.landing.localTeamBody}
                   </p>
@@ -340,7 +409,7 @@ export default async function LandingPage() {
                  * links to the same bot, and two copies of an address is one that
                  * gets changed in one place.
                  */}
-                <Button asChild size="lg" className="shrink-0">
+                <Button asChild size="sm" variant="outline" className="shrink-0">
                   <a
                     href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.localTeamMessage)}`}
                     target="_blank"
@@ -422,6 +491,46 @@ async function resolvePlayerCta(
   }
 }
 
+/**
+ * The heading every listing section on this page wears.
+ *
+ * They had drifted: the clips section had an icon, a subtitle and a "see all",
+ * and the players below it had a bare `h2` and nothing else — so two sections
+ * doing the same job announced themselves in two different voices. One
+ * component means a section cannot quietly grow its own style, and the icon and
+ * action are optional so a section without one is still the same heading.
+ */
+function SectionHeading({
+  icon: Icon,
+  title,
+  body,
+  actionHref,
+  actionLabel,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  body?: string;
+  actionHref?: string;
+  actionLabel?: string;
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Icon className="text-primary size-5 shrink-0" aria-hidden />
+          {title}
+        </h2>
+        {body && <p className="text-muted mt-0.5 text-sm">{body}</p>}
+      </div>
+      {actionHref && actionLabel && (
+        <Button asChild variant="ghost" size="sm" className="shrink-0">
+          <Link href={actionHref}>{actionLabel}</Link>
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Stat({
   icon: Icon,
   label,
@@ -432,13 +541,17 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex items-center gap-3 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5">
+    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex flex-col items-start gap-2 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5 sm:flex-row sm:items-center sm:gap-3">
       <span className="bg-primary/12 text-primary grid size-9 shrink-0 place-items-center rounded-lg">
         <Icon className="size-4" />
       </span>
+      {/* Stacked on a phone, side by side from `sm`. Three tiles across a 360px
+          screen leaves about a hundred pixels beside a 36px icon, which was
+          truncating every label — the one thing on the tile that says what the
+          number is. */}
       <div className="min-w-0">
-        <dd className="text-lg leading-tight font-bold">{value}</dd>
-        <dt className="text-muted truncate text-xs">{label}</dt>
+        <p className="text-lg leading-tight font-bold">{value}</p>
+        <p className="text-muted text-xs">{label}</p>
       </div>
     </div>
   );

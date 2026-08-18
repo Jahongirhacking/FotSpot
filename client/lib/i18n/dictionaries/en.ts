@@ -1380,6 +1380,7 @@ export const en: Dictionary = {
     pillar3Body: 'Find the right Players by age, position, location, and playing style.',
 
     recentlyJoined: 'Recently Joined',
+    recentlyJoinedBody: 'The players who joined the platform most recently.',
     viewMyCard: 'View My Card',
     watchHighlights: 'Watch Videos',
     latestClips: 'Latest Videos',
@@ -1456,14 +1457,21 @@ export const en: Dictionary = {
         ],
       },
     },
-    localTeamTitle: 'Want to start a local team?',
+    academyTitle: 'Want to add your academy to FotSpot?',
+    academyBody:
+      'An academy is a football organization with coaches, player trials, and online review processes. Every academy is reviewed by the FotSpot team to help ensure that children’s information is only accessible to trusted organizations. Once approved, you can manage your squad, trials, and scout recommendations.',
+    academyCta: 'Request to add an academy',
+    academyMessage: 'Hello! I would like to add my football academy to FotSpot.',
+
+    localTeamTitle: 'Want to create a local team?',
     localTeamBody:
-      'A local team is a neighbourhood, school or district side. Not an academy: there are no coaches and no selection trials, and players join by invitation. You get a squad to run, players to invite and scouts to work with.',
-    localTeamCta: 'Ask to create one',
-    localTeamMessage: 'Hello! I would like to create a Local Team on FotSpot.',
-    safetyTitle: 'Built for under-18s, carefully.',
+      'A local team is a football team based in a neighborhood, school, or district. It is not an academy: there are no coaches or player trials. Players join the squad by invitation. You will be able to manage the squad, invite players, and work with scouts.',
+    localTeamCta: 'Request to create a team',
+    localTeamMessage: 'Hello! I would like to create a local team on FotSpot.',
+
+    safetyTitle: 'For players under 18 — safety comes first.',
     safetyBody:
-      'Profiles for minors are private by default, there are no adult-to-child messages anywhere on FotSpot, and we never sell visibility for a child’s profile.',
+      'Profiles of underage players are private by default. FotSpot does not allow private messaging between adults and children. We never sell the visibility of a child’s profile or access to their information.',
     privacyPolicy: 'Privacy policy',
     termsOfService: 'Terms of service',
     contactUs: 'Contact us',

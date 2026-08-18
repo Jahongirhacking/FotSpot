@@ -309,6 +309,56 @@ export function PipelineCanvas() {
         context.stroke();
         context.setLineDash([]);
 
+        /*
+         * The last stop is a goal, not another tick.
+         *
+         * Every node looked identical, so the run read as five equal steps that
+         * happened to stop. Drawing the end as a goalmouth says what the whole
+         * diagram is for — a squad place is the thing being reached — and it
+         * costs one shape rather than a legend explaining the same thing in
+         * words underneath.
+         *
+         * Drawn instead of the tick rather than beside it: two marks in a
+         * 24-pixel circle is a smudge at this size.
+         */
+        if (index === STAGES.length - 1) {
+          const w = unit * 0.6;
+          const top = node.y - unit * 0.42;
+          const foot = node.y + unit * 0.4;
+
+          context.save();
+          context.strokeStyle = reached ? palette.onPrimary : palette.line;
+          context.lineCap = 'round';
+          context.lineJoin = 'round';
+
+          // The net first, so the frame is drawn over its ends rather than
+          // under them — the same order the eye reads a real goal in.
+          context.globalAlpha = reached ? 0.55 : 0.35;
+          context.lineWidth = 0.7;
+          context.beginPath();
+          for (const fraction of [0.33, 0.66]) {
+            const x = node.x - w + w * 2 * fraction;
+            context.moveTo(x, top);
+            context.lineTo(x, foot);
+          }
+          const mid = top + (foot - top) * 0.5;
+          context.moveTo(node.x - w, mid);
+          context.lineTo(node.x + w, mid);
+          context.stroke();
+
+          // Crossbar and posts.
+          context.globalAlpha = 1;
+          context.lineWidth = 1.6;
+          context.beginPath();
+          context.moveTo(node.x - w, foot);
+          context.lineTo(node.x - w, top);
+          context.lineTo(node.x + w, top);
+          context.lineTo(node.x + w, foot);
+          context.stroke();
+          context.restore();
+          return;
+        }
+
         // A tick inside the ones already answered.
         if (reached && !current) {
           context.save();
