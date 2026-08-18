@@ -9,6 +9,7 @@ import type { Media } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { useSession } from '@/components/layout/SessionProvider';
+import { ClipModerationNote } from '@/components/player/ClipModerationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
@@ -115,6 +116,15 @@ export function ClipModal({
               </span>
             </div>
           )}
+
+          {/*
+            Directly under the video, above everything else about the clip.
+            "Waiting for verification" is the answer to the question the owner
+            opened this dialog to ask, and it has to be readable before the
+            rating, the title or the delete button. Nothing renders here for a
+            verified clip, which is every clip anyone but the owner can open.
+          */}
+          <ClipModerationNote status={clip?.moderationStatus} />
 
           <div className="flex flex-wrap items-center gap-2">
             {isHighlight ? (

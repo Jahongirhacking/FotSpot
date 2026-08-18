@@ -263,6 +263,22 @@ does not appear.
   outcomes, trial invitations/results, and verification results.
 - **Moderation** (1.13): reports against users/media/academies/coaches,
   admin resolution, optional media takedown.
+- **Video review before publication** (1.7): every uploaded clip carries a second
+  status, `Media.moderationStatus`, defaulting to `UNVERIFIED`, and **public
+  visibility is the conjunction `status = ACTIVE AND moderationStatus =
+  VERIFIED`**. Nothing on the upload path can set it: only
+  `PATCH /moderation/media/:id/verify` (admin or super admin) publishes a clip.
+  `…/block` takes one down while keeping the row, its ratings and its engagement
+  for the moderation record; `DELETE /moderation/media/:id` destroys the row and
+  its objects and is **super admin only**, matching the rule that governs deleting
+  an account. Transitions are one-way from `UNVERIFIED` and applied with a
+  conditional `updateMany`, so two moderators deciding the same clip cannot
+  overwrite one another — the second gets a 409 naming what happened. The
+  predicates live in `media/media-visibility.util.ts` and every media query in the
+  codebase asks its question through them, including the feed's raw SQL. Until a
+  clip is verified it is served to exactly one account, its uploader, and signed
+  for fifteen minutes rather than seven days so a block takes effect when it is
+  pressed.
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
   plain admins can verify coaches/academies/moderate/view audit logs but
   cannot create admins or manage roles/permissions — only `super_admin` can.
@@ -279,7 +295,9 @@ does not appear.
   which is embedded in the player profile payload).
 - **Audit logging** (1.21): `AuditService.record()` writes an actor-attributed
   row for coach/academy verification, admin grants and revocations, permission
-  and role-permission changes, report resolution and media takedown.
+  and role-permission changes, report resolution and media takedown, and each
+  video-moderation decision (`media.verified` / `media.blocked` / `media.deleted`,
+  each carrying `previousStatus` and `newStatus`).
 
 ## Beyond MVP: v1.1/v1.3 items built with explicit sign-off
 

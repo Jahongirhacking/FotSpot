@@ -709,6 +709,17 @@ export const uz = {
     noneTitle: 'Hali lavha yo‘q',
     noneHint: 'Bu futbolchi hali video joylamagan.',
     noneHintOwn: '60 soniyalik dribling videosi har qanday tavsifdan kuchliroq.',
+
+    /** Moderatsiya holati — faqat klip egasiga ko‘rsatiladi. */
+    moderationLabel: 'Holat',
+    awaitingReview: 'Tekshiruv kutilmoqda',
+    awaitingReviewHint:
+      'Bu klipni hozircha faqat siz ko‘rasiz. Administrator ko‘rib chiqqach, u profilingizda va lentada paydo bo‘ladi.',
+    moderationVerified: 'Tasdiqlangan',
+    moderationVerifiedHint: 'Klip profilingizda va lentada ko‘rinadi.',
+    moderationBlocked: 'Bloklangan',
+    moderationBlockedHint:
+      'Moderator bu klipni olib tashladi, shuning uchun uni boshqa hech kim ko‘rmaydi. Uni o‘chirib tashlashingiz mumkin.',
   },
 
   /** Skaut va akademiya menejeri uchun asosiy ekran. */
@@ -1375,6 +1386,29 @@ export const uz = {
     resolve: 'Hal qilindi',
     dismiss: 'Rad etish',
     removeMedia: 'Mediani o‘chirish',
+
+    // ---- Video moderatsiyasi. Har bir yangi klip shu navbatdan o‘tadi. ----
+    videoReview: 'Videolarni tekshirish',
+    videoReviewHint:
+      'Har bir yangi klip administrator tasdiqlagunicha shu yerda kutadi. Tasdiqlanmagan klipni undan boshqa hech kim ko‘rmaydi.',
+    reviewReports: 'Shikoyatlar',
+    noPendingClips: 'Tekshiruvni kutayotgan klip yo‘q.',
+    noPendingClipsHint: 'Yangi yuklangan videolar shu yerda paydo bo‘ladi.',
+    uploadedAt: 'Yuklangan',
+    verifyClip: 'Tasdiqlash',
+    blockClip: 'Bloklash',
+    blockClipTitle: 'Bu videoni bloklaysizmi?',
+    blockClipBody:
+      'Bloklangan videolarni boshqa foydalanuvchilar ko‘rmaydi. Yozuv moderatsiya tarixi uchun saqlanib qoladi.',
+    deleteClip: 'Butunlay o‘chirish',
+    deleteClipTitle: 'Bu video butunlay o‘chirilsinmi?',
+    deleteClipBody:
+      'Bu amalni qaytarib bo‘lmaydi. Video va unga tegishli media fayllar butunlay o‘chiriladi.',
+    deleteClipConfirm: 'Tasdiqlash uchun {word} deb yozing.',
+    deleteClipWord: 'O‘CHIRISH',
+    clipVerified: 'Video tasdiqlandi.',
+    clipBlocked: 'Video bloklandi.',
+    clipDeleted: 'Video butunlay o‘chirildi.',
     resolutionNote: 'Izoh',
     rolesPermissions: 'Rollar va ruxsatlar',
     rolesPermissionsHint: 'Ruxsatlar ro‘yxati va ular qaysi rollarga biriktirilgani.',

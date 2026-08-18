@@ -28,6 +28,7 @@ import type {
   Media,
   MediaCategory,
   MediaType,
+  PendingClip,
   PlayerProfile,
   PlayingStyle,
   RankedRecommendation,
@@ -280,11 +281,14 @@ export const academies = {
 
   /** Presigned PUT for the logo or a gallery photo. Key minted server-side. */
   imageUploadUrl: (academyId: string, filename: string, opts: Opts = {}) =>
-    apiFetch<{ uploadUrl: string; storageKey: string }>(`/academies/${academyId}/images/upload-url`, {
-      method: 'POST',
-      body: { filename },
-      ...opts,
-    }),
+    apiFetch<{ uploadUrl: string; storageKey: string }>(
+      `/academies/${academyId}/images/upload-url`,
+      {
+        method: 'POST',
+        body: { filename },
+        ...opts,
+      },
+    ),
 
   /** Who the academy features — top players, coaches and scouts. */
   featured: (academyId: string, opts: Opts = {}) =>
@@ -295,7 +299,12 @@ export const academies = {
     academyId: string,
     body: { role: 'PLAYER' | 'COACH' | 'SCOUT'; memberIds: string[] },
     opts: Opts = {},
-  ) => apiFetch<AcademyFeatured[]>(`/academies/${academyId}/featured`, { method: 'PUT', body, ...opts }),
+  ) =>
+    apiFetch<AcademyFeatured[]>(`/academies/${academyId}/featured`, {
+      method: 'PUT',
+      body,
+      ...opts,
+    }),
 
   listPublic: (region?: string, opts: Opts = {}) =>
     apiFetch<AcademyProfile[]>(`/academies${toQuery({ region })}`, opts),
@@ -452,8 +461,11 @@ export const tariffs = {
   mine: (opts: Opts = {}) => apiFetch<MyPlanUsage>('/tariff-plans/me', opts),
 
   /** Super admin only: edit one tier's numbers. Partial — send what changed. */
-  update: (tier: PlanTier, body: Partial<Omit<TariffPlan, 'tier' | 'updatedAt'>>, opts: Opts = {}) =>
-    apiFetch<TariffPlan>(`/tariff-plans/${tier}`, { method: 'PATCH', body, ...opts }),
+  update: (
+    tier: PlanTier,
+    body: Partial<Omit<TariffPlan, 'tier' | 'updatedAt'>>,
+    opts: Opts = {},
+  ) => apiFetch<TariffPlan>(`/tariff-plans/${tier}`, { method: 'PATCH', body, ...opts }),
 };
 
 // ---------- Admin console ----------
@@ -584,6 +596,27 @@ export const admin = {
     opts: Opts = {},
   ) =>
     apiFetch<Report>(`/moderation/reports/${reportId}/resolve`, { method: 'PATCH', body, ...opts }),
+
+  // ---- Video review. Every upload lands here before anybody can watch it. ----
+
+  /** The clips waiting for a decision, newest first, each with its player. */
+  pendingMedia: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<PendingClip>>(`/moderation/media/pending${toQuery({ ...params })}`, opts),
+
+  /** Approve: the clip becomes publicly visible and leaves the queue. */
+  verifyMedia: (mediaId: string, opts: Opts = {}) =>
+    apiFetch<Media>(`/moderation/media/${mediaId}/verify`, { method: 'PATCH', ...opts }),
+
+  /** Take down: invisible to everyone but its uploader; the row is kept. */
+  blockMedia: (mediaId: string, opts: Opts = {}) =>
+    apiFetch<Media>(`/moderation/media/${mediaId}/block`, { method: 'PATCH', ...opts }),
+
+  /** Destroy the clip and its files. Super admin only, and irreversible. */
+  deleteMedia: (mediaId: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: boolean; mediaId: string }>(`/moderation/media/${mediaId}`, {
+      method: 'DELETE',
+      ...opts,
+    }),
 };
 
 export interface UserDetail extends AdminUser {

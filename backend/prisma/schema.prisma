@@ -115,9 +115,9 @@ enum VerificationStatus {
 }
 
 model User {
-  id       String  @id @default(uuid())
-  phone    String? @unique
-  email    String? @unique
+  id    String  @id @default(uuid())
+  phone String? @unique
+  email String? @unique
 
   /// The Telegram account that may sign in as this user, if one has been linked.
   ///
@@ -141,7 +141,7 @@ model User {
   ///
   /// Still nullable because accounts created before handles existed have none
   /// until `UsersService.findMe` backfills them on first read.
-  username String? @unique
+  username               String?          @unique
 
   /// When the address was proved, not merely typed. Null for accounts created
   /// before registration required a code, and for phone/OAuth signups that have
@@ -837,6 +837,35 @@ enum MediaStatus {
   REMOVED
 }
 
+/**
+ * Whether a human has looked at this clip yet.
+ * ## Why this is not folded into `MediaStatus`
+ * The two columns answer different questions and a clip needs both answered at
+ * once. `MediaStatus` says whether the bytes are really in the bucket — it is
+ * the worker's verdict on an upload the API never saw. This says whether anyone
+ * is allowed to look at them. A clip is routinely PROCESSING *and* UNVERIFIED,
+ * and collapsing the pair into one column would have to lose one of those
+ * facts: either "did the upload arrive" or "has a moderator seen it".
+ * ## UNVERIFIED is the default, and nothing may write it any other way
+ * Uploads are minutes of video of children, and the platform cannot know what is
+ * in one until someone watches it. So a clip is private to its uploader from the
+ * moment the row is written, and only an admin's explicit act makes it public —
+ * never the worker, never the uploader, never a default. The whole moderation
+ * system is that one sentence; everything else here enforces it.
+ * BLOCKED is the end of the line for a clip and it is *not* a delete: the row,
+ * the rating history and the engagement stay, because "what did we take down and
+ * when" is the question a moderation decision has to be able to answer later.
+ * Only a super admin can actually destroy a clip (AdminController.deleteMedia).
+ * `BLOCKED` rather than the spec's `block`: every status enum in this schema is
+ * a state in the past participle (ACTIVE, REMOVED, FLAGGED), and a verb reads as
+ * something you do rather than something a row *is*.
+ */
+enum MediaModerationStatus {
+  UNVERIFIED
+  VERIFIED
+  BLOCKED
+}
+
 model Media {
   id       String        @id @default(uuid())
   playerId String
@@ -868,6 +897,15 @@ model Media {
    * promotes a clip, and only after finding its object in the bucket.
    */
   status MediaStatus @default(PROCESSING)
+
+  /**
+   * Starts at UNVERIFIED, and only an admin moves it — see the enum.
+   * Public visibility is `status = ACTIVE AND moderationStatus = VERIFIED`, and
+   * that pair is expressed once in `media-visibility.util.ts` rather than spelled
+   * out per query: a visibility rule copied into eleven `where` clauses is a rule
+   * that holds in ten of them.
+   */
+  moderationStatus MediaModerationStatus @default(UNVERIFIED)
 
   /// Bytes, as the bucket reports them. Recorded by the worker, so it is
   /// evidence the object exists rather than a number the uploader supplied.
@@ -921,6 +959,9 @@ model Media {
   createdAt DateTime @default(now())
 
   @@index([playerId, category, createdAt(sort: Desc)])
+  /// The moderation queue, newest first, and the public-visibility filter every
+  /// other read now carries. Both are `(moderationStatus, status)` lookups.
+  @@index([moderationStatus, status, createdAt(sort: Desc)])
 }
 
 model MediaLike {
@@ -1665,7 +1706,6 @@ enum NotificationEvent {
   SQUAD_PLACEMENT
   /**
    * Somebody joined a squad this manager runs.
-   *
    * Separate from ACADEMY_JOIN_ANSWER, which is the answer to *one* invitation
    * and is sent to whoever asked. This is the squad changing, and it is sent
    * however the change happened — an invitation accepted, a transfer imported —

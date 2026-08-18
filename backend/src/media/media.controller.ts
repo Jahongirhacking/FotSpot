@@ -92,8 +92,9 @@ export class MediaController {
   /**
    * A player's clips, newest first. `category` filters to one attribute's history.
    *
-   * Carries permanent `url` and `posterUrl`: clips are public and stay reachable
-   * until the player deletes them.
+   * Public, but what it returns depends on who is asking: a visitor gets the
+   * verified clips, the owner gets their own at every moderation stage so they
+   * can see what is still waiting for review — see MediaService.listForPlayer.
    */
   @Public()
   @Get('player/:playerId')
@@ -119,10 +120,10 @@ export class MediaController {
     return this.mediaService.rate(user.userId, id, dto);
   }
 
-  /** What that rating was before each change. */
+  /** What that rating was before each change. Gated like the clip itself. */
   @Get(':id/rating/history')
-  ratingHistory(@Param('id') id: string) {
-    return this.mediaService.ratingHistory(id);
+  ratingHistory(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.mediaService.ratingHistory(id, user.userId);
   }
 
   @Delete(':id')

@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MediaCategory, Prisma } from '@prisma/client';
+import { MediaCategory, Prisma, type MediaModerationStatus } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { GroupsService } from '../academies/groups.service';
@@ -33,6 +33,7 @@ import {
   UpdateMediaDto,
 } from './dto/media.dto';
 import { MediaFinaliserService } from './media-finaliser.service';
+import { isPubliclyVisible, OWN_MEDIA_WHERE, PUBLIC_MEDIA_WHERE } from './media-visibility.util';
 import {
   FINALISE_ATTEMPTS,
   INLINE_FINALISE_ATTEMPTS,
@@ -50,6 +51,16 @@ import {
  * same view, short enough that genuinely coming back later still registers.
  */
 const VIEW_DEDUPE_SECONDS = 24 * 60 * 60;
+
+/**
+ * How long a signed URL for a clip that has not been cleared stays valid.
+ *
+ * See `toMediaResponse`. Long enough for a moderator to watch a minute of video
+ * and for a player to check their own upload; short enough that a block takes
+ * effect in minutes rather than at the end of the week the signature would
+ * otherwise have run for.
+ */
+const UNREVIEWED_READ_URL_TTL_SECONDS = 15 * 60;
 
 /** Highlights show off a performance; every other category evidences one bar. */
 const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
@@ -91,14 +102,39 @@ const ATTRIBUTE_CATEGORIES: MediaCategory[] = [
  * `storageKey` stays out of the response: a caller holding keys starts building
  * its own URLs, and then changing provider stops being a config change.
  */
-export async function toMediaResponse<T extends { storageKey: string; posterKey?: string | null }>(
-  media: T,
-  storage: StorageService,
-) {
+export async function toMediaResponse<
+  T extends {
+    storageKey: string;
+    posterKey?: string | null;
+    moderationStatus?: MediaModerationStatus;
+  },
+>(media: T, storage: StorageService) {
   const { storageKey, posterKey, ...rest } = media;
+
+  /*
+   * A clip nobody has cleared gets a short-lived signature.
+   *
+   * Seven days is right for a verified clip: it is meant to stay watchable until
+   * its player deletes it, and a fresh URL is minted on every read so nobody ever
+   * holds one near its deadline. It is wrong for the two states below. An
+   * unverified clip is signed for exactly two audiences — its uploader, and the
+   * admin reviewing it — and if that admin blocks it, a week-long URL they were
+   * handed a minute earlier still plays. Blocking has to take effect when it is
+   * pressed, not when a signature happens to lapse.
+   *
+   * Fifteen minutes is longer than any review or self-check takes and short
+   * enough that a leaked link is worthless by the time it travels. Undefined
+   * means the caller did not select the column (the feed's raw SQL), and that
+   * query already demands VERIFIED — so it takes the long TTL, correctly.
+   */
+  const ttl =
+    media.moderationStatus && media.moderationStatus !== 'VERIFIED'
+      ? UNREVIEWED_READ_URL_TTL_SECONDS
+      : undefined;
+
   const [url, posterUrl] = await Promise.all([
-    storage.readUrlOrNull(storageKey),
-    storage.readUrlOrNull(posterKey),
+    storage.readUrlOrNull(storageKey, ttl),
+    storage.readUrlOrNull(posterKey, ttl),
   ]);
   return { ...rest, url, posterUrl };
 }
@@ -218,6 +254,38 @@ export class MediaService {
   }
 
   /**
+   * The clip, or 404 — for every endpoint a non-owner can reach.
+   *
+   * ## 404 and not 403
+   *
+   * A 403 on an unverified clip would answer the question the id was guessed to
+   * ask: it confirms the clip exists, who it belongs to and that something about
+   * it is being withheld. To anyone who is not its owner an unreviewed or blocked
+   * clip does not exist, and that is what the response says.
+   *
+   * Every interaction goes through here — liking, viewing, commenting, counting,
+   * a coach's rating — because "cannot see it in the feed" is not the property
+   * being defended. The property is that no unreviewed footage of a child leaves
+   * this API by any route at all, and an endpoint that takes an id and skips this
+   * check is a route.
+   */
+  private async publicMedia(mediaId: string) {
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!isPubliclyVisible(media)) throw new NotFoundException('Media not found');
+    return media!;
+  }
+
+  /** True when this account is the player the clip belongs to. */
+  private async ownsMedia(userId: string | undefined, playerId: string) {
+    if (!userId) return false;
+    const profile = await this.prisma.playerProfile.findFirst({
+      where: { id: playerId, userId },
+      select: { id: true },
+    });
+    return Boolean(profile);
+  }
+
+  /**
    * Whether uploads can be accepted at all, and how many this player has left —
    * surfaced so the UI can say so before a player records a video.
    *
@@ -309,9 +377,10 @@ export class MediaService {
         rating: isAttribute ? dto.rating : null,
         title: dto.title ?? null,
         description: dto.description ?? null,
-        // PROCESSING by the column default — this call is the *client's word*
-        // that an upload happened, and the worker is what checks. See
-        // MediaProcessor.
+        // PROCESSING and UNVERIFIED, both by column default and never written
+        // here. The first is the worker's to change once it has found the object
+        // in the bucket (see MediaProcessor); the second is an admin's, and
+        // nothing on the upload path may set it. A clip cannot be born public.
       },
     });
 
@@ -356,9 +425,9 @@ export class MediaService {
       void this.finaliseInline(job);
     }
 
-    // No cache invalidation here any more: the clip is not visible yet, so there
-    // is nothing stale to clear. The worker does it at the moment the clip
-    // actually appears.
+    // No cache invalidation here: the clip is not visible to anyone but its
+    // uploader yet, and now cannot be until a moderator verifies it — which is
+    // where the public profile cache is cleared (ModerationService.verifyMedia).
     return toMediaResponse(media, this.storage);
   }
 
@@ -410,13 +479,18 @@ export class MediaService {
     const { skip, take, page, pageSize } = toSkipTake(dto);
 
     /*
-     * The owner sees their own clips while they are still being finalised.
+     * The owner sees their own clips at every stage; nobody else sees anything
+     * but a verified one.
      *
-     * Everyone else sees only ACTIVE, which is what makes PROCESSING meaningful:
-     * a clip is not evidence until the worker has found it in the bucket. But
-     * hiding it from the uploader too would mean pressing upload and watching
-     * nothing appear — indistinguishable from a failure, and the moment they
-     * would upload it again.
+     * Both halves matter. A clip is not evidence until the worker has found it in
+     * the bucket *and* a moderator has watched it — but hiding it from the
+     * uploader too would mean pressing upload and watching nothing appear, which
+     * is indistinguishable from a failure and is the moment they upload it again.
+     * So the owner is shown their own clip while it is processing, while it is
+     * waiting for review, and after it was blocked, each labelled as what it is
+     * (see MediaModerationStatus). This is the one endpoint where a clip that is
+     * not public is returned at all, and it returns it only to the one account
+     * that supplied it.
      */
     const owner = viewerUserId
       ? await this.prisma.playerProfile.findFirst({
@@ -427,7 +501,7 @@ export class MediaService {
 
     const where: Prisma.MediaWhereInput = {
       playerId,
-      status: owner ? { in: ['ACTIVE', 'PROCESSING', 'FAILED'] } : 'ACTIVE',
+      ...(owner ? OWN_MEDIA_WHERE : PUBLIC_MEDIA_WHERE),
       ...(dto.category ? { category: dto.category } : {}),
     };
 
@@ -460,7 +534,8 @@ export class MediaService {
    */
   async listRecent(limit = 8) {
     const items = await this.prisma.media.findMany({
-      where: { status: 'ACTIVE', player: { user: { isPrivate: false } } },
+      // The landing page, so guests: verified only, like everything else public.
+      where: { ...PUBLIC_MEDIA_WHERE, player: { user: { isPrivate: false } } },
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 24),
       include: {
@@ -587,6 +662,11 @@ export class MediaService {
       ) mv ON mv."mediaId" = m.id
       -- What share of this viewer's likes fell in each category. One pass over
       -- their own likes, joined by category rather than per row.
+      --
+      -- Not moderation-filtered, deliberately: this reads the viewer's *own*
+      -- history to learn what they scout for, and a clip that was later blocked
+      -- still tells us they were watching finishing clips. Nothing about the clip
+      -- leaves the subquery — only a per-category proportion.
       LEFT JOIN (
         SELECT lm.category,
                COUNT(*)::float / NULLIF(SUM(COUNT(*)) OVER (), 0) AS affinity
@@ -595,7 +675,12 @@ export class MediaService {
         WHERE lk."userId" = ${viewerUserId}
         GROUP BY lm.category
       ) aff ON aff.category = m.category
-      WHERE m.status = 'ACTIVE' AND m.type = 'VIDEO' AND u."isPrivate" = false
+      -- The moderation gate, in the one query that cannot express it in Prisma.
+      -- Kept alongside the ACTIVE check rather than folded into it: they are two
+      -- different verdicts (the bytes arrived / a person watched them) and a
+      -- reader of this SQL should see both being demanded.
+      WHERE m.status = 'ACTIVE' AND m."moderationStatus" = 'VERIFIED'
+        AND m.type = 'VIDEO' AND u."isPrivate" = false
       ORDER BY
         ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
         + ${FEED_FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
@@ -627,7 +712,7 @@ export class MediaService {
     `);
 
     const total = await this.prisma.media.count({
-      where: { status: 'ACTIVE', type: 'VIDEO', player: { user: { isPrivate: false } } },
+      where: { ...PUBLIC_MEDIA_WHERE, type: 'VIDEO', player: { user: { isPrivate: false } } },
     });
 
     const items = await Promise.all(
@@ -727,6 +812,12 @@ export class MediaService {
     if (media.playerId !== profile.id) {
       throw new ForbiddenException('You can only edit your own clips');
     }
+    // A blocked clip is a moderation decision, not a draft. Retitling one is
+    // editing something a moderator has already ruled on, and the only thing
+    // its owner can usefully do with it now is delete it.
+    if (media.moderationStatus === 'BLOCKED') {
+      throw new ForbiddenException('This clip was blocked by a moderator and cannot be edited');
+    }
     if (dto.rating !== undefined && media.category === 'MATCH_HIGHLIGHTS') {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
@@ -770,8 +861,10 @@ export class MediaService {
       throw new ForbiddenException('Only a verified coach can rate a clip');
     }
 
-    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    // A coach is one of the roles that may never be served an unreviewed clip
+    // (§9), and rating one would be judging footage nobody has cleared — so this
+    // is the same 404 a coach would get from the feed, not a softer check.
+    const media = await this.publicMedia(mediaId);
     if (media.category === 'MATCH_HIGHLIGHTS') {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
     }
@@ -801,8 +894,24 @@ export class MediaService {
     return toMediaResponse(updated, this.storage);
   }
 
-  /** What a clip's rating was before each change, newest first. */
-  async ratingHistory(mediaId: string) {
+  /**
+   * What a clip's rating was before each change, newest first.
+   *
+   * Gated like the clip itself. The revisions are a small leak on their own — a
+   * number and a date — but they confirm that a clip with this id exists and has
+   * been rated, which is exactly what an unreviewed clip must not confirm to
+   * anyone but its owner.
+   */
+  async ratingHistory(mediaId: string, viewerUserId?: string) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { playerId: true, status: true, moderationStatus: true },
+    });
+    if (!media) throw new NotFoundException('Clip not found');
+    if (!isPubliclyVisible(media) && !(await this.ownsMedia(viewerUserId, media.playerId))) {
+      throw new NotFoundException('Clip not found');
+    }
+
     return this.prisma.ratingRevision.findMany({
       where: { mediaId },
       orderBy: { createdAt: 'desc' },
@@ -861,8 +970,9 @@ export class MediaService {
   }
 
   async like(userId: string, mediaId: string) {
-    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
+    // You cannot like what you cannot see. The check is here and not only in the
+    // feed because a like is a POST with an id in it, and an id is guessable.
+    await this.publicMedia(mediaId);
 
     return this.prisma.mediaLike.upsert({
       where: { mediaId_userId: { mediaId, userId } },
@@ -929,9 +1039,9 @@ export class MediaService {
 
     const media = await this.prisma.media.findUnique({
       where: { id: mediaId },
-      select: { status: true },
+      select: { status: true, moderationStatus: true },
     });
-    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
+    if (!isPubliclyVisible(media)) throw new NotFoundException('Media not found');
 
     try {
       await this.prisma.mediaView.create({
@@ -959,7 +1069,19 @@ export class MediaService {
    */
   async getEngagement(mediaId: string, userId?: string) {
     const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
+    if (!media) throw new NotFoundException('Media not found');
+    /*
+     * The owner is allowed the counts on their own clip whatever its state.
+     *
+     * Not a hole: the numbers are all zero while a clip is unreviewed, since
+     * nothing else can reach it to like or watch it. It is here because the
+     * player's own clip panel asks for engagement the moment a clip opens, and
+     * a 404 on their own upload reads as "your video is broken" — which is the
+     * opposite of what "waiting for review" is meant to communicate.
+     */
+    if (!isPubliclyVisible(media) && !(await this.ownsMedia(userId, media.playerId))) {
+      throw new NotFoundException('Media not found');
+    }
 
     const [views, likes, comments, mine] = await this.prisma.$transaction([
       this.prisma.mediaView.count({ where: { mediaId } }),
@@ -976,8 +1098,9 @@ export class MediaService {
   // ---------- Comments (1.14 media_comments) ----------
 
   async comment(userId: string, mediaId: string, dto: CreateMediaCommentDto) {
-    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media || media.status !== 'ACTIVE') throw new NotFoundException('Media not found');
+    // Same gate as the like: an unreviewed clip accepts no interaction at all,
+    // including from an account that guessed its id.
+    await this.publicMedia(mediaId);
 
     return this.prisma.mediaComment.create({
       data: { mediaId, userId, body: dto.body },
@@ -985,6 +1108,11 @@ export class MediaService {
   }
 
   async listComments(mediaId: string, dto: ListMediaCommentsDto) {
+    // Public route, so no viewer to make an exception for. An unreviewed clip has
+    // no comments anyway — nothing can reach it to write one — and answering with
+    // an empty page would still confirm the clip exists.
+    await this.publicMedia(mediaId);
+
     const page = dto.page ?? 1;
     const pageSize = dto.pageSize ?? 20;
     const where = { mediaId, status: 'ACTIVE' as const };

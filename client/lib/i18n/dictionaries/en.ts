@@ -680,6 +680,17 @@ export const en: Dictionary = {
     noneTitle: 'No clips yet',
     noneHint: 'This player has not uploaded any clips yet.',
     noneHintOwn: '60 seconds of you dribbling is worth more than any description.',
+
+    /** Moderation state — shown to the clip's owner and to nobody else. */
+    moderationLabel: 'Status',
+    awaitingReview: 'Waiting for verification',
+    awaitingReviewHint:
+      'Only you can see this clip for now. Once an administrator has reviewed it, it appears on your profile and in the feed.',
+    moderationVerified: 'Verified',
+    moderationVerifiedHint: 'Live on your profile and in the feed.',
+    moderationBlocked: 'Blocked',
+    moderationBlockedHint:
+      'A moderator took this clip down, so nobody else can see it. You can delete it.',
   },
 
   /** The scout's and the academy manager's home screen. */
@@ -1318,6 +1329,29 @@ export const en: Dictionary = {
     resolve: 'Resolve',
     dismiss: 'Dismiss',
     removeMedia: 'Take down media',
+
+    // ---- Video review. Every new clip passes through this queue. ----
+    videoReview: 'Video review',
+    videoReviewHint:
+      'Every new clip waits here until an admin approves it. An unverified clip is visible to nobody but the player who uploaded it.',
+    reviewReports: 'Reports',
+    noPendingClips: 'No clips waiting for review.',
+    noPendingClipsHint: 'Newly uploaded videos appear here.',
+    uploadedAt: 'Uploaded',
+    verifyClip: 'Verify',
+    blockClip: 'Block',
+    blockClipTitle: 'Block this video?',
+    blockClipBody:
+      'Blocked videos will not be visible to other users. The record is kept for moderation history.',
+    deleteClip: 'Delete permanently',
+    deleteClipTitle: 'Permanently delete this video?',
+    deleteClipBody:
+      'This action cannot be undone. The video and its associated media will be permanently removed.',
+    deleteClipConfirm: 'Type {word} to confirm.',
+    deleteClipWord: 'DELETE',
+    clipVerified: 'Video verified.',
+    clipBlocked: 'Video blocked.',
+    clipDeleted: 'Video permanently deleted.',
     resolutionNote: 'Note',
     rolesPermissions: 'Roles & permissions',
     rolesPermissionsHint: 'The permission catalogue and which roles hold each one.',

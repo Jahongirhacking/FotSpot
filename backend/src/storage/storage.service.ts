@@ -277,9 +277,12 @@ export class StorageService {
    * to list clips — the rows exist and everything except playback works — and
    * taking the whole endpoint down over it is the failure this replaces.
    */
-  async readUrlOrNull(storageKey: string | null | undefined): Promise<string | null> {
+  async readUrlOrNull(
+    storageKey: string | null | undefined,
+    ttlSeconds?: number,
+  ): Promise<string | null> {
     if (!storageKey || !this.client) return null;
-    return (await this.createReadUrl(storageKey)).url;
+    return (await this.createReadUrl(storageKey, ttlSeconds)).url;
   }
 
   /**
