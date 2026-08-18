@@ -36,6 +36,16 @@ const READ_URL_TTL_SECONDS = 7 * 24 * 60 * 60;
 const SIGNING_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * The shortest TTL that may still be signed at the top of the hour.
+ *
+ * Rounding backwards spends up to a whole window of the URL's life before anyone
+ * receives it, so a TTL shorter than this would hand out links that are already
+ * dead — see `createReadUrl`. A day leaves the seven-day default rounding as it
+ * always was while refusing the rounding to anything measured in minutes.
+ */
+const MIN_TTL_FOR_SIGNING_WINDOW_SECONDS = 24 * 60 * 60;
+
+/**
  * The one place an object key becomes a URL — Cloudflare R2 (README §1.7).
  *
  * ## Two buckets, and the key prefix picks between them
@@ -248,15 +258,38 @@ export class StorageService {
   }
 
   /**
-   * Signed GET for an object, valid for a week and stable within the hour.
+   * Signed GET for an object, valid for `ttlSeconds` from when it was signed.
    *
    * This performs **no authorization of its own**, by design. Whether the caller
    * may see the object is a decision for the endpoint, where a reviewer will
    * notice it; buried in a URL builder it would be invisible.
+   *
+   * ## The cache window only applies to long-lived URLs
+   *
+   * Signing time is normally rounded down to the top of the hour so a clip yields
+   * a byte-identical URL all hour and the browser can reuse what it downloaded.
+   * That is free at the seven-day default: rounding costs at most an hour out of
+   * a week.
+   *
+   * It is not free for a short TTL, and the failure is total rather than
+   * gradual. A URL signed for fifteen minutes *as of the top of the hour* is
+   * already expired for forty-five minutes of every hour — R2 rejects it, and the
+   * caller gets a URL-shaped string that never loads. That is exactly what
+   * happened to owners viewing their own unreviewed clips: the poster 403'd and
+   * the video would not start.
+   *
+   * So the rounding is applied only when the TTL can absorb it. Below that, the
+   * URL is signed at `now` and the caller trades browser caching for a link that
+   * actually works — the right trade for a clip watched by its uploader and one
+   * moderator.
    */
   async createReadUrl(storageKey: string, ttlSeconds = READ_URL_TTL_SECONDS) {
     const client = this.require();
-    const signingDate = new Date(Math.floor(Date.now() / SIGNING_WINDOW_MS) * SIGNING_WINDOW_MS);
+    const signingDate = new Date(
+      ttlSeconds >= MIN_TTL_FOR_SIGNING_WINDOW_SECONDS
+        ? Math.floor(Date.now() / SIGNING_WINDOW_MS) * SIGNING_WINDOW_MS
+        : Date.now(),
+    );
 
     const url = await getSignedUrl(
       client,

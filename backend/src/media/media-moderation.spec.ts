@@ -45,8 +45,20 @@ const CLIP: {
   reportedBy: 'SELF',
 };
 
-function build(clip: Partial<typeof CLIP> = {}, options: { ownedByCaller?: boolean } = {}) {
+/**
+ * The fake resolves ownership from the caller's user id, exactly as the service
+ * does — never from a flag the test hands it.
+ *
+ * That distinction is the whole subject of these tests. A fake that took an
+ * "is the owner" boolean would let "the owner sees their clip" and "a stranger
+ * does not" both pass against an implementation that trusted a request
+ * parameter, which is the security bug this design exists to make impossible.
+ * Here the only way to be the owner is to *be* `OWNER_USER`.
+ */
+function build(clip: Partial<typeof CLIP> = {}) {
   const row = { ...CLIP, ...clip };
+  const profileOf = (userId?: string) =>
+    userId === OWNER_USER ? { id: PLAYER_ID, userId: OWNER_USER } : null;
 
   const prisma = {
     media: {
@@ -64,11 +76,14 @@ function build(clip: Partial<typeof CLIP> = {}, options: { ownedByCaller?: boole
       findUnique: jest.fn(async (): Promise<unknown> => ({ id: 'coach-1', status: 'VERIFIED' })),
     },
     playerProfile: {
-      findUnique: jest.fn(async (): Promise<unknown> => ({ id: PLAYER_ID, userId: OWNER_USER })),
-      // The ownership probe: `findFirst` matches only when the caller *is* the
-      // player whose clips are being asked for.
-      findFirst: jest.fn(async (): Promise<unknown> =>
-        options.ownedByCaller ? { id: PLAYER_ID } : null,
+      // `ownPlayerId` — which player profile does this account own, if any.
+      findUnique: jest.fn(async ({ where }: { where: { userId?: string } }): Promise<unknown> =>
+        profileOf(where.userId),
+      ),
+      // `listForPlayer`'s probe — is this account the player being asked about.
+      findFirst: jest.fn(
+        async ({ where }: { where: { id?: string; userId?: string } }): Promise<unknown> =>
+          where.userId === OWNER_USER && where.id === PLAYER_ID ? { id: PLAYER_ID } : null,
       ),
     },
     $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
@@ -192,7 +207,7 @@ describe('a player profile — who is asking decides what comes back', () => {
   });
 
   it('serves another signed-in user verified clips only', async () => {
-    const { service, prisma } = build({}, { ownedByCaller: false });
+    const { service, prisma } = build();
 
     await service.listForPlayer(PLAYER_ID, {}, 'scout-user-1');
 
@@ -210,7 +225,7 @@ describe('a player profile — who is asking decides what comes back', () => {
    * again.
    */
   it('serves the owner their own clips whatever the moderator has decided', async () => {
-    const { service, prisma } = build({}, { ownedByCaller: true });
+    const { service, prisma } = build();
 
     await service.listForPlayer(PLAYER_ID, {}, OWNER_USER);
 
@@ -302,7 +317,7 @@ describe('interacting with a clip you were never shown', () => {
     });
 
     it('does not report its engagement to a stranger', async () => {
-      const { service } = build({ moderationStatus }, { ownedByCaller: false });
+      const { service } = build({ moderationStatus });
 
       await expect(service.getEngagement(CLIP.id, 'scout-user-1')).rejects.toBeInstanceOf(
         NotFoundException,
@@ -322,7 +337,7 @@ describe('interacting with a clip you were never shown', () => {
     });
 
     it('does not hand over its rating history', async () => {
-      const { service } = build({ moderationStatus }, { ownedByCaller: false });
+      const { service } = build({ moderationStatus });
 
       await expect(service.ratingHistory(CLIP.id, 'scout-user-1')).rejects.toBeInstanceOf(
         NotFoundException,
@@ -353,6 +368,97 @@ describe('interacting with a clip you were never shown', () => {
   });
 });
 
+describe('the owner and their own unreviewed clip — the full read chain', () => {
+  /*
+   * These are the acceptance tests for the regression that "waiting for
+   * verification" replaced the video instead of labelling it.
+   *
+   * UNVERIFIED does not mean invisible to its owner. It means invisible to
+   * everyone *except* its owner and the moderators, and the owner has to get the
+   * row, the poster, the playable URL and the badge — every link in the chain,
+   * not just the first.
+   */
+
+  it('returns the row to its owner', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+    prisma.media.findMany.mockResolvedValue([{ ...CLIP, moderationStatus: 'UNVERIFIED' }]);
+    prisma.media.count.mockResolvedValue(1);
+
+    const page = await service.listForPlayer(PLAYER_ID, {}, OWNER_USER);
+
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]).toEqual(expect.objectContaining({ id: CLIP.id }));
+  });
+
+  /* The poster is what the grid draws. Withholding it is what produced a grey
+     tile with a badge and no picture. */
+  it('gives its owner a playable URL and a poster URL', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+    prisma.media.findMany.mockResolvedValue([
+      { ...CLIP, moderationStatus: 'UNVERIFIED', posterKey: 'private/players/player-1/poster.jpg' },
+    ]);
+    prisma.media.count.mockResolvedValue(1);
+
+    const page = await service.listForPlayer(PLAYER_ID, {}, OWNER_USER);
+
+    expect(page.items[0].url).toBe('https://signed.example/clip');
+    expect(page.items[0].posterUrl).toBe('https://signed.example/clip');
+  });
+
+  it('carries the moderation status, so the card can badge it', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+    prisma.media.findMany.mockResolvedValue([{ ...CLIP, moderationStatus: 'UNVERIFIED' }]);
+    prisma.media.count.mockResolvedValue(1);
+
+    const page = await service.listForPlayer(PLAYER_ID, {}, OWNER_USER);
+
+    expect(page.items[0].moderationStatus).toBe('UNVERIFIED');
+  });
+
+  /*
+   * The other half of the same coin, and the one that matters for safety: the
+   * row must never be in Player B's response at all. Not returned-and-hidden —
+   * absent, because the query never asked for it.
+   */
+  it('does not return it to another player, who gets the public query', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+
+    await service.listForPlayer(PLAYER_ID, {}, 'other-player-user');
+
+    const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
+      { where: Record<string, unknown> },
+    ];
+    expect(call.where).toEqual(
+      expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
+    );
+  });
+
+  it('does not return it to a signed-out visitor', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+
+    await service.listForPlayer(PLAYER_ID, {}, undefined);
+
+    const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
+      { where: Record<string, unknown> },
+    ];
+    expect(call.where).toEqual(
+      expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
+    );
+  });
+
+  /* Ownership comes from the authenticated user id and nothing else — there is
+     no argument through which a caller could claim it. */
+  it('resolves ownership from the authenticated user, not from the request', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+
+    await service.getEngagement(CLIP.id, OWNER_USER);
+
+    expect(prisma.playerProfile.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: OWNER_USER } }),
+    );
+  });
+});
+
 describe('the owner and their own pending clip', () => {
   /*
    * Deliberately not a hole. The counts are all zero while a clip is unreviewed —
@@ -361,7 +467,7 @@ describe('the owner and their own pending clip', () => {
    * as "your video is broken", which is the opposite of "waiting for review".
    */
   it('is given the engagement counts on their own unverified clip', async () => {
-    const { service } = build({ moderationStatus: 'UNVERIFIED' }, { ownedByCaller: true });
+    const { service } = build({ moderationStatus: 'UNVERIFIED' });
 
     await expect(service.getEngagement(CLIP.id, OWNER_USER)).resolves.toEqual(
       expect.objectContaining({ mediaId: CLIP.id, likes: 0, views: 0 }),
@@ -369,7 +475,7 @@ describe('the owner and their own pending clip', () => {
   });
 
   it('can read the rating history of their own unverified clip', async () => {
-    const { service } = build({ moderationStatus: 'UNVERIFIED' }, { ownedByCaller: true });
+    const { service } = build({ moderationStatus: 'UNVERIFIED' });
 
     await expect(service.ratingHistory(CLIP.id, OWNER_USER)).resolves.toEqual([]);
   });
@@ -377,7 +483,7 @@ describe('the owner and their own pending clip', () => {
   /* A blocked clip is a moderation decision, not a draft. The only thing its
      owner can usefully do with it now is delete it. */
   it('cannot retitle a clip a moderator blocked', async () => {
-    const { service } = build({ moderationStatus: 'BLOCKED' }, { ownedByCaller: true });
+    const { service } = build({ moderationStatus: 'BLOCKED' });
 
     await expect(
       service.update(OWNER_USER, CLIP.id, { title: 'try again' } as never),
@@ -385,7 +491,7 @@ describe('the owner and their own pending clip', () => {
   });
 
   it('can still edit a clip that is merely waiting for review', async () => {
-    const { service } = build({ moderationStatus: 'UNVERIFIED' }, { ownedByCaller: true });
+    const { service } = build({ moderationStatus: 'UNVERIFIED' });
 
     await expect(
       service.update(OWNER_USER, CLIP.id, { title: 'my sprint' } as never),
@@ -393,7 +499,7 @@ describe('the owner and their own pending clip', () => {
   });
 
   it('can delete their own blocked clip', async () => {
-    const { service } = build({ moderationStatus: 'BLOCKED' }, { ownedByCaller: true });
+    const { service } = build({ moderationStatus: 'BLOCKED' });
 
     await expect(service.remove(OWNER_USER, CLIP.id)).resolves.toBeDefined();
   });

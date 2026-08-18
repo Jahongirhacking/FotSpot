@@ -9,7 +9,7 @@ import type { Media } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { useSession } from '@/components/layout/SessionProvider';
-import { ClipModerationNote } from '@/components/player/ClipModerationBadge';
+import { ClipModerationNote, useClipModerationCopy } from '@/components/player/ClipModerationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
@@ -90,6 +90,11 @@ export function ClipModal({
     onError: (err: Error) => setError(err.message),
   });
 
+  // Engagement is meaningful only once a clip is public: an unreviewed or blocked
+  // one is reachable by its owner alone, so there is nobody to like or watch it.
+  const likeable = (clip?.moderationStatus ?? 'VERIFIED') === 'VERIFIED';
+  const moderationHint = useClipModerationCopy(clip?.moderationStatus ?? 'VERIFIED').hint;
+
   const attribute = CATEGORY_ATTRIBUTE[clip?.category];
   const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
   const label = isHighlight
@@ -145,18 +150,29 @@ export function ClipModal({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              disabled={!isAuthenticated || toggleLike.isPending}
+              disabled={!isAuthenticated || !likeable || toggleLike.isPending}
               onClick={() => toggleLike.mutate(engagement.data?.likedByMe ?? false)}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm transition-colors',
                 engagement.data?.likedByMe
                   ? 'text-danger bg-danger/10'
                   : 'text-muted hover:bg-surface-2',
-                !isAuthenticated && 'cursor-not-allowed opacity-60',
+                (!isAuthenticated || !likeable) && 'cursor-not-allowed opacity-60',
               )}
               // One like per account, not per role — the server keys it on user id
               // alone, so switching hats and pressing again changes nothing.
-              title={isAuthenticated ? t.clips.likeOnce : t.clips.signInToLike}
+              //
+              // Off entirely while a clip is unreviewed. The only person who can
+              // open one is its owner, nobody else can reach it to like it, and
+              // the API refuses — leaving the heart live would spend a request to
+              // show them an error about their own video.
+              title={
+                !isAuthenticated
+                  ? t.clips.signInToLike
+                  : likeable
+                    ? t.clips.likeOnce
+                    : moderationHint
+              }
             >
               <Heart
                 className={cn('size-4', engagement.data?.likedByMe && 'fill-current')}
