@@ -33,7 +33,12 @@ import {
   UpdateMediaDto,
 } from './dto/media.dto';
 import { MediaFinaliserService } from './media-finaliser.service';
-import { isPubliclyVisible, OWN_MEDIA_WHERE, PUBLIC_MEDIA_WHERE } from './media-visibility.util';
+import {
+  canViewMedia,
+  isPubliclyVisible,
+  OWN_MEDIA_WHERE,
+  PUBLIC_MEDIA_WHERE,
+} from './media-visibility.util';
 import {
   FINALISE_ATTEMPTS,
   INLINE_FINALISE_ATTEMPTS,
@@ -275,14 +280,40 @@ export class MediaService {
     return media!;
   }
 
-  /** True when this account is the player the clip belongs to. */
-  private async ownsMedia(userId: string | undefined, playerId: string) {
-    if (!userId) return false;
-    const profile = await this.prisma.playerProfile.findFirst({
-      where: { id: playerId, userId },
+  /**
+   * The caller's own PlayerProfile id, or null if they have no player profile.
+   *
+   * Read from the authenticated user id and nothing else. Ownership is never a
+   * value the client supplies — a `?owner=true` or a player id in the body would
+   * make every unreviewed clip on the platform one query parameter away.
+   */
+  private async ownPlayerId(userId: string | undefined): Promise<string | null> {
+    if (!userId) return null;
+    const profile = await this.prisma.playerProfile.findUnique({
+      where: { userId },
       select: { id: true },
     });
-    return Boolean(profile);
+    return profile?.id ?? null;
+  }
+
+  /**
+   * A clip this caller is allowed to read, or 404 — the gate on every endpoint
+   * that takes a media id.
+   *
+   * Public if it is verified, plus the owner's own at any moderation stage. The
+   * ownership half costs one indexed lookup, and only when the clip is not
+   * already public: for the overwhelmingly common case — anyone watching a
+   * verified clip — this is exactly the single query it always was.
+   */
+  private async viewableMedia(mediaId: string, viewerUserId?: string) {
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media) throw new NotFoundException('Media not found');
+    if (isPubliclyVisible(media)) return media;
+
+    if (!canViewMedia(media, await this.ownPlayerId(viewerUserId))) {
+      throw new NotFoundException('Media not found');
+    }
+    return media;
   }
 
   /**
@@ -473,7 +504,8 @@ export class MediaService {
    *
    * Public on purpose: the ratings on this list are what draw the attribute bars,
    * so a guest looking at a profile still sees "pace 85, backed by a clip". The
-   * footage itself needs `GET /media/:id/url` and an authorized caller.
+   * footage itself is reachable only through the signed URL this builds, which is
+   * minted per read for callers this method has already authorized.
    */
   async listForPlayer(playerId: string, dto: ListPlayerMediaDto = {}, viewerUserId?: string) {
     const { skip, take, page, pageSize } = toSkipTake(dto);
@@ -903,14 +935,7 @@ export class MediaService {
    * anyone but its owner.
    */
   async ratingHistory(mediaId: string, viewerUserId?: string) {
-    const media = await this.prisma.media.findUnique({
-      where: { id: mediaId },
-      select: { playerId: true, status: true, moderationStatus: true },
-    });
-    if (!media) throw new NotFoundException('Clip not found');
-    if (!isPubliclyVisible(media) && !(await this.ownsMedia(viewerUserId, media.playerId))) {
-      throw new NotFoundException('Clip not found');
-    }
+    await this.viewableMedia(mediaId, viewerUserId);
 
     return this.prisma.ratingRevision.findMany({
       where: { mediaId },
@@ -1068,8 +1093,6 @@ export class MediaService {
    * button render the truth instead of guessing.
    */
   async getEngagement(mediaId: string, userId?: string) {
-    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
-    if (!media) throw new NotFoundException('Media not found');
     /*
      * The owner is allowed the counts on their own clip whatever its state.
      *
@@ -1079,9 +1102,7 @@ export class MediaService {
      * a 404 on their own upload reads as "your video is broken" — which is the
      * opposite of what "waiting for review" is meant to communicate.
      */
-    if (!isPubliclyVisible(media) && !(await this.ownsMedia(userId, media.playerId))) {
-      throw new NotFoundException('Media not found');
-    }
+    await this.viewableMedia(mediaId, userId);
 
     const [views, likes, comments, mine] = await this.prisma.$transaction([
       this.prisma.mediaView.count({ where: { mediaId } }),

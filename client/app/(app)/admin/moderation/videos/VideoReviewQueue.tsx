@@ -305,11 +305,21 @@ function DeleteClipDialog({
   const { t } = useI18n();
   const [typed, setTyped] = React.useState('');
 
-  // Cleared whenever the dialog is pointed at a different clip, so a confirmed
-  // word cannot carry over to the next video the moderator opens.
-  const [lastClipId, setLastClipId] = React.useState<string | null>(null);
-  if (clip?.id !== lastClipId) {
-    setLastClipId(clip?.id ?? null);
+  /*
+   * Cleared whenever the dialog is pointed at a different clip, so a confirmed
+   * word cannot carry over to the next video the moderator opens.
+   *
+   * Both sides of the comparison are normalised to `string | null`. Testing
+   * `clip?.id` (undefined when the dialog is closed) against a stored value
+   * coerced to `null` is never equal, so the reset ran on every render and React
+   * stopped it as an infinite loop — the "Too many re-renders" this dialog threw
+   * as soon as the queue mounted. Normalising once, above the comparison, is what
+   * makes this the documented render-time reset rather than a loop.
+   */
+  const clipId = clip?.id ?? null;
+  const [lastClipId, setLastClipId] = React.useState<string | null>(clipId);
+  if (clipId !== lastClipId) {
+    setLastClipId(clipId);
     setTyped('');
   }
 

@@ -127,3 +127,111 @@ describe('StorageService bucket routing', () => {
     expect(url).not.toContain(PUBLIC_BUCKET);
   });
 });
+
+/**
+ * Reads back the window a presigned URL actually carries.
+ *
+ * SigV4 puts both halves in the query string, so this asks the URL what it says
+ * about itself rather than asking a mock what it was told — the same reasoning as
+ * `expectBucket` above, and the only way to catch a signature that is well-formed
+ * and already dead.
+ */
+function signedWindow(url: string) {
+  const params = new URL(url).searchParams;
+  // `20260818T123456Z` — SigV4's basic-format ISO 8601, which `Date` will not
+  // parse until the separators are put back.
+  const stamp = params.get('X-Amz-Date') ?? '';
+  const signedAt = Date.parse(
+    `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)}T` +
+      `${stamp.slice(9, 11)}:${stamp.slice(11, 13)}:${stamp.slice(13, 15)}Z`,
+  );
+  const expiresIn = Number(params.get('X-Amz-Expires'));
+  return { signedAt, expiresIn, expiresAt: signedAt + expiresIn * 1000 };
+}
+
+/**
+ * A signed URL has to still be alive when the caller receives it.
+ *
+ * ## The bug this exists to prevent
+ *
+ * Signing time is rounded down to the top of the hour so a clip yields a
+ * byte-identical URL all hour and the browser can reuse what it already
+ * downloaded. That is free against the seven-day default: it costs at most an
+ * hour out of a week.
+ *
+ * It is catastrophic against a short TTL, and silently so. A URL signed for
+ * fifteen minutes *as of the top of the hour* has already expired for
+ * forty-five minutes of every hour — the API returns a perfectly well-formed
+ * link, R2 answers 403, and the page shows a poster that never loads and a video
+ * that never starts. That is exactly what happened to players viewing their own
+ * clips while those waited for moderation, which is what gave unreviewed clips a
+ * short-lived signature in the first place.
+ *
+ * The rule is therefore: the rounding may never cost more life than the TTL can
+ * spare. Both halves of it are pinned below.
+ */
+describe('StorageService read URL expiry', () => {
+  const HOUR_MS = 60 * 60 * 1000;
+  // Deliberately deep into an hour: at :34, a fifteen-minute TTL signed at the
+  // top of the hour died nineteen minutes ago.
+  const NOW = Date.parse('2026-08-18T12:34:56.000Z');
+  const KEY = playerMediaKey('player-1', 'clip.mp4');
+
+  beforeEach(() => {
+    // Only the clock. The presigner is the real one here, and faking its timers
+    // would leave its promises unresolved.
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    jest.setSystemTime(NOW);
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  it('signs a short-lived URL at the current time, not the top of the hour', async () => {
+    const { url } = await storage().createReadUrl(KEY, 15 * 60);
+
+    expect(signedWindow(url).signedAt).toBe(NOW);
+  });
+
+  it('hands out a short-lived URL with its full life still ahead of it', async () => {
+    const { url } = await storage().createReadUrl(KEY, 15 * 60);
+
+    const { expiresAt } = signedWindow(url);
+    expect(expiresAt).toBeGreaterThan(NOW);
+    expect(expiresAt - NOW).toBe(15 * 60 * 1000);
+  });
+
+  /* The cache optimisation is worth keeping where it is free — without it every
+     page load re-downloads every clip it already had. */
+  it('still rounds the seven-day default to the top of the hour', async () => {
+    const { url } = await storage().createReadUrl(KEY);
+
+    expect(signedWindow(url).signedAt).toBe(Math.floor(NOW / HOUR_MS) * HOUR_MS);
+  });
+
+  it('gives two reads within the same hour an identical long-lived URL', async () => {
+    const first = await storage().createReadUrl(KEY);
+    jest.setSystemTime(NOW + 20 * 60 * 1000);
+    const second = await storage().createReadUrl(KEY);
+
+    expect(first.url).toBe(second.url);
+  });
+
+  /*
+   * The property, not the boundary: whatever TTLs this code grows in future, none
+   * of them may be handed to a caller already expired.
+   */
+  it.each([60, 15 * 60, 60 * 60, 24 * 60 * 60, 7 * 24 * 60 * 60])(
+    'never returns an already-expired URL for a %s-second TTL',
+    async (ttl) => {
+      const { url } = await storage().createReadUrl(KEY, ttl);
+
+      expect(signedWindow(url).expiresAt).toBeGreaterThan(NOW);
+    },
+  );
+
+  it('reports the deadline it actually signed for', async () => {
+    const result = await storage().createReadUrl(KEY, 15 * 60);
+
+    expect(Date.parse(result.expiresAt)).toBe(signedWindow(result.url).expiresAt);
+  });
+});

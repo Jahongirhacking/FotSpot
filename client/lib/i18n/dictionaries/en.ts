@@ -1352,6 +1352,13 @@ export const en: Dictionary = {
     clipVerified: 'Video verified.',
     clipBlocked: 'Video blocked.',
     clipDeleted: 'Video permanently deleted.',
+
+    blockedVideos: 'Blocked videos',
+    blockedVideosHint:
+      'Videos an admin has blocked. They are visible to nobody, but the record is kept for moderation history. Only a super admin can delete them permanently.',
+    noBlockedVideos: 'No blocked videos.',
+    noBlockedVideosHint: 'A video appears here once an admin blocks it.',
+    blockedOn: 'Blocked',
     resolutionNote: 'Note',
     rolesPermissions: 'Roles & permissions',
     rolesPermissionsHint: 'The permission catalogue and which roles hold each one.',
@@ -1368,6 +1375,17 @@ export const en: Dictionary = {
       'Admins verify coaches and academies and handle moderation. Only a super admin can appoint them.',
     currentAdmins: 'Current administrators',
     grantAdmin: 'Make admin',
+
+    // ---- Creating an admin account (not picking one — creating one). ----
+    createAdmin: 'Create admin',
+    createAdminHint:
+      'Admins are created by the platform team. Enter a first and last name — the system generates the login and password and shows them once.',
+    adminFirstName: 'First name',
+    adminLastName: 'Last name',
+    adminPhone: 'Phone (optional)',
+    adminPhoneHint: 'Only for reaching them later — sign-in is by username.',
+    adminCreated: 'Admin account created.',
+    noAdminName: 'Enter a first and last name.',
     revokeAdmin: 'Revoke access',
     findUser: 'Find a user (name or email)',
     superAdminProtected: 'Super admin access cannot be revoked from here.',

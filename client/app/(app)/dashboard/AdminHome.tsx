@@ -1,10 +1,10 @@
-import Link from 'next/link';
-import { Building2, Flag, KeyRound, ScrollText, Users, Video } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
-import { Badge } from '@/components/ui/Badge';
 import type { Dictionary } from '@/lib/i18n';
+import { Building2, Flag, Gauge, KeyRound, ScrollText, Users, Video, ZapIcon } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * Admin console home.
@@ -84,7 +84,7 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
         {isSuperAdmin && (
           <>
             <AdminTile
-              icon={KeyRound}
+              icon={ZapIcon}
               title={t.admin.manageAdmins}
               description={t.admin.manageAdminsHint}
               href="/admin/admins"
@@ -95,6 +95,13 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
               title={t.admin.rolesPermissions}
               description={t.admin.rolesPermissionsHint}
               href="/admin/roles"
+              cta={t.common.open}
+            />
+            <AdminTile
+              icon={Gauge}
+              title={t.nav.tariffPlans}
+              description={t.nav.tariffPlans}
+              href="/admin/tariff-plans"
               cta={t.common.open}
             />
           </>

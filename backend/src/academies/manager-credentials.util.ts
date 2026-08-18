@@ -33,11 +33,47 @@ const MAX_SLUG_LENGTH = 20;
  * Anything still unmapped is dropped rather than guessed.
  */
 const TRANSLITERATION: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'j', з: 'z',
-  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
-  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch',
-  ъ: '', ы: 'i', ь: '', э: 'e', ю: 'yu', я: 'ya', ў: 'o', қ: 'q', ғ: 'g', ҳ: 'h',
-  ʻ: '', ʼ: '', '‘': '', '’': '',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'yo',
+  ж: 'j',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'h',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sch',
+  ъ: '',
+  ы: 'i',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+  ў: 'o',
+  қ: 'q',
+  ғ: 'g',
+  ҳ: 'h',
+  ʻ: '',
+  ʼ: '',
+  '‘': '',
+  '’': '',
 };
 
 /** Uniform over `alphabet`, rejection-sampled so no character is more likely than another. */
@@ -74,14 +110,21 @@ export function slugify(name: string): string {
 }
 
 /**
- * A username for the manager of `academyName`.
+ * A username derived from `name`, with a random suffix.
  *
- * The random suffix is not decoration: two academies called "Yoshlik" in different
+ * The suffix is not decoration: two academies called "Yoshlik" in different
  * regions is the expected case, not an edge case, and the caller retries on a
  * unique-constraint collision.
+ *
+ * `fallback` is what the slug becomes when the name survives transliteration as
+ * nothing at all — a name written entirely in a script this file does not map, or
+ * in digits. It is a parameter because this now mints usernames for platform
+ * admins as well as academy managers (AdminService.createAdmin), and an admin
+ * called "李" logging in as `academy.k3m9` would be a small mystery for whoever
+ * inherits the account.
  */
-export function generateUsername(academyName: string): string {
-  const slug = slugify(academyName) || 'academy';
+export function generateUsername(name: string, fallback = 'academy'): string {
+  const slug = slugify(name) || fallback;
   return `${slug}.${randomString(SUFFIX_LENGTH, SUFFIX_ALPHABET)}`;
 }
 

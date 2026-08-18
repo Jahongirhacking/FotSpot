@@ -25,6 +25,9 @@ export type MediaVisibilityRow = {
   moderationStatus: MediaModerationStatus;
 };
 
+/** A row plus the player it belongs to, for the owner-aware checks. */
+export type OwnedMediaRow = MediaVisibilityRow & { playerId: string };
+
 /**
  * What a signed-out visitor, a scout, a coach, an academy manager and every
  * player other than the owner may see. Nothing else is ever public.
@@ -49,6 +52,22 @@ export const MODERATION_QUEUE_WHERE = {
 } as const satisfies Prisma.MediaWhereInput;
 
 /**
+ * Clips a moderator took down, for the super admin's review list.
+ *
+ * `status: ACTIVE` for the same reason the queue above uses it, and here it also
+ * draws a line the two other ways a clip leaves circulation do not cross: a
+ * player's own delete leaves `REMOVED` with its objects already gone from the
+ * bucket, and a report takedown leaves `FLAGGED`. Neither is the Block button,
+ * and neither has a video left to review. What this lists is exactly the clips an
+ * admin blocked, which are the only ones still sitting in storage awaiting a
+ * decision about whether to destroy them.
+ */
+export const BLOCKED_MEDIA_WHERE = {
+  status: 'ACTIVE',
+  moderationStatus: 'BLOCKED',
+} as const satisfies Prisma.MediaWhereInput;
+
+/**
  * What the owner sees on their own profile.
  *
  * Every moderation state, including BLOCKED. A player whose clip was taken down
@@ -65,6 +84,50 @@ export const OWN_MEDIA_WHERE = {
 /** The same conjunction as `PUBLIC_MEDIA_WHERE`, for a row already in hand. */
 export function isPubliclyVisible(media: MediaVisibilityRow | null | undefined): boolean {
   return media?.status === 'ACTIVE' && media.moderationStatus === 'VERIFIED';
+}
+
+/**
+ * The owner's own clip, at any moderation stage.
+ *
+ * ## This is not an exception to the public rule, it is a second rule
+ *
+ * The two are deliberately separate predicates rather than one with an `OR`
+ * inside it. `status = 'ACTIVE' OR moderationStatus = 'UNVERIFIED'` is the shape
+ * this must never take: it reads as an owner allowance and behaves as a public
+ * one, publishing every unreviewed clip on the platform to everybody. The owner
+ * clause is meaningless unless it is bound to an identity, so identity is a
+ * required argument here and there is no way to call it without one.
+ *
+ * `ownedPlayerId` is the caller's *own* PlayerProfile id, resolved from the
+ * authenticated user server-side — never anything the client sent. A caller with
+ * no player profile passes `null` and this is simply false for them.
+ *
+ * Moderation status is not consulted at all, on purpose: an uploader sees their
+ * clip while it is processing, while it is queued for review, and after it was
+ * blocked. What they see *about* it differs — that is the badge's job — but the
+ * clip itself is theirs and never disappears from their own profile.
+ */
+export function isOwnerVisible(
+  media: OwnedMediaRow | null | undefined,
+  ownedPlayerId: string | null | undefined,
+): boolean {
+  if (!media || !ownedPlayerId) return false;
+  return media.playerId === ownedPlayerId && media.status !== 'REMOVED';
+}
+
+/**
+ * May this caller read this clip at all — the single question every media
+ * endpoint asks before returning a row, a poster or a signed URL.
+ *
+ * Public first, then owner. Everything else is a 404, including a moderator: the
+ * moderation queue is its own endpoint with its own role gate, and an admin
+ * poking a clip id at a player-facing route gets the player-facing answer.
+ */
+export function canViewMedia(
+  media: OwnedMediaRow | null | undefined,
+  ownedPlayerId: string | null | undefined,
+): boolean {
+  return isPubliclyVisible(media) || isOwnerVisible(media, ownedPlayerId);
 }
 
 /**

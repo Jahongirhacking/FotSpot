@@ -48,6 +48,20 @@ export class ModerationController {
   }
 
   /**
+   * Clips an admin has blocked — **super admin only**.
+   *
+   * Gated to the super admin because the only action on this list is the one
+   * only they may take: a plain admin blocking content does not also get a
+   * standing inventory of everything the platform has taken down, and the
+   * decisions themselves stay readable by any admin on the audit log.
+   */
+  @Roles('super_admin')
+  @Get('media/blocked')
+  listBlockedMedia(@Query() dto: PaginationDto) {
+    return this.moderationService.listBlockedMedia(dto);
+  }
+
+  /**
    * Approve a clip: it becomes publicly visible and leaves this queue.
    *
    * No confirmation on the client either — verifying is the ordinary outcome and

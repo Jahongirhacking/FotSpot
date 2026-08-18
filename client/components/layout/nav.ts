@@ -5,7 +5,6 @@ import {
   CalendarDays,
   Clapperboard,
   ClipboardCheck,
-  Gauge,
   Home,
   Inbox,
   LifeBuoy,
@@ -146,7 +145,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/dashboard', label: 'home', icon: Home },
         { href: '/admin/academies', label: 'academies', icon: Building2 },
         { href: '/admin/users', label: 'users', icon: Users },
-        { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
+        // { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
         { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
       ];

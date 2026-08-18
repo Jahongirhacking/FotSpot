@@ -470,6 +470,13 @@ export const tariffs = {
 
 // ---------- Admin console ----------
 
+/** What the super admin types to have an admin account minted. */
+export interface NewAdminInput {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
 export interface AdminUser {
   id: string;
   firstName: string | null;
@@ -494,8 +501,19 @@ export const admin = {
   searchUsers: (query: string, opts: Opts = {}) =>
     apiFetch<Page<AdminUser>>(`/admin/users${toQuery({ query, pageSize: 10 })}`, opts),
 
-  grantAdmin: (userId: string, opts: Opts = {}) =>
-    apiFetch<{ assigned: boolean }>('/admin/admins', { method: 'POST', body: { userId }, ...opts }),
+  /**
+   * Mints an admin account and returns its one-time credentials.
+   *
+   * Creates rather than promotes: admins are staff, not users who happen to be on
+   * the platform already — see the backend's CreateAdminDto. The password in the
+   * response exists nowhere else, so the caller must show it before discarding it.
+   */
+  createAdmin: (body: NewAdminInput, opts: Opts = {}) =>
+    apiFetch<{ userId: string; credentials: ManagerCredentials }>('/admin/admins', {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
 
   revokeAdmin: (userId: string, opts: Opts = {}) =>
     apiFetch<{ revoked: boolean }>(`/admin/admins/${userId}/revoke`, { method: 'PATCH', ...opts }),
@@ -602,6 +620,15 @@ export const admin = {
   /** The clips waiting for a decision, newest first, each with its player. */
   pendingMedia: (params: PageParams = {}, opts: Opts = {}) =>
     apiFetch<Page<PendingClip>>(`/moderation/media/pending${toQuery({ ...params })}`, opts),
+
+  /**
+   * Clips an admin has blocked — super admin only.
+   *
+   * Paginated: nothing shortens this list except a permanent delete, so it only
+   * ever grows.
+   */
+  blockedMedia: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<PendingClip>>(`/moderation/media/blocked${toQuery({ ...params })}`, opts),
 
   /** Approve: the clip becomes publicly visible and leaves the queue. */
   verifyMedia: (mediaId: string, opts: Opts = {}) =>

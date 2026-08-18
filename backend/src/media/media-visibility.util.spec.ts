@@ -1,5 +1,7 @@
 import {
   canTransition,
+  canViewMedia,
+  isOwnerVisible,
   isPubliclyVisible,
   MODERATION_QUEUE_WHERE,
   OWN_MEDIA_WHERE,
@@ -66,6 +68,78 @@ describe('the where clauses every query is built from', () => {
 
   it('never shows the owner a clip they themselves deleted', () => {
     expect(OWN_MEDIA_WHERE.status.in).not.toContain('REMOVED');
+  });
+});
+
+describe('isOwnerVisible — a second rule, not an exception to the first', () => {
+  const OWN = { status: 'ACTIVE', moderationStatus: 'UNVERIFIED', playerId: 'player-1' } as const;
+
+  it('lets a player see their own clip while it waits for review', () => {
+    expect(isOwnerVisible(OWN, 'player-1')).toBe(true);
+  });
+
+  it('lets a player see their own clip after it was blocked', () => {
+    expect(isOwnerVisible({ ...OWN, moderationStatus: 'BLOCKED' }, 'player-1')).toBe(true);
+  });
+
+  it('lets a player see their own clip while it is still processing', () => {
+    expect(isOwnerVisible({ ...OWN, status: 'PROCESSING' }, 'player-1')).toBe(true);
+  });
+
+  /*
+   * The rule that must not become `status = ACTIVE OR moderationStatus =
+   * UNVERIFIED`. That shape reads as an owner allowance and behaves as a public
+   * one; these two cases are what would break first if anyone rewrote it that way.
+   */
+  it('shows a different player nothing, however unreviewed the clip is', () => {
+    expect(isOwnerVisible(OWN, 'player-2')).toBe(false);
+  });
+
+  it('shows a caller with no player profile nothing', () => {
+    expect(isOwnerVisible(OWN, null)).toBe(false);
+    expect(isOwnerVisible(OWN, undefined)).toBe(false);
+  });
+
+  /* An empty-string id must never match an empty-string playerId by accident. */
+  it('does not match on a falsy id', () => {
+    expect(isOwnerVisible({ ...OWN, playerId: '' }, '')).toBe(false);
+  });
+
+  it('hides a clip the player deleted themselves', () => {
+    expect(isOwnerVisible({ ...OWN, status: 'REMOVED' }, 'player-1')).toBe(false);
+  });
+});
+
+describe('canViewMedia — the question every media endpoint asks', () => {
+  const VERIFIED = {
+    status: 'ACTIVE',
+    moderationStatus: 'VERIFIED',
+    playerId: 'player-1',
+  } as const;
+  const PENDING = {
+    status: 'ACTIVE',
+    moderationStatus: 'UNVERIFIED',
+    playerId: 'player-1',
+  } as const;
+
+  it('serves a verified clip to anybody, signed in or not', () => {
+    expect(canViewMedia(VERIFIED, null)).toBe(true);
+    expect(canViewMedia(VERIFIED, 'player-2')).toBe(true);
+  });
+
+  it('serves an unreviewed clip to its owner', () => {
+    expect(canViewMedia(PENDING, 'player-1')).toBe(true);
+  });
+
+  it('refuses an unreviewed clip to everyone else', () => {
+    expect(canViewMedia(PENDING, 'player-2')).toBe(false);
+    expect(canViewMedia(PENDING, null)).toBe(false);
+  });
+
+  it('refuses a blocked clip to everyone but its owner', () => {
+    const blocked = { ...PENDING, moderationStatus: 'BLOCKED' } as const;
+    expect(canViewMedia(blocked, 'player-2')).toBe(false);
+    expect(canViewMedia(blocked, 'player-1')).toBe(true);
   });
 });
 
