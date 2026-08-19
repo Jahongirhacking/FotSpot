@@ -4,6 +4,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
+import { PLAYER_SORTS } from '@/lib/api/resources';
 import { PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
 import { districtsOf } from '@/lib/uzbekistan';
 import { humanizeEnum } from '@/lib/utils';
@@ -11,7 +12,29 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
-const FILTER_KEYS = ['region', 'position', 'playingStyle', 'minAge', 'maxAge'] as const;
+/**
+ * Which parameters count as "a filter is on".
+ *
+ * `district` belongs here as much as `region` does — it was missing, so narrowing
+ * to one district left the badge reading zero and hid the clear button, which is
+ * the one control that gets you back out.
+ *
+ * `sort`/`order` are deliberately absent: ordering the same results is not
+ * narrowing them, and counting it would make the badge say "1 filter" for a
+ * search that filters nothing.
+ */
+const FILTER_KEYS = [
+  'region',
+  'district',
+  'position',
+  'playingStyle',
+  'dominantFoot',
+  'minAge',
+  'maxAge',
+] as const;
+
+/** Left/right/both, as the API spells them. */
+const FEET = ['LEFT', 'RIGHT', 'BOTH'] as const;
 
 /**
  * The widest age a football platform has any business offering.
@@ -146,25 +169,34 @@ export function PlayerFilters() {
               ))}
             </Select>
 
-            {/* Only once a province is chosen: a district filter with nothing to
-                scope it to would list 172 names, most of them irrelevant. The
-                region change clears it, since the old district is almost
-                certainly not in the new province. */}
-            {selectedRegion && (
-              <Select
-                aria-label={t.academy?.district}
-                value={searchParams.get('district') ?? ''}
-                onChange={(event) => apply({ district: event.target.value })}
-                className="min-w-0 flex-1 basis-full sm:basis-44"
-              >
-                <option value="">{t.academy?.district}</option>
-                {districtsOf(selectedRegion).map((district) => (
-                  <option key={district} value={district}>
-                    {district}
-                  </option>
-                ))}
-              </Select>
-            )}
+            {/*
+              District sits next to region and stays on screen whether or not one
+              is chosen — disabled, saying why.
+
+              It used to render only after a province was picked, which kept the
+              list honest (a district filter with nothing to scope it to would
+              offer 172 names, most of them irrelevant) but made the control
+              invisible: somebody looking for it could not tell it existed. A
+              disabled select with a reason keeps the scoping *and* the
+              discoverability. Changing province still clears it, since the old
+              district is almost certainly not in the new one.
+            */}
+            <Select
+              aria-label={t.academy?.district}
+              disabled={!selectedRegion}
+              value={searchParams.get('district') ?? ''}
+              onChange={(event) => apply({ district: event.target.value })}
+              className="min-w-0 flex-1 basis-full sm:basis-44"
+            >
+              <option value="">
+                {selectedRegion ? t.academy?.district : t.player.districtNeedsRegion}
+              </option>
+              {districtsOf(selectedRegion).map((district) => (
+                <option key={district} value={district}>
+                  {district}
+                </option>
+              ))}
+            </Select>
 
             <Select
               aria-label={t.onboarding.mainPosition}
@@ -176,6 +208,26 @@ export function PlayerFilters() {
               {POSITIONS.map((position) => (
                 <option key={position} value={position}>
                   {position}
+                </option>
+              ))}
+            </Select>
+
+            {/* The recruitment question a position cannot answer — "we need a
+                left-footed right-back". */}
+            <Select
+              aria-label={t.player.dominantFoot}
+              value={searchParams.get('dominantFoot') ?? ''}
+              onChange={(event) => apply({ dominantFoot: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-32"
+            >
+              <option value="">{t.player.anyFoot}</option>
+              {FEET.map((foot) => (
+                <option key={foot} value={foot}>
+                  {foot === 'LEFT'
+                    ? t.player.footLeft
+                    : foot === 'RIGHT'
+                      ? t.player.footRight
+                      : t.player.footBoth}
                 </option>
               ))}
             </Select>
@@ -197,6 +249,51 @@ export function PlayerFilters() {
                   ))}
                 </optgroup>
               ))}
+            </Select>
+          </div>
+
+          {/*
+            Ordering, kept apart from the filters above it by a rule.
+
+            A filter changes which players come back and a sort changes only the
+            order — mixing them into one row invites reading the whole block as
+            "narrowing", which is also why sort is not counted on the badge.
+
+            The direction control is disabled while the default ordering is in
+            effect: "newest profiles" already carries its own direction, and an
+            asc/desc pair beside it would be two controls where one of them does
+            nothing.
+          */}
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-muted basis-full text-xs">{t.player.sortBy}</p>
+
+            <Select
+              aria-label={t.player.sortBy}
+              value={searchParams.get('sort') ?? ''}
+              onChange={(event) => apply({ sort: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(60%-0.25rem)] sm:basis-48"
+            >
+              <option value="">{t.player.sortNewest}</option>
+              {PLAYER_SORTS.map((sort) => (
+                <option key={sort} value={sort}>
+                  {sort === 'name'
+                    ? t.player.sortName
+                    : sort === 'age'
+                      ? t.player.sortAge
+                      : t.player.sortRecommendations}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              aria-label={t.player.sortDirection}
+              disabled={!searchParams.get('sort')}
+              value={searchParams.get('order') ?? 'asc'}
+              onChange={(event) => apply({ order: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(40%-0.25rem)] sm:basis-40"
+            >
+              <option value="asc">{t.player.orderAsc}</option>
+              <option value="desc">{t.player.orderDesc}</option>
             </Select>
           </div>
 

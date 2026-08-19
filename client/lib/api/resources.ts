@@ -192,6 +192,19 @@ export interface MyProfileResponse extends MeResponse {
 
 // ---------- Players ----------
 
+export type DominantFoot = 'LEFT' | 'RIGHT' | 'BOTH';
+
+/**
+ * The orderings search offers, mirroring the backend's `PLAYER_SORTS`.
+ *
+ * `recommendations` counts how many scouts put the player forward. It is not
+ * §1.5's earned weight — that lives in a row which only exists once somebody has
+ * been recommended, so ordering by it sorts every unrecommended player to the
+ * top. See `searchOrderBy` on the API side.
+ */
+export const PLAYER_SORTS = ['name', 'age', 'recommendations'] as const;
+export type PlayerSort = (typeof PLAYER_SORTS)[number];
+
 export interface PlayerSearchParams {
   region?: string;
   /** Only meaningful with a region — the API cannot resolve one without it. */
@@ -202,6 +215,10 @@ export interface PlayerSearchParams {
   /** Age in years, inclusive. The API compares against birth dates. */
   minAge?: number;
   maxAge?: number;
+  dominantFoot?: DominantFoot;
+  /** Omitted means newest profile first, which is what search has always done. */
+  sort?: PlayerSort;
+  order?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
 }

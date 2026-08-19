@@ -754,7 +754,7 @@ export const uz = {
     alreadyInSquad: 'Bu o‘yinchi allaqachon tarkibingizda.',
     alreadyInvited: 'O‘yinchi allaqachon taklif qilingan.',
     searchSubtitle:
-      'FotSpot’da {count} futbolchi. Faqat pozitsiya emas, o‘yin uslubi bo‘yicha ham qidiring.',
+      'FotSpot’da {count} nafar futbolchini nafaqat pozitsiyasi, balki o‘yin uslubi bo‘yicha ham qidiring.',
     cleanSheets: 'Toza himoya',
     comparedWithinPlain:
       'Ko‘rsatkichlar faqat {band} ichida taqqoslanadi — boshqa yosh guruhlari bilan emas.',
@@ -762,6 +762,18 @@ export const uz = {
     dominantFoot: 'Kuchli oyoq',
     footLeft: 'Chap',
     footRight: 'O‘ng',
+    footBoth: 'Ikkalasi',
+    anyFoot: 'Har qanday oyoq',
+    /** Saralash — hammasi ma'lumotlar bazasi ustunlari bo'yicha, sahifalash bilan mos. */
+    sortBy: 'Saralash',
+    sortNewest: 'Eng yangi profillar',
+    sortName: 'Ism bo‘yicha',
+    sortAge: 'Yosh bo‘yicha',
+    sortRecommendations: 'Tavsiyalar soni bo‘yicha',
+    orderAsc: 'O‘sish tartibida',
+    orderDesc: 'Kamayish tartibida',
+    sortDirection: 'Saralash tartibi',
+    districtNeedsRegion: 'Avval viloyatni tanlang',
     attributes: 'Ko‘rsatkichlar',
     findPlayers: 'Futbolchilarni topish',
     searchByName: 'Ism bo‘yicha qidirish',

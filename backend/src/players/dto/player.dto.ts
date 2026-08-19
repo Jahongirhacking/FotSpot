@@ -70,6 +70,23 @@ export class UpdatePlayerStatsDto {
   @IsOptional() @IsInt() @Min(0) jugglingRecord?: number;
 }
 
+/**
+ * The orderings search offers.
+ *
+ * `name` and `age` are the two a person asks for out loud; `recommendations` is
+ * how many scouts have put this player forward — named for what it counts rather
+ * than for §1.5's earned weight, which is the better number and cannot be ordered
+ * by without a NULL that reverses the result. See `searchOrderBy` for that story.
+ *
+ * Deliberately not here: the card's star rating and football-order position.
+ * Neither is a column — stars are computed per page from clips and assessments
+ * (`computeCardStars`), and position is a free-text string with no rank — so
+ * ordering by either would mean ranking in memory after paging, which is not a
+ * sort, it is a shuffle. Both need a schema change to do honestly.
+ */
+export const PLAYER_SORTS = ['name', 'age', 'recommendations'] as const;
+export type PlayerSort = (typeof PLAYER_SORTS)[number];
+
 export class SearchPlayersDto extends PaginationDto {
   @IsOptional() @IsString() region?: string;
   /** Only meaningful with a region — a district alone cannot be resolved. */
@@ -93,4 +110,28 @@ export class SearchPlayersDto extends PaginationDto {
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) maxAge?: number;
 
+  /** Which foot they play on — the recruitment question a position cannot answer. */
+  @ApiPropertyOptional({ enum: ['LEFT', 'RIGHT', 'BOTH'] })
+  @IsOptional()
+  @IsIn(['LEFT', 'RIGHT', 'BOTH'])
+  dominantFoot?: 'LEFT' | 'RIGHT' | 'BOTH';
+
+  /**
+   * What to order the results by. Omitted means newest profile first, which is
+   * what this endpoint has always done and what an unsorted search still gets.
+   *
+   * Every value here maps to a column the database can order by, so page 2 is a
+   * coherent question. A sort computed after the page was fetched would reshuffle
+   * between pages and show the same player twice or never — see
+   * `MediaService.feed` for the same reasoning stated at length.
+   */
+  @ApiPropertyOptional({ enum: PLAYER_SORTS })
+  @IsOptional()
+  @IsIn(PLAYER_SORTS)
+  sort?: PlayerSort;
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 }

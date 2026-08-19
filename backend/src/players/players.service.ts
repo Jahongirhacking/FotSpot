@@ -17,6 +17,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
 import { computeCardStars } from './card-stars.util';
+import { searchOrderBy } from './search-order.util';
 import {
   CreatePlayerProfileDto,
   SearchPlayersDto,
@@ -497,6 +498,7 @@ export class PlayersService {
         : '\u0000';
     }
     if (dto.playingStyle) where.playingStyle = dto.playingStyle;
+    if (dto.dominantFoot) where.dominantFoot = dto.dominantFoot;
     if (dto.position) {
       where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];
     }
@@ -533,7 +535,7 @@ export class PlayersService {
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: searchOrderBy(dto.sort, dto.order),
         include: AVATAR_INCLUDE,
       }),
       this.prisma.playerProfile.count({ where }),
