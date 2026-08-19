@@ -747,6 +747,11 @@ export const uz = {
     alreadyRecommended: 'Siz allaqachon tavsiya qilgansiz',
     recommendationResult: 'Natija: {status}',
     noRecommendationYet: 'Bu o‘yinchini hali hech kim akademiyangizga tavsiya qilmagan.',
+    /** Mahalliy jamoa menejerining yagona amali — LOCAL_TEAM.md §9. */
+    addToSquadHint:
+      'Mahalliy jamoalar taklif orqali to‘ldiriladi: o‘yinchi roziligini bergach tarkibga qo‘shiladi.',
+    squadInviteSent: 'Taklif yuborildi — javob kutilmoqda.',
+    alreadyInSquad: 'Bu o‘yinchi allaqachon tarkibingizda.',
     alreadyInvited: 'O‘yinchi allaqachon taklif qilingan.',
     searchSubtitle:
       'FotSpot’da {count} futbolchi. Faqat pozitsiya emas, o‘yin uslubi bo‘yicha ham qidiring.',

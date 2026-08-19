@@ -716,6 +716,11 @@ export const ru: Dictionary = {
     alreadyRecommended: 'Вы уже рекомендовали',
     recommendationResult: 'Результат: {status}',
     noRecommendationYet: 'Этого игрока пока никто не рекомендовал вашей академии.',
+    /** Единственное действие менеджера местной команды — LOCAL_TEAM.md §9. */
+    addToSquadHint:
+      'Местные команды набирают по приглашению: игрок попадёт в состав, когда согласится.',
+    squadInviteSent: 'Приглашение отправлено — ждём ответа.',
+    alreadyInSquad: 'Этот игрок уже в вашем составе.',
     alreadyInvited: 'Игрок уже приглашён.',
     searchSubtitle: '{count} игроков на FotSpot. Ищите по роли, а не только по позиции.',
     cleanSheets: 'Сухие матчи',

@@ -717,6 +717,11 @@ export const en: Dictionary = {
     alreadyRecommended: 'You already recommended this player',
     recommendationResult: 'Result: {status}',
     noRecommendationYet: 'Nobody has recommended this player to your academy yet.',
+    /** The local team manager's one action — LOCAL_TEAM.md §9. */
+    addToSquadHint:
+      'Local teams recruit by invitation: the player joins the squad once they accept.',
+    squadInviteSent: 'Invitation sent — waiting on their answer.',
+    alreadyInSquad: 'This player is already in your squad.',
     alreadyInvited: 'This player has already been invited.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',

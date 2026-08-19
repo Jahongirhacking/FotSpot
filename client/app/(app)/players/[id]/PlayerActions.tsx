@@ -1,20 +1,10 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { Check, Heart, Mail, Send, UserPlus, X } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { Follow, MyCoachReview } from '@/lib/api/types';
+import { useI18n } from '@/components/layout/I18nProvider';
 import { useSession } from '@/components/layout/SessionProvider';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { InviteToPrivateTrialDialog } from '@/components/trials/InviteToPrivateTrialDialog';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, Skeleton } from '@/components/ui/Feedback';
-import { Field, Select, Textarea } from '@/components/ui/Field';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { formatDate } from '@/lib/utils';
 import {
   Dialog,
   DialogBody,
@@ -25,7 +15,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/Dialog';
-import { InviteToPrivateTrialDialog } from '@/components/trials/InviteToPrivateTrialDialog';
+import { Alert, Skeleton } from '@/components/ui/Feedback';
+import { Field, Select, Textarea } from '@/components/ui/Field';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyKind, Follow, MyCoachReview } from '@/lib/api/types';
+import { formatDate } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, Heart, Mail, Send, UserPlus, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 interface MyRecommendation {
   id: string;
@@ -37,7 +37,7 @@ interface MyRecommendation {
 }
 
 interface AcademyState {
-  academy: { id: string; name: string };
+  academy: { id: string; name: string; kind: AcademyKind };
   recommendation: { id: string; status: string; note: string | null } | null;
   review: {
     id: string;
@@ -55,6 +55,17 @@ interface AcademyState {
   } | null;
   /** False when the academy has endorsed nobody who could take a review. */
   hasCoaches: boolean;
+  /**
+   * Where the player stands with this squad — the half a local team has instead
+   * of the review/trial pipeline. Null if the player profile has since gone.
+   */
+  squad: {
+    /** An invitation is addressed to the account, not the player profile. */
+    userId: string;
+    /** ACTIVE/INACTIVE while they are in the squad; null once released or never in. */
+    status: 'ACTIVE' | 'INACTIVE' | null;
+    invitationPending: boolean;
+  } | null;
 }
 
 /**
@@ -193,16 +204,21 @@ export function PlayerActions({
             </Button>
           )}
 
-          {isScout && !isOwnProfile &&
+          {isScout &&
+            !isOwnProfile &&
             (mine ? (
               <RecommendationResult mine={mine} />
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
 
-          {isManager && !isOwnProfile && <ManagerAction playerId={playerId} playerName={playerName} />}
+          {isManager && !isOwnProfile && (
+            <ManagerAction playerId={playerId} playerName={playerName} />
+          )}
 
-          {isCoach && !isOwnProfile && <CoachReviewAction playerId={playerId} playerName={playerName} />}
+          {isCoach && !isOwnProfile && (
+            <CoachReviewAction playerId={playerId} playerName={playerName} />
+          )}
 
           {/* Says so, rather than leaving a titled card with nothing under it.
               An empty panel reads as something that failed to load — the reader
@@ -293,7 +309,9 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
           user: { id: string; firstName: string | null; lastName: string | null } | null;
         }[]
       >(`/academies/${state?.academy.id}/endorsements?role=COACH`),
-    enabled: Boolean(state?.academy.id),
+    // Never for a local team: it has no coaches by construction, so this would be
+    // a round trip whose only possible answer is an empty list.
+    enabled: Boolean(state?.academy.id) && state?.academy.kind !== 'LOCAL_TEAM',
   });
 
   const refresh = () => {
@@ -317,6 +335,24 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
 
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
   if (!state) return null;
+
+  /*
+   * A local team's manager does a different job, so they get a different control.
+   *
+   * Everything below this line is the verified-academy pipeline — send for
+   * review, wait on a coach, invite to a private trial — and a local team has
+   * none of it (LOCAL_TEAM.md §6–§8). Until now they were shown it anyway and
+   * the endpoint behind the button answered 403, which is the failure §5 is
+   * about: hiding a control the API refuses is not decoration, it is the screen
+   * telling the truth about what this organisation can do.
+   *
+   * Placed before every other branch rather than folded into them, so the two
+   * workflows stay legible as two workflows (LOCAL_TEAM.md §23) instead of one
+   * with conditionals threaded through it.
+   */
+  if (state.academy.kind === 'LOCAL_TEAM') {
+    return <LocalTeamAction academyId={state.academy.id} squad={state.squad} onDone={refresh} />;
+  }
 
   if (state?.recommendation?.status === 'ACCEPTED') {
     return (
@@ -408,8 +444,77 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
   );
 }
 
-function RecommendDialog({ playerId, playerName }: { playerId: string; playerName: string }) {
+/**
+ * The local team manager's one action: ask this player to join the squad.
+ *
+ * ## Why it is an invitation and not an "add"
+ *
+ * The button says "Add to squad" because that is what the manager is doing, but
+ * what it sends is an invitation — nobody is put into a squad without agreeing to
+ * it (LOCAL_TEAM.md §9, and the reasoning already in InvitationsService: an
+ * academy cannot simply add people). The player answers from their invitations
+ * screen and joins on acceptance. Reusing that flow rather than minting a second
+ * one also means release, re-invitation and the squad notifications all keep
+ * working unchanged.
+ *
+ * ## What it deliberately does not do
+ *
+ * Nothing about recommendations. Joining a local team is a squad placement, not a
+ * professional verdict (§11) — no recommendation is settled, cleared or counted,
+ * and no scout's success rate moves. That is enforced in the invitation flow
+ * itself; this component simply has no code that could.
+ */
+function LocalTeamAction({
+  academyId,
+  squad,
+  onDone,
+}: {
+  academyId: string;
+  squad: AcademyState['squad'];
+  onDone: () => void;
+}) {
   const { t } = useI18n();
+
+  const invite = useMutation({
+    mutationFn: () =>
+      browserFetch(`/academies/${academyId}/invitations`, {
+        method: 'POST',
+        body: { userId: squad?.userId, role: 'PLAYER' },
+      }),
+    onSuccess: onDone,
+    meta: { success: t.player.squadInviteSent },
+  });
+
+  // The profile exists but its player row does not, which leaves nothing to
+  // address an invitation to. Rare, and not worth a control that cannot work.
+  if (!squad) return null;
+
+  if (squad.status) {
+    return (
+      <p className="text-success flex items-center gap-1.5 text-sm">
+        <Check className="size-4" aria-hidden /> {t.player.alreadyInSquad}
+      </p>
+    );
+  }
+
+  if (squad.invitationPending) {
+    return <p className="text-muted text-sm">{t.player.squadInviteSent}</p>;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Button className="w-full" loading={invite.isPending} onClick={() => invite.mutate()}>
+        <UserPlus aria-hidden /> {t.academy.addToSquad}
+      </Button>
+      {/* Says what pressing it actually does. "Add to squad" on its own reads as
+          immediate, and the player has to accept first. */}
+      <p className="text-muted text-xs">{t.player.addToSquadHint}</p>
+    </div>
+  );
+}
+
+function RecommendDialog({ playerId, playerName }: { playerId: string; playerName: string }) {
+  const { t, f } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -469,17 +574,14 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="accent" className="w-full">
-          <Send aria-hidden /> Recommend to an academy
+          <Send aria-hidden /> {t.player.recommendToAcademy}
         </Button>
       </DialogTrigger>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Recommend {playerName}</DialogTitle>
-          <DialogDescription>
-            Your reputation moves only when an academy accepts. Recommending everyone lowers your
-            success rate, so pick carefully.
-          </DialogDescription>
+          <DialogTitle>{f(t.recommendations.recommendTitle, { name: playerName })}</DialogTitle>
+          <DialogDescription>{t.recommendations.recommendSubtitle}</DialogDescription>
         </DialogHeader>
 
         <DialogBody className="space-y-4">
@@ -515,10 +617,10 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button loading={recommend.isPending} onClick={() => recommend.mutate()}>
-            Send recommendation
+            {t.recommendations.sendRecommendation}
           </Button>
         </DialogFooter>
       </DialogContent>
