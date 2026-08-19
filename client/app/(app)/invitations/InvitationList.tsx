@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, Check, MailOpen, X } from 'lucide-react';
+import { Building2, Check, MailOpen, Users, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { MyInvitation } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
@@ -78,14 +78,28 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
               <Card>
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-start gap-3">
-                    <Building2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
+                    {/* Same convention as CurrentSquadCard: an institution gets
+                        the building, a neighbourhood team gets the people. The
+                        badge beside the name says which in words, because the
+                        icon alone is a distinction only a regular reader would
+                        pick up (LOCAL_TEAM.md §20). */}
+                    {invitation?.academy.kind === 'LOCAL_TEAM' ? (
+                      <Users className="text-muted mt-0.5 size-5 shrink-0" aria-hidden />
+                    ) : (
+                      <Building2 className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
+                    )}
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/academies/${invitation?.academy.id}`}
-                        className="truncate font-medium hover:underline"
-                      >
-                        {invitation?.academy.name}
-                      </Link>
+                      <p className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/academies/${invitation?.academy.id}`}
+                          className="truncate font-medium hover:underline"
+                        >
+                          {invitation?.academy.name}
+                        </Link>
+                        {invitation?.academy.kind === 'LOCAL_TEAM' && (
+                          <Badge variant="neutral">{t.academy?.localTeam}</Badge>
+                        )}
+                      </p>
                       <p className="text-muted truncate text-sm">
                         {[invitation?.academy?.district, invitation?.academy?.region]
                           .filter(Boolean)
@@ -94,8 +108,7 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
                       <p className="text-muted mt-1 text-xs">
                         {t.invitations.invitedAs}:{' '}
                         {t.roles?.[invitation?.role?.toLowerCase() as 'coach'] ?? invitation?.role}{' '}
-                        ·{' '}
-                        {relativeTime(invitation?.createdAt)}
+                        · {relativeTime(invitation?.createdAt)}
                       </p>
                     </div>
 

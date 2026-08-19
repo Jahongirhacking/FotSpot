@@ -43,15 +43,35 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       idKey?: string;
       /** Overrides `href` from the payload; falls back when it returns undefined. */
       hrefFor?: (payload: Record<string, unknown> | null | undefined) => string | undefined;
+      /** Overrides `title` from the payload; falls back when it returns undefined. */
+      titleFor?: (payload: Record<string, unknown> | null | undefined) => string | undefined;
+      /** Overrides `icon` from the payload; falls back when it returns undefined. */
+      iconFor?: (
+        payload: Record<string, unknown> | null | undefined,
+      ) => React.ComponentType<{ className?: string }> | undefined;
     }
   > = {
     // Answering this is the point of it, so it opens the screen where the answer
     // is given rather than a page that only repeats the news.
+    /*
+     * An academy and a local team are different things to be invited by
+     * (LOCAL_TEAM.md §4/§20), so they do not get the same sentence. The player
+     * reading this is the one deciding, and "an academy is inviting you" told
+     * them something untrue when a neighbourhood team sent it.
+     *
+     * The kind comes from the payload rather than a lookup — the backend puts it
+     * there for exactly this, so the line renders without a second request.
+     * `Users` over `Building2` for the same reason `CurrentSquadCard` does it:
+     * one is an institution, the other is a group of people.
+     */
     ACADEMY_JOIN_INVITATION: {
       icon: Building2,
       title: t.notifications.joinInvitation,
       tone: 'text-primary',
       href: '/invitations?action=JOIN_ACADEMY',
+      titleFor: (payload) =>
+        payload?.academyKind === 'LOCAL_TEAM' ? t.notifications.joinInvitationLocalTeam : undefined,
+      iconFor: (payload) => (payload?.academyKind === 'LOCAL_TEAM' ? Users : undefined),
     },
     /*
      * A yes from a scout opens their profile, not the squad list.
@@ -221,7 +241,8 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
             ...FALLBACK,
             title: t.notifications.title,
           };
-          const Icon = meta?.icon;
+          const Icon = meta?.iconFor?.(notification?.payload) ?? meta?.icon;
+          const title = meta?.titleFor?.(notification?.payload) ?? meta?.title;
           const href =
             meta?.hrefFor?.(notification?.payload) ??
             (meta?.href
@@ -269,7 +290,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
               <CardContent className="flex items-start gap-3 p-4">
                 <Icon className={cn('mt-0.5 size-5 shrink-0', meta?.tone)} aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{meta?.title}</p>
+                  <p className="font-medium">{title}</p>
 
                   {actorName && (
                     <p className="text-muted mt-0.5 flex items-center gap-1.5 truncate text-sm">
