@@ -108,7 +108,7 @@ export default async function AcademiesPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">{t.nav.academies}</h1>
-          <p className="text-muted text-sm">{t.common.tagline}</p>
+          <p className="text-muted text-sm">{t.academy.subtitle}</p>
         </div>
         {isAdmin && (
           <Button asChild variant="outline" size="sm">

@@ -530,6 +530,12 @@ export class PlayersService {
       ];
     }
 
+    // Stars are not a column, so they cannot be an `orderBy`. Ranking them takes
+    // a different shape entirely — see searchByStars.
+    if (dto.sort === 'stars') {
+      return this.searchByStars(where, dto.order ?? 'asc', page, pageSize);
+    }
+
     const [items, total] = await this.prisma.$transaction([
       this.prisma.playerProfile.findMany({
         where,
@@ -550,6 +556,130 @@ export class PlayersService {
         stars: stars.get(item.id) ?? 0,
       })),
       total,
+      page,
+      pageSize,
+    };
+  }
+
+  /**
+   * Search ordered by the card's star row.
+   *
+   * ## Why this is not just `orderBy`
+   *
+   * Stars are computed, not stored: `computeCardStars` reads the newest rated
+   * clip per attribute and the newest coach assessment, halves the player's own
+   * numbers and rounds the result to 0–5. There is no column to sort on, and
+   * reimplementing that in SQL would be a second copy of the one calculation the
+   * whole card rests on — so this reuses `starsFor` exactly as every other
+   * surface does.
+   *
+   * ## Why it does not sort the page it fetched
+   *
+   * That is the obvious shortcut and it is wrong. `skip`/`take` are applied by
+   * the database, so sorting afterwards reorders twelve arbitrary players and
+   * calls it a ranking — page 2 would be drawn from a different ordering than
+   * page 1, and a player could appear on both or on neither.
+   *
+   * ## What bounds the work
+   *
+   * `computeCardStars` reads exactly two things, so a player with no public
+   * rated clip and no assessment scores zero by definition — there is nothing
+   * for it to add up. That splits the filtered set in two:
+   *
+   * - **evidenced** players, who must be computed and ranked in memory;
+   * - **everyone else**, who are all exactly zero and therefore need no ranking
+   *   at all, only a stable order and a count.
+   *
+   * So the in-memory half is bounded by "players who have actually uploaded a
+   * verified rated clip or been assessed", not by "players who matched the
+   * filters" — and the zero half stays in the database, paged by SQL, expressed
+   * as a `none` relation filter rather than a `notIn` list of ids that would grow
+   * past what a query can carry.
+   */
+  private async searchByStars(
+    where: Prisma.PlayerProfileWhereInput,
+    order: 'asc' | 'desc',
+    page: number,
+    pageSize: number,
+  ) {
+    /** A rated clip the public can see, or a coach assessment — the two inputs. */
+    const ratedClip = { ...PUBLIC_MEDIA_WHERE, rating: { not: null } } as const;
+    const evidenced: Prisma.PlayerProfileWhereInput = {
+      OR: [{ media: { some: ratedClip } }, { coachAssessments: { some: {} } }],
+    };
+    const unevidenced: Prisma.PlayerProfileWhereInput = {
+      media: { none: ratedClip },
+      coachAssessments: { none: {} },
+    };
+
+    const rankedWhere: Prisma.PlayerProfileWhereInput = { AND: [where, evidenced] };
+    const zeroWhere: Prisma.PlayerProfileWhereInput = { AND: [where, unevidenced] };
+
+    const [candidates, zeroTotal] = await this.prisma.$transaction([
+      this.prisma.playerProfile.findMany({
+        where: rankedWhere,
+        select: { id: true, createdAt: true },
+      }),
+      this.prisma.playerProfile.count({ where: zeroWhere }),
+    ]);
+
+    // The one calculation, reused — not a second one written in SQL.
+    const stars = await this.starsFor(candidates.map((row) => row.id));
+
+    const direction = order === 'asc' ? 1 : -1;
+    const ranked = [...candidates].sort((a, b) => {
+      const byStars = ((stars.get(a.id) ?? 0) - (stars.get(b.id) ?? 0)) * direction;
+      // Newest first within a tied score, matching every other ordering search
+      // offers — without it, equal rows have no defined order and pagination can
+      // show the same player twice.
+      return byStars !== 0 ? byStars : b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+    /*
+     * Ascending puts the zero-star players first, because that is what they are.
+     * Descending puts the ranked ones first and leaves the zeros as the tail.
+     */
+    const zeroFirst = order === 'asc';
+    const skip = (page - 1) * pageSize;
+
+    const pageOfZeros = async (zeroSkip: number, take: number) => {
+      if (take <= 0) return [] as string[];
+      const rows = await this.prisma.playerProfile.findMany({
+        where: zeroWhere,
+        orderBy: { createdAt: 'desc' },
+        skip: zeroSkip,
+        take,
+        select: { id: true },
+      });
+      return rows.map((row) => row.id);
+    };
+
+    let ids: string[];
+    if (zeroFirst) {
+      const head = await pageOfZeros(skip, Math.min(pageSize, Math.max(0, zeroTotal - skip)));
+      const tailSkip = Math.max(0, skip - zeroTotal);
+      const tail = ranked.slice(tailSkip, tailSkip + (pageSize - head.length));
+      ids = [...head, ...tail.map((row) => row.id)];
+    } else {
+      const head = ranked.slice(skip, skip + pageSize);
+      const tail = await pageOfZeros(Math.max(0, skip - ranked.length), pageSize - head.length);
+      ids = [...head.map((row) => row.id), ...tail];
+    }
+
+    // One fetch for the page, then put it back into the ranked order — `in` does
+    // not preserve the order it was given and has no reason to.
+    const rows = await this.prisma.playerProfile.findMany({
+      where: { id: { in: ids } },
+      include: AVATAR_INCLUDE,
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    return {
+      items: ids
+        .map((id) => byId.get(id))
+        .filter((row): row is (typeof rows)[number] => Boolean(row))
+        .map((row) => ({ ...this.withAvatar(row), stars: stars.get(row.id) ?? 0 })),
+      total: ranked.length + zeroTotal,
       page,
       pageSize,
     };

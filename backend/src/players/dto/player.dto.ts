@@ -78,13 +78,18 @@ export class UpdatePlayerStatsDto {
  * than for §1.5's earned weight, which is the better number and cannot be ordered
  * by without a NULL that reverses the result. See `searchOrderBy` for that story.
  *
- * Deliberately not here: the card's star rating and football-order position.
- * Neither is a column — stars are computed per page from clips and assessments
- * (`computeCardStars`), and position is a free-text string with no rank — so
- * ordering by either would mean ranking in memory after paging, which is not a
- * sort, it is a shuffle. Both need a schema change to do honestly.
+ * `stars` is the card's 0–5 row and is not a column — it is computed from clips
+ * and assessments by `computeCardStars`. It is offered anyway because it can be
+ * ranked exactly without duplicating that calculation; `PlayersService
+ * .searchByStars` explains how, and why it does not simply sort the page it just
+ * fetched.
+ *
+ * Deliberately still not here: football-order position. `primaryPosition` is a
+ * free-text string with no rank, so ordering by it gives the alphabet (AM, CB,
+ * CM, DM, GK…) rather than a football order. That one needs the column to become
+ * an enum before it can be honest.
  */
-export const PLAYER_SORTS = ['name', 'age', 'recommendations'] as const;
+export const PLAYER_SORTS = ['name', 'age', 'recommendations', 'stars'] as const;
 export type PlayerSort = (typeof PLAYER_SORTS)[number];
 
 export class SearchPlayersDto extends PaginationDto {

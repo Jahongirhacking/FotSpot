@@ -7,8 +7,20 @@ import { RangeSlider } from '@/components/ui/RangeSlider';
 import { PLAYER_SORTS } from '@/lib/api/resources';
 import { PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
 import { districtsOf } from '@/lib/uzbekistan';
-import { humanizeEnum } from '@/lib/utils';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { cn, humanizeEnum } from '@/lib/utils';
+import {
+  ArrowDownNarrowWide,
+  ArrowUpDown,
+  ArrowUpNarrowWide,
+  Footprints,
+  Map,
+  MapPin,
+  Search,
+  Shirt,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
@@ -35,6 +47,35 @@ const FILTER_KEYS = [
 
 /** Left/right/both, as the API spells them. */
 const FEET = ['LEFT', 'RIGHT', 'BOTH'] as const;
+
+/**
+ * A filter select with an icon in its gutter.
+ *
+ * Seven dropdowns in two rows read as seven identical grey rectangles, and the
+ * only way to tell which is which is to open one. An icon makes each findable at
+ * a glance without adding a label above every control — which on a phone would
+ * double the height of the panel.
+ *
+ * Built from the same parts as the search box above rather than a new primitive:
+ * an absolutely positioned icon and left padding on the control. `Select`
+ * already reserves `pr-8` for its chevron, so the icon takes the other side and
+ * nothing overlaps at any width.
+ */
+function FilterSelect({
+  icon: Icon,
+  className,
+  ...props
+}: React.ComponentProps<typeof Select> & { icon: React.ComponentType<{ className?: string }> }) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      <Icon
+        className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        aria-hidden
+      />
+      <Select {...props} className="pl-9" />
+    </div>
+  );
+}
 
 /**
  * The widest age a football platform has any business offering.
@@ -154,7 +195,8 @@ export function PlayerFilters() {
       {open && (
         <div className="border-border bg-surface-3 space-y-3 rounded-lg border p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select
+            <FilterSelect
+              icon={MapPin}
               aria-label={t.onboarding.region}
               value={searchParams.get('region') ?? ''}
               // Changing province drops the district with it.
@@ -167,7 +209,7 @@ export function PlayerFilters() {
                   {region}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
             {/*
               District sits next to region and stays on screen whether or not one
@@ -181,7 +223,8 @@ export function PlayerFilters() {
               discoverability. Changing province still clears it, since the old
               district is almost certainly not in the new one.
             */}
-            <Select
+            <FilterSelect
+              icon={Map}
               aria-label={t.academy?.district}
               disabled={!selectedRegion}
               value={searchParams.get('district') ?? ''}
@@ -196,9 +239,10 @@ export function PlayerFilters() {
                   {district}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
-            <Select
+            <FilterSelect
+              icon={Shirt}
               aria-label={t.onboarding.mainPosition}
               value={searchParams.get('position') ?? ''}
               onChange={(event) => apply({ position: event.target.value })}
@@ -210,11 +254,12 @@ export function PlayerFilters() {
                   {position}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
             {/* The recruitment question a position cannot answer — "we need a
                 left-footed right-back". */}
-            <Select
+            <FilterSelect
+              icon={Footprints}
               aria-label={t.player.dominantFoot}
               value={searchParams.get('dominantFoot') ?? ''}
               onChange={(event) => apply({ dominantFoot: event.target.value })}
@@ -230,10 +275,11 @@ export function PlayerFilters() {
                       : t.player.footBoth}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
             {/* The §21.3 filter that positions alone can't express. */}
-            <Select
+            <FilterSelect
+              icon={Sparkles}
               aria-label={t.onboarding.playingStyle}
               value={searchParams.get('playingStyle') ?? ''}
               onChange={(event) => apply({ playingStyle: event.target.value })}
@@ -249,7 +295,7 @@ export function PlayerFilters() {
                   ))}
                 </optgroup>
               ))}
-            </Select>
+            </FilterSelect>
           </div>
 
           {/*
@@ -267,7 +313,8 @@ export function PlayerFilters() {
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-muted basis-full text-xs">{t.player.sortBy}</p>
 
-            <Select
+            <FilterSelect
+              icon={ArrowUpDown}
               aria-label={t.player.sortBy}
               value={searchParams.get('sort') ?? ''}
               onChange={(event) => apply({ sort: event.target.value })}
@@ -280,12 +327,15 @@ export function PlayerFilters() {
                     ? t.player.sortName
                     : sort === 'age'
                       ? t.player.sortAge
-                      : t.player.sortRecommendations}
+                      : sort === 'stars'
+                        ? t.player.sortStars
+                        : t.player.sortRecommendations}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
-            <Select
+            <FilterSelect
+              icon={searchParams.get('order') === 'desc' ? ArrowDownNarrowWide : ArrowUpNarrowWide}
               aria-label={t.player.sortDirection}
               disabled={!searchParams.get('sort')}
               value={searchParams.get('order') ?? 'asc'}
@@ -294,7 +344,7 @@ export function PlayerFilters() {
             >
               <option value="asc">{t.player.orderAsc}</option>
               <option value="desc">{t.player.orderDesc}</option>
-            </Select>
+            </FilterSelect>
           </div>
 
           <div>

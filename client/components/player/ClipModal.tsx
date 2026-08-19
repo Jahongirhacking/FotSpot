@@ -1,21 +1,21 @@
 'use client';
 
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Pause, Pencil, Play, Trash2, Trophy, TriangleAlert } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { Media } from '@/lib/api/types';
-import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { useSession } from '@/components/layout/SessionProvider';
 import { ClipModerationNote, useClipModerationCopy } from '@/components/player/ClipModerationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
-import { Field, Input, Textarea } from '@/components/ui/Field';
 import { Alert } from '@/components/ui/Feedback';
+import { Field, Input, Textarea } from '@/components/ui/Field';
+import { browserFetch } from '@/lib/api/browser';
+import type { Media } from '@/lib/api/types';
+import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { cn, formatDate } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Heart, Pause, Pencil, Play, Trash2, TriangleAlert, Trophy } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 interface Engagement {
   views: number;
@@ -225,7 +225,7 @@ export function ClipModal({
             )
           )}
 
-          <p className="text-muted text-xs">{t.clips.privateNote}</p>
+          {canEdit && <p className="text-muted text-xs">{t.clips.privateNote}</p>}
         </div>
       </DialogContent>
     </Dialog>

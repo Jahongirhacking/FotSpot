@@ -446,6 +446,7 @@ export const uz = {
   },
 
   academy: {
+    subtitle: 'Akademiyalarni toping, yoqqanlarini kuzating va sinovlar uchun ariza bering',
     memberType: 'A’zo turi',
     pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',
     coachType: 'Murabbiy turi',
@@ -725,7 +726,7 @@ export const uz = {
   /** Skaut va akademiya menejeri uchun asosiy ekran. */
   feed: {
     title: 'Lenta',
-    subtitle: 'Eng munosib klipllar — tavsiya vazni, obunalaringiz va yangiligi bo‘yicha.',
+    subtitle: 'Eng mos kliplar - tavsiyalar, obunalaringiz va yangiligiga ko‘ra saralangan.',
     suggested: 'Kuzatish uchun',
     follow: 'Kuzatish',
     following: 'Kuzatilmoqda',
@@ -770,6 +771,7 @@ export const uz = {
     sortName: 'Ism bo‘yicha',
     sortAge: 'Yosh bo‘yicha',
     sortRecommendations: 'Tavsiyalar soni bo‘yicha',
+    sortStars: 'Yulduzlar bo‘yicha',
     orderAsc: 'O‘sish tartibida',
     orderDesc: 'Kamayish tartibida',
     sortDirection: 'Saralash tartibi',
@@ -969,7 +971,7 @@ export const uz = {
     location: 'Manzil',
     openTrials: 'Ochiq sinovlar',
     openTrialsHint:
-      'To‘g‘ridan-to‘g‘ri ariza bering. Akademiya arizangiz bilan kartangizni ko‘radi.',
+      'To‘g‘ridan-to‘g‘ri ariza bering. Akademiya arizangizni va profilingizni ko‘rib chiqadi.',
     noTrials: 'Hozircha ochiq sinov yo‘q',
     noTrialsHint:
       'Qiziqqan akademiyalaringizni kuzating — yangi sinov e’lon qilinganda xabar beramiz.',
@@ -1242,44 +1244,60 @@ export const uz = {
         'Startdagi tezlik, 20–30 m masofada yugurish, to‘p bilan tezlashish va yo‘nalish o‘zgartirishni ko‘rsating.',
       goalkeeper:
         'Darvoza oldidagi reaksiya tezligi, chiqish va to‘pgacha yetib borish tezligini ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Birinchi qadamdanoq to‘liq tezlikda yugurdingiz, kuchli tezlashdingiz va oxirigacha sur’atni saqladingiz.',
     },
     DRIBBLING: {
       player:
         'Tor joyda to‘pni olib yurish, aldash harakatlari, himoyachidan o‘tib ketish va to‘pni nazorat qilishni ko‘rsating.',
       goalkeeper: 'Bosim ostida to‘pni oyoq bilan olib chiqish va raqibdan qutulishni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Tezlikda to‘pni yaqin ushladingiz, himoyachini toza aldab o‘tdingiz va bosim ostida yo‘qotmadingiz.',
     },
     PASSING: {
       player:
         'Qisqa va uzun uzatmalar, aniqlik, ikki oyoqda uzatish va harakatdagi sherikka uzatishni ko‘rsating.',
       goalkeeper:
         'Qo‘l va oyoq bilan to‘p tarqatish, uzun uzatma va tez hujum boshlashni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Uzatmalaringiz kerakli kuch bilan aniq yetib bordi — ikkala oyoqda, qiyin uzun uzatmalar ham.',
     },
     FINISHING: {
       player:
         'Jarima maydonchasi ichida va tashqarisidan zarbalar, ikki oyoqda va bosh bilan gol urishni ko‘rsating.',
       goalkeeper: 'Penalti va 1v1 holatlarda zarbani to‘xtatishni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Ikkala oyoq bilan toza va aniq zarba berdingiz, qiyin burchaklardan gol urdingiz.',
     },
     PHYSICAL: {
       player:
         'Kuch, muvozanat, yakkama-yakka kurash, sakrash balandligi va chidamlilikni ko‘rsating.',
       goalkeeper:
         'Sakrash, cho‘zilish, jarima maydonchasida jismoniy ustunlik va tez o‘rnidan turishni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Yakkama-yakka kurashlarda yutdingiz, kontaktda muvozanatni saqladingiz va oxirigacha shiddatni yo‘qotmadingiz.',
     },
     TECHNIQUE: {
       player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Birinchi teginish, nazorat va fintlar toza va ishonchli edi — tezlikda va bosim ostida.',
     },
     GOALKEEPING: {
       player:
         'Bu bo‘lim darvozabonlar uchun. Maydon o‘yinchisi bo‘lsangiz, boshqa ko‘nikmani tanlang.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plarda chiqish, 1v1 holatlar, penalti va oyoq bilan to‘p tarqatishni ko‘rsating.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Zarbani erta o‘qidingiz, toza sakradingiz, qaytgan to‘pni nazorat qildingiz va aniq uzatdingiz.',
     },
     MATCH_HIGHLIGHTS: {
       player:
         'Haqiqiy o‘yindan eng yaxshi lahzalar: gol, uzatma, muhim harakatlar. Boshqalar orasida o‘zingiz ko‘rinib turing.',
       goalkeeper: 'Haqiqiy o‘yindan to‘xtatishlar, chiqishlar va jamoani boshqarish lahzalari.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Ko‘rsatilgan har bir lahza hal qiluvchi va qaysi o‘yinchi siz ekaningiz aniq ko‘rinadi.',
     },
   },
 

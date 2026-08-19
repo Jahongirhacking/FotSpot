@@ -201,8 +201,12 @@ export type DominantFoot = 'LEFT' | 'RIGHT' | 'BOTH';
  * §1.5's earned weight — that lives in a row which only exists once somebody has
  * been recommended, so ordering by it sorts every unrecommended player to the
  * top. See `searchOrderBy` on the API side.
+ *
+ * `stars` is the card's 0–5 row. It is computed server-side by
+ * `computeCardStars`, and the value the cards render is the same one the ranking
+ * used — the API returns it on every result, so nothing here recalculates it.
  */
-export const PLAYER_SORTS = ['name', 'age', 'recommendations'] as const;
+export const PLAYER_SORTS = ['name', 'age', 'recommendations', 'stars'] as const;
 export type PlayerSort = (typeof PLAYER_SORTS)[number];
 
 export interface PlayerSearchParams {
