@@ -3331,6 +3331,47 @@
             }
           },
           {
+            "name": "dominantFoot",
+            "required": false,
+            "in": "query",
+            "description": "Which foot they play on — the recruitment question a position cannot answer.",
+            "schema": {
+              "enum": [
+                "LEFT",
+                "RIGHT",
+                "BOTH"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "What to order the results by. Omitted means newest profile first, which is\nwhat this endpoint has always done and what an unsorted search still gets.\n\nEvery value here maps to a column the database can order by, so page 2 is a\ncoherent question. A sort computed after the page was fetched would reshuffle\nbetween pages and show the same player twice or never — see\n`MediaService.feed` for the same reasoning stated at length.",
+            "schema": {
+              "enum": [
+                "name",
+                "age",
+                "recommendations",
+                "stars"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "region",
             "required": false,
             "in": "query",

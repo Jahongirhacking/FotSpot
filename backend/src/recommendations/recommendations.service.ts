@@ -28,7 +28,7 @@ import {
   computeScoutLevel,
   computeSuccessRate,
 } from './scout-level.util';
-import { assertNotLocalTeam } from '../academies/academy-kind.util';
+import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 
 /**
  * Roles that may read a scout's profile.
@@ -363,7 +363,8 @@ export class RecommendationsService {
   async academyStateFor(userId: string, playerId: string) {
     const membership = await this.prisma.academyMember.findFirst({
       where: { userId, role: 'MANAGER' },
-      select: { academyId: true, academy: { select: { id: true, name: true } } },
+      // `kind` decides which half of this answer even exists — see below.
+      select: { academyId: true, academy: { select: { id: true, name: true, kind: true } } },
     });
     if (!membership) return null;
 
@@ -381,6 +382,44 @@ export class RecommendationsService {
         },
       },
     });
+    /*
+     * Where this player stands with the squad, which is the shared half.
+     *
+     * Both kinds of organisation recruit into a squad the same way (LOCAL_TEAM.md
+     * §23), so this is computed for both — but for a local team it is the *only*
+     * half, and the panel has nothing else to draw.
+     */
+    const squad = await this.squadStateFor(membership.academyId, playerId);
+
+    /*
+     * A local team stops here, and not as an optimisation.
+     *
+     * Coaches, the online review and trials do not exist for one (LOCAL_TEAM.md
+     * §6–§8) — every endpoint behind them already refuses with 403. Looking them
+     * up anyway would be three queries whose only possible answer is "none", and
+     * returning `hasCoaches: false` beside a null review is precisely the shape
+     * that made the manager's panel offer "Send for review" and then fail on
+     * press. What a local team's manager can do about a player is invite them,
+     * so that is what this returns.
+     */
+    if (isLocalTeam(membership.academy.kind)) {
+      return {
+        academy: membership.academy,
+        recommendation: target
+          ? {
+              id: target.recommendationId,
+              status: target.status,
+              note: target.recommendation.note,
+              scout: target.recommendation.scout,
+            }
+          : null,
+        review: null,
+        invitation: null,
+        hasCoaches: false,
+        squad,
+      };
+    }
+
     /*
      * The review is looked up whether or not a scout recommended this player.
      *
@@ -449,6 +488,46 @@ export class RecommendationsService {
         (await this.prisma.academyEndorsement.count({
           where: { academyId: membership.academyId, role: 'COACH', status: 'ACTIVE' },
         })) > 0,
+      squad,
+    };
+  }
+
+  /**
+   * Whether this player is already in this organisation's squad, or has been asked.
+   *
+   * Carries the player's **user** id, because that is what an invitation is
+   * addressed to while everything else on this screen is keyed by profile id —
+   * and a panel that had to go and look it up separately would be one more
+   * request to draw one button.
+   *
+   * `invitationPending` exists for the same reason `invitation` above does:
+   * inviting twice is a 409, and an error explaining that a button should not
+   * have been offered is a worse answer than not offering it.
+   */
+  private async squadStateFor(academyId: string, playerId: string) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true },
+    });
+    if (!player) return null;
+
+    const [member, invitation] = await Promise.all([
+      this.prisma.academyMember.findUnique({
+        where: { academyId_userId: { academyId, userId: player.userId } },
+        select: { status: true },
+      }),
+      this.prisma.academyInvitation.findFirst({
+        where: { academyId, userId: player.userId, status: 'PENDING' },
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      userId: player.userId,
+      // RELEASED is "was here, is not now", which is a squad they can be invited
+      // back into — so only ACTIVE and INACTIVE count as being in it.
+      status: member && member.status !== 'RELEASED' ? member.status : null,
+      invitationPending: Boolean(invitation),
     };
   }
 

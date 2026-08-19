@@ -70,6 +70,28 @@ export class UpdatePlayerStatsDto {
   @IsOptional() @IsInt() @Min(0) jugglingRecord?: number;
 }
 
+/**
+ * The orderings search offers.
+ *
+ * `name` and `age` are the two a person asks for out loud; `recommendations` is
+ * how many scouts have put this player forward — named for what it counts rather
+ * than for §1.5's earned weight, which is the better number and cannot be ordered
+ * by without a NULL that reverses the result. See `searchOrderBy` for that story.
+ *
+ * `stars` is the card's 0–5 row and is not a column — it is computed from clips
+ * and assessments by `computeCardStars`. It is offered anyway because it can be
+ * ranked exactly without duplicating that calculation; `PlayersService
+ * .searchByStars` explains how, and why it does not simply sort the page it just
+ * fetched.
+ *
+ * Deliberately still not here: football-order position. `primaryPosition` is a
+ * free-text string with no rank, so ordering by it gives the alphabet (AM, CB,
+ * CM, DM, GK…) rather than a football order. That one needs the column to become
+ * an enum before it can be honest.
+ */
+export const PLAYER_SORTS = ['name', 'age', 'recommendations', 'stars'] as const;
+export type PlayerSort = (typeof PLAYER_SORTS)[number];
+
 export class SearchPlayersDto extends PaginationDto {
   @IsOptional() @IsString() region?: string;
   /** Only meaningful with a region — a district alone cannot be resolved. */
@@ -93,4 +115,28 @@ export class SearchPlayersDto extends PaginationDto {
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(60) maxAge?: number;
 
+  /** Which foot they play on — the recruitment question a position cannot answer. */
+  @ApiPropertyOptional({ enum: ['LEFT', 'RIGHT', 'BOTH'] })
+  @IsOptional()
+  @IsIn(['LEFT', 'RIGHT', 'BOTH'])
+  dominantFoot?: 'LEFT' | 'RIGHT' | 'BOTH';
+
+  /**
+   * What to order the results by. Omitted means newest profile first, which is
+   * what this endpoint has always done and what an unsorted search still gets.
+   *
+   * Every value here maps to a column the database can order by, so page 2 is a
+   * coherent question. A sort computed after the page was fetched would reshuffle
+   * between pages and show the same player twice or never — see
+   * `MediaService.feed` for the same reasoning stated at length.
+   */
+  @ApiPropertyOptional({ enum: PLAYER_SORTS })
+  @IsOptional()
+  @IsIn(PLAYER_SORTS)
+  sort?: PlayerSort;
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  order?: 'asc' | 'desc';
 }

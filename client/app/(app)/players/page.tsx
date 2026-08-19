@@ -4,6 +4,7 @@ import { players } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
 import type { PlayingStyle } from '@/lib/api/types';
+import type { DominantFoot, PlayerSort } from '@/lib/api/resources';
 import { PlayerFilters } from './PlayerFilters';
 import { PlayerResultCard } from './PlayerResultCard';
 import { EmptyState } from '@/components/ui/Feedback';
@@ -32,6 +33,9 @@ export default async function PlayersPage({
     playingStyle?: string;
     minAge?: string;
     maxAge?: string;
+    dominantFoot?: string;
+    sort?: string;
+    order?: string;
     page?: string;
   }>;
 }) {
@@ -50,6 +54,12 @@ export default async function PlayersPage({
         playingStyle: params?.playingStyle as PlayingStyle | undefined,
         minAge: params?.minAge ? Number(params?.minAge) : undefined,
         maxAge: params?.maxAge ? Number(params?.maxAge) : undefined,
+        dominantFoot: params?.dominantFoot as DominantFoot | undefined,
+        // Passed through as typed: the API validates the pair and answers 400 on
+        // anything it does not offer, so a hand-edited URL fails loudly rather
+        // than silently falling back to an ordering nobody asked for.
+        sort: params?.sort as PlayerSort | undefined,
+        order: params?.order === 'desc' ? 'desc' : params?.order === 'asc' ? 'asc' : undefined,
         page,
         pageSize: 12,
       },

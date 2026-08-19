@@ -422,6 +422,7 @@ export const en: Dictionary = {
   },
 
   academy: {
+    subtitle: 'Discover academies, follow the ones you like, and apply for trials.',
     memberType: 'Member type',
     pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
     coachType: 'Coach type',
@@ -717,6 +718,11 @@ export const en: Dictionary = {
     alreadyRecommended: 'You already recommended this player',
     recommendationResult: 'Result: {status}',
     noRecommendationYet: 'Nobody has recommended this player to your academy yet.',
+    /** The local team manager's one action — LOCAL_TEAM.md §9. */
+    addToSquadHint:
+      'Local teams recruit by invitation: the player joins the squad once they accept.',
+    squadInviteSent: 'Invitation sent — waiting on their answer.',
+    alreadyInSquad: 'This player is already in your squad.',
     alreadyInvited: 'This player has already been invited.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',
@@ -725,6 +731,19 @@ export const en: Dictionary = {
     dominantFoot: 'Dominant foot',
     footLeft: 'Left',
     footRight: 'Right',
+    footBoth: 'Both',
+    anyFoot: 'Any foot',
+    /** Sorting — every option is a database column, so paging stays coherent. */
+    sortBy: 'Sort by',
+    sortNewest: 'Newest profiles',
+    sortName: 'Name',
+    sortAge: 'Age',
+    sortRecommendations: 'Recommendations',
+    sortStars: 'Stars',
+    orderAsc: 'Ascending',
+    orderDesc: 'Descending',
+    sortDirection: 'Sort direction',
+    districtNeedsRegion: 'Choose a region first',
     attributes: 'Attributes',
     findPlayers: 'Find players',
     searchByName: 'Search by name',
@@ -1175,38 +1194,54 @@ export const en: Dictionary = {
         'Show your first few steps, a 20–30 m run, acceleration with the ball and a change of direction.',
       goalkeeper:
         'Show reaction speed off the line, how quickly you come out and how fast you reach the ball.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'You ran at full speed from the first step, accelerated hard and held that pace to the end.',
     },
     DRIBBLING: {
       player:
         'Show close control in a tight space, feints, beating a defender and keeping the ball under pressure.',
       goalkeeper: 'Show carrying the ball out under pressure and escaping a press with your feet.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'You kept the ball close at speed, beat a defender cleanly and never lost it under pressure.',
     },
     PASSING: {
       player: 'Show short and long passes, accuracy, both feet, and passing to a moving team-mate.',
       goalkeeper: 'Show distribution by hand and foot, a long pass, and starting a quick attack.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Your passes reached the target with the right weight, on both feet, including the hard long ones.',
     },
     FINISHING: {
       player: 'Show finishes inside and outside the box, with both feet and with your head.',
       goalkeeper: 'Show penalty saves and stopping a shot in a one-on-one.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'You struck cleanly and accurately with both feet, and scored from difficult angles.',
     },
     PHYSICAL: {
       player: 'Show strength, balance, duels, jump height and stamina.',
       goalkeeper: 'Show jumping, extension, dominance in the box and getting back up quickly.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'You won your duels, stayed balanced under contact and kept the same intensity to the end.',
     },
     TECHNIQUE: {
       player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
       goalkeeper:
         'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Your first touch, control and skill moves were clean and confident, at speed and under pressure.',
     },
     GOALKEEPING: {
       player: 'This one is for keepers. If you play outfield, pick another skill.',
       goalkeeper:
         'Show diving saves, reactions, coming for high balls, 1v1s, penalties, and distribution with your feet.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'You read the shot early, dived cleanly, controlled the rebound and distributed accurately.',
     },
     MATCH_HIGHLIGHTS: {
       player:
         'Your best moments from a real match: goals, assists, decisive actions. Make sure you are identifiable.',
       goalkeeper: 'Saves, claims and moments of organising the defence, from a real match.',
+      /** What a score near 100 means for this skill — shown beside the slider. */
+      high: 'Every moment shown is decisive, and it is obvious which player is you.',
     },
   },
 

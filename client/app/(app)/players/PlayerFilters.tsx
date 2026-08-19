@@ -4,14 +4,78 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
+import { PLAYER_SORTS } from '@/lib/api/resources';
 import { PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
 import { districtsOf } from '@/lib/uzbekistan';
-import { humanizeEnum } from '@/lib/utils';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { cn, humanizeEnum } from '@/lib/utils';
+import {
+  ArrowDownNarrowWide,
+  ArrowUpDown,
+  ArrowUpNarrowWide,
+  Footprints,
+  Map,
+  MapPin,
+  Search,
+  Shirt,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
-const FILTER_KEYS = ['region', 'position', 'playingStyle', 'minAge', 'maxAge'] as const;
+/**
+ * Which parameters count as "a filter is on".
+ *
+ * `district` belongs here as much as `region` does — it was missing, so narrowing
+ * to one district left the badge reading zero and hid the clear button, which is
+ * the one control that gets you back out.
+ *
+ * `sort`/`order` are deliberately absent: ordering the same results is not
+ * narrowing them, and counting it would make the badge say "1 filter" for a
+ * search that filters nothing.
+ */
+const FILTER_KEYS = [
+  'region',
+  'district',
+  'position',
+  'playingStyle',
+  'dominantFoot',
+  'minAge',
+  'maxAge',
+] as const;
+
+/** Left/right/both, as the API spells them. */
+const FEET = ['LEFT', 'RIGHT', 'BOTH'] as const;
+
+/**
+ * A filter select with an icon in its gutter.
+ *
+ * Seven dropdowns in two rows read as seven identical grey rectangles, and the
+ * only way to tell which is which is to open one. An icon makes each findable at
+ * a glance without adding a label above every control — which on a phone would
+ * double the height of the panel.
+ *
+ * Built from the same parts as the search box above rather than a new primitive:
+ * an absolutely positioned icon and left padding on the control. `Select`
+ * already reserves `pr-8` for its chevron, so the icon takes the other side and
+ * nothing overlaps at any width.
+ */
+function FilterSelect({
+  icon: Icon,
+  className,
+  ...props
+}: React.ComponentProps<typeof Select> & { icon: React.ComponentType<{ className?: string }> }) {
+  return (
+    <div className={cn('relative min-w-0', className)}>
+      <Icon
+        className="text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        aria-hidden
+      />
+      <Select {...props} className="pl-9" />
+    </div>
+  );
+}
 
 /**
  * The widest age a football platform has any business offering.
@@ -131,7 +195,8 @@ export function PlayerFilters() {
       {open && (
         <div className="border-border bg-surface-3 space-y-3 rounded-lg border p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select
+            <FilterSelect
+              icon={MapPin}
               aria-label={t.onboarding.region}
               value={searchParams.get('region') ?? ''}
               // Changing province drops the district with it.
@@ -144,29 +209,40 @@ export function PlayerFilters() {
                   {region}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
 
-            {/* Only once a province is chosen: a district filter with nothing to
-                scope it to would list 172 names, most of them irrelevant. The
-                region change clears it, since the old district is almost
-                certainly not in the new province. */}
-            {selectedRegion && (
-              <Select
-                aria-label={t.academy?.district}
-                value={searchParams.get('district') ?? ''}
-                onChange={(event) => apply({ district: event.target.value })}
-                className="min-w-0 flex-1 basis-full sm:basis-44"
-              >
-                <option value="">{t.academy?.district}</option>
-                {districtsOf(selectedRegion).map((district) => (
-                  <option key={district} value={district}>
-                    {district}
-                  </option>
-                ))}
-              </Select>
-            )}
+            {/*
+              District sits next to region and stays on screen whether or not one
+              is chosen — disabled, saying why.
 
-            <Select
+              It used to render only after a province was picked, which kept the
+              list honest (a district filter with nothing to scope it to would
+              offer 172 names, most of them irrelevant) but made the control
+              invisible: somebody looking for it could not tell it existed. A
+              disabled select with a reason keeps the scoping *and* the
+              discoverability. Changing province still clears it, since the old
+              district is almost certainly not in the new one.
+            */}
+            <FilterSelect
+              icon={Map}
+              aria-label={t.academy?.district}
+              disabled={!selectedRegion}
+              value={searchParams.get('district') ?? ''}
+              onChange={(event) => apply({ district: event.target.value })}
+              className="min-w-0 flex-1 basis-full sm:basis-44"
+            >
+              <option value="">
+                {selectedRegion ? t.academy?.district : t.player.districtNeedsRegion}
+              </option>
+              {districtsOf(selectedRegion).map((district) => (
+                <option key={district} value={district}>
+                  {district}
+                </option>
+              ))}
+            </FilterSelect>
+
+            <FilterSelect
+              icon={Shirt}
               aria-label={t.onboarding.mainPosition}
               value={searchParams.get('position') ?? ''}
               onChange={(event) => apply({ position: event.target.value })}
@@ -178,10 +254,32 @@ export function PlayerFilters() {
                   {position}
                 </option>
               ))}
-            </Select>
+            </FilterSelect>
+
+            {/* The recruitment question a position cannot answer — "we need a
+                left-footed right-back". */}
+            <FilterSelect
+              icon={Footprints}
+              aria-label={t.player.dominantFoot}
+              value={searchParams.get('dominantFoot') ?? ''}
+              onChange={(event) => apply({ dominantFoot: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] sm:basis-32"
+            >
+              <option value="">{t.player.anyFoot}</option>
+              {FEET.map((foot) => (
+                <option key={foot} value={foot}>
+                  {foot === 'LEFT'
+                    ? t.player.footLeft
+                    : foot === 'RIGHT'
+                      ? t.player.footRight
+                      : t.player.footBoth}
+                </option>
+              ))}
+            </FilterSelect>
 
             {/* The §21.3 filter that positions alone can't express. */}
-            <Select
+            <FilterSelect
+              icon={Sparkles}
               aria-label={t.onboarding.playingStyle}
               value={searchParams.get('playingStyle') ?? ''}
               onChange={(event) => apply({ playingStyle: event.target.value })}
@@ -197,7 +295,56 @@ export function PlayerFilters() {
                   ))}
                 </optgroup>
               ))}
-            </Select>
+            </FilterSelect>
+          </div>
+
+          {/*
+            Ordering, kept apart from the filters above it by a rule.
+
+            A filter changes which players come back and a sort changes only the
+            order — mixing them into one row invites reading the whole block as
+            "narrowing", which is also why sort is not counted on the badge.
+
+            The direction control is disabled while the default ordering is in
+            effect: "newest profiles" already carries its own direction, and an
+            asc/desc pair beside it would be two controls where one of them does
+            nothing.
+          */}
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-muted basis-full text-xs">{t.player.sortBy}</p>
+
+            <FilterSelect
+              icon={ArrowUpDown}
+              aria-label={t.player.sortBy}
+              value={searchParams.get('sort') ?? ''}
+              onChange={(event) => apply({ sort: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(60%-0.25rem)] sm:basis-48"
+            >
+              <option value="">{t.player.sortNewest}</option>
+              {PLAYER_SORTS.map((sort) => (
+                <option key={sort} value={sort}>
+                  {sort === 'name'
+                    ? t.player.sortName
+                    : sort === 'age'
+                      ? t.player.sortAge
+                      : sort === 'stars'
+                        ? t.player.sortStars
+                        : t.player.sortRecommendations}
+                </option>
+              ))}
+            </FilterSelect>
+
+            <FilterSelect
+              icon={searchParams.get('order') === 'desc' ? ArrowDownNarrowWide : ArrowUpNarrowWide}
+              aria-label={t.player.sortDirection}
+              disabled={!searchParams.get('sort')}
+              value={searchParams.get('order') ?? 'asc'}
+              onChange={(event) => apply({ order: event.target.value })}
+              className="min-w-0 flex-1 basis-[calc(40%-0.25rem)] sm:basis-40"
+            >
+              <option value="asc">{t.player.orderAsc}</option>
+              <option value="desc">{t.player.orderDesc}</option>
+            </FilterSelect>
           </div>
 
           <div>
