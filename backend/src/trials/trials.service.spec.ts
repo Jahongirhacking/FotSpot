@@ -6,6 +6,7 @@ import type { ProcessAService } from '../recommendations/process-a.service';
 import type { RecommendationsService } from '../recommendations/recommendations.service';
 import type { InvitationsService } from '../academies/invitations.service';
 import type { RedisService } from '../redis/redis.service';
+import type { SmsService } from '../sms/sms.service';
 
 /**
  * The rules under test are TRIAL.md's, not this file's inventions:
@@ -32,6 +33,8 @@ const TRIAL = {
   type: 'GENERAL',
   ageRangeMin: 10,
   ageRangeMax: 20,
+  /** `recordVerdict` reads this: only an academy's pass sends an SMS. */
+  academy: { kind: 'ACADEMY' },
 };
 
 const PLAYER = {
@@ -40,6 +43,8 @@ const PLAYER = {
   firstName: 'Aziz',
   lastName: 'Karimov',
   birthDate: new Date('2015-03-04'),
+  /** Optional on a real account; present here so the SMS path is exercised. */
+  user: { phone: '+998901234567' },
 };
 
 function fakePrisma() {
@@ -124,6 +129,7 @@ function build() {
     settleTrialBackings: jest.fn(async () => undefined),
   };
   const redis = { del: jest.fn(async () => undefined) };
+  const sms = { sendTrialPass: jest.fn(async () => ({ sent: false as boolean })) };
 
   const service = new TrialsService(
     prisma as unknown as PrismaService,
@@ -132,9 +138,10 @@ function build() {
     invitations as unknown as InvitationsService,
     recommendations as unknown as RecommendationsService,
     redis as unknown as RedisService,
+    sms as unknown as SmsService,
   );
 
-  return { service, prisma, tx, notifications, processA, invitations, recommendations, redis };
+  return { service, prisma, tx, notifications, processA, invitations, recommendations, redis, sms };
 }
 
 /** An application as it stands the moment a coach is about to decide. */
@@ -501,5 +508,86 @@ describe('TrialsService.create — local teams', () => {
 
     await expect(service.create('manager-1', 'academy-1', validTrial)).resolves.toBeDefined();
     expect(prisma.trial.create).toHaveBeenCalled();
+  });
+});
+
+describe('TrialsService.recordVerdict — the SMS on a pass', () => {
+  /*
+   * SMS is the channel this market reads: a fourteen-year-old who was at a trial
+   * on Saturday may not open the app for a week. It is also the only message here
+   * that costs money per send, which is why every branch below is pinned.
+   */
+  it('texts the player their result on a pass', async () => {
+    const { service, prisma, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(sms.sendTrialPass).toHaveBeenCalledWith({
+      phone: '+998901234567',
+      trialId: 'trial-1',
+      playerId: PLAYER.id,
+    });
+  });
+
+  /* A rejection delivered by text to a child, with no context and no way to
+     reply, is the wrong medium for that news. */
+  it('sends nothing on a fail', async () => {
+    const { service, prisma, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'FAIL' });
+
+    expect(sms.sendTrialPass).not.toHaveBeenCalled();
+  });
+
+  /* A local team holds no trials at all, so this should be unreachable — the
+     check states the rule where the money is spent rather than three services
+     away, and this pins it. */
+  it('sends nothing for a local team', async () => {
+    const { service, prisma, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue({
+      ...pendingApplication('APPLIED'),
+      trial: { ...TRIAL, academy: { kind: 'LOCAL_TEAM' } },
+    });
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(sms.sendTrialPass).not.toHaveBeenCalled();
+  });
+
+  /*
+   * The isolation that matters: a gateway outage must not roll back a verdict a
+   * coach recorded on a pitch, nor stop the player being accepted. `SmsService`
+   * returns its failures rather than raising them, so this is belt and braces —
+   * but a future refactor that starts throwing would break the verdict, and this
+   * is what would catch it.
+   */
+  it('records the verdict even if the SMS path rejects', async () => {
+    const { service, prisma, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+    sms.sendTrialPass.mockRejectedValue(new Error('gateway down'));
+
+    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).resolves.toEqual(
+      expect.objectContaining({ verdict: 'PASS' }),
+    );
+  });
+
+  /*
+   * No de-duplication table, deliberately: `TrialResult.applicationId` is unique
+   * and a second verdict is refused before anything is sent, so the database
+   * already guarantees what a sent-messages log would be re-checking.
+   */
+  it('cannot send twice, because a second verdict is refused', async () => {
+    const { service, prisma, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue({
+      ...pendingApplication('APPLIED'),
+      result: { id: 'result-1' },
+    });
+
+    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
+      /already been given a verdict/,
+    );
+    expect(sms.sendTrialPass).not.toHaveBeenCalled();
   });
 });

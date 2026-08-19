@@ -640,6 +640,7 @@ export const uz = {
     you: 'Siz',
     myCoach: 'Mening murabbiyim',
     myAcademy: 'Mening akademiyam',
+    myTeam: 'Mening jamoam',
     endorsesMe: 'Meni tasdiqlagan',
     acceptedMe: 'Meni qabul qilgan',
   },
@@ -1118,6 +1119,8 @@ export const uz = {
     squadJoined: 'Tarkibingizga yangi futbolchi qo‘shildi',
     squadLeft: 'Futbolchi tarkibingizdan chiqdi',
     joinInvitation: 'Tabriklaymiz! Sizni akademiyaga taklif qilishmoqda',
+    /** Mahalliy jamoa akademiya emas — taklifni kim yuborganini o‘yinchi bilishi kerak. */
+    joinInvitationLocalTeam: 'Mahalliy jamoa sizni o‘z tarkibiga taklif qilmoqda',
     joinAnswer: 'Taklifga javob keldi',
     academyInvitation: 'Akademiya sizni sinovga chaqirmoqda',
     trialRescheduled: 'Sinov sanasi o‘zgardi',

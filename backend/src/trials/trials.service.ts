@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,10 +22,13 @@ import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
 import { sanitizeRichText } from '../common/rich-text.util';
-import { assertNotLocalTeam } from '../academies/academy-kind.util';
+import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
+import { SmsService } from '../sms/sms.service';
 
 @Injectable()
 export class TrialsService {
+  private readonly logger = new Logger(TrialsService.name);
+
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
@@ -32,6 +36,7 @@ export class TrialsService {
     private invitations: InvitationsService,
     private recommendations: RecommendationsService,
     private redis: RedisService,
+    private sms: SmsService,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -550,8 +555,17 @@ export class TrialsService {
     const application = await this.prisma.trialApplication.findUnique({
       where: { id: applicationId },
       include: {
-        trial: true,
-        player: { select: { id: true, userId: true, firstName: true, lastName: true } },
+        trial: { include: { academy: { select: { kind: true } } } },
+        player: {
+          select: {
+            id: true,
+            userId: true,
+            firstName: true,
+            lastName: true,
+            // For the SMS on a pass. Optional on an account, so it is often null.
+            user: { select: { phone: true } },
+          },
+        },
         result: { select: { id: true } },
       },
     });
@@ -691,6 +705,44 @@ export class TrialsService {
           { userId, role: 'coach' },
         );
       }
+    }
+
+    /*
+     * The player hears about a pass on their phone, not only in the app.
+     *
+     * SMS is the channel this market reads: a fourteen-year-old who was at a
+     * trial on Saturday morning may not open the app again for a week, and "you
+     * passed" is the one message worth the cost of reaching them where they are.
+     * A fail is not sent — a rejection delivered by text to a child, with no
+     * context and no way to reply, is the wrong medium for that news.
+     *
+     * Only an academy. A local team holds no trials at all (LOCAL_TEAM.md §8,
+     * enforced at creation by `assertNotLocalTeam`), so this branch should be
+     * unreachable for one — the check is here anyway because it states the rule
+     * where the money is spent rather than three services away.
+     *
+     * Not awaited, and it cannot throw: a verdict a coach recorded on a pitch
+     * must not roll back because a gateway timed out, and the player's squad
+     * place must not wait on an HTTP call to a third party. `SmsService` returns
+     * its failures instead of raising them, which is what makes this safe.
+     */
+    if (dto.verdict === 'PASS' && !isLocalTeam(application.trial.academy.kind)) {
+      void this.sms
+        .sendTrialPass({
+          phone: application.player.user?.phone,
+          trialId: application.trialId,
+          playerId: application.playerId,
+        })
+        /*
+         * `SmsService` returns its failures rather than raising them, so this
+         * should never run — and it is here precisely because "should never" is
+         * not a guarantee for an un-awaited promise. An unhandled rejection in
+         * Node takes the whole process down, which would turn a gateway
+         * misconfiguration into an outage of the entire API.
+         */
+        .catch((error: Error) => {
+          this.logger.error(`Trial-pass SMS threw for ${application.playerId}: ${error.message}`);
+        });
     }
 
     await this.archiveIfSettled(application.trialId);

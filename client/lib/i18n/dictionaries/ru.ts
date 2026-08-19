@@ -611,6 +611,7 @@ export const ru: Dictionary = {
     you: 'Вы',
     myCoach: 'Мой тренер',
     myAcademy: 'Моя академия',
+    myTeam: 'Моя команда',
     endorsesMe: 'Подтвердила меня',
     acceptedMe: 'Приняла меня',
   },
@@ -1077,6 +1078,8 @@ export const ru: Dictionary = {
     squadJoined: 'В ваш состав пришёл игрок',
     squadLeft: 'Игрок покинул ваш состав',
     joinInvitation: 'Поздравляем! Вас приглашают в академию',
+    /** Местная команда — не академия; игрок должен понимать, кто его приглашает. */
+    joinInvitationLocalTeam: 'Местная команда приглашает вас в свой состав',
     joinAnswer: 'Есть ответ на приглашение',
     academyInvitation: 'Академия приглашает вас на просмотр',
     trialRescheduled: 'Дата просмотра изменилась',

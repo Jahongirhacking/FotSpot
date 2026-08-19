@@ -612,6 +612,7 @@ export const en: Dictionary = {
     you: 'You',
     myCoach: 'My coach',
     myAcademy: 'My academy',
+    myTeam: 'My team',
     endorsesMe: 'Endorses me',
     acceptedMe: 'Accepted me',
   },
@@ -1080,6 +1081,8 @@ export const en: Dictionary = {
     squadJoined: 'A player joined your squad',
     squadLeft: 'A player left your squad',
     joinInvitation: 'Congratulations — an academy is inviting you to join',
+    /** A local team is not an academy, and the player deciding should be told which. */
+    joinInvitationLocalTeam: 'A local team wants you to join their squad',
     joinAnswer: 'Your invitation has been answered',
     academyInvitation: 'An academy is inviting you for a trial',
     trialRescheduled: 'A trial you applied to has moved',

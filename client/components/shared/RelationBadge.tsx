@@ -1,4 +1,5 @@
-import { BadgeCheck, Building2, ClipboardCheck, UserCircle } from 'lucide-react';
+import { BadgeCheck, Building2, ClipboardCheck, UserCircle, Users } from 'lucide-react';
+import type { AcademyKind } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -28,11 +29,22 @@ export type Relation =
 
 export function RelationBadge({
   relation,
+  kind,
   t,
   className,
 }: {
   /** Straight from `GET /academies/:id/relation`, so widened to string. */
   relation: Relation | string | null | undefined;
+  /**
+   * What the organisation is, when the badge is about one.
+   *
+   * Optional because the relation alone carries no kind — `MANAGER` is the same
+   * string whether it names an academy or a local team — and because the
+   * player-profile call site passes `MY_COACH`, which is about a person and has
+   * no organisation behind it at all. Absent reads as an academy, which is what
+   * every caller meant before local teams existed.
+   */
+  kind?: AcademyKind | null;
   t: Dictionary;
   className?: string;
 }) {
@@ -52,7 +64,7 @@ export function RelationBadge({
    * missing decoration, not a broken page; the union still documents what is
    * expected and still type-checks call sites that pass a literal.
    */
-  const described = describe(relation, t);
+  const described = describe(relation, t, kind);
   if (!described) return null;
 
   const { label, icon: Icon } = described;
@@ -71,7 +83,9 @@ export function RelationBadge({
 }
 
 /** Undefined for anything unrecognised — see the note at the call site. */
-function describe(relation: string, t: Dictionary) {
+function describe(relation: string, t: Dictionary, kind?: AcademyKind | null) {
+  const isLocalTeam = kind === 'LOCAL_TEAM';
+
   switch (relation) {
     case 'SELF':
       return { label: t.relation?.you, icon: UserCircle };
@@ -80,11 +94,19 @@ function describe(relation: string, t: Dictionary) {
     // "My academy" rather than the role name: the badge answers "is this
     // mine?", and the role is already stated everywhere else on the page. True
     // of a player on its books as much as of the manager who runs it.
+    //
+    // "My team" for a local team, because it is not an academy and calling it
+    // one on the badge marking it as *theirs* is the worst place to blur the
+    // two (LOCAL_TEAM.md §20). Same icon convention as CurrentSquadCard and the
+    // invitations list: an institution gets the building, a neighbourhood team
+    // gets the people.
     case 'MANAGER':
     case 'COACH':
     case 'SCOUT':
     case 'PLAYER':
-      return { label: t.relation?.myAcademy, icon: Building2 };
+      return isLocalTeam
+        ? { label: t.relation?.myTeam, icon: Users }
+        : { label: t.relation?.myAcademy, icon: Building2 };
     case 'ENDORSED_SCOUT':
     case 'ENDORSED_COACH':
       return { label: t.relation?.endorsesMe, icon: BadgeCheck };

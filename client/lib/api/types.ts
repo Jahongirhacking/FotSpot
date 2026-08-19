@@ -324,6 +324,8 @@ export interface MyInvitation extends AcademyInvitation {
     region: string | null;
     district: string | null;
     status: VerificationStatus;
+    /** Academy or local team — the two are different things to be invited by. */
+    kind: AcademyKind;
   };
 }
 

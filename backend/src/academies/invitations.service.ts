@@ -113,7 +113,10 @@ export class InvitationsService {
 
     const academy = await this.prisma.academyProfile.findUnique({
       where: { id: academyId },
-      select: { id: true, name: true },
+      // `kind` rides along for the notification: an academy and a local team ask
+      // the same question with different words, and the player is the one being
+      // asked. See the payload below.
+      select: { id: true, name: true, kind: true },
     });
     if (!academy) throw new NotFoundException('Academy not found');
 
@@ -127,8 +130,17 @@ export class InvitationsService {
       },
     });
 
-    // The payload carries the academy's name so the notification reads like a
-    // sentence without the client having to fetch anything to render it.
+    /*
+     * The payload carries the academy's name so the notification reads like a
+     * sentence without the client having to fetch anything to render it — and
+     * its `kind` for the same reason.
+     *
+     * "An academy is inviting you to join" is the wrong sentence when a local
+     * team sent it: the two are different things to be invited by (LOCAL_TEAM.md
+     * §4/§20), and the player deciding is exactly the person who should not have
+     * to work out which one this is. The wording is the client's to choose, in
+     * their language; what belongs here is the fact it needs.
+     */
     await this.notifications.notify(
       dto.userId,
       'ACADEMY_JOIN_INVITATION',
@@ -136,6 +148,7 @@ export class InvitationsService {
         invitationId: invitation.id,
         academyId: academy.id,
         academyName: academy.name,
+        academyKind: academy.kind,
         role: dto.role,
         ...(invitation.note ? { note: invitation.note } : {}),
       },
@@ -186,7 +199,9 @@ export class InvitationsService {
       take: 50,
       include: {
         academy: {
-          select: { id: true, name: true, region: true, district: true, status: true },
+          // `kind` so the card can say what is inviting them, like the
+          // notification that brought them here.
+          select: { id: true, name: true, region: true, district: true, status: true, kind: true },
         },
       },
     });
