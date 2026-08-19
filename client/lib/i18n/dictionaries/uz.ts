@@ -640,6 +640,7 @@ export const uz = {
     you: 'Siz',
     myCoach: 'Mening murabbiyim',
     myAcademy: 'Mening akademiyam',
+    myTeam: 'Mening jamoam',
     endorsesMe: 'Meni tasdiqlagan',
     acceptedMe: 'Meni qabul qilgan',
   },

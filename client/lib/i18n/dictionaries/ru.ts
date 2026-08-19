@@ -611,6 +611,7 @@ export const ru: Dictionary = {
     you: 'Вы',
     myCoach: 'Мой тренер',
     myAcademy: 'Моя академия',
+    myTeam: 'Моя команда',
     endorsesMe: 'Подтвердила меня',
     acceptedMe: 'Приняла меня',
   },

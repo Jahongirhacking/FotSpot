@@ -612,6 +612,7 @@ export const en: Dictionary = {
     you: 'You',
     myCoach: 'My coach',
     myAcademy: 'My academy',
+    myTeam: 'My team',
     endorsesMe: 'Endorses me',
     acceptedMe: 'Accepted me',
   },
