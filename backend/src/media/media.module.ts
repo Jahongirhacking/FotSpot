@@ -4,6 +4,7 @@ import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { MediaFinaliserService } from './media-finaliser.service';
 import { MediaProcessor } from './media.processor';
+import { VideoTranscoderService } from './video-transcoder.service';
 import { MEDIA_QUEUE } from './media-processing.constants';
 import { AcademiesModule } from '../academies/academies.module';
 import { TariffsModule } from '../tariffs/tariffs.module';
@@ -20,7 +21,7 @@ import { TariffsModule } from '../tariffs/tariffs.module';
     BullModule.registerQueue({ name: MEDIA_QUEUE }),
   ],
   controllers: [MediaController],
-  providers: [MediaService, MediaProcessor, MediaFinaliserService],
+  providers: [MediaService, MediaProcessor, MediaFinaliserService, VideoTranscoderService],
   exports: [MediaService],
 })
 export class MediaModule {}

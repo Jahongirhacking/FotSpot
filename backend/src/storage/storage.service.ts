@@ -326,6 +326,46 @@ export class StorageService {
    * network, a bucket policy. Callers cleaning up after a *successful* database
    * write should still not fail their request over it; see `UsersService`.
    */
+  /**
+   * Pulls an object into memory, for the transcoder.
+   *
+   * The one place the API handles video bytes at all, and it exists because the
+   * fallback path has to: a browser that cannot encode uploads the original, and
+   * something has to turn that into the optimised object before the clip is ever
+   * shown. Everywhere else, video reaches R2 without passing through here (§14).
+   *
+   * A buffer rather than a stream because ffmpeg is handed a file on disk anyway,
+   * and the size is already bounded by `MAX_CLIP_BYTES`.
+   */
+  async getObject(storageKey: string): Promise<Buffer> {
+    const client = this.require();
+    const response = await client.send(
+      new GetObjectCommand({ Bucket: this.bucketFor(storageKey), Key: storageKey }),
+    );
+    if (!response.Body) throw new Error(`R2 returned no body for "${storageKey}"`);
+    return Buffer.from(await response.Body.transformToByteArray());
+  }
+
+  /**
+   * Writes an object from the server, rather than handing out a presigned PUT.
+   *
+   * Used by the transcoder to replace a clip with its optimised version, in
+   * place: the key does not change, so nothing that already points at the clip —
+   * the row, the poster beside it, a signed URL already minted — has to be
+   * rewritten or cleaned up afterwards.
+   */
+  async putObject(storageKey: string, body: Buffer, contentType: string): Promise<void> {
+    const client = this.require();
+    await client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketFor(storageKey),
+        Key: storageKey,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+
   async deleteObject(storageKey: string): Promise<void> {
     const client = this.require();
     await client.send(

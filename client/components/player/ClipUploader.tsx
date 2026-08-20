@@ -12,13 +12,21 @@ import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
 import { cn, formatDate } from '@/lib/utils';
+import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
+import type { CompressResult } from '@/lib/video/compress.types';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleStop, Trophy, Upload, Video, X } from 'lucide-react';
+import { CircleStop, Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
-/** §21.6 — a clip is a proof, not a highlight reel. One minute is the cap. */
-const MAX_SECONDS = 60;
+/**
+ * §21.6 — a clip is a proof, not a highlight reel. One minute is the cap.
+ *
+ * The recorder stops at it; a longer file picked from the gallery is trimmed to
+ * it rather than refused (see `compressForFeed`). One constant for both, so the
+ * two halves of the same rule cannot drift apart.
+ */
+const MAX_SECONDS = MAX_DURATION_SECONDS;
 const MAX_BYTES = 120 * 1024 * 1024;
 
 type Category = MediaCategory;
@@ -60,8 +68,22 @@ export function ClipUploader({
   const router = useRouter();
 
   const [file, setFile] = React.useState<File | null>(null);
+  /*
+   * The optimised copy, produced while the player fills in the rest of the form.
+   *
+   * Started the moment a file is chosen rather than on submit, so the encode runs
+   * during the seconds they spend on the rating and the title — by the time they
+   * press upload it is usually already done, and the wait costs nothing. Pressing
+   * upload early simply waits for it.
+   */
+  const [optimised, setOptimised] = React.useState<{
+    status: 'idle' | 'running' | 'done';
+    progress: number;
+    result: CompressResult | null;
+  }>({ status: 'idle', progress: 0, result: null });
+  const compressionRef = React.useRef<AbortController | null>(null);
   const [category, setCategory] = React.useState<Category | null>(null);
-  const [rating, setRating] = React.useState(70);
+  const [rating, setRating] = React.useState(50);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -92,11 +114,74 @@ export function ClipUploader({
     if (!candidate.type.startsWith('video/')) return setError(t.clips.videoOnly);
     if (candidate.size > MAX_BYTES) return setError(t.clips.tooLarge);
     setFile(candidate);
+    startCompression(candidate);
   };
+
+  /**
+   * Re-encodes in the background.
+   *
+   * Never rejects and never blocks: `compressForFeed` returns the original file
+   * on every failure path, so the worst case here is the upload that would have
+   * happened anyway. A second file replacing the first cancels the first encode —
+   * two hardware encoder sessions on a phone is how a low-end device runs out of
+   * memory.
+   */
+  const startCompression = (candidate: File) => {
+    compressionRef.current?.abort();
+    const controller = new AbortController();
+    compressionRef.current = controller;
+
+    setOptimised({ status: 'running', progress: 0, result: null });
+
+    void compressForFeed(candidate, {
+      signal: controller.signal,
+      onProgress: (fraction) => {
+        if (controller.signal.aborted) return;
+        setOptimised((was) => (was.status === 'running' ? { ...was, progress: fraction } : was));
+      },
+    }).then((result) => {
+      if (controller.signal.aborted) return;
+      setOptimised({ status: 'done', progress: 1, result });
+    });
+  };
+
+  // A camera left encoding after the dialog closes is a battery drain on a
+  // minor's phone, the same reasoning as LiveRecorder's cleanup.
+  React.useEffect(() => () => compressionRef.current?.abort(), []);
 
   const upload = useMutation({
     mutationFn: async () => {
       if (!file || !category) throw new Error(t.clips.pickCategory);
+
+      /*
+       * The optimised copy if there is one, the original otherwise.
+       *
+       * `compressForFeed` hands back the original on every failure path, so this
+       * is the same file the uploader would have sent before compression
+       * existed — an unsupported browser, an out-of-memory phone or a codec the
+       * decoder refuses all end up here with the upload intact.
+       */
+      /*
+       * Nothing goes up until the compressor has settled on an outcome that
+       * clears the one-minute cap.
+       *
+       * Written as "must have a passing result" rather than "must not have a
+       * failing one", so a state this component has not thought of — an outcome
+       * that never arrived, an encode still running past a disabled button —
+       * blocks rather than falls through to the original. The invariant is that
+       * no source longer than a minute reaches storage unchanged, and a guard
+       * that only rejects the cases it enumerated is one enumeration short of
+       * breaking it.
+       *
+       * The error says processing failed, because that is what happened. A
+       * source longer than a minute is supported and trimmed, so telling
+       * somebody their video is too long would be both discouraging and untrue.
+       */
+      if (!optimised.result || mustProcess(optimised.result)) {
+        throw new Error(t.clips.processingFailed);
+      }
+
+      const outgoing = optimised.result?.file ?? file;
 
       // 1. Presigned PUT, 2. straight to R2 — the video never transits the API,
       // which matters on mobile data (§14). 3. Confirm, which is what creates the
@@ -109,14 +194,16 @@ export function ClipUploader({
       }>('/media/upload-url', {
         method: 'POST',
         body: {
-          filename: file.name || 'clip?.webm',
+          // The name decides the object key's extension, so it follows the file
+          // actually being sent — `.mp4` once compressed.
+          filename: outgoing.name || 'clip.webm',
           type: 'VIDEO',
           category,
-          contentType: file.type || 'video/webm',
+          contentType: outgoing.type || 'video/webm',
         },
       });
 
-      await uploadToStorage(ticket.uploadUrl, file, {
+      await uploadToStorage(ticket.uploadUrl, outgoing, {
         blocked: t.clips.uploadBlocked,
         rejected: t.clips.uploadFailed,
       });
@@ -125,7 +212,8 @@ export function ClipUploader({
       // returns null rather than throwing, and a failed poster PUT is swallowed
       // here. A tile without a cover falls back to a themed placeholder.
       let posterKey: string | undefined;
-      const poster = await capturePoster(file);
+      // From the optimised copy: the same frames, far cheaper to decode.
+      const poster = await capturePoster(outgoing);
       if (poster) {
         const stored = await uploadToStorage(ticket.posterUploadUrl, poster, {
           blocked: '',
@@ -142,6 +230,15 @@ export function ClipUploader({
           storageKey: ticket.storageKey,
           type: 'VIDEO',
           category,
+          /*
+           * Whether this browser produced the optimised MP4.
+           *
+           * False sends the clip to the server-side transcoder instead, which is
+           * what guarantees the feed never serves an original — a browser
+           * without WebCodecs no longer means "skip compression", it means
+           * "compress it there".
+           */
+          optimised: optimised.result?.status === 'compressed',
           ...(category === 'MATCH_HIGHLIGHTS' ? {} : { rating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
@@ -289,11 +386,24 @@ export function ClipUploader({
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() => setFile(null)}
+                    onClick={() => {
+                      compressionRef.current?.abort();
+                      setOptimised({ status: 'idle', progress: 0, result: null });
+                      setFile(null);
+                    }}
                   >
                     <X aria-hidden /> {t.clips.replaceClip}
                   </Button>
                 </div>
+
+                <OptimiseStatus state={optimised} />
+
+                {/* Said here as well as on submit: a player who cannot upload
+                    this clip should learn it while looking at it, not after
+                    filling in a rating and a title. */}
+                {optimised.result && mustProcess(optimised.result) && (
+                  <Alert tone="danger">{t.clips.processingFailed}</Alert>
+                )}
 
                 {/* Step 3 — the self review, with what a top score means for this
                     skill in particular. Highlights evidence no single attribute,
@@ -314,7 +424,7 @@ export function ClipUploader({
                       onChange={(event) => setRating(Number(event.target.value))}
                       className="accent-primary w-full"
                     />
-                    <TopScoreTip category={category} />
+                    <SelfRatingGuide category={category} rating={rating} />
                   </Field>
                 )}
 
@@ -342,8 +452,15 @@ export function ClipUploader({
                 {/* Step 5 */}
                 <Button
                   onClick={() => upload.mutate()}
-                  loading={upload.isPending}
-                  disabled={!ready}
+                  // Still encoding counts as loading: the button would otherwise
+                  // look idle while the thing it needs is being produced.
+                  loading={upload.isPending || optimised.status === 'running'}
+                  disabled={
+                    !ready ||
+                    optimised.status !== 'done' ||
+                    !optimised.result ||
+                    mustProcess(optimised.result)
+                  }
                   className="w-full"
                 >
                   <Upload aria-hidden /> {t.clips.publish}
@@ -355,6 +472,74 @@ export function ClipUploader({
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * What the encoder is doing, in one line the player can ignore.
+ *
+ * Deliberately quiet. Compression is an optimisation they did not ask for and do
+ * not need to understand — the only thing worth their attention is that a bar is
+ * moving and that it saved them something. A skipped clip says so plainly rather
+ * than reporting a reason ("unsupported codec") that would read as a fault when
+ * the upload is proceeding perfectly normally.
+ */
+function OptimiseStatus({
+  state,
+}: {
+  state: { status: 'idle' | 'running' | 'done'; progress: number; result: CompressResult | null };
+}) {
+  const { t, f } = useI18n();
+
+  if (state.status === 'running') {
+    return (
+      <div className="border-border bg-surface-2 space-y-2 rounded-lg border p-3">
+        <p className="flex items-center gap-2 text-xs font-medium">
+          <Wand2 className="text-primary size-3.5 shrink-0" aria-hidden />
+          {t.clips.optimising}
+        </p>
+        <div className="bg-surface-3 h-1.5 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full transition-all"
+            style={{ width: `${Math.round(state.progress * 100)}%` }}
+          />
+        </div>
+        <p className="text-muted text-xs leading-snug">{t.clips.optimisingHint}</p>
+      </div>
+    );
+  }
+
+  if (state.status !== 'done' || !state.result) return null;
+
+  if (state.result.status !== 'compressed') {
+    return <p className="text-muted text-xs">{t.clips.optimiseSkipped}</p>;
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-success flex items-center gap-1.5 text-xs">
+        <Wand2 className="size-3.5 shrink-0" aria-hidden />
+        {f(t.clips.optimisedTo, {
+          before: formatBytes(state.result.originalBytes),
+          after: formatBytes(state.result.bytes),
+        })}
+      </p>
+      {/* Trimming is silent about *whether* to do it, never about having done
+          it: a player who filmed two minutes should not discover the second
+          half is missing by watching it back on their profile. */}
+      {state.result.trimmed && (
+        <p className="text-muted flex items-center gap-1.5 text-xs">
+          <Scissors className="size-3.5 shrink-0" aria-hidden />
+          {t.clips.trimmedToLimit}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** `41.2 MB`. Rounded hard — nobody is auditing an upload to three decimals. */
+function formatBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 10 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
 }
 
 function CategoryChip({
@@ -530,38 +715,69 @@ function LiveRecorder({
  * single most common reason a clip is unusable.
  */
 /**
- * What a score near 100 means for this particular skill.
+ * The three bands the slider is asking the player to place themselves in.
  *
- * ## Why it is per-skill and not one sentence
+ * ## Why bands and not one sentence
  *
- * "100 = excellent" tells a fourteen-year-old nothing. Excellent *at what* is the
- * question, and the answer differs completely between skills — a top Pace clip is
- * about acceleration held to the line, a top Passing clip is about weight and
- * both feet. Without it the slider is a number with no anchor, and every player
- * lands on the same optimistic 80.
+ * This showed only what a 100 meant, which answered the wrong question. Nobody
+ * scoring themselves is deciding whether they are perfect — they are deciding
+ * between roughly-good and roughly-very-good, and a description of the ceiling
+ * gives them nothing to measure that against. Three anchors turn an arbitrary
+ * 0–100 slider into a choice with edges: I beat one defender, not several, so I
+ * am in the middle band.
  *
- * It sits beside the slider rather than replacing `t.clips.ratingHint`, which is
- * the sentence that says this is the player's own claim and stays self-reported
- * until a coach signs it off (§1.6). The two answer different questions: one is
- * "what am I scoring", the other is "what does my score count for".
+ * ## Why the thresholds are drawn here and the sentences are not
  *
- * The copy lives in `t.clipTips` beside the filming instructions for the same
- * reason those do — one place per skill, so the guidance for a skill cannot drift
- * apart from the description of it.
+ * `30`, `60` and `90` are numerals — identical in all three languages, and a
+ * dictionary entry holding one would be a string nobody could usefully change.
+ * The sentences differ completely per skill and per language, so they live in
+ * `t.clipTips` beside the filming instructions: one place per skill, which is
+ * what stops the guidance for a skill drifting from the description of it.
+ *
+ * The band the slider currently sits in is marked, so the panel reads as a
+ * response to what they just chose rather than a wall of advice.
  */
-function TopScoreTip({ category }: { category: Category }) {
+const RATING_BANDS = [
+  { from: 30, key: 'low' },
+  { from: 60, key: 'mid' },
+  { from: 90, key: 'high' },
+] as const;
+
+function SelfRatingGuide({ category, rating }: { category: Category; rating: number }) {
   const { t } = useI18n();
   const tips = t.clipTips[category as keyof typeof t.clipTips];
 
-  if (!tips || typeof tips === 'string' || !tips.high) return null;
+  // Guards a category added to the enum before its copy is written.
+  if (!tips || typeof tips === 'string' || !tips.bands) return null;
+
+  // The highest band the rating has reached, or none while it is still below 30.
+  const reached = [...RATING_BANDS].reverse().find((band) => rating >= band.from);
 
   return (
-    <p className="border-border bg-surface-2 text-muted mt-2 rounded-lg border p-2.5 text-xs leading-snug">
-      {/* The numeral is rendered here rather than translated: "100" is the same
-          in all three languages and a dictionary entry holding one would be a
-          string nobody could usefully change. */}
-      <span className="text-foreground font-semibold">100 —</span> {tips.high}
-    </p>
+    <div className="border-border bg-surface-2 mt-2 space-y-1.5 rounded-lg border p-2.5">
+      {RATING_BANDS.map((band) => {
+        const active = reached?.key === band.key;
+        return (
+          <p
+            key={band.key}
+            className={cn(
+              'flex gap-2 text-xs leading-snug transition-colors',
+              active ? 'text-foreground' : 'text-muted',
+            )}
+          >
+            <span
+              className={cn(
+                'w-9 shrink-0 text-right font-semibold tabular-nums',
+                active && 'text-primary',
+              )}
+            >
+              {band.from}+
+            </span>
+            <span>{tips.bands[band.key]}</span>
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

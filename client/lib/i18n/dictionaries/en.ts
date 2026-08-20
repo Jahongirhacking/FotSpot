@@ -666,6 +666,14 @@ export const en: Dictionary = {
     clipTitle: 'Title',
     description: 'Description',
     publish: 'Upload',
+    optimising: 'Preparing your video…',
+    optimisingHint:
+      'Making it smaller without losing quality — the upload will be quicker and use less data.',
+    optimisedTo: 'Reduced from {before} to {after}',
+    optimiseSkipped: 'This video is already ready to upload.',
+    processingFailed:
+      'We could not prepare this video on your device. Try another browser, or choose a shorter clip (up to 1 minute).',
+    trimmedToLimit: 'Trimmed to the first 60 seconds',
     videoOnly: 'Video files only.',
     tooLarge: 'That video is too large (120 MB max).',
     pickCategory: 'Pick an attribute first.',
@@ -1189,62 +1197,88 @@ export const en: Dictionary = {
 
   clipTips: {
     camera:
-      'Tip: keep the camera stable, use good lighting, and keep your full body and the ball visible.',
+      'Tip: Keep the camera steady. Use good lighting. Keep your full body and the ball visible.',
     playerLabel: 'Player',
     goalkeeperLabel: 'Goalkeeper',
+
     PACE: {
-      player:
-        'Show your first few steps, a 20–30 m run, acceleration with the ball and a change of direction.',
-      goalkeeper:
-        'Show reaction speed off the line, how quickly you come out and how fast you reach the ball.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'You ran at full speed from the first step, accelerated hard and held that pace to the end.',
+      player: 'Show a 30 m sprint, acceleration, and speed with the ball.',
+      goalkeeper: 'Show reaction speed, quick movement, and reaching the ball quickly.',
+      bands: {
+        low: '30 m: about 5.0–5.5+ sec. Average acceleration and you may slow down near the end.',
+        mid: '30 m: about 4.4–5.0 sec. Good acceleration and you maintain your speed.',
+        high: '30 m: about 4.0–4.4 sec or faster. Very quick acceleration and high top speed.',
+      },
     },
+
     DRIBBLING: {
-      player:
-        'Show close control in a tight space, feints, beating a defender and keeping the ball under pressure.',
-      goalkeeper: 'Show carrying the ball out under pressure and escaping a press with your feet.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'You kept the ball close at speed, beat a defender cleanly and never lost it under pressure.',
+      player: 'Show close control, feints, and beating defenders in 1v1 situations.',
+      goalkeeper: 'Show ball control under pressure and escaping opponents with the ball.',
+      bands: {
+        low: 'Good control without pressure, but often lose the ball in 1v1 situations.',
+        mid: 'Beat defenders in most 1v1 situations and keep control at speed.',
+        high: 'Keep the ball under strong pressure and beat opponents in 1v1 or 2v1 situations.',
+      },
     },
+
     PASSING: {
-      player: 'Show short and long passes, accuracy, both feet, and passing to a moving team-mate.',
-      goalkeeper: 'Show distribution by hand and foot, a long pass, and starting a quick attack.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Your passes reached the target with the right weight, on both feet, including the hard long ones.',
+      player: 'Show short and long passes, both feet, accuracy, and passes to moving teammates.',
+      goalkeeper: 'Show distribution with hands and feet, long passes, and quick attacks.',
+      bands: {
+        low: 'About 6–7 accurate passes out of 10. Long passes are often inaccurate.',
+        mid: 'About 8 accurate passes out of 10. Can pass short and long with both feet.',
+        high: '9–10 accurate passes out of 10. Can accurately find moving teammates from long range.',
+      },
     },
+
     FINISHING: {
-      player: 'Show finishes inside and outside the box, with both feet and with your head.',
-      goalkeeper: 'Show penalty saves and stopping a shot in a one-on-one.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'You struck cleanly and accurately with both feet, and scored from difficult angles.',
+      player: 'Show shots from inside and outside the box, with both feet and headers.',
+      goalkeeper: 'Show saves from penalties, 1v1s, and shots from different distances.',
+      bands: {
+        low: 'About 5–6 shots on target out of 10.',
+        mid: 'About 7–8 shots on target out of 10 and can finish with both feet.',
+        high: '9+ shots on target out of 10. Can finish accurately from difficult angles and under pressure.',
+      },
     },
+
     PHYSICAL: {
-      player: 'Show strength, balance, duels, jump height and stamina.',
-      goalkeeper: 'Show jumping, extension, dominance in the box and getting back up quickly.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'You won your duels, stayed balanced under contact and kept the same intensity to the end.',
+      player: 'Show strength, balance, physical duels, jumping ability, and stamina.',
+      goalkeeper: 'Show jumping, stretching, balance, physical strength, and quick recovery.',
+      bands: {
+        low: 'Win about 4–5 out of 10 physical duels.',
+        mid: 'Win about 6–7 out of 10 duels and maintain your strength throughout the match.',
+        high: 'Win about 8–9+ out of 10 duels and maintain high intensity until the end.',
+      },
     },
+
     TECHNIQUE: {
-      player: 'Show juggling, dribbling, feints, first touch, passing, and shooting.',
-      goalkeeper:
-        'Show diving saves, reactions, high balls, 1v1 saves, foot distribution, and throwing.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Your first touch, control and skill moves were clean and confident, at speed and under pressure.',
+      player: 'Show juggling, first touch, ball control, feints, passing, and shooting.',
+      goalkeeper: 'Show saves, reactions, high balls, 1v1s, and distribution with your feet.',
+      bands: {
+        low: 'Control the ball with the first touch in about 6–7 out of 10 situations.',
+        mid: 'Good first touch and control at speed in about 8 out of 10 situations.',
+        high: 'Maintain clean control and technique under strong pressure in 9–10 out of 10 situations.',
+      },
     },
+
     GOALKEEPING: {
-      player: 'This one is for keepers. If you play outfield, pick another skill.',
-      goalkeeper:
-        'Show diving saves, reactions, coming for high balls, 1v1s, penalties, and distribution with your feet.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'You read the shot early, dived cleanly, controlled the rebound and distributed accurately.',
+      player: 'This skill is only for goalkeepers.',
+      goalkeeper: 'Show saves, reactions, high balls, 1v1s, penalties, and distribution.',
+      bands: {
+        low: 'Save routine shots, but struggle more with difficult situations.',
+        mid: 'Save most routine and medium-difficulty shots and perform well in 1v1s.',
+        high: 'Make difficult saves and perform strongly in 1v1 and penalty situations.',
+      },
     },
+
     MATCH_HIGHLIGHTS: {
-      player:
-        'Your best moments from a real match: goals, assists, decisive actions. Make sure you are identifiable.',
-      goalkeeper: 'Saves, claims and moments of organising the defence, from a real match.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Every moment shown is decisive, and it is obvious which player is you.',
+      player: 'Show goals, assists, tackles, and your best moments from real matches.',
+      goalkeeper: 'Show saves, exits, and key moments where you helped control the game.',
+      bands: {
+        low: '1–2 good moments: a shot, pass, tackle, or other useful action.',
+        mid: '3–5 important moments: goals, assists, saves, or decisive actions.',
+        high: '5+ important moments or game-changing actions, especially against strong opponents.',
+      },
     },
   },
 

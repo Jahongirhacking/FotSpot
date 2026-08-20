@@ -35,7 +35,17 @@ import { ApiError, extractMessage, type RequestOptions } from './client';
  * Module scope on purpose: it has to be shared by every caller in the tab, which
  * is precisely what a per-call variable could not do.
  */
-let inFlightRefresh: Promise<boolean> | null = null;
+let inFlightRefresh: Promise<RefreshOutcome> | null = null;
+
+/**
+ * What a refresh established — three answers, not two.
+ *
+ * `refused` is the backend saying the token is dead, which ends the session.
+ * `unavailable` is a timeout or a 502, which says nothing about the token: the
+ * user keeps their cookies and sees a failed request rather than a login screen.
+ * Conflating them signed people out whenever the API restarted.
+ */
+type RefreshOutcome = 'refreshed' | 'refused' | 'unavailable';
 
 /**
  * Refreshes once per burst, whoever asks first.
@@ -44,10 +54,15 @@ let inFlightRefresh: Promise<boolean> | null = null;
  * settled promise — a shared promise that is never released would turn one
  * successful refresh into the only one this tab ever performs.
  */
-function refreshOnce(): Promise<boolean> {
+function refreshOnce(): Promise<RefreshOutcome> {
   inFlightRefresh ??= fetch('/api/auth/refresh', { method: 'POST' })
-    .then((response) => response.ok)
-    .catch(() => false)
+    .then((response): RefreshOutcome => {
+      if (response.ok) return 'refreshed';
+      // The route answers 401/403 only when the backend refused the token; it
+      // passes an outage through as its own status. See its catch block.
+      return response.status === 401 || response.status === 403 ? 'refused' : 'unavailable';
+    })
+    .catch((): RefreshOutcome => 'unavailable')
     .finally(() => {
       inFlightRefresh = null;
     });
@@ -79,14 +94,27 @@ export async function browserFetch<T>(path: string, options: RequestOptions = {}
 
     // Shared: five simultaneous 401s make one refresh, not five. See above —
     // five would be four replays and a revoked session.
-    const refreshed = await refreshOnce();
-    if (refreshed) {
+    const outcome = await refreshOnce();
+
+    if (outcome === 'refreshed') {
       // Retried exactly once. A second 401 after a fresh token is not an expiry,
       // so retrying again would loop on something a new token cannot fix.
       response = await run();
+    } else if (outcome === 'unavailable') {
+      /*
+       * The refresh could not be completed, which is not the same as being
+       * refused. Cookies are untouched and the user stays signed in — they get a
+       * failed request, which is what actually happened, and the next attempt
+       * refreshes again.
+       *
+       * Signing somebody out here would be punishing them for an API restart
+       * with credentials that were never in question.
+       */
+      throw new ApiError(503, 'Could not reach the server. Please try again.');
     } else {
-      // Terminal: cookies are cleared by the refresh route. Send the user to login
-      // rather than leaving the UI in a half-authenticated state.
+      // Terminal: the backend refused the token, and the refresh route has
+      // cleared the cookies. Send the user to login rather than leaving the UI
+      // in a half-authenticated state.
       if (typeof window !== 'undefined') {
         window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
       }

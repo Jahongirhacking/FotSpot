@@ -8,8 +8,18 @@
  */
 export const MEDIA_QUEUE = 'media-processing';
 
-/** The one job kind this queue carries today. */
 export const FINALISE_CLIP_JOB = 'finalise-clip';
+
+/**
+ * Transcoding, for a clip the browser could not compress.
+ *
+ * A separate job kind rather than a flag on the first, because the work is not
+ * comparable: finalising is two HEAD requests, transcoding is minutes of CPU and
+ * a file on disk. One name each keeps them separable in the queue's own metrics
+ * and lets a future deployment give transcoding its own worker without touching
+ * the producer.
+ */
+export const TRANSCODE_CLIP_JOB = 'transcode-clip';
 
 export interface FinaliseClipJob {
   mediaId: string;
@@ -17,6 +27,17 @@ export interface FinaliseClipJob {
   storageKey: string;
   posterKey?: string | null;
 }
+
+/**
+ * How long a transcode may hold a queue slot, and how often it is retried.
+ *
+ * Fewer attempts than finalising, and no reason to back off far: finalising
+ * retries a *race* that resolves itself, where a transcode that failed has
+ * usually failed for a reason repeating will not fix. Two attempts covers a
+ * transient download.
+ */
+export const TRANSCODE_ATTEMPTS = 2;
+export const TRANSCODE_BACKOFF_MS = 15_000;
 
 /**
  * Attempts, and the wait between them.

@@ -12,10 +12,27 @@ const SESSION_COOKIE = {
   path: '/',
 } as const;
 
-/** Long-lived, matching the backend's 30-day refresh TTL. */
+/** Long-lived, matching the backend's 30-day refresh TTL (`JWT_REFRESH_TTL`). */
 const REFRESH_MAX_AGE = 30 * 24 * 60 * 60;
-/** Access token is short-lived server-side; the cookie only needs to outlive a page view. */
-const ACCESS_MAX_AGE = 60 * 60;
+
+/**
+ * The access cookie must not outlive the token inside it.
+ *
+ * It used to be an hour against a fifteen-minute token (`JWT_ACCESS_TTL`), which
+ * left a forty-five minute window where the browser held a cookie that looked
+ * exactly like a session and contained a dead credential. Every guard that asked
+ * "is there a cookie" said yes; every request made with it came back 401. That is
+ * what being away for twenty minutes and returning to an error page was.
+ *
+ * Matching the two means cookie-presence is once again a truthful signal, which
+ * is what the guards were always assuming. `isAccessTokenUsable` covers the rest
+ * — clock skew, and a deployment that changes `JWT_ACCESS_TTL` without changing
+ * this number.
+ *
+ * A slightly *shorter* cookie than token would also be safe; a longer one is the
+ * only combination that lies.
+ */
+const ACCESS_MAX_AGE = 15 * 60;
 /** Preferences outlive the session on purpose (README §1.2.1). */
 const PREFERENCE_MAX_AGE = 365 * 24 * 60 * 60;
 

@@ -2,7 +2,17 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaCategory } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 /** The card attributes a clip can evidence, plus highlights (§21.1). */
 const CATEGORIES = [
@@ -30,6 +40,17 @@ export class RequestUploadDto {
 
 export class ConfirmUploadDto {
   @IsString() storageKey: string;
+
+  /**
+   * Whether the browser already produced the optimised MP4.
+   *
+   * A hint, never a permission. Absent or false sends the clip to the server-side
+   * transcoder, which is the safe direction — the cost of disbelieving a client
+   * that did compress is one wasted re-encode, and the cost of believing one that
+   * did not is a 40 MB original serving the feed for ever. An older client that
+   * does not send the field lands on the safe side by omission.
+   */
+  @IsOptional() @IsBoolean() optimised?: boolean;
   @IsIn(TYPES) type: (typeof TYPES)[number];
   @ApiProperty({ enum: MediaCategory, enumName: 'MediaCategory' })
   @IsIn(CATEGORIES)
@@ -133,5 +154,4 @@ export class CreateMediaCommentDto {
   body: string;
 }
 
-export class ListMediaCommentsDto extends PaginationDto {
-}
+export class ListMediaCommentsDto extends PaginationDto {}
