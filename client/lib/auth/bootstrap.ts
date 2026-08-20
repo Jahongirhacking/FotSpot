@@ -23,15 +23,32 @@ import { isAccessTokenUsable } from './access-token';
  *   the caller can write them onto both the request and the response.
  * - `unauthenticated` — no refresh token to try. Not an error: a signed-out
  *   visitor is the ordinary case on a public page.
- * - `expired` — there was a refresh token and the backend refused it. This is the
- *   only outcome that clears cookies, because it is the only one where the
+ * - `expired` — there was a refresh token and the backend **refused** it. This is
+ *   the only outcome that clears cookies, because it is the only one where the
  *   session is provably over.
+ * - `unavailable` — the refresh could not be completed at all: a timeout, a
+ *   refused connection, a 502 from a deploying API.
+ *
+ * ## Why `unavailable` is a state and not a failure
+ *
+ * These two used to be one. Any error meant `expired`, which meant a user whose
+ * session was perfectly valid was signed out because the API restarted — the
+ * security system punishing them for an outage they had nothing to do with.
+ *
+ * A network error says nothing about a token. The backend answers 401 for every
+ * genuine auth failure it has — invalid, revoked, expired, replayed, account
+ * disabled (see `AuthService.refresh`) — so an answer that is *not* 401 or 403 is
+ * an answer about the server, not about the session. The session stays intact and
+ * the request continues; the next navigation tries again.
+ *
+ * Fail closed on authority, fail open on availability.
  */
 export type AuthState =
   | { status: 'authenticated' }
   | { status: 'refreshed'; session: AuthSession }
   | { status: 'unauthenticated' }
-  | { status: 'expired' };
+  | { status: 'expired' }
+  | { status: 'unavailable' };
 
 /**
  * Works out where a request stands, refreshing if that is what it takes.
@@ -55,12 +72,16 @@ export async function resolveAuth(
 
   // Cases 2 and 3 — the access token is gone or dead and there is a refresh
   // token, so use it. This is the call that never used to happen.
-  const session = await mintSession(refreshToken);
-  if (session) return { status: 'refreshed', session };
+  const result = await mintSession(refreshToken);
 
-  // Cases 6 and 7. The backend refused the refresh token: replayed, revoked or
-  // simply too old. That is the point at which the session is over.
-  return { status: 'expired' };
+  if (result.outcome === 'session') return { status: 'refreshed', session: result.session };
+
+  // Cases 6 and 7. The backend *refused* the refresh token: replayed, revoked or
+  // simply too old. That is the point at which the session is over — and the only
+  // point, which is what `unavailable` below exists to keep true.
+  if (result.outcome === 'rejected') return { status: 'expired' };
+
+  return { status: 'unavailable' };
 }
 
 /**
@@ -88,25 +109,32 @@ export async function resolveAuth(
  * reason `browserFetch` keeps its own single-flight for XHRs rather than relying
  * on this.
  */
-const inFlight = new Map<string, Promise<AuthSession | null>>();
+const inFlight = new Map<string, Promise<RefreshResult>>();
 
 /**
- * Exchanges a refresh token for a new pair.
+ * What a refresh attempt actually established.
  *
- * Returns null rather than throwing on *any* failure, but the two failures are
- * not the same and the difference matters:
- *
- * - the backend answering 401 means the token is dead, and the session with it;
- * - the backend being unreachable means nothing about the session at all.
- *
- * Both land on null, and the caller treats null as expired — which signs out a
- * user whose session was fine but whose API was down. That is the conservative
- * direction and the one this already had, but it is worth naming rather than
- * leaving as an accident: distinguishing them would mean deciding what a page
- * should render when the API is unreachable, which is a larger question than
- * this file.
+ * Three outcomes, not two, because "it did not work" conflates a dead token with
+ * a dead server and only one of those is about the session.
  */
-function mintSession(refreshToken: string): Promise<AuthSession | null> {
+type RefreshResult =
+  | { outcome: 'session'; session: AuthSession }
+  /** The backend refused the token: 401 or 403. The session is over. */
+  | { outcome: 'rejected' }
+  /** Nothing was established — timeout, refused connection, 5xx. */
+  | { outcome: 'unavailable' };
+
+/**
+ * How long to wait on the refresh before giving up.
+ *
+ * This runs on every navigation whose access token has expired, so an API that
+ * hangs would hang the site rather than one request. Timing out lands on
+ * `unavailable`, which keeps the session and lets the page render.
+ */
+const REFRESH_TIMEOUT_MS = 8000;
+
+/** Exchanges a refresh token for a new pair, or says why it could not. */
+function mintSession(refreshToken: string): Promise<RefreshResult> {
   const existing = inFlight.get(refreshToken);
   if (existing) return existing;
 
@@ -121,22 +149,45 @@ function mintSession(refreshToken: string): Promise<AuthSession | null> {
   return flight;
 }
 
-async function requestSession(refreshToken: string): Promise<AuthSession | null> {
+async function requestSession(refreshToken: string): Promise<RefreshResult> {
+  let response: Response;
+
   try {
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
+    response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
       // A rotated token must never be served from a cache, and an intermediary
       // caching this response would hand the same new pair to two sessions.
       cache: 'no-store',
+      signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
     });
-
-    if (!response.ok) return null;
-
-    const session = (await response.json()) as AuthSession;
-    return session?.accessToken && session?.refreshToken ? session : null;
   } catch {
-    return null;
+    // DNS, a refused connection, a timeout. None of them is a statement about
+    // the token, so none of them ends the session.
+    return { outcome: 'unavailable' };
+  }
+
+  /*
+   * Only the backend saying "no" ends a session.
+   *
+   * `AuthService.refresh` answers 401 for every genuine failure it has — invalid,
+   * revoked, expired, replayed, account disabled. 403 is included because a
+   * future guard could answer with it. Everything else — 500, 502, 503, a
+   * gateway's HTML error page — is the server having a problem, not the session.
+   */
+  if (response.status === 401 || response.status === 403) return { outcome: 'rejected' };
+  if (!response.ok) return { outcome: 'unavailable' };
+
+  try {
+    const session = (await response.json()) as AuthSession;
+    // A 200 that does not carry a session is a broken response, not a refusal —
+    // treating it as a refusal would sign somebody out over a deploy that served
+    // an HTML page from the API's hostname.
+    return session?.accessToken && session?.refreshToken
+      ? { outcome: 'session', session }
+      : { outcome: 'unavailable' };
+  } catch {
+    return { outcome: 'unavailable' };
   }
 }

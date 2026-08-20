@@ -29,26 +29,25 @@ const EXPIRED = () => token(-60);
 
 /** Counts calls so "exactly one refresh" is a fact rather than a hope. */
 let refreshCalls: string[] = [];
-let refreshReply: { ok: boolean; delayMs?: number } = { ok: true };
+let refreshReply: { status?: number; delayMs?: number; throws?: Error; body?: unknown } = {};
 
 beforeEach(() => {
   refreshCalls = [];
-  refreshReply = { ok: true };
+  refreshReply = {};
 
   global.fetch = (async (url: string, init: RequestInit) => {
     refreshCalls.push(String(JSON.parse(String(init.body)).refreshToken));
     if (refreshReply.delayMs) await new Promise((r) => setTimeout(r, refreshReply.delayMs));
+    if (refreshReply.throws) throw refreshReply.throws;
 
-    return refreshReply.ok
-      ? new Response(
-          JSON.stringify({
-            accessToken: VALID(),
-            refreshToken: 'refresh-2',
-            roles: ['player'],
-          }),
-          { status: 200 },
-        )
-      : new Response(JSON.stringify({ message: 'Session expired' }), { status: 401 });
+    const status = refreshReply.status ?? 200;
+    const body =
+      refreshReply.body ??
+      (status === 200
+        ? { accessToken: VALID(), refreshToken: 'refresh-2', roles: ['player'] }
+        : { message: 'nope' });
+
+    return new Response(JSON.stringify(body), { status });
   }) as unknown as typeof fetch;
 });
 
@@ -95,7 +94,7 @@ test('case 5: an expired token with nothing to refresh from is unauthenticated',
 
 /** 6 & 7. A refresh token the backend refuses ends the session. */
 test('case 6: a rejected refresh token ends the session', async () => {
-  refreshReply = { ok: false };
+  refreshReply = { status: 401 };
 
   const auth = await resolveAuth(undefined, 'refresh-dead');
 
@@ -104,7 +103,7 @@ test('case 6: a rejected refresh token ends the session', async () => {
 });
 
 test('case 7: an expired access token with a dead refresh token ends the session', async () => {
-  refreshReply = { ok: false };
+  refreshReply = { status: 401 };
 
   assert.equal((await resolveAuth(EXPIRED(), 'refresh-dead')).status, 'expired');
 });
@@ -117,7 +116,7 @@ test('case 7: an expired access token with a dead refresh token ends the session
  * is the assertion that stops that being possible.
  */
 test('case 8: a burst of expired requests produces exactly one refresh', async () => {
-  refreshReply = { ok: true, delayMs: 20 };
+  refreshReply = { delayMs: 20 };
 
   const results = await Promise.all([
     resolveAuth(undefined, 'refresh-1'),
@@ -135,7 +134,7 @@ test('case 8: a burst of expired requests produces exactly one refresh', async (
  * the whole module would hand whichever session resolved first to both of them.
  */
 test('two sessions refreshing at once do not share a flight', async () => {
-  refreshReply = { ok: true, delayMs: 20 };
+  refreshReply = { delayMs: 20 };
 
   await Promise.all([resolveAuth(undefined, 'refresh-A'), resolveAuth(undefined, 'refresh-B')]);
 
@@ -152,28 +151,85 @@ test('a later expiry refreshes again rather than reusing a settled flight', asyn
 
 /** 9. A failed refresh does not loop. */
 test('case 9: a failed refresh is terminal, not retried in a loop', async () => {
-  refreshReply = { ok: false };
+  refreshReply = { status: 401 };
 
   await resolveAuth(undefined, 'refresh-dead');
 
   assert.equal(refreshCalls.length, 1, 'a rejected refresh must be attempted once');
 });
 
-/* An unreachable API is treated as expired — conservative, and named in the
-   source so it is a decision rather than an accident. */
-test('an unreachable API does not throw into the render', async () => {
-  global.fetch = (async () => {
-    throw new Error('ECONNREFUSED');
-  }) as unknown as typeof fetch;
+/*
+ * ---------------------------------------------------------------------------
+ * A network failure is not an authentication failure.
+ *
+ * These used to all resolve to `expired`, which signed a user out whenever the
+ * API restarted — punishing them for an outage with credentials that were never
+ * in question. The backend answers 401 for every genuine failure it has, so an
+ * answer that is not 401 or 403 is about the server, not the session.
+ * ---------------------------------------------------------------------------
+ */
+
+/** 11. Connection refused. */
+test('case 11: a refused connection keeps the session', async () => {
+  refreshReply = { throws: new Error('ECONNREFUSED') };
+
+  const auth = await resolveAuth(undefined, 'refresh-1');
+
+  assert.equal(auth.status, 'unavailable');
+  assert.notEqual(auth.status, 'expired');
+});
+
+/** 12. The API is up but broken. */
+for (const status of [500, 502, 503, 504]) {
+  test(`case 12: a ${status} from the API keeps the session`, async () => {
+    refreshReply = { status };
+
+    assert.equal((await resolveAuth(undefined, 'refresh-1')).status, 'unavailable');
+  });
+}
+
+/** 13. A timeout. */
+test('case 13: a timeout keeps the session', async () => {
+  refreshReply = { throws: Object.assign(new Error('timeout'), { name: 'TimeoutError' }) };
+
+  assert.equal((await resolveAuth(undefined, 'refresh-1')).status, 'unavailable');
+});
+
+/** 14 & 15. The two answers that *are* about the session. */
+test('case 14: a 401 from the refresh endpoint ends the session', async () => {
+  refreshReply = { status: 401 };
 
   assert.equal((await resolveAuth(undefined, 'refresh-1')).status, 'expired');
 });
 
-test('a malformed refresh response is not accepted as a session', async () => {
-  global.fetch = (async () =>
-    new Response(JSON.stringify({ roles: [] }), { status: 200 })) as unknown as typeof fetch;
+test('case 15: a 403 from the refresh endpoint ends the session', async () => {
+  refreshReply = { status: 403 };
 
   assert.equal((await resolveAuth(undefined, 'refresh-1')).status, 'expired');
+});
+
+/*
+ * A 200 carrying no session is a broken response, not a refusal — an API host
+ * serving an HTML error page during a deploy must not sign everybody out.
+ */
+test('a 200 with no tokens in it keeps the session', async () => {
+  refreshReply = { body: { roles: [] } };
+
+  assert.equal((await resolveAuth(undefined, 'refresh-1')).status, 'unavailable');
+});
+
+/* 8 again, from the other side: a replayed token is refused, and that is the one
+   place a session legitimately ends mid-flight. */
+test('case 8b: a replayed refresh token is refused, not retried', async () => {
+  refreshReply = { status: 401 };
+
+  const results = await Promise.all([
+    resolveAuth(undefined, 'refresh-replayed'),
+    resolveAuth(undefined, 'refresh-replayed'),
+  ]);
+
+  assert.equal(refreshCalls.length, 1, 'a replay must not be re-presented');
+  for (const auth of results) assert.equal(auth.status, 'expired');
 });
 
 /*

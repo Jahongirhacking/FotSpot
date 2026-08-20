@@ -101,6 +101,23 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  /*
+   * The API could not be reached, which says nothing about the session.
+   *
+   * The request continues with the cookies untouched: a user whose refresh token
+   * is perfectly valid must not be signed out because the API was restarting.
+   * Server Components already handle a failed fetch — most catch and render an
+   * empty state — so the page degrades instead of the session ending, and the
+   * next navigation tries the refresh again.
+   *
+   * Redirecting here would be the security system punishing somebody for an
+   * outage they had nothing to do with, and logging them out is not even a
+   * remedy: their credentials were fine.
+   */
+  if (auth.status === 'unavailable') {
+    return NextResponse.next({ request: { headers: withPathname(request, pathname) } });
+  }
+
   if (!hasSession && isProtected) {
     return NextResponse.redirect(loginUrl(request, pathname, search));
   }
