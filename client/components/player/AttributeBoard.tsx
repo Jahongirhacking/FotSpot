@@ -59,6 +59,8 @@ export function AttributeBoard({
   const [items, setItems] = React.useState(clips);
   const [filter, setFilter] = React.useState<Filter>('ALL');
   const [uploading, setUploading] = React.useState(false);
+  /** True while the full-screen camera is up — see the dialog below. */
+  const [recorderOpen, setRecorderOpen] = React.useState(false);
   const [openId, setOpenId] = React.useState<string | null>(null);
 
   // The server is the source of truth: after a router.refresh() the fresh list
@@ -185,8 +187,41 @@ export function AttributeBoard({
         tall. A dialog is a bottom sheet there and a centred panel on a laptop —
         one focus trap, one obvious way out.
       */}
-      <Dialog open={uploading} onOpenChange={setUploading}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog
+        open={uploading}
+        onOpenChange={(next) => {
+          // A dialog that closed cannot still be hosting a camera. Clearing this
+          // here means a missed `onOpenChange(false)` from the recorder cannot
+          // leave the guard latched on and the dialog undismissable.
+          if (!next) setRecorderOpen(false);
+          setUploading(next);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-2xl"
+          /*
+           * The full-screen camera is portalled to the body, which puts it
+           * *outside* this dialog's DOM subtree — so Radix reads every tap in it
+           * as an outside interaction and dismisses this dialog. That unmounted
+           * the uploader, which unmounted the recorder, which destroyed the
+           * camera mid-shot.
+           *
+           * While the camera is up, this dialog ignores both dismissal routes.
+           * It is not "keeping a closed dialog alive": the interaction genuinely
+           * is inside the flow this dialog owns, and the only reason Radix cannot
+           * see that is the portal it needs in order to be full screen.
+           *
+           * The dialog still closes the ways it always did — its own X, and the
+           * uploader finishing — and the recorder has its own close control which
+           * returns here rather than dismissing anything.
+           */
+          onInteractOutside={(event) => {
+            if (recorderOpen) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (recorderOpen) event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="text-primary size-5" aria-hidden /> {t.clips.addClip}
@@ -197,6 +232,7 @@ export function AttributeBoard({
                 do not run behind a closed dialog. */}
             {uploading && (
               <ClipUploader
+                onRecorderOpenChange={setRecorderOpen}
                 onCancel={() => setUploading(false)}
                 onUploaded={(created) => {
                   setUploading(false);

@@ -11,10 +11,10 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
-import { formatTimer, previewFit } from '@/lib/video/recorder-ui';
 import { cn, formatDate } from '@/lib/utils';
 import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
+import { formatTimer, previewFit } from '@/lib/video/recorder-ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -62,9 +62,18 @@ type Category = MediaCategory;
  */
 export function ClipUploader({
   onUploaded,
+  onRecorderOpenChange,
 }: {
   onUploaded: (media: Media) => void;
   onCancel: () => void;
+  /**
+   * Raised while the full-screen camera is open.
+   *
+   * The dialog containing this uploader has to know, because the camera is
+   * portalled out of it — see `RecorderOverlay`. Optional so a caller that does
+   * not host it in a dialog need not care.
+   */
+  onRecorderOpenChange?: (open: boolean) => void;
 }) {
   const { t, f } = useI18n();
   const router = useRouter();
@@ -368,7 +377,11 @@ export function ClipUploader({
                   </label>
                 </div>
 
-                <LiveRecorder onRecorded={accept} onError={setError} />
+                <LiveRecorder
+                  onRecorded={accept}
+                  onError={setError}
+                  onOpenChange={(open) => onRecorderOpenChange?.(open)}
+                />
               </div>
             ) : (
               <div className="space-y-4">
@@ -595,30 +608,44 @@ function CategoryChip({
 function LiveRecorder({
   onRecorded,
   onError,
+  onOpenChange,
 }: {
   onRecorded: (file: File) => void;
   onError: (message: string) => void;
+  /**
+   * Announced upward so the dialog this sits inside can ignore interactions
+   * while the camera is up — see the note on `RecorderOverlay`.
+   */
+  onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = React.useState(false);
 
+  const setRecorder = React.useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      onOpenChange(next);
+    },
+    [onOpenChange],
+  );
+
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-full">
+      <Button variant="outline" size="sm" onClick={() => setRecorder(true)} className="w-full">
         <Video aria-hidden /> {t.clips.recordNow}
       </Button>
 
       {open && (
         <RecorderOverlay
           onRecorded={(file) => {
-            setOpen(false);
+            setRecorder(false);
             onRecorded(file);
           }}
           onError={(message) => {
-            setOpen(false);
+            setRecorder(false);
             onError(message);
           }}
-          onClose={() => setOpen(false)}
+          onClose={() => setRecorder(false)}
         />
       )}
     </>
@@ -872,7 +899,16 @@ function RecorderOverlay({
       // `overscroll-contain` alongside the body lock: on iOS a body with
       // `overflow: hidden` still rubber-bands, and a swipe to reframe should not
       // drag the page behind the viewfinder.
-      className="fixed inset-0 z-[60] flex touch-none flex-col overscroll-contain bg-black"
+      /*
+       * `pointer-events-auto` is load-bearing, not tidiness.
+       *
+       * A Radix modal sets `pointer-events: none` on `<body>` while it is open,
+       * and this overlay is portalled to the body — so it inherited that and
+       * every tap fell straight *through* it to the dialog's backdrop beneath,
+       * which Radix then read as an outside click and dismissed the whole Add
+       * Clip dialog. The camera went with it.
+       */
+      className="pointer-events-auto fixed inset-0 z-[60] flex touch-none flex-col overscroll-contain bg-black"
       // `dvh` rather than `vh`: on mobile the address bar shrinks the viewport as
       // it hides, and `vh` keeps the old height — which pushes the stop button
       // under the browser chrome exactly when it is needed.
