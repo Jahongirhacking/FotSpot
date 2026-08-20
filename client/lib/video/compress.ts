@@ -187,21 +187,41 @@ export async function probeDuration(file: File | Blob): Promise<number | null> {
 /** A file that will not report its duration in this long is one we stop asking. */
 const PROBE_TIMEOUT_MS = 8000;
 
+/** Container rounding and the last frame's own length, in seconds. */
+const TRIM_TOLERANCE = 0.5;
+
 /**
- * True when this clip must be processed before it may be uploaded at all.
+ * True when this clip may not be uploaded as it stands.
  *
- * Only over-length sources qualify. Everything else compression does is an
- * optimisation the upload can proceed without — this is the one rule that is
- * about the stored clip being correct rather than smaller, so a failure here has
- * to stop the upload instead of falling back to the original.
+ * ## The invariant
+ *
+ * No source longer than a minute may reach storage unchanged. Everything else
+ * compression does is an optimisation the upload can proceed without; this is
+ * the one rule about the stored clip being *correct*, so failing it stops the
+ * upload rather than falling back to the original.
+ *
+ * ## Unknown counts as too long
+ *
+ * A skipped clip whose duration never resolved is blocked, and that is the
+ * deliberate part. The rule is not "we know it is over the cap" but "we cannot
+ * show it is under it" — and a fallback that uploads whatever it could not
+ * measure is exactly the hole the rule exists to close. A browser with no
+ * encoder and an unreadable container could otherwise put a three-minute file in
+ * the bucket.
+ *
+ * It costs little in practice: `probeDuration` fails only on a file the browser
+ * cannot decode at all, which is a file the uploader was already showing a
+ * broken preview for.
+ *
+ * A successful conversion is never blocked — it has been through the trim, so
+ * its length is ours rather than the source's.
  */
 export function mustProcess(result: CompressResult): boolean {
-  return (
-    result.status === 'skipped' &&
-    result.reason !== 'cancelled' &&
-    result.sourceSeconds !== null &&
-    result.sourceSeconds > MAX_DURATION_SECONDS
-  );
+  if (result.status === 'compressed') return false;
+  // The player replaced the take; the outcome describes a file nobody is
+  // uploading any more.
+  if (result.reason === 'cancelled') return false;
+  return result.sourceSeconds === null || result.sourceSeconds > MAX_DURATION_SECONDS;
 }
 
 /**
@@ -364,6 +384,26 @@ export async function compressForFeed(
     // Never for a trimmed clip: the shorter video is the point, and the original
     // is not a legal substitute for it however the two compare in bytes.
     if (!needsTrim && compressed.size >= file.size) return skip('no-saving');
+
+    /*
+     * Check the trim actually took.
+     *
+     * The encoder was asked to stop at the cap and there is no reason to think
+     * it did not — but "no reason to think" is not the standard for the one rule
+     * that must hold, and the cost of being sure is reading metadata off a blob
+     * we already have in memory. A tolerance of half a second absorbs container
+     * rounding and the final frame's own duration.
+     *
+     * Failing here returns `failed` with the original's duration attached, so
+     * `mustProcess` blocks the upload rather than letting an untrimmed clip
+     * through on the strength of an encoder that misbehaved.
+     */
+    if (needsTrim) {
+      const producedSeconds = await probeDuration(compressed);
+      if (producedSeconds !== null && producedSeconds > MAX_DURATION_SECONDS + TRIM_TOLERANCE) {
+        return skip('failed');
+      }
+    }
 
     return {
       status: 'compressed',

@@ -162,16 +162,22 @@ export function ClipUploader({
        * decoder refuses all end up here with the upload intact.
        */
       /*
-       * A clip past the one-minute cap that could not be trimmed does not go up.
+       * Nothing goes up until the compressor has settled on an outcome that
+       * clears the one-minute cap.
        *
-       * This is the one case where falling back to the original is not an option:
-       * everything else compression does is an optimisation, but the cap is about
-       * the stored clip being correct. The error says processing failed, because
-       * that is what happened — a source longer than a minute is supported and
-       * trimmed, so telling somebody their video is too long would be both
-       * discouraging and untrue.
+       * Written as "must have a passing result" rather than "must not have a
+       * failing one", so a state this component has not thought of — an outcome
+       * that never arrived, an encode still running past a disabled button —
+       * blocks rather than falls through to the original. The invariant is that
+       * no source longer than a minute reaches storage unchanged, and a guard
+       * that only rejects the cases it enumerated is one enumeration short of
+       * breaking it.
+       *
+       * The error says processing failed, because that is what happened. A
+       * source longer than a minute is supported and trimmed, so telling
+       * somebody their video is too long would be both discouraging and untrue.
        */
-      if (optimised.result && mustProcess(optimised.result)) {
+      if (!optimised.result || mustProcess(optimised.result)) {
         throw new Error(t.clips.processingFailed);
       }
 
@@ -442,8 +448,9 @@ export function ClipUploader({
                   loading={upload.isPending || optimised.status === 'running'}
                   disabled={
                     !ready ||
-                    optimised.status === 'running' ||
-                    Boolean(optimised.result && mustProcess(optimised.result))
+                    optimised.status !== 'done' ||
+                    !optimised.result ||
+                    mustProcess(optimised.result)
                   }
                   className="w-full"
                 >

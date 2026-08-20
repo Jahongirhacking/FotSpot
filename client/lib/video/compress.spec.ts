@@ -175,6 +175,31 @@ test('a trimmed clip is estimated at the cap, not at its source length', () => {
   assert.equal(twoAndAHalfMinutes, oneMinute);
 });
 
+/*
+ * ---------------------------------------------------------------------------
+ * THE INVARIANT
+ *
+ *   A source longer than 60 seconds can never reach R2 as the final upload.
+ *
+ * `mustProcess` is the whole of the enforcement — the uploader refuses unless it
+ * returns false — so these cases are the invariant itself rather than a sample
+ * of it. Every outcome the compressor can produce appears below, paired with
+ * every duration it can carry, and none of the over-length combinations is
+ * allowed through.
+ * ---------------------------------------------------------------------------
+ */
+
+const ALL_SKIP_REASONS: CompressSkipReason[] = [
+  'unsupported',
+  'cannot-encode',
+  'no-video-track',
+  'unreadable',
+  'already-small',
+  'no-saving',
+  'cancelled',
+  'failed',
+];
+
 const skipped = (sourceSeconds: number | null, reason: CompressSkipReason): CompressResult => ({
   status: 'skipped',
   file: new File([], 'clip.mp4'),
@@ -184,43 +209,111 @@ const skipped = (sourceSeconds: number | null, reason: CompressSkipReason): Comp
   sourceSeconds,
 });
 
+const compressed = (sourceSeconds: number | null, trimmed: boolean): CompressResult => ({
+  status: 'compressed',
+  file: new File([], 'clip.mp4'),
+  originalBytes: 40_000_000,
+  bytes: 5_000_000,
+  sourceSeconds,
+  trimmed,
+});
+
+/** 1. A 120s source with WebCodecs available: trimmed, and allowed through. */
+test('120s source, encoder available — the trimmed output is uploaded', () => {
+  const result = compressed(120, true);
+  assert.equal(mustProcess(result), false);
+  assert.equal(outputSeconds(120), MAX_DURATION_SECONDS);
+});
+
+/** 2. A 120s source with no WebCodecs: the original must not go up. */
+test('120s source, no encoder — the upload is blocked', () => {
+  assert.equal(mustProcess(skipped(120, 'unsupported')), true);
+});
+
+/** 3. Just over the cap is still over it. */
+test('61s source is trimmed, and blocked if it could not be', () => {
+  assert.equal(outputSeconds(61), MAX_DURATION_SECONDS);
+  assert.equal(mustProcess(skipped(61, 'unsupported')), true);
+});
+
+/** 4. Exactly at the cap is inside it. */
+test('a source of exactly 60s is allowed and untrimmed', () => {
+  assert.equal(outputSeconds(MAX_DURATION_SECONDS), MAX_DURATION_SECONDS);
+  for (const reason of ALL_SKIP_REASONS) {
+    assert.equal(
+      mustProcess(skipped(MAX_DURATION_SECONDS, reason)),
+      false,
+      `60s must never be blocked (${reason})`,
+    );
+  }
+});
+
+/** 5. Comfortably inside the cap. */
+test('a 59s source is allowed however compression went', () => {
+  for (const reason of ALL_SKIP_REASONS) {
+    assert.equal(mustProcess(skipped(59, reason)), false, `59s must never be blocked (${reason})`);
+  }
+});
+
+/** 6 & 7. Compression or trim failure on an over-length source. */
+test('every failure on an over-length source blocks the original', () => {
+  for (const reason of ALL_SKIP_REASONS) {
+    if (reason === 'cancelled') continue;
+    assert.equal(
+      mustProcess(skipped(120, reason)),
+      true,
+      `a 120s source must never upload unchanged (${reason})`,
+    );
+  }
+});
+
 /*
- * The one case where falling back to the original is not allowed. Everything
- * else compression does is an optimisation; the cap is about the stored clip
- * being correct.
+ * The hole this closed.
+ *
+ * The guard used to require a *known* duration over the cap, so a file whose
+ * metadata never resolved — no encoder, unreadable container — fell straight
+ * through to uploading the original, at whatever length it happened to be. The
+ * rule is "we cannot show it is under the cap", not "we know it is over".
  */
-test('an over-long clip that could not be processed must not be uploaded', () => {
-  assert.equal(mustProcess(skipped(155, 'unsupported')), true);
-  assert.equal(mustProcess(skipped(155, 'failed')), true);
-  assert.equal(mustProcess(skipped(155, 'cannot-encode')), true);
+test('an unmeasurable duration is blocked rather than assumed short', () => {
+  for (const reason of ALL_SKIP_REASONS) {
+    if (reason === 'cancelled') continue;
+    assert.equal(
+      mustProcess(skipped(null, reason)),
+      true,
+      `an unknown duration must not upload unchanged (${reason})`,
+    );
+  }
 });
 
-test('a clip inside the cap always falls back to the original', () => {
-  assert.equal(mustProcess(skipped(45, 'unsupported')), false);
-  assert.equal(mustProcess(skipped(45, 'failed')), false);
-  assert.equal(mustProcess(skipped(MAX_DURATION_SECONDS, 'unsupported')), false);
+/* Replacing the take is not a failure to report — nobody is uploading that file. */
+test('a cancelled encode never blocks, at any duration', () => {
+  assert.equal(mustProcess(skipped(120, 'cancelled')), false);
+  assert.equal(mustProcess(skipped(null, 'cancelled')), false);
 });
 
-/* Unknown is not the same as over the cap — an unreadable duration is far more
-   often an unusual container than a long recording. */
-test('an unreadable duration does not block the upload', () => {
-  assert.equal(mustProcess(skipped(null, 'unreadable')), false);
-  assert.equal(mustProcess(skipped(null, 'unsupported')), false);
+/* A conversion that ran has been through the trim, so its length is ours. */
+test('a completed conversion is never blocked', () => {
+  assert.equal(mustProcess(compressed(120, true)), false);
+  assert.equal(mustProcess(compressed(45, false)), false);
+  assert.equal(mustProcess(compressed(null, false)), false);
 });
 
-/* Replacing the take cancels the encode; that is not a failure to report. */
-test('a cancelled encode never blocks', () => {
-  assert.equal(mustProcess(skipped(155, 'cancelled')), false);
-});
-
-test('a compressed result never blocks, however long the source was', () => {
-  const compressed: CompressResult = {
-    status: 'compressed',
-    file: new File([], 'clip.mp4'),
-    originalBytes: 40_000_000,
-    bytes: 5_000_000,
-    sourceSeconds: 155,
-    trimmed: true,
-  };
-  assert.equal(mustProcess(compressed), false);
+/*
+ * The exhaustive sweep: every outcome × a spread of durations, asserted against
+ * the rule stated independently of the implementation.
+ */
+test('no over-length source is ever allowed through, across every combination', () => {
+  for (const seconds of [null, 0.5, 30, 59, 60, 60.5, 61, 120, 3600]) {
+    for (const reason of ALL_SKIP_REASONS) {
+      const allowed = !mustProcess(skipped(seconds, reason));
+      const provablyWithinCap = seconds !== null && seconds <= MAX_DURATION_SECONDS;
+      const replaced = reason === 'cancelled';
+      assert.equal(
+        allowed,
+        provablyWithinCap || replaced,
+        `${seconds}s / ${reason} was ${allowed ? 'allowed' : 'blocked'} and should not have been`,
+      );
+    }
+  }
 });
