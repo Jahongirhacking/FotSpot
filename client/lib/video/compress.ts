@@ -48,6 +48,17 @@ export const MAX_LONG_EDGE = 1280;
 /** Football is high-motion, so frames matter — but 60fps buys nothing here. */
 export const MAX_FPS = 30;
 
+/**
+ * §21.6 — a clip is a proof, not a highlight reel. One minute is the cap.
+ *
+ * A longer source is **trimmed to its first minute, not refused**. Somebody who
+ * films two minutes has not made a mistake worth an error message; they have
+ * filmed the thing plus some walking back, and the product's answer to that is
+ * to take the minute rather than hand them a video editor. The same number caps
+ * the in-browser recorder, which stops at it rather than trimming afterwards.
+ */
+export const MAX_DURATION_SECONDS = 60;
+
 /** Speech and pitch noise. Nobody is judging a touch by its soundtrack. */
 export const AUDIO_BITRATE = 96_000;
 
@@ -127,6 +138,73 @@ export function estimatedBytes(
 }
 
 /**
+ * How long the output will be: the source, or the cap, whichever is shorter.
+ */
+export function outputSeconds(sourceSeconds: number): number {
+  return Math.min(sourceSeconds, MAX_DURATION_SECONDS);
+}
+
+/**
+ * Reads a file's duration without WebCodecs.
+ *
+ * A `<video>` element and its metadata, the same technique `capturePoster` uses
+ * to find a frame. It works in every browser, including the ones with no encoder
+ * at all — which is exactly where it matters, because a browser that cannot trim
+ * still must not be allowed to upload an untrimmed two-minute clip.
+ *
+ * Returns null rather than throwing. An unreadable duration is a container the
+ * browser does not recognise far more often than it is a long recording, and
+ * refusing on "unknown" would break ordinary uploads to enforce a rule nothing
+ * has shown to be broken.
+ */
+export async function probeDuration(file: File | Blob): Promise<number | null> {
+  if (typeof document === 'undefined') return null;
+
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.preload = 'metadata';
+  video.muted = true;
+  video.src = url;
+
+  try {
+    return await new Promise<number | null>((resolve) => {
+      const finish = (seconds: number | null) => {
+        clearTimeout(timer);
+        video.removeAttribute('src');
+        video.load();
+        resolve(seconds);
+      };
+      const timer = setTimeout(() => finish(null), PROBE_TIMEOUT_MS);
+      video.onerror = () => finish(null);
+      video.onloadedmetadata = () =>
+        finish(Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null);
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** A file that will not report its duration in this long is one we stop asking. */
+const PROBE_TIMEOUT_MS = 8000;
+
+/**
+ * True when this clip must be processed before it may be uploaded at all.
+ *
+ * Only over-length sources qualify. Everything else compression does is an
+ * optimisation the upload can proceed without — this is the one rule that is
+ * about the stored clip being correct rather than smaller, so a failure here has
+ * to stop the upload instead of falling back to the original.
+ */
+export function mustProcess(result: CompressResult): boolean {
+  return (
+    result.status === 'skipped' &&
+    result.reason !== 'cancelled' &&
+    result.sourceSeconds !== null &&
+    result.sourceSeconds > MAX_DURATION_SECONDS
+  );
+}
+
+/**
  * Compresses a clip, or explains why it did not.
  *
  * Loads the encoder lazily: it is a few hundred kilobytes and only a player who
@@ -137,12 +215,23 @@ export async function compressForFeed(
   file: File,
   options: { onProgress?: (fraction: number) => void; signal?: AbortSignal } = {},
 ): Promise<CompressResult> {
+  /*
+   * The duration first, and by the cheapest means available.
+   *
+   * Before any of the encoder machinery, because the answer decides whether the
+   * upload may proceed at all if that machinery turns out to be unavailable —
+   * see `mustProcess`. A `<video>` element reads metadata in every browser,
+   * including ones with no WebCodecs at all.
+   */
+  let sourceSeconds = await probeDuration(file);
+
   const original = { file, originalBytes: file.size };
   const skip = (reason: CompressSkipReason): CompressResult => ({
     ...original,
     status: 'skipped',
     reason,
     bytes: file.size,
+    sourceSeconds,
   });
 
   // Server-rendered, or a browser without the media stack this needs.
@@ -176,6 +265,11 @@ export async function compressForFeed(
 
     if (!displayWidth || !displayHeight || !duration) return skip('unreadable');
 
+    // The demuxer's figure is the better one — it read the container properly,
+    // where the probe read whatever the media element chose to report.
+    sourceSeconds = duration;
+    const needsTrim = duration > MAX_DURATION_SECONDS;
+
     const target = targetDimension(displayWidth, displayHeight);
     const outWidth = target && 'width' in target ? target.width : displayWidth;
     const outHeight = target && 'height' in target ? target.height : displayHeight;
@@ -202,8 +296,16 @@ export async function compressForFeed(
      * target size would come back visibly worse for no saving.
      */
     const audioTrack = await input.getPrimaryAudioTrack();
-    const estimate = estimatedBytes(outWidth, outHeight, fps, duration, Boolean(audioTrack));
-    if (!target && file.size <= estimate * REENCODE_IF_LARGER_THAN) {
+    const estimate = estimatedBytes(
+      outWidth,
+      outHeight,
+      fps,
+      outputSeconds(duration),
+      Boolean(audioTrack),
+    );
+    // `needsTrim` overrides every other reason to leave a file alone: a clip past
+    // the cap has to be cut whatever its size or dimensions.
+    if (!needsTrim && !target && file.size <= estimate * REENCODE_IF_LARGER_THAN) {
       return skip('already-small');
     }
 
@@ -218,6 +320,10 @@ export async function compressForFeed(
     const conversion = await Conversion.init({
       input,
       output,
+      // The first minute, when there is more than a minute. Omitted entirely
+      // otherwise, so a short clip is not routed through a trim that would only
+      // re-describe its own full length.
+      ...(needsTrim ? { trim: { end: MAX_DURATION_SECONDS } } : {}),
       video: {
         codec: 'avc',
         // Exactly one dimension, so the other follows the aspect ratio. Never
@@ -255,13 +361,17 @@ export async function compressForFeed(
      * produce something larger than it started with — and uploading a bigger
      * file to save bandwidth would be the opposite of the point.
      */
-    if (compressed.size >= file.size) return skip('no-saving');
+    // Never for a trimmed clip: the shorter video is the point, and the original
+    // is not a legal substitute for it however the two compare in bytes.
+    if (!needsTrim && compressed.size >= file.size) return skip('no-saving');
 
     return {
       status: 'compressed',
       file: compressed,
       originalBytes: file.size,
       bytes: compressed.size,
+      sourceSeconds,
+      trimmed: needsTrim,
     };
   } catch (error) {
     // Out of memory on a low-end phone, a codec the decoder will not touch, a

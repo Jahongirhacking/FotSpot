@@ -11,16 +11,22 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
-import { compressForFeed } from '@/lib/video/compress';
+import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
 import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleStop, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
+import { CircleStop, Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
-/** §21.6 — a clip is a proof, not a highlight reel. One minute is the cap. */
-const MAX_SECONDS = 60;
+/**
+ * §21.6 — a clip is a proof, not a highlight reel. One minute is the cap.
+ *
+ * The recorder stops at it; a longer file picked from the gallery is trimmed to
+ * it rather than refused (see `compressForFeed`). One constant for both, so the
+ * two halves of the same rule cannot drift apart.
+ */
+const MAX_SECONDS = MAX_DURATION_SECONDS;
 const MAX_BYTES = 120 * 1024 * 1024;
 
 type Category = MediaCategory;
@@ -155,6 +161,20 @@ export function ClipUploader({
        * existed — an unsupported browser, an out-of-memory phone or a codec the
        * decoder refuses all end up here with the upload intact.
        */
+      /*
+       * A clip past the one-minute cap that could not be trimmed does not go up.
+       *
+       * This is the one case where falling back to the original is not an option:
+       * everything else compression does is an optimisation, but the cap is about
+       * the stored clip being correct. The error says processing failed, because
+       * that is what happened — a source longer than a minute is supported and
+       * trimmed, so telling somebody their video is too long would be both
+       * discouraging and untrue.
+       */
+      if (optimised.result && mustProcess(optimised.result)) {
+        throw new Error(t.clips.processingFailed);
+      }
+
       const outgoing = optimised.result?.file ?? file;
 
       // 1. Presigned PUT, 2. straight to R2 — the video never transits the API,
@@ -363,6 +383,13 @@ export function ClipUploader({
 
                 <OptimiseStatus state={optimised} />
 
+                {/* Said here as well as on submit: a player who cannot upload
+                    this clip should learn it while looking at it, not after
+                    filling in a rating and a title. */}
+                {optimised.result && mustProcess(optimised.result) && (
+                  <Alert tone="danger">{t.clips.processingFailed}</Alert>
+                )}
+
                 {/* Step 3 — the self review, with what a top score means for this
                     skill in particular. Highlights evidence no single attribute,
                     so they carry no rating at all. */}
@@ -413,7 +440,11 @@ export function ClipUploader({
                   // Still encoding counts as loading: the button would otherwise
                   // look idle while the thing it needs is being produced.
                   loading={upload.isPending || optimised.status === 'running'}
-                  disabled={!ready || optimised.status === 'running'}
+                  disabled={
+                    !ready ||
+                    optimised.status === 'running' ||
+                    Boolean(optimised.result && mustProcess(optimised.result))
+                  }
                   className="w-full"
                 >
                   <Upload aria-hidden /> {t.clips.publish}
@@ -468,13 +499,24 @@ function OptimiseStatus({
   }
 
   return (
-    <p className="text-success flex items-center gap-1.5 text-xs">
-      <Wand2 className="size-3.5 shrink-0" aria-hidden />
-      {f(t.clips.optimisedTo, {
-        before: formatBytes(state.result.originalBytes),
-        after: formatBytes(state.result.bytes),
-      })}
-    </p>
+    <div className="space-y-1">
+      <p className="text-success flex items-center gap-1.5 text-xs">
+        <Wand2 className="size-3.5 shrink-0" aria-hidden />
+        {f(t.clips.optimisedTo, {
+          before: formatBytes(state.result.originalBytes),
+          after: formatBytes(state.result.bytes),
+        })}
+      </p>
+      {/* Trimming is silent about *whether* to do it, never about having done
+          it: a player who filmed two minutes should not discover the second
+          half is missing by watching it back on their profile. */}
+      {state.result.trimmed && (
+        <p className="text-muted flex items-center gap-1.5 text-xs">
+          <Scissors className="size-3.5 shrink-0" aria-hidden />
+          {t.clips.trimmedToLimit}
+        </p>
+      )}
+    </div>
   );
 }
 

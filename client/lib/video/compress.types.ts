@@ -25,12 +25,31 @@ export type CompressSkipReason =
   /** Anything else — out of memory, a decoder throwing, a broken frame. */
   | 'failed';
 
+/**
+ * `null` when the file carried no readable duration.
+ *
+ * Unknown is not the same as over the cap: a clip whose metadata will not parse
+ * is far more likely to be an unusual container than a three-minute recording,
+ * and refusing it would break ordinary uploads to enforce a rule we cannot show
+ * has been broken.
+ */
+type SourceSeconds = number | null;
+
 export type CompressResult =
-  | { status: 'compressed'; file: File; originalBytes: number; bytes: number }
+  | {
+      status: 'compressed';
+      file: File;
+      originalBytes: number;
+      bytes: number;
+      sourceSeconds: SourceSeconds;
+      /** True when the source ran past the cap and the output stops at it. */
+      trimmed: boolean;
+    }
   | {
       status: 'skipped';
       file: File;
       originalBytes: number;
       bytes: number;
       reason: CompressSkipReason;
+      sourceSeconds: SourceSeconds;
     };

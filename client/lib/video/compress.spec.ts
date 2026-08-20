@@ -19,12 +19,16 @@ import test from 'node:test';
 
 import {
   AUDIO_BITRATE,
+  MAX_DURATION_SECONDS,
   MAX_FPS,
   MAX_LONG_EDGE,
   estimatedBytes,
+  mustProcess,
+  outputSeconds,
   targetDimension,
   videoBitrateFor,
 } from './compress';
+import type { CompressResult, CompressSkipReason } from './compress.types';
 
 test('landscape is capped on its width', () => {
   assert.deepEqual(targetDimension(1920, 1080), { width: MAX_LONG_EDGE });
@@ -144,4 +148,79 @@ test('a 14-second 1080p clip is estimated in single-digit megabytes', () => {
   const megabytes = bytes / (1024 * 1024);
   assert.ok(megabytes > 1, `${megabytes.toFixed(1)} MB is implausibly small`);
   assert.ok(megabytes < 10, `${megabytes.toFixed(1)} MB is not a meaningful saving`);
+});
+
+/*
+ * Duration.
+ *
+ * A source longer than a minute is trimmed to its first minute, never refused —
+ * somebody who filmed two minutes has not made a mistake worth an error, they
+ * have filmed the thing plus some walking back.
+ */
+
+test('a clip past the cap is shortened to it', () => {
+  assert.equal(outputSeconds(155), MAX_DURATION_SECONDS);
+  assert.equal(outputSeconds(72), MAX_DURATION_SECONDS);
+});
+
+test('a clip inside the cap is left at its own length', () => {
+  assert.equal(outputSeconds(45), 45);
+  assert.equal(outputSeconds(5), 5);
+  assert.equal(outputSeconds(MAX_DURATION_SECONDS), MAX_DURATION_SECONDS);
+});
+
+test('a trimmed clip is estimated at the cap, not at its source length', () => {
+  const twoAndAHalfMinutes = estimatedBytes(1280, 720, 30, outputSeconds(155), true);
+  const oneMinute = estimatedBytes(1280, 720, 30, MAX_DURATION_SECONDS, true);
+  assert.equal(twoAndAHalfMinutes, oneMinute);
+});
+
+const skipped = (sourceSeconds: number | null, reason: CompressSkipReason): CompressResult => ({
+  status: 'skipped',
+  file: new File([], 'clip.mp4'),
+  originalBytes: 1,
+  bytes: 1,
+  reason,
+  sourceSeconds,
+});
+
+/*
+ * The one case where falling back to the original is not allowed. Everything
+ * else compression does is an optimisation; the cap is about the stored clip
+ * being correct.
+ */
+test('an over-long clip that could not be processed must not be uploaded', () => {
+  assert.equal(mustProcess(skipped(155, 'unsupported')), true);
+  assert.equal(mustProcess(skipped(155, 'failed')), true);
+  assert.equal(mustProcess(skipped(155, 'cannot-encode')), true);
+});
+
+test('a clip inside the cap always falls back to the original', () => {
+  assert.equal(mustProcess(skipped(45, 'unsupported')), false);
+  assert.equal(mustProcess(skipped(45, 'failed')), false);
+  assert.equal(mustProcess(skipped(MAX_DURATION_SECONDS, 'unsupported')), false);
+});
+
+/* Unknown is not the same as over the cap — an unreadable duration is far more
+   often an unusual container than a long recording. */
+test('an unreadable duration does not block the upload', () => {
+  assert.equal(mustProcess(skipped(null, 'unreadable')), false);
+  assert.equal(mustProcess(skipped(null, 'unsupported')), false);
+});
+
+/* Replacing the take cancels the encode; that is not a failure to report. */
+test('a cancelled encode never blocks', () => {
+  assert.equal(mustProcess(skipped(155, 'cancelled')), false);
+});
+
+test('a compressed result never blocks, however long the source was', () => {
+  const compressed: CompressResult = {
+    status: 'compressed',
+    file: new File([], 'clip.mp4'),
+    originalBytes: 40_000_000,
+    bytes: 5_000_000,
+    sourceSeconds: 155,
+    trimmed: true,
+  };
+  assert.equal(mustProcess(compressed), false);
 });

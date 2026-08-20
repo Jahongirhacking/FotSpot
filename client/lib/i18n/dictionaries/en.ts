@@ -671,6 +671,9 @@ export const en: Dictionary = {
       'Making it smaller without losing quality — the upload will be quicker and use less data.',
     optimisedTo: 'Reduced from {before} to {after}',
     optimiseSkipped: 'This video is already ready to upload.',
+    processingFailed:
+      'We could not prepare this video on your device. Try another browser, or choose a shorter clip (up to 1 minute).',
+    trimmedToLimit: 'Trimmed to the first 60 seconds',
     videoOnly: 'Video files only.',
     tooLarge: 'That video is too large (120 MB max).',
     pickCategory: 'Pick an attribute first.',
