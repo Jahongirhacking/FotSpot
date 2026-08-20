@@ -332,7 +332,7 @@ function EditClipForm({
   const { t } = useI18n();
   const [title, setTitle] = React.useState(clip?.title ?? '');
   const [description, setDescription] = React.useState(clip?.description ?? '');
-  const [rating, setRating] = React.useState(clip?.rating ?? 70);
+  const [rating, setRating] = React.useState(clip?.rating ?? 50);
   const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
 
   const save = useMutation({
@@ -418,7 +418,7 @@ function EditClipForm({
 function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) => void }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [rating, setRating] = React.useState(clip?.rating ?? 70);
+  const [rating, setRating] = React.useState(clip?.rating ?? 50);
 
   const save = useMutation({
     mutationFn: () =>

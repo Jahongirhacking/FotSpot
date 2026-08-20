@@ -1255,60 +1255,92 @@ export const uz = {
         'Startdagi tezlik, 20–30 m masofada yugurish, to‘p bilan tezlashish va yo‘nalish o‘zgartirishni ko‘rsating.',
       goalkeeper:
         'Darvoza oldidagi reaksiya tezligi, chiqish va to‘pgacha yetib borish tezligini ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Birinchi qadamdanoq to‘liq tezlikda yugurdingiz, kuchli tezlashdingiz va oxirigacha sur’atni saqladingiz.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Masofani yugurib o‘tasiz, lekin oxiriga borib sekinlashasiz.',
+        mid: 'Tez tezlashasiz va butun masofada sur’atni saqlaysiz.',
+        high: 'Yoshingizdagilar orasida eng tezlaridansiz va himoyachilardan uzoqlashasiz.',
+      },
     },
     DRIBBLING: {
       player:
         'Tor joyda to‘pni olib yurish, aldash harakatlari, himoyachidan o‘tib ketish va to‘pni nazorat qilishni ko‘rsating.',
       goalkeeper: 'Bosim ostida to‘pni oyoq bilan olib chiqish va raqibdan qutulishni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Tezlikda to‘pni yaqin ushladingiz, himoyachini toza aldab o‘tdingiz va bosim ostida yo‘qotmadingiz.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Hech kim bosim o‘tkazmaganda to‘pni yaqin ushlaysiz.',
+        mid: 'Himoyachini yakkama-yakka aldab o‘tasiz va tezlikda nazoratni saqlaysiz.',
+        high: 'Haqiqiy bosim ostida bir necha himoyachini to‘pni yo‘qotmay aldab o‘tasiz.',
+      },
     },
     PASSING: {
       player:
         'Qisqa va uzun uzatmalar, aniqlik, ikki oyoqda uzatish va harakatdagi sherikka uzatishni ko‘rsating.',
       goalkeeper:
         'Qo‘l va oyoq bilan to‘p tarqatish, uzun uzatma va tez hujum boshlashni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Uzatmalaringiz kerakli kuch bilan aniq yetib bordi — ikkala oyoqda, qiyin uzun uzatmalar ham.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Qisqa uzatmalaringiz yoningizdagi sherigingizga yetib boradi.',
+        mid: 'Ikkala oyoq bilan aniq uzatasiz, uzun uzatmalar ham.',
+        high: 'Har qanday masofada harakatdagi sherigingizni bir teginishda topasiz.',
+      },
     },
     FINISHING: {
       player:
         'Jarima maydonchasi ichida va tashqarisidan zarbalar, ikki oyoqda va bosh bilan gol urishni ko‘rsating.',
       goalkeeper: 'Penalti va 1v1 holatlarda zarbani to‘xtatishni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Ikkala oyoq bilan toza va aniq zarba berdingiz, qiyin burchaklardan gol urdingiz.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Yaqin masofadan darvoza ramkasiga urasiz.',
+        mid: 'Jarima maydonchasidan ikkala oyoq bilan gol urasiz.',
+        high: 'Qiyin burchaklardan gol urasiz va aniq imkoniyatlarni deyarli boy bermaysiz.',
+      },
     },
     PHYSICAL: {
       player:
         'Kuch, muvozanat, yakkama-yakka kurash, sakrash balandligi va chidamlilikni ko‘rsating.',
       goalkeeper:
         'Sakrash, cho‘zilish, jarima maydonchasida jismoniy ustunlik va tez o‘rnidan turishni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Yakkama-yakka kurashlarda yutdingiz, kontaktda muvozanatni saqladingiz va oxirigacha shiddatni yo‘qotmadingiz.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Butun mashg‘ulotga chidaysiz, lekin ko‘p yakkama-yakka kurashda yutqazasiz.',
+        mid: 'Yakkama-yakka kurashlarda teng kurashasiz va oxirigacha kuchli qolasiz.',
+        high: 'Deyarli barcha kurashlarda yutasiz va oxirida ham to‘liq kuchdasiz.',
+      },
     },
     TECHNIQUE: {
       player: 'Jonglyorlik, olib yurish, aldash, birinchi tegish, uzatma va zarbani ko‘rsating.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plar, 1v1, oyoq bilan tarqatish va qo‘l bilan uzatishni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Birinchi teginish, nazorat va fintlar toza va ishonchli edi — tezlikda va bosim ostida.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'To‘p sekin kelganda birinchi teginishingiz nazorat ostida.',
+        mid: 'Birinchi teginish va fintlaringiz tezlikda ham ishlaydi.',
+        high: 'Kuchli bosim ostida ham nazorat va texnikangiz toza qoladi.',
+      },
     },
     GOALKEEPING: {
       player:
         'Bu bo‘lim darvozabonlar uchun. Maydon o‘yinchisi bo‘lsangiz, boshqa ko‘nikmani tanlang.',
       goalkeeper:
         'Cho‘zilib to‘xtatish, reaksiya, baland to‘plarda chiqish, 1v1 holatlar, penalti va oyoq bilan to‘p tarqatishni ko‘rsating.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Zarbani erta o‘qidingiz, toza sakradingiz, qaytgan to‘pni nazorat qildingiz va aniq uzatdingiz.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'O‘zingizga qarab urilgan to‘plarni ilib olasiz yoki qaytarasiz.',
+        mid: 'Yaxshi sakraysiz, ko‘p zarbalarni ushlaysiz va jarima maydonchasini boshqarasiz.',
+        high: 'Yakkama-yakka chiqishlar va qiyin zarbalarni qaytarasiz, hujumni aniq boshlaysiz.',
+      },
     },
     MATCH_HIGHLIGHTS: {
       player:
         'Haqiqiy o‘yindan eng yaxshi lahzalar: gol, uzatma, muhim harakatlar. Boshqalar orasida o‘zingiz ko‘rinib turing.',
       goalkeeper: 'Haqiqiy o‘yindan to‘xtatishlar, chiqishlar va jamoani boshqarish lahzalari.',
-      /** What a score near 100 means for this skill — shown beside the slider. */
-      high: 'Ko‘rsatilgan har bir lahza hal qiluvchi va qaysi o‘yinchi siz ekaningiz aniq ko‘rinadi.',
+      /** Ushbu ko‘nikma uchun har bir o‘z-o‘zini baholash oralig‘i nimani anglatadi. */
+      bands: {
+        low: 'Haqiqiy o‘yindan siz ishtirok etgan bir necha lahza.',
+        mid: 'Aniq hal qiluvchi lahzalar — gollar, uzatmalar, muhim harakatlar.',
+        high: 'Kuchli raqibga qarshi o‘yin taqdirini hal qilgan lahzalar.',
+      },
     },
   },
 

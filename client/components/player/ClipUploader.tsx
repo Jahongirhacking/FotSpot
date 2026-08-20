@@ -11,9 +11,9 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
+import { cn, formatDate } from '@/lib/utils';
 import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
-import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleStop, Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -83,7 +83,7 @@ export function ClipUploader({
   }>({ status: 'idle', progress: 0, result: null });
   const compressionRef = React.useRef<AbortController | null>(null);
   const [category, setCategory] = React.useState<Category | null>(null);
-  const [rating, setRating] = React.useState(70);
+  const [rating, setRating] = React.useState(50);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -415,7 +415,7 @@ export function ClipUploader({
                       onChange={(event) => setRating(Number(event.target.value))}
                       className="accent-primary w-full"
                     />
-                    <TopScoreTip category={category} />
+                    <SelfRatingGuide category={category} rating={rating} />
                   </Field>
                 )}
 
@@ -706,38 +706,69 @@ function LiveRecorder({
  * single most common reason a clip is unusable.
  */
 /**
- * What a score near 100 means for this particular skill.
+ * The three bands the slider is asking the player to place themselves in.
  *
- * ## Why it is per-skill and not one sentence
+ * ## Why bands and not one sentence
  *
- * "100 = excellent" tells a fourteen-year-old nothing. Excellent *at what* is the
- * question, and the answer differs completely between skills — a top Pace clip is
- * about acceleration held to the line, a top Passing clip is about weight and
- * both feet. Without it the slider is a number with no anchor, and every player
- * lands on the same optimistic 80.
+ * This showed only what a 100 meant, which answered the wrong question. Nobody
+ * scoring themselves is deciding whether they are perfect — they are deciding
+ * between roughly-good and roughly-very-good, and a description of the ceiling
+ * gives them nothing to measure that against. Three anchors turn an arbitrary
+ * 0–100 slider into a choice with edges: I beat one defender, not several, so I
+ * am in the middle band.
  *
- * It sits beside the slider rather than replacing `t.clips.ratingHint`, which is
- * the sentence that says this is the player's own claim and stays self-reported
- * until a coach signs it off (§1.6). The two answer different questions: one is
- * "what am I scoring", the other is "what does my score count for".
+ * ## Why the thresholds are drawn here and the sentences are not
  *
- * The copy lives in `t.clipTips` beside the filming instructions for the same
- * reason those do — one place per skill, so the guidance for a skill cannot drift
- * apart from the description of it.
+ * `30`, `60` and `90` are numerals — identical in all three languages, and a
+ * dictionary entry holding one would be a string nobody could usefully change.
+ * The sentences differ completely per skill and per language, so they live in
+ * `t.clipTips` beside the filming instructions: one place per skill, which is
+ * what stops the guidance for a skill drifting from the description of it.
+ *
+ * The band the slider currently sits in is marked, so the panel reads as a
+ * response to what they just chose rather than a wall of advice.
  */
-function TopScoreTip({ category }: { category: Category }) {
+const RATING_BANDS = [
+  { from: 30, key: 'low' },
+  { from: 60, key: 'mid' },
+  { from: 90, key: 'high' },
+] as const;
+
+function SelfRatingGuide({ category, rating }: { category: Category; rating: number }) {
   const { t } = useI18n();
   const tips = t.clipTips[category as keyof typeof t.clipTips];
 
-  if (!tips || typeof tips === 'string' || !tips.high) return null;
+  // Guards a category added to the enum before its copy is written.
+  if (!tips || typeof tips === 'string' || !tips.bands) return null;
+
+  // The highest band the rating has reached, or none while it is still below 30.
+  const reached = [...RATING_BANDS].reverse().find((band) => rating >= band.from);
 
   return (
-    <p className="border-border bg-surface-2 text-muted mt-2 rounded-lg border p-2.5 text-xs leading-snug">
-      {/* The numeral is rendered here rather than translated: "100" is the same
-          in all three languages and a dictionary entry holding one would be a
-          string nobody could usefully change. */}
-      <span className="text-foreground font-semibold">100 —</span> {tips.high}
-    </p>
+    <div className="border-border bg-surface-2 mt-2 space-y-1.5 rounded-lg border p-2.5">
+      {RATING_BANDS.map((band) => {
+        const active = reached?.key === band.key;
+        return (
+          <p
+            key={band.key}
+            className={cn(
+              'flex gap-2 text-xs leading-snug transition-colors',
+              active ? 'text-foreground' : 'text-muted',
+            )}
+          >
+            <span
+              className={cn(
+                'w-9 shrink-0 text-right font-semibold tabular-nums',
+                active && 'text-primary',
+              )}
+            >
+              {band.from}+
+            </span>
+            <span>{tips.bands[band.key]}</span>
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
