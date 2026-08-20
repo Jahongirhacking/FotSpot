@@ -1152,6 +1152,13 @@ export const media = {
       title?: string;
       description?: string;
       posterKey?: string;
+      /**
+       * True when the browser already produced the optimised MP4.
+       *
+       * Absent or false sends the clip to the server-side transcoder — see the
+       * backend's ConfirmUploadDto for why the safe direction is to disbelieve.
+       */
+      optimised?: boolean;
     },
     opts: Opts = {},
   ) => apiFetch<Media>('/media/confirm', { method: 'POST', body, ...opts }),
