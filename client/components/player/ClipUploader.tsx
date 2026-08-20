@@ -14,9 +14,16 @@ import { capturePoster } from '@/lib/poster';
 import { cn, formatDate } from '@/lib/utils';
 import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
+import {
+  countCameras,
+  offersSwitch,
+  openCamera,
+  switchCamera,
+  type Facing,
+} from '@/lib/video/camera';
 import { formatTimer, previewFit } from '@/lib/video/recorder-ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
+import { Disc, Scissors, SwitchCamera, Trophy, Upload, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
@@ -541,7 +548,7 @@ function OptimiseStatus({
       {/* Trimming is silent about *whether* to do it, never about having done
           it: a player who filmed two minutes should not discover the second
           half is missing by watching it back on their profile. */}
-      {state.result.trimmed && (
+      {state?.result?.trimmed && (
         <p className="text-muted flex items-center gap-1.5 text-xs">
           <Scissors className="size-3.5 shrink-0" aria-hidden />
           {t.clips.trimmedToLimit}
@@ -631,8 +638,13 @@ function LiveRecorder({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setRecorder(true)} className="w-full">
-        <Video aria-hidden /> {t.clips.recordNow}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setRecorder(true)}
+        className="bg-surface-2 w-full cursor-pointer"
+      >
+        <Disc aria-hidden className="text-red-600" /> {t.clips.recordNow}
       </Button>
 
       {open && (
@@ -674,6 +686,23 @@ function LiveRecorder({
  * began the moment the button was pressed, which meant the first seconds of every
  * clip were somebody finding their framing — and under a sixty-second cap those
  * seconds are not free.
+ *
+ * ## Why the camera cannot be switched mid-recording
+ *
+ * Not caution — the specification. `MediaRecorder` takes its `MediaStream` at
+ * construction and exposes it `readonly`; there is no `replaceTrack` outside
+ * WebRTC. The only way to change the video during a take is to mutate the stream
+ * the recorder is holding, and the MediaStream Recording spec says that a track
+ * added to or removed from a recording stream makes the UA "immediately stop
+ * gathering data, **discard any data that it has gathered**" and fire
+ * `InvalidModificationError`.
+ *
+ * So the swap does not corrupt the recording, it destroys it — a player would
+ * tap the switch forty seconds in and lose the whole take. The alternatives are
+ * a canvas pipeline or insertable streams, which cost quality and battery on the
+ * phones this runs on and are supported nowhere near universally. The button is
+ * disabled while recording instead, which is the honest answer: the camera is
+ * chosen before the take, and the take is never at risk.
  */
 function RecorderOverlay({
   onRecorded,
@@ -707,12 +736,38 @@ function RecorderOverlay({
   const abandonedRef = React.useRef(false);
   /** The camera's own aspect, kept so the fit can be recomputed on rotation. */
   const cameraAspectRef = React.useRef<number | null>(null);
+  /**
+   * Set once the camera has been given up for good.
+   *
+   * A switch is an `await` with a camera at the end of it, and the person can
+   * press close while it is in flight. Without this the stream would arrive after
+   * the overlay had gone and stay live — a camera running behind a closed
+   * viewfinder, which is the privacy problem (§11) rather than a tidiness one.
+   */
+  const releasedRef = React.useRef(false);
+  /**
+   * Whether a switch is already under way — a ref, not the state below.
+   *
+   * `disabled` on the button only takes effect on the next render, so two taps
+   * inside one frame both pass a check that reads state. Two concurrent
+   * `getUserMedia` calls is precisely the "two live cameras" case the swap is
+   * built to make impossible, so the guard has to be one that updates the
+   * instant it is read.
+   */
+  const switchingRef = React.useRef(false);
 
   const [phase, setPhase] = React.useState<'starting' | 'ready' | 'recording' | 'saving'>(
     'starting',
   );
   const [elapsed, setElapsed] = React.useState(0);
   const [fit, setFit] = React.useState<'cover' | 'contain'>('cover');
+  /** Which camera is live. `null` on a webcam that reports no front/rear. */
+  const [facing, setFacing] = React.useState<Facing | null>(null);
+  /** How many cameras the device has; `null` while unknown or unreadable. */
+  const [cameras, setCameras] = React.useState<number | null>(null);
+  const [switching, setSwitching] = React.useState(false);
+  /** A failed switch says so *here* — never through `onError`, which closes. */
+  const [switchFailed, setSwitchFailed] = React.useState(false);
 
   /**
    * Ends the take without producing a file.
@@ -727,11 +782,26 @@ function RecorderOverlay({
   }, []);
 
   const stopTracks = React.useCallback(() => {
+    releasedRef.current = true;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
+  }, []);
+
+  /**
+   * Puts a stream on screen and makes it the one everything else acts on.
+   *
+   * The single place `streamRef` and `srcObject` are set together, so they cannot
+   * drift into the state where the recorder records one camera and the viewfinder
+   * shows another.
+   */
+  const show = React.useCallback(async (stream: MediaStream) => {
+    streamRef.current = stream;
+    if (!videoRef.current) return;
+    videoRef.current.srcObject = stream;
+    await videoRef.current.play().catch(() => undefined);
   }, []);
 
   /*
@@ -792,36 +862,40 @@ function RecorderOverlay({
     let cancelled = false;
 
     (async () => {
-      try {
-        // Capability is discovered by trying, not by a `useState` seeded in an
-        // effect: the server cannot know whether this browser has a camera. Every
-        // failure — no MediaRecorder, no camera, denied permission, insecure
-        // origin — lands in the same catch.
-        if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-          throw new Error('unsupported');
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: true,
-        });
-
-        // The overlay closed while the permission prompt was open. Nothing is
-        // rendered to attach this to, so it is released rather than left running.
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => undefined);
-        }
-        setPhase('ready');
-      } catch {
-        if (!cancelled) onError(t.clips.cameraUnavailable);
+      // Capability is discovered by trying, not by a `useState` seeded in an
+      // effect: the server cannot know whether this browser has a camera. Every
+      // failure — no MediaRecorder, no camera, denied permission, insecure
+      // origin — ends with the same message.
+      const media = navigator.mediaDevices;
+      if (typeof MediaRecorder === 'undefined' || !media?.getUserMedia) {
+        onError(t.clips.cameraUnavailable);
+        return;
       }
+
+      // Rear first, front if there is no rear one. The fallback is silent: a
+      // laptop having no back camera is not something to interrupt anybody over.
+      const opened = await openCamera((constraints) => media.getUserMedia(constraints));
+
+      if (!opened) {
+        if (!cancelled) onError(t.clips.cameraUnavailable);
+        return;
+      }
+
+      // The overlay closed while the permission prompt was open. Nothing is
+      // rendered to attach this to, so it is released rather than left running.
+      if (cancelled) {
+        opened.stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      setFacing(opened.facing);
+      await show(opened.stream);
+      setPhase('ready');
+
+      // Asked only now: before permission is granted the device list is stripped
+      // of everything but the count, and this is the count we need.
+      const count = await countCameras(() => media.enumerateDevices());
+      if (!cancelled) setCameras(count);
     })();
 
     return () => {
@@ -838,6 +912,57 @@ function RecorderOverlay({
       recorderRef.current.stop();
     }
   }, []);
+
+  /**
+   * Turns the camera around.
+   *
+   * Only reachable while `ready` — see the note above on why a take cannot
+   * survive this. Everything that can go wrong is handled without leaving the
+   * viewfinder: `switchCamera` hands back a working stream even when it could not
+   * switch, and the only case it cannot is one where the camera is genuinely gone
+   * and the existing unavailable message is the right answer.
+   */
+  const flip = React.useCallback(async () => {
+    const current = streamRef.current;
+    if (!current || !facing || switchingRef.current) return;
+
+    switchingRef.current = true;
+    setSwitching(true);
+    setSwitchFailed(false);
+
+    const result = await switchCamera(current, facing, (constraints) =>
+      navigator.mediaDevices.getUserMedia(constraints),
+    );
+
+    // Closed while the camera was being handed over. Whatever arrived is
+    // released rather than left running behind a viewfinder that has gone.
+    if (releasedRef.current) {
+      result.stream?.getTracks().forEach((track) => track.stop());
+      // Left latched: the overlay is on its way out and must not start another.
+      return;
+    }
+
+    switchingRef.current = false;
+    setSwitching(false);
+
+    if (!result.stream) {
+      onError(t.clips.cameraUnavailable);
+      return;
+    }
+
+    setFacing(result.facing);
+    await show(result.stream);
+    // Non-blocking, and deliberately not `onError`: the camera they had still
+    // works, so closing the recorder over it would take away more than it gives.
+    if (!result.ok) setSwitchFailed(true);
+  }, [facing, onError, show, t.clips.cameraUnavailable]);
+
+  /* The toast says its piece and goes; nothing here is worth a dismiss button. */
+  React.useEffect(() => {
+    if (!switchFailed) return;
+    const id = setTimeout(() => setSwitchFailed(false), 4000);
+    return () => clearTimeout(id);
+  }, [switchFailed]);
 
   const start = () => {
     const stream = streamRef.current;
@@ -921,10 +1046,23 @@ function RecorderOverlay({
         ref={videoRef}
         muted
         playsInline
-        // Mirrored only for the front camera would be ideal; the rear camera is
-        // requested here, and mirroring that would be wrong.
+        /*
+         * The front camera is mirrored, the rear one is not.
+         *
+         * People are used to seeing themselves in a mirror, and an unmirrored
+         * selfie preview reads as subtly wrong — you raise your left hand and the
+         * person on screen raises the other one, which makes framing a shot
+         * harder than it should be. Every phone camera does this.
+         *
+         * The *preview* only: the recording comes off the MediaStream, which CSS
+         * cannot touch. So the clip a scout watches is the way round the camera
+         * actually saw it, and any writing in shot stays readable.
+         */
         className="absolute inset-0 size-full"
-        style={{ objectFit: fit }}
+        style={{
+          objectFit: fit,
+          transform: facing === 'user' ? 'scaleX(-1)' : undefined,
+        }}
         onLoadedMetadata={(event) => {
           const element = event.currentTarget;
           cameraAspectRef.current = element.videoWidth / element.videoHeight;
@@ -984,35 +1122,83 @@ function RecorderOverlay({
         {phase === 'starting' && <p className="text-sm text-white/80">{t.clips.cameraStarting}</p>}
         {phase === 'saving' && <p className="text-sm text-white/80">{t.clips.recordingSaved}</p>}
 
+        {/* A switch that could not happen. The camera they had is still running,
+            so this states the fact and gets out of the way. */}
+        {switchFailed && (
+          <p
+            role="status"
+            className="rounded-lg bg-black/70 px-3 py-1.5 text-center text-xs text-white backdrop-blur-sm"
+          >
+            {t.clips.switchCameraFailed}
+          </p>
+        )}
+
         {/*
-          One control, thumb-sized, in the middle.
-          56px across with the ring — comfortably past the 44px minimum, and far
-          enough above the bottom edge that the browser's own gestures do not
-          compete with it.
+          The record button is 72px and stays dead-centre whether or not there is
+          a camera to switch to, so it does not move under the thumb from one
+          device to the next — which is why the switch is positioned against this
+          row rather than laid out beside it. Both are far enough above the bottom
+          edge that the browser's own gestures do not compete with them.
         */}
-        {phase === 'ready' && (
-          <button
-            type="button"
-            onClick={start}
-            aria-label={t.clips.startRecording}
-            className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent"
-          >
-            <span className="bg-danger size-14 rounded-full transition-transform active:scale-90" />
-          </button>
-        )}
+        <div className="relative flex w-full items-center justify-center">
+          {phase === 'ready' && (
+            <button
+              type="button"
+              onClick={start}
+              disabled={switching}
+              aria-label={t.clips.startRecording}
+              className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent disabled:opacity-50"
+            >
+              <span className="bg-danger size-14 rounded-full transition-transform active:scale-90" />
+            </button>
+          )}
 
-        {phase === 'recording' && (
-          <button
-            type="button"
-            onClick={stop}
-            aria-label={t.clips.stop}
-            className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent"
-          >
-            <span className="bg-danger size-8 rounded-lg transition-transform active:scale-90" />
-          </button>
-        )}
+          {phase === 'recording' && (
+            <button
+              type="button"
+              onClick={stop}
+              aria-label={t.clips.stop}
+              className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent"
+            >
+              <span className="bg-danger size-8 rounded-lg transition-transform active:scale-90" />
+            </button>
+          )}
 
-        {phase !== 'ready' && phase !== 'recording' && <div className="size-[72px]" aria-hidden />}
+          {phase !== 'ready' && phase !== 'recording' && (
+            <div className="size-[72px]" aria-hidden />
+          )}
+
+          {/*
+            Bottom-right, and only where there is a second camera to reach.
+            56px — past the 44px touch minimum — and sharing the translucent
+            black of the close button, so the two read as the same set of
+            controls rather than as a stray addition.
+
+            Disabled during a take, and visibly so: `MediaRecorder` cannot be
+            handed a different camera without discarding what it has recorded, so
+            the choice is made before the take starts (see the note on this
+            component). `aria-disabled` alongside `disabled` because the reason
+            belongs in the accessible name, not just in the opacity.
+          */}
+          {offersSwitch(facing, cameras) && (
+            <button
+              type="button"
+              onClick={flip}
+              disabled={phase !== 'ready' || switching}
+              aria-disabled={phase !== 'ready' || switching}
+              aria-label={t.clips.switchCamera}
+              title={phase === 'recording' ? t.clips.switchCameraLocked : t.clips.switchCamera}
+              className={cn(
+                'absolute right-0 grid size-14 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition',
+                phase === 'ready' && !switching
+                  ? 'active:scale-90'
+                  : 'cursor-not-allowed opacity-40',
+              )}
+            >
+              <SwitchCamera className={cn('size-6', switching && 'animate-spin')} aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

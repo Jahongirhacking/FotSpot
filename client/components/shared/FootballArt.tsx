@@ -96,22 +96,26 @@ export function PitchBackdrop({
               needs no collision code. */}
           <g className="hero-ball-x animate-bounce-x">
             <g className="hero-ball-y animate-bounce-y">
-              <svg
-                x="-10"
-                y="-10"
-                width="20"
-                height="20"
-                viewBox="0 0 64 64"
-                className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]"
-              >
-                {/* Explicitly white and near-black rather than theme colours: a
-                    football is white in both modes, and one that turned dark at
-                    night would stop reading as a ball at all. */}
-                <BallFaces
-                  body="fill-white stroke-black/25"
-                  panel="fill-[#14171f]"
-                  seam="stroke-black/30"
-                />
+              {/*
+               * Coordinate remapping only — this carries no animation.
+               *
+               * The spin used to live here, and a nested `<svg>` is the one
+               * element `transform-box: fill-box` is ambiguous on: it is the
+               * only SVG element that is both a shape-less container *and* a
+               * viewport, so its "fill box" is read as the viewport rect by some
+               * engines and as the union of its children by others. Those two
+               * boxes have different centres, and a rotation about the wrong
+               * centre is not a spin — it is a small orbit, which reads as the
+               * ball wobbling off its line.
+               */}
+              <svg x="-10" y="-10" width="20" height="20" viewBox="0 0 64 64">
+                <g className="[transform-origin:center] [transform-box:fill-box] motion-safe:animate-[spin_6s_linear_infinite]">
+                  <BallFaces
+                    body="fill-white stroke-black"
+                    panel="fill-black"
+                    seam="stroke-black"
+                  />
+                </g>
               </svg>
             </g>
           </g>
@@ -146,7 +150,7 @@ function BallFaces({ body, panel, seam }: { body: string; panel: string; seam: s
         strokeWidth="1.5"
         fill="none"
       />
-      <path d="M20 47l6-8.9h12l6 8.9-6 5.6H26z" className={panel} opacity="0.55" />
+      <path d="M20 50l6-8.9h12l6 8.9-6 5.6H26z" className={panel} opacity="0.6" />
     </>
   );
 }
