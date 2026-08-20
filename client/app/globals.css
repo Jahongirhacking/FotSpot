@@ -241,6 +241,34 @@
   }
 }
 
+/*
+ * Give the ball its own layer, so the pitch is not redrawn 60 times a second.
+ *
+ * The maths above was already exact — linear and `alternate` make each axis a
+ * triangle wave, so both components hold a constant magnitude and the ball
+ * traces true straight segments at one unchanging speed, reversing on contact.
+ * What it looked like was another matter, and the reason is that browsers do not
+ * composite transform animations on SVG elements the way they do on ordinary
+ * boxes: without a hint, moving the ball invalidates the whole `<svg>`, so every
+ * frame re-rasterises the pitch — the box, the halfway line, the centre circle,
+ * both penalty areas and the two arcs — to move a 20-unit dot across it. On the
+ * entry-level Android phone README §14 is written for, that is what turns a
+ * constant-speed line into a stutter.
+ *
+ * `will-change` promotes the two moving groups, so the pitch rasterises once and
+ * the compositor only shifts a small layer after that. It is applied to both
+ * axes deliberately: promoting just one leaves the other's transform running
+ * against un-promoted content, which repaints exactly what this is avoiding.
+ *
+ * These are the same two classes the reduced-motion block below parks on the
+ * centre spot — where the hint is withdrawn, since a layer that never moves is
+ * memory spent on nothing.
+ */
+.hero-ball-x,
+.hero-ball-y {
+  will-change: transform;
+}
+
 /* The ball arrives with a roll. Only the hero mark uses it, and only once. */
 @keyframes ball {
   from {
@@ -453,11 +481,13 @@
   .hero-ball-x {
     animation: none !important;
     transform: translateX(200px) !important;
+    will-change: auto !important;
   }
 
   .hero-ball-y {
     animation: none !important;
     transform: translateY(130px) !important;
+    will-change: auto !important;
   }
 }
 

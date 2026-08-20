@@ -20,10 +20,11 @@ import {
   ArrowRight,
   Building2,
   CalendarDays,
+  IdCard,
   Search,
   Send,
-  Sparkles,
   ShieldCheck,
+  Sparkles,
   Users,
   Video,
 } from 'lucide-react';
@@ -121,7 +122,7 @@ export default async function LandingPage() {
                     already is — see resolvePlayerCta. */}
                 <Button asChild size="lg">
                   <Link href={cta.href}>
-                    <FootballBall className="animate-ball size-5" />
+                    <IdCard aria-hidden />
                     {cta.hasCard ? t.landing.viewMyCard : t.landing.createCard}
                   </Link>
                 </Button>
@@ -314,7 +315,7 @@ export default async function LandingPage() {
                             {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
                           </p>
                         </div>
-                        <Button size="sm" variant="ghost">
+                        <Button size="sm" variant="ghost" className="cursor-pointer">
                           <ArrowRight aria-hidden className="size-4 !p-0" />
                         </Button>
                       </CardContent>
@@ -355,7 +356,7 @@ export default async function LandingPage() {
                 {/* Same bot, different sentence — one address, and the message
                     says which of the two the writer is asking for so nobody has
                     to be asked back. */}
-                <Button asChild size="lg" className="shrink-0 shadow-sm">
+                <Button asChild size="lg" className="shrink-0 cursor-pointer shadow-sm">
                   <a
                     href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
                     target="_blank"
@@ -523,7 +524,7 @@ function SectionHeading({
         {body && <p className="text-muted mt-0.5 text-sm">{body}</p>}
       </div>
       {actionHref && actionLabel && (
-        <Button asChild variant="ghost" size="sm" className="shrink-0">
+        <Button asChild variant="ghost" size="sm" className="shrink-0 cursor-pointer">
           <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       )}
