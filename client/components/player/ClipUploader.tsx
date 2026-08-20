@@ -11,13 +11,15 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
+import { formatTimer, previewFit } from '@/lib/video/recorder-ui';
 import { cn, formatDate } from '@/lib/utils';
 import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleStop, Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
+import { Scissors, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * §21.6 — a clip is a proof, not a highlight reel. One minute is the cap.
@@ -581,6 +583,15 @@ function CategoryChip({
  * stream tracks are stopped on every exit path — a camera left running is both a
  * battery drain and, on a minor's phone, a privacy problem (§11).
  */
+/**
+ * The button that opens the camera, and nothing else.
+ *
+ * The recorder itself is a full-screen overlay rather than a panel in the form.
+ * A viewfinder the size of a form field is one nobody can frame a shot in — a
+ * player filming themselves at arm's length cannot tell whether their feet are in
+ * frame, and a clip that turns out to have cut them off costs one of their
+ * uploads for the week to discover.
+ */
 function LiveRecorder({
   onRecorded,
   onError,
@@ -589,112 +600,330 @@ function LiveRecorder({
   onError: (message: string) => void;
 }) {
   const { t } = useI18n();
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-full">
+        <Video aria-hidden /> {t.clips.recordNow}
+      </Button>
+
+      {open && (
+        <RecorderOverlay
+          onRecorded={(file) => {
+            setOpen(false);
+            onRecorded(file);
+          }}
+          onError={(message) => {
+            setOpen(false);
+            onError(message);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The camera, full screen.
+ *
+ * ## Why an overlay and not a bigger box
+ *
+ * This is a viewfinder. Everything about it — the size, the black surround, the
+ * one large control at the bottom — exists so the person can see what they are
+ * filming while they are filming it, on a phone, at arm's length, outdoors.
+ *
+ * ## The preview tells the truth about the recording
+ *
+ * The recording keeps the camera's whole frame however the preview is displayed,
+ * so a preview that crops is a viewfinder that lies. `previewFit` uses `cover`
+ * while the crop is a trim and switches to `contain` once it would start hiding
+ * content — see its note. Neither ever stretches.
+ *
+ * ## Recording is a second, deliberate press
+ *
+ * Opening the camera and starting to record are separate acts. The old recorder
+ * began the moment the button was pressed, which meant the first seconds of every
+ * clip were somebody finding their framing — and under a sixty-second cap those
+ * seconds are not free.
+ */
+function RecorderOverlay({
+  onRecorded,
+  onError,
+  onClose,
+}: {
+  onRecorded: (file: File) => void;
+  onError: (message: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Wall-clock start, so the timer cannot drift the way a counter does. */
+  const startedAtRef = React.useRef<number>(0);
 
-  const [recording, setRecording] = React.useState(false);
+  const [phase, setPhase] = React.useState<'starting' | 'ready' | 'recording' | 'saving'>(
+    'starting',
+  );
   const [elapsed, setElapsed] = React.useState(0);
+  const [fit, setFit] = React.useState<'cover' | 'contain'>('cover');
 
-  const cleanup = React.useCallback(() => {
+  const stopTracks = React.useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    setRecording(false);
-    setElapsed(0);
   }, []);
 
-  // Also covers navigating away mid-recording.
-  React.useEffect(() => cleanup, [cleanup]);
+  /*
+   * The camera is released on every exit path, including navigating away.
+   *
+   * A camera left running is a battery drain and, on a minor's phone, a privacy
+   * problem (§11) — which is why this is an unconditional unmount cleanup rather
+   * than something each button remembers to call.
+   */
+  React.useEffect(() => stopTracks, [stopTracks]);
+
+  /*
+   * The page behind must not scroll while the viewfinder is up.
+   *
+   * Without this a swipe to reframe scrolls the form underneath, and on iOS the
+   * address bar reappears mid-recording and resizes the viewport.
+   */
+  React.useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
+  // Opening the camera is the first thing that happens, before any control is
+  // offered — there is nothing to decide until the permission prompt is answered.
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Capability is discovered by trying, not by a `useState` seeded in an
+        // effect: the server cannot know whether this browser has a camera. Every
+        // failure — no MediaRecorder, no camera, denied permission, insecure
+        // origin — lands in the same catch.
+        if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+          throw new Error('unsupported');
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: true,
+        });
+
+        // The overlay closed while the permission prompt was open. Nothing is
+        // rendered to attach this to, so it is released rather than left running.
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
+        }
+        setPhase('ready');
+      } catch {
+        if (!cancelled) onError(t.clips.cameraUnavailable);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Once, on open. `onError` closes the overlay, so re-running would reopen the
+    // camera against an unmounting component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stop = React.useCallback(() => {
-    if (recorderRef?.current?.state === 'recording') recorderRef?.current.stop();
+    if (recorderRef.current?.state === 'recording') {
+      setPhase('saving');
+      recorderRef.current.stop();
+    }
   }, []);
 
-  const start = async () => {
-    try {
-      // Capability is discovered by trying, not by a `useState` seeded in an
-      // effect: the server cannot know whether this browser has a camera, so
-      // rendering one answer and correcting it after hydration would flash the
-      // button in and out. Every failure — no MediaRecorder, no camera, denied
-      // permission, insecure origin — lands in the same catch.
-      if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        throw new Error('unsupported');
-      }
+  const start = () => {
+    const stream = streamRef.current;
+    if (!stream) return;
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: true,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => undefined);
-      }
+    const chunks: BlobPart[] = [];
+    const recorder = new MediaRecorder(stream);
+    recorderRef.current = recorder;
 
-      const chunks: BlobPart[] = [];
-      const recorder = new MediaRecorder(stream);
-      recorderRef.current = recorder;
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+      stopTracks();
+      // Straight into the existing pipeline: `accept` validates it, then
+      // compression trims and re-encodes before anything is uploaded.
+      onRecorded(new File([blob], `clip-${Date.now()}.webm`, { type: blob.type }));
+    };
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunks.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: recorder?.mimeType || 'video/webm' });
-        cleanup();
-        onRecorded(new File([blob], `clip-${Date.now()}.webm`, { type: blob.type }));
-      };
+    recorder.start();
+    startedAtRef.current = Date.now();
+    setElapsed(0);
+    setPhase('recording');
 
-      recorder?.start();
-      setRecording(true);
-      setElapsed(0);
-      timerRef.current = setInterval(() => {
-        setElapsed((seconds) => {
-          if (seconds + 1 >= MAX_SECONDS) stop();
-          return seconds + 1;
-        });
-      }, 1000);
-    } catch {
-      // All the same to the user, who just needs the file picker instead.
-      cleanup();
-      onError(t.clips.cameraUnavailable);
-    }
+    /*
+     * Driven by the clock, not by counting ticks.
+     *
+     * A counter incremented every second drifts whenever the tab is throttled or
+     * a frame is slow, so a "60 second" clip could run over the cap the encoder
+     * then has to trim. Reading elapsed time keeps the displayed number and the
+     * hard stop honest, and the faster interval is what makes it tick smoothly.
+     */
+    timerRef.current = setInterval(() => {
+      const seconds = (Date.now() - startedAtRef.current) / 1000;
+      setElapsed(seconds);
+      if (seconds >= MAX_SECONDS) stop();
+    }, 200);
   };
 
-  return (
-    <div className="border-border rounded-xl border p-3">
+  /** Closing mid-recording throws the take away, so it asks first. */
+  const close = () => {
+    if (phase === 'recording' && !window.confirm(t.clips.discardRecording)) return;
+    stopTracks();
+    onClose();
+  };
+
+  const overlay = (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black"
+      // `dvh` rather than `vh`: on mobile the address bar shrinks the viewport as
+      // it hides, and `vh` keeps the old height — which pushes the stop button
+      // under the browser chrome exactly when it is needed.
+      style={{ height: '100dvh' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.clips.recordNow}
+    >
       <video
         ref={videoRef}
         muted
         playsInline
-        className={cn('bg-surface-3 w-full rounded-lg', recording ? 'block' : 'hidden')}
+        // Mirrored only for the front camera would be ideal; the rear camera is
+        // requested here, and mirroring that would be wrong.
+        className="absolute inset-0 size-full"
+        style={{ objectFit: fit }}
+        onLoadedMetadata={(event) => {
+          const element = event.currentTarget;
+          setFit(
+            previewFit(
+              element.videoWidth / element.videoHeight,
+              window.innerWidth / window.innerHeight,
+            ),
+          );
+        }}
       />
 
-      {recording ? (
-        <div className="mt-2 flex items-center gap-3">
-          <Button variant="danger" size="sm" onClick={stop}>
-            <CircleStop aria-hidden /> {t.clips.stop}
-          </Button>
-          <span className="font-mono text-sm tabular-nums">
-            {elapsed}s / {MAX_SECONDS}s
+      {/* Close, top-left, clear of the notch. */}
+      <div
+        className="relative flex items-start justify-between p-4"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}
+      >
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t.common.cancel}
+          className="grid size-11 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm"
+        >
+          <X className="size-5" aria-hidden />
+        </button>
+
+        {phase === 'recording' && (
+          <span className="flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
+            <span className="bg-danger size-2.5 animate-pulse rounded-full" aria-hidden />
+            REC
           </span>
-          <div className="bg-surface-3 h-1.5 flex-1 overflow-hidden rounded-full">
-            <div
-              className="bg-danger h-full rounded-full transition-all"
-              style={{ width: `${(elapsed / MAX_SECONDS) * 100}%` }}
-            />
-          </div>
-        </div>
-      ) : (
-        <Button variant="outline" size="sm" onClick={start} className="w-full">
-          <Video aria-hidden /> {t.clips.recordNow}
-        </Button>
-      )}
+        )}
+      </div>
+
+      <div className="relative flex-1" />
+
+      {/* Everything the person acts on sits at the bottom, within thumb reach. */}
+      <div
+        className="relative flex flex-col items-center gap-3 px-6"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)' }}
+      >
+        {phase === 'ready' && (
+          <p className="rounded-lg bg-black/55 px-3 py-1.5 text-center text-xs text-white backdrop-blur-sm">
+            {t.clips.recordingHint}
+          </p>
+        )}
+
+        {(phase === 'recording' || phase === 'saving') && (
+          <>
+            <span className="font-mono text-2xl font-bold text-white tabular-nums drop-shadow-lg">
+              {formatTimer(elapsed)}
+            </span>
+            <div className="h-1 w-full max-w-xs overflow-hidden rounded-full bg-white/25">
+              <div
+                className="bg-danger h-full rounded-full"
+                style={{ width: `${Math.min(100, (elapsed / MAX_SECONDS) * 100)}%` }}
+              />
+            </div>
+          </>
+        )}
+
+        {phase === 'starting' && <p className="text-sm text-white/80">{t.clips.cameraStarting}</p>}
+        {phase === 'saving' && <p className="text-sm text-white/80">{t.clips.recordingSaved}</p>}
+
+        {/*
+          One control, thumb-sized, in the middle.
+          56px across with the ring — comfortably past the 44px minimum, and far
+          enough above the bottom edge that the browser's own gestures do not
+          compete with it.
+        */}
+        {phase === 'ready' && (
+          <button
+            type="button"
+            onClick={start}
+            aria-label={t.clips.startRecording}
+            className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent"
+          >
+            <span className="bg-danger size-14 rounded-full transition-transform active:scale-90" />
+          </button>
+        )}
+
+        {phase === 'recording' && (
+          <button
+            type="button"
+            onClick={stop}
+            aria-label={t.clips.stop}
+            className="grid size-[72px] place-items-center rounded-full border-4 border-white/90 bg-transparent"
+          >
+            <span className="bg-danger size-8 rounded-lg transition-transform active:scale-90" />
+          </button>
+        )}
+
+        {phase !== 'ready' && phase !== 'recording' && <div className="size-[72px]" aria-hidden />}
+      </div>
     </div>
   );
+
+  /*
+   * Portalled to the body.
+   *
+   * The uploader is already inside a dialog, and a `fixed` element inside one
+   * inherits its stacking context — so without this the "full-screen" camera
+   * would be clipped to the dialog it was opened from.
+   */
+  return typeof document === 'undefined' ? null : createPortal(overlay, document.body);
 }
 
 /**
