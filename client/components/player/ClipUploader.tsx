@@ -664,12 +664,40 @@ function RecorderOverlay({
   const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   /** Wall-clock start, so the timer cannot drift the way a counter does. */
   const startedAtRef = React.useRef<number>(0);
+  /**
+   * Set the moment a take is abandoned, and read inside `onstop`.
+   *
+   * Stopping the stream's tracks ends the recording — the spec says a recorder
+   * whose tracks have all ended stops and fires `stop`. So cancelling used to
+   * reach `onRecorded` by that route and hand the discarded take to the upload
+   * pipeline: the player pressed close, confirmed they wanted it gone, and it
+   * uploaded anyway. Unmounting mid-recording did the same thing, and additionally
+   * called back into a component that no longer existed.
+   *
+   * A ref rather than state because `onstop` fires outside React's update cycle
+   * and would read a stale value from a closure.
+   */
+  const abandonedRef = React.useRef(false);
+  /** The camera's own aspect, kept so the fit can be recomputed on rotation. */
+  const cameraAspectRef = React.useRef<number | null>(null);
 
   const [phase, setPhase] = React.useState<'starting' | 'ready' | 'recording' | 'saving'>(
     'starting',
   );
   const [elapsed, setElapsed] = React.useState(0);
   const [fit, setFit] = React.useState<'cover' | 'contain'>('cover');
+
+  /**
+   * Ends the take without producing a file.
+   *
+   * The order matters: the flag is set *before* anything that could trigger
+   * `onstop`, or the callback wins the race and uploads what was just discarded.
+   */
+  const abandon = React.useCallback(() => {
+    abandonedRef.current = true;
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    recorderRef.current = null;
+  }, []);
 
   const stopTracks = React.useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -686,7 +714,15 @@ function RecorderOverlay({
    * problem (§11) — which is why this is an unconditional unmount cleanup rather
    * than something each button remembers to call.
    */
-  React.useEffect(() => stopTracks, [stopTracks]);
+  React.useEffect(
+    () => () => {
+      // Abandon first: releasing the camera is what makes the recorder fire, and
+      // an unmounted component must not be handed a file.
+      abandon();
+      stopTracks();
+    },
+    [abandon, stopTracks],
+  );
 
   /*
    * The page behind must not scroll while the viewfinder is up.
@@ -699,6 +735,27 @@ function RecorderOverlay({
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previous;
+    };
+  }, []);
+
+  /*
+   * The fit is re-decided whenever the viewport changes shape.
+   *
+   * Turning the phone swaps which axis is longer, so a preview that was a
+   * faithful `cover` in portrait can become a heavy crop in landscape. Deciding
+   * once on `loadedmetadata` would leave the viewfinder lying about the frame
+   * from the moment the device was rotated.
+   */
+  React.useEffect(() => {
+    const recompute = () => {
+      setFit(previewFit(cameraAspectRef.current, window.innerWidth / window.innerHeight));
+    };
+
+    window.addEventListener('resize', recompute);
+    window.addEventListener('orientationchange', recompute);
+    return () => {
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('orientationchange', recompute);
     };
   }, []);
 
@@ -767,13 +824,18 @@ function RecorderOverlay({
       if (event.data.size > 0) chunks.push(event.data);
     };
     recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
       stopTracks();
+      // Cancelled, or the overlay went away. The take is dropped rather than
+      // uploaded — see `abandonedRef`.
+      if (abandonedRef.current) return;
+
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
       // Straight into the existing pipeline: `accept` validates it, then
       // compression trims and re-encodes before anything is uploaded.
       onRecorded(new File([blob], `clip-${Date.now()}.webm`, { type: blob.type }));
     };
 
+    abandonedRef.current = false;
     recorder.start();
     startedAtRef.current = Date.now();
     setElapsed(0);
@@ -789,7 +851,10 @@ function RecorderOverlay({
      */
     timerRef.current = setInterval(() => {
       const seconds = (Date.now() - startedAtRef.current) / 1000;
-      setElapsed(seconds);
+      // Clamped: `stop()` is asynchronous, so without this the clock ticks past
+      // the cap — 01:01 on a clip the encoder is about to cut at 01:00 — while
+      // the recorder is still finishing.
+      setElapsed(Math.min(seconds, MAX_SECONDS));
       if (seconds >= MAX_SECONDS) stop();
     }, 200);
   };
@@ -797,13 +862,17 @@ function RecorderOverlay({
   /** Closing mid-recording throws the take away, so it asks first. */
   const close = () => {
     if (phase === 'recording' && !window.confirm(t.clips.discardRecording)) return;
+    abandon();
     stopTracks();
     onClose();
   };
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[60] flex flex-col bg-black"
+      // `overscroll-contain` alongside the body lock: on iOS a body with
+      // `overflow: hidden` still rubber-bands, and a swipe to reframe should not
+      // drag the page behind the viewfinder.
+      className="fixed inset-0 z-[60] flex touch-none flex-col overscroll-contain bg-black"
       // `dvh` rather than `vh`: on mobile the address bar shrinks the viewport as
       // it hides, and `vh` keeps the old height — which pushes the stop button
       // under the browser chrome exactly when it is needed.
@@ -822,12 +891,8 @@ function RecorderOverlay({
         style={{ objectFit: fit }}
         onLoadedMetadata={(event) => {
           const element = event.currentTarget;
-          setFit(
-            previewFit(
-              element.videoWidth / element.videoHeight,
-              window.innerWidth / window.innerHeight,
-            ),
-          );
+          cameraAspectRef.current = element.videoWidth / element.videoHeight;
+          setFit(previewFit(cameraAspectRef.current, window.innerWidth / window.innerHeight));
         }}
       />
 
