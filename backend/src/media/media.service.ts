@@ -46,6 +46,9 @@ import {
   FINALISE_BACKOFF_MS,
   FINALISE_CLIP_JOB,
   MEDIA_QUEUE,
+  TRANSCODE_ATTEMPTS,
+  TRANSCODE_BACKOFF_MS,
+  TRANSCODE_CLIP_JOB,
   type FinaliseClipJob,
 } from './media-processing.constants';
 
@@ -431,11 +434,24 @@ export class MediaService {
       posterKey: media.posterKey,
     };
 
+    /*
+     * Which job, and why the answer is the client's word.
+     *
+     * A browser that compressed says so; anything else — an older client, a
+     * device whose encoder refused, a request made by hand — goes to the
+     * transcoder. Believing a false "yes" would publish an unoptimised original;
+     * disbelieving a true one costs one re-encode. The asymmetry decides it.
+     */
+    const needsTranscode = !dto.optimised;
+
     try {
-      await this.queue.add(FINALISE_CLIP_JOB, job, {
+      await this.queue.add(needsTranscode ? TRANSCODE_CLIP_JOB : FINALISE_CLIP_JOB, job, {
         jobId: media.id,
-        attempts: FINALISE_ATTEMPTS,
-        backoff: { type: 'exponential', delay: FINALISE_BACKOFF_MS },
+        attempts: needsTranscode ? TRANSCODE_ATTEMPTS : FINALISE_ATTEMPTS,
+        backoff: {
+          type: 'exponential',
+          delay: needsTranscode ? TRANSCODE_BACKOFF_MS : FINALISE_BACKOFF_MS,
+        },
       });
     } catch (error) {
       /*
@@ -450,10 +466,29 @@ export class MediaService {
        * and the caller is a browser waiting on a confirm — the response says
        * "PROCESSING" either way, and the client already polls for the change.
        */
-      this.logger.warn(
-        `Media queue unavailable, finalising ${media.id} inline: ${(error as Error).message}`,
-      );
-      void this.finaliseInline(job);
+      /*
+       * No queue. What happens next depends on whether the clip is already fit
+       * to publish.
+       *
+       * An optimised clip is finalised inline, as before: Redis is an
+       * accelerator, and an outage of it should not cost a player their upload.
+       *
+       * An unoptimised one is not finalised at all. Transcoding is minutes of
+       * CPU and it does not belong in a web process — but more importantly,
+       * finalising it would promote the *original* to ACTIVE and put a 40 MB
+       * file in the feed, which is the exact outcome this whole path exists to
+       * prevent. It stays PROCESSING, visible only to its uploader, until a
+       * worker with a queue picks it up.
+       */
+      this.logger.warn(`Media queue unavailable for ${media.id}: ${(error as Error).message}`);
+      if (needsTranscode) {
+        this.logger.error(
+          `Clip ${media.id} needs transcoding and the queue is unreachable — it stays ` +
+            'PROCESSING rather than publishing the unoptimised original.',
+        );
+      } else {
+        void this.finaliseInline(job);
+      }
     }
 
     // No cache invalidation here: the clip is not visible to anyone but its

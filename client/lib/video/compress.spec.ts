@@ -25,6 +25,7 @@ import {
   estimatedBytes,
   mustProcess,
   outputSeconds,
+  outputSize,
   targetDimension,
   videoBitrateFor,
 } from './compress';
@@ -94,6 +95,80 @@ test('never upscales a small clip', () => {
 
 test('resizes as soon as the long edge exceeds the box', () => {
   assert.deepEqual(targetDimension(MAX_LONG_EDGE + 1, 720), { width: MAX_LONG_EDGE });
+});
+
+/*
+ * The bug that sent every 1080p upload to R2 at full size.
+ *
+ * `targetDimension` names the one side the encoder is told; the other is deduced
+ * from the aspect ratio. Reading that other side off the *source* gave 1280×1080
+ * for a 1920×1080 clip — not 16:9, not what the encoder produces, and a geometry
+ * `canEncodeVideo` answers "no" to. The capability check then failed and the
+ * original was uploaded untouched.
+ */
+test('outputSize gives both sides as the encoder will produce them', () => {
+  assert.deepEqual(outputSize(1920, 1080), { width: 1280, height: 720 });
+  assert.deepEqual(outputSize(1080, 1920), { width: 720, height: 1280 });
+  assert.deepEqual(outputSize(2560, 1440), { width: 1280, height: 720 });
+  assert.deepEqual(outputSize(1440, 2560), { width: 720, height: 1280 });
+  assert.deepEqual(outputSize(2160, 3840), { width: 720, height: 1280 });
+});
+
+test('outputSize never reports the source size on the deduced side', () => {
+  const { height } = outputSize(1920, 1080);
+  assert.notEqual(height, 1080);
+  const { width } = outputSize(1080, 1920);
+  assert.notEqual(width, 1080);
+});
+
+test('outputSize leaves a clip inside the box alone', () => {
+  assert.deepEqual(outputSize(1080, 1080), { width: 1080, height: 1080 });
+  assert.deepEqual(outputSize(640, 480), { width: 640, height: 480 });
+  assert.deepEqual(outputSize(720, 1280), { width: 720, height: 1280 });
+});
+
+/* H.264 stores colour at half resolution each way, so an odd side has no whole
+   chroma sample to sit in — encoders refuse it or leave a green edge. */
+test('outputSize is always even on both sides', () => {
+  for (const [w, h] of [
+    [1000, 3000],
+    [1001, 999],
+    [1920, 1080],
+    [333, 777],
+    [2160, 3840],
+    [641, 481],
+  ]) {
+    const size = outputSize(w, h);
+    assert.equal(size.width % 2, 0, `${w}x${h} → width ${size.width} is odd`);
+    assert.equal(size.height % 2, 0, `${w}x${h} → height ${size.height} is odd`);
+  }
+});
+
+test('outputSize keeps the aspect ratio within a pixel of rounding', () => {
+  for (const [w, h] of [
+    [1920, 1080],
+    [1080, 1920],
+    [1000, 3000],
+    [2560, 1440],
+  ]) {
+    const size = outputSize(w, h);
+    assert.ok(
+      Math.abs(size.width / size.height - w / h) < 0.01,
+      `${w}x${h} → ${size.width}x${size.height} changed the aspect ratio`,
+    );
+  }
+});
+
+test('outputSize never exceeds the box', () => {
+  for (const [w, h] of [
+    [3840, 2160],
+    [2160, 3840],
+    [4000, 4000],
+    [1281, 720],
+  ]) {
+    const size = outputSize(w, h);
+    assert.ok(Math.max(size.width, size.height) <= MAX_LONG_EDGE, `${w}x${h} overflowed`);
+  }
 });
 
 test('720p lands in the band the profile asks for', () => {

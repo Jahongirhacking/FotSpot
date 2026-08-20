@@ -120,6 +120,45 @@ export function targetDimension(
 }
 
 /**
+ * Both dimensions of the output, as the encoder will actually produce them.
+ *
+ * ## Why this exists separately from `targetDimension`
+ *
+ * `targetDimension` returns the one dimension the encoder is *told*, because
+ * telling it both is what stretches a video. But everything else here — the
+ * bitrate, the size estimate and above all the capability check — needs to know
+ * what will come out the other side.
+ *
+ * Deriving that by taking the constrained side and leaving the other at its
+ * source value is the bug this replaces: a 1920×1080 clip is told `width: 1280`
+ * and was then measured as 1280×**1080**. That is not 16:9, it is not what the
+ * encoder produces, and asking `canEncodeVideo` about it is asking about a
+ * geometry no hardware encoder advertises — which it answers "no" to, sending
+ * every 1080p upload down the fallback and to R2 at full size.
+ *
+ * ## Even numbers
+ *
+ * H.264 stores colour at half resolution in each direction (4:2:0), so an odd
+ * width or height has no whole chroma sample to sit in. Encoders variously
+ * refuse it, round it silently, or produce a green edge column. Rounding to even
+ * here means the number checked, the number budgeted for and the number encoded
+ * are the same number.
+ */
+export function outputSize(width: number, height: number): { width: number; height: number } {
+  const target = targetDimension(width, height);
+  if (!target) return { width: even(width), height: even(height) };
+
+  return 'width' in target
+    ? { width: even(target.width), height: even((height / width) * target.width) }
+    : { width: even((width / height) * target.height), height: even(target.height) };
+}
+
+/** Nearest even number, never zero — see `outputSize`. */
+function even(value: number): number {
+  return Math.max(2, Math.round(value / 2) * 2);
+}
+
+/**
  * What the output would weigh, roughly, at our settings.
  *
  * Used only to decide whether re-encoding is worth doing at all — an estimate is
@@ -291,8 +330,10 @@ export async function compressForFeed(
     const needsTrim = duration > MAX_DURATION_SECONDS;
 
     const target = targetDimension(displayWidth, displayHeight);
-    const outWidth = target && 'width' in target ? target.width : displayWidth;
-    const outHeight = target && 'height' in target ? target.height : displayHeight;
+    // Both sides as the encoder will produce them — see `outputSize`. Measuring
+    // the untouched dimension against the source is how every 1080p clip ended
+    // up asking about 1280×1080 and being refused.
+    const { width: outWidth, height: outHeight } = outputSize(displayWidth, displayHeight);
     const fps = Math.min(MAX_FPS, Math.max(1, Math.round(inputFps)));
 
     /*

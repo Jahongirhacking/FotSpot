@@ -2,7 +2,13 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { MediaFinaliserService } from './media-finaliser.service';
-import { FINALISE_CLIP_JOB, MEDIA_QUEUE, type FinaliseClipJob } from './media-processing.constants';
+import {
+  FINALISE_CLIP_JOB,
+  MEDIA_QUEUE,
+  TRANSCODE_CLIP_JOB,
+  type FinaliseClipJob,
+} from './media-processing.constants';
+import { VideoTranscoderService } from './video-transcoder.service';
 
 /**
  * Finishes an upload the API never saw.
@@ -66,12 +72,34 @@ const IDLE_TUNING = {
 export class MediaProcessor extends WorkerHost {
   private readonly logger = new Logger(MediaProcessor.name);
 
-  constructor(private finaliser: MediaFinaliserService) {
+  constructor(
+    private finaliser: MediaFinaliserService,
+    private transcoder: VideoTranscoderService,
+  ) {
     super();
   }
 
   async process(job: Job<FinaliseClipJob>): Promise<void> {
-    if (job.name !== FINALISE_CLIP_JOB) return;
+    /*
+     * Transcoding, for a clip the browser could not compress.
+     *
+     * The clip is already in the bucket as the player's original, and it stays
+     * PROCESSING — and therefore invisible to everyone but its uploader — until
+     * this has replaced it with the optimised version. A failure marks it FAILED
+     * rather than letting the original through: an unoptimised clip is not
+     * merely large, it is not the file this feed serves.
+     */
+    if (job.name === TRANSCODE_CLIP_JOB) {
+      const optimised = await this.transcoder.transcodeInPlace(
+        job.data.mediaId,
+        job.data.storageKey,
+      );
+      // `transcodeInPlace` has already written FAILED with a reason the uploader
+      // can read, so this only decides whether to finalise.
+      if (!optimised) return;
+    }
+
+    if (job.name !== FINALISE_CLIP_JOB && job.name !== TRANSCODE_CLIP_JOB) return;
 
     // The decision lives in MediaFinaliserService so that a clip can still be
     // finalised when there is no queue to run this — see that class's note.

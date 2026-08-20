@@ -230,6 +230,15 @@ export function ClipUploader({
           storageKey: ticket.storageKey,
           type: 'VIDEO',
           category,
+          /*
+           * Whether this browser produced the optimised MP4.
+           *
+           * False sends the clip to the server-side transcoder instead, which is
+           * what guarantees the feed never serves an original — a browser
+           * without WebCodecs no longer means "skip compression", it means
+           * "compress it there".
+           */
+          optimised: optimised.result?.status === 'compressed',
           ...(category === 'MATCH_HIGHLIGHTS' ? {} : { rating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),

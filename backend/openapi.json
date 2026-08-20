@@ -6673,6 +6673,10 @@
           "storageKey": {
             "type": "string"
           },
+          "optimised": {
+            "type": "boolean",
+            "description": "Whether the browser already produced the optimised MP4.\n\nA hint, never a permission. Absent or false sends the clip to the server-side\ntranscoder, which is the safe direction — the cost of disbelieving a client\nthat did compress is one wasted re-encode, and the cost of believing one that\ndid not is a 40 MB original serving the feed for ever. An older client that\ndoes not send the field lands on the safe side by omission."
+          },
           "type": {
             "type": "string",
             "enum": [
