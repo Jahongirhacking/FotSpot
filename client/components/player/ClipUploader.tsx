@@ -11,9 +11,11 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
+import { compressForFeed } from '@/lib/video/compress';
+import type { CompressResult } from '@/lib/video/compress.types';
 import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleStop, Trophy, Upload, Video, X } from 'lucide-react';
+import { CircleStop, Trophy, Upload, Video, Wand2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -60,6 +62,20 @@ export function ClipUploader({
   const router = useRouter();
 
   const [file, setFile] = React.useState<File | null>(null);
+  /*
+   * The optimised copy, produced while the player fills in the rest of the form.
+   *
+   * Started the moment a file is chosen rather than on submit, so the encode runs
+   * during the seconds they spend on the rating and the title — by the time they
+   * press upload it is usually already done, and the wait costs nothing. Pressing
+   * upload early simply waits for it.
+   */
+  const [optimised, setOptimised] = React.useState<{
+    status: 'idle' | 'running' | 'done';
+    progress: number;
+    result: CompressResult | null;
+  }>({ status: 'idle', progress: 0, result: null });
+  const compressionRef = React.useRef<AbortController | null>(null);
   const [category, setCategory] = React.useState<Category | null>(null);
   const [rating, setRating] = React.useState(70);
   const [title, setTitle] = React.useState('');
@@ -92,11 +108,54 @@ export function ClipUploader({
     if (!candidate.type.startsWith('video/')) return setError(t.clips.videoOnly);
     if (candidate.size > MAX_BYTES) return setError(t.clips.tooLarge);
     setFile(candidate);
+    startCompression(candidate);
   };
+
+  /**
+   * Re-encodes in the background.
+   *
+   * Never rejects and never blocks: `compressForFeed` returns the original file
+   * on every failure path, so the worst case here is the upload that would have
+   * happened anyway. A second file replacing the first cancels the first encode —
+   * two hardware encoder sessions on a phone is how a low-end device runs out of
+   * memory.
+   */
+  const startCompression = (candidate: File) => {
+    compressionRef.current?.abort();
+    const controller = new AbortController();
+    compressionRef.current = controller;
+
+    setOptimised({ status: 'running', progress: 0, result: null });
+
+    void compressForFeed(candidate, {
+      signal: controller.signal,
+      onProgress: (fraction) => {
+        if (controller.signal.aborted) return;
+        setOptimised((was) => (was.status === 'running' ? { ...was, progress: fraction } : was));
+      },
+    }).then((result) => {
+      if (controller.signal.aborted) return;
+      setOptimised({ status: 'done', progress: 1, result });
+    });
+  };
+
+  // A camera left encoding after the dialog closes is a battery drain on a
+  // minor's phone, the same reasoning as LiveRecorder's cleanup.
+  React.useEffect(() => () => compressionRef.current?.abort(), []);
 
   const upload = useMutation({
     mutationFn: async () => {
       if (!file || !category) throw new Error(t.clips.pickCategory);
+
+      /*
+       * The optimised copy if there is one, the original otherwise.
+       *
+       * `compressForFeed` hands back the original on every failure path, so this
+       * is the same file the uploader would have sent before compression
+       * existed — an unsupported browser, an out-of-memory phone or a codec the
+       * decoder refuses all end up here with the upload intact.
+       */
+      const outgoing = optimised.result?.file ?? file;
 
       // 1. Presigned PUT, 2. straight to R2 — the video never transits the API,
       // which matters on mobile data (§14). 3. Confirm, which is what creates the
@@ -109,14 +168,16 @@ export function ClipUploader({
       }>('/media/upload-url', {
         method: 'POST',
         body: {
-          filename: file.name || 'clip?.webm',
+          // The name decides the object key's extension, so it follows the file
+          // actually being sent — `.mp4` once compressed.
+          filename: outgoing.name || 'clip.webm',
           type: 'VIDEO',
           category,
-          contentType: file.type || 'video/webm',
+          contentType: outgoing.type || 'video/webm',
         },
       });
 
-      await uploadToStorage(ticket.uploadUrl, file, {
+      await uploadToStorage(ticket.uploadUrl, outgoing, {
         blocked: t.clips.uploadBlocked,
         rejected: t.clips.uploadFailed,
       });
@@ -125,7 +186,8 @@ export function ClipUploader({
       // returns null rather than throwing, and a failed poster PUT is swallowed
       // here. A tile without a cover falls back to a themed placeholder.
       let posterKey: string | undefined;
-      const poster = await capturePoster(file);
+      // From the optimised copy: the same frames, far cheaper to decode.
+      const poster = await capturePoster(outgoing);
       if (poster) {
         const stored = await uploadToStorage(ticket.posterUploadUrl, poster, {
           blocked: '',
@@ -289,11 +351,17 @@ export function ClipUploader({
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() => setFile(null)}
+                    onClick={() => {
+                      compressionRef.current?.abort();
+                      setOptimised({ status: 'idle', progress: 0, result: null });
+                      setFile(null);
+                    }}
                   >
                     <X aria-hidden /> {t.clips.replaceClip}
                   </Button>
                 </div>
+
+                <OptimiseStatus state={optimised} />
 
                 {/* Step 3 — the self review, with what a top score means for this
                     skill in particular. Highlights evidence no single attribute,
@@ -342,8 +410,10 @@ export function ClipUploader({
                 {/* Step 5 */}
                 <Button
                   onClick={() => upload.mutate()}
-                  loading={upload.isPending}
-                  disabled={!ready}
+                  // Still encoding counts as loading: the button would otherwise
+                  // look idle while the thing it needs is being produced.
+                  loading={upload.isPending || optimised.status === 'running'}
+                  disabled={!ready || optimised.status === 'running'}
                   className="w-full"
                 >
                   <Upload aria-hidden /> {t.clips.publish}
@@ -355,6 +425,63 @@ export function ClipUploader({
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * What the encoder is doing, in one line the player can ignore.
+ *
+ * Deliberately quiet. Compression is an optimisation they did not ask for and do
+ * not need to understand — the only thing worth their attention is that a bar is
+ * moving and that it saved them something. A skipped clip says so plainly rather
+ * than reporting a reason ("unsupported codec") that would read as a fault when
+ * the upload is proceeding perfectly normally.
+ */
+function OptimiseStatus({
+  state,
+}: {
+  state: { status: 'idle' | 'running' | 'done'; progress: number; result: CompressResult | null };
+}) {
+  const { t, f } = useI18n();
+
+  if (state.status === 'running') {
+    return (
+      <div className="border-border bg-surface-2 space-y-2 rounded-lg border p-3">
+        <p className="flex items-center gap-2 text-xs font-medium">
+          <Wand2 className="text-primary size-3.5 shrink-0" aria-hidden />
+          {t.clips.optimising}
+        </p>
+        <div className="bg-surface-3 h-1.5 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full transition-all"
+            style={{ width: `${Math.round(state.progress * 100)}%` }}
+          />
+        </div>
+        <p className="text-muted text-xs leading-snug">{t.clips.optimisingHint}</p>
+      </div>
+    );
+  }
+
+  if (state.status !== 'done' || !state.result) return null;
+
+  if (state.result.status !== 'compressed') {
+    return <p className="text-muted text-xs">{t.clips.optimiseSkipped}</p>;
+  }
+
+  return (
+    <p className="text-success flex items-center gap-1.5 text-xs">
+      <Wand2 className="size-3.5 shrink-0" aria-hidden />
+      {f(t.clips.optimisedTo, {
+        before: formatBytes(state.result.originalBytes),
+        after: formatBytes(state.result.bytes),
+      })}
+    </p>
+  );
+}
+
+/** `41.2 MB`. Rounded hard — nobody is auditing an upload to three decimals. */
+function formatBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 10 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`;
 }
 
 function CategoryChip({

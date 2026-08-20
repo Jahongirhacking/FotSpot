@@ -665,6 +665,11 @@ export const ru: Dictionary = {
     clipTitle: 'Заголовок',
     description: 'Описание',
     publish: 'Загрузить',
+    optimising: 'Готовим видео…',
+    optimisingHint:
+      'Уменьшаем размер, сохраняя качество — загрузка пройдёт быстрее и потратит меньше трафика.',
+    optimisedTo: 'Размер уменьшен с {before} до {after}',
+    optimiseSkipped: 'Это видео уже готово к загрузке.',
     videoOnly: 'Только видеофайлы.',
     tooLarge: 'Видео слишком большое (до 120 МБ).',
     pickCategory: 'Сначала выберите показатель.',

@@ -695,6 +695,11 @@ export const uz = {
     clipTitle: 'Sarlavha',
     description: 'Tavsif',
     publish: 'Yuklash',
+    optimising: 'Video tayyorlanmoqda…',
+    optimisingHint:
+      'Sifatni saqlagan holda hajmi kichraytirilmoqda — yuklash tezroq va internetingiz kamroq sarflanadi.',
+    optimisedTo: 'Hajmi {before} dan {after} gacha kichraytirildi',
+    optimiseSkipped: 'Bu video allaqachon yuklash uchun tayyor.',
     videoOnly: 'Faqat video fayllar.',
     tooLarge: 'Video juda katta (120 MB gacha).',
     pickCategory: 'Avval ko‘rsatkichni tanlang.',

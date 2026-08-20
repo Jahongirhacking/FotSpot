@@ -666,6 +666,11 @@ export const en: Dictionary = {
     clipTitle: 'Title',
     description: 'Description',
     publish: 'Upload',
+    optimising: 'Preparing your video…',
+    optimisingHint:
+      'Making it smaller without losing quality — the upload will be quicker and use less data.',
+    optimisedTo: 'Reduced from {before} to {after}',
+    optimiseSkipped: 'This video is already ready to upload.',
     videoOnly: 'Video files only.',
     tooLarge: 'That video is too large (120 MB max).',
     pickCategory: 'Pick an attribute first.',
