@@ -663,6 +663,22 @@ export type TrialStatus = 'OPEN' | 'ARCHIVED';
 /** GENERAL is the open board; PRIVATE is by invitation and never listed. */
 export type TrialType = 'GENERAL' | 'PRIVATE';
 
+/**
+ * Just enough of the academy to show who is running a trial and where they are.
+ *
+ * `latitude`/`longitude` are nullable together — half a pair points at the Gulf
+ * of Guinea — and are only ever read through `yandexMapsUrl`, which checks both.
+ */
+export interface TrialAcademy {
+  id: string;
+  name: string;
+  region: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  logoUrl: string | null;
+}
+
 export interface Trial {
   id: string;
   academyId: string;
@@ -693,6 +709,14 @@ export interface Trial {
   /** R2 key for the cover image; `coverUrl` is what to render. */
   coverKey?: string | null;
   coverUrl?: string | null;
+  /**
+   * The academy running it, folded into the trial by the API.
+   *
+   * Absent on the responses to creating and updating a trial, which return the
+   * row they just wrote — the screens that need the host are the ones that read
+   * a trial, and those include it.
+   */
+  academy?: TrialAcademy;
   /**
    * Last moment somebody may apply. Null only on trials written before
    * deadlines existed; those stay open until their exam date.

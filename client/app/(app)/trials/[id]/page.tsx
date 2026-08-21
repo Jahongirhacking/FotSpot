@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { CalendarDays, ClipboardList, Hourglass, MapPin } from 'lucide-react';
+import { Building2, CalendarDays, ClipboardList, Clock, Hourglass, MapPin } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
 import { academies, trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
@@ -17,7 +17,9 @@ import { TrialAdmin } from './TrialAdmin';
 import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 import { TrialNote } from '@/components/trials/TrialNote';
-import { formatTrialDates } from '@/lib/trial-window';
+import { formatTrialDates, formatTrialTimes } from '@/lib/trial-window';
+import { LoadingImage } from '@/components/ui/LoadingImage';
+import { locationText, yandexMapsUrl } from '@/lib/maps';
 
 export async function generateMetadata({
   params,
@@ -36,7 +38,7 @@ export async function generateMetadata({
 export default async function TrialDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
-  const { t } = await getServerT();
+  const { t, f } = await getServerT();
 
   let trial: Trial;
   try {
@@ -96,8 +98,96 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
   const hosts = relation?.relation === 'MANAGER';
   const works = coaching?.some((assigned) => assigned.id === id);
 
+  /*
+   * A link only when the academy has said where it is, in coordinates.
+   *
+   * `yandexMapsUrl` is given no `address` on purpose: with one it falls back to
+   * a *text search*, which is right on the academy's own profile but not here —
+   * a player tapping a location on a trial expects the pin, and a search for a
+   * district name opens a map of somewhere approximate. No coordinates, no link,
+   * and the place is still named in plain text below.
+   */
+  const mapsHref = academy
+    ? yandexMapsUrl({ latitude: academy?.latitude, longitude: academy?.longitude })
+    : null;
+  // The academy's own place, not the session's — those differ, and both are on
+  // this page. Name deliberately omitted: it is already the heading above this.
+  const dailyTimes = formatTrialTimes(trial);
+  const where = locationText({ region: academy?.region, district: academy?.district });
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {/*
+        The cover, above everything.
+        `aspect-[3/1]` rather than the card's 16:9 — a banner at the top of a
+        page reads as a header, where a 16:9 block reads as a photograph the
+        reader is meant to study.
+      */}
+      {trial?.coverUrl && (
+        <div className="bg-surface-2 relative aspect-[3/1] w-full overflow-hidden rounded-xl">
+          <LoadingImage
+            src={trial.coverUrl}
+            alt={f(t.trials.coverAlt, { title: trial?.title })}
+            className="absolute inset-0 size-full object-cover"
+          />
+        </div>
+      )}
+
+      {/*
+        Who is running it, and where they are — before the trial's own details.
+        A player deciding whether to travel reads the club first; the session's
+        own location is further down, and the two are genuinely different places
+        (an academy in Tashkent can hold a trial in Chilonzor).
+      */}
+      {academy && (
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/academies/${academy.id}`}
+            className="bg-surface-3 focus-visible:ring-ring relative size-12 shrink-0 overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+            aria-label={academy.name}
+          >
+            {academy.logoUrl ? (
+              <LoadingImage
+                src={academy.logoUrl}
+                alt=""
+                spinner={false}
+                className="size-full object-cover"
+              />
+            ) : (
+              <span className="text-muted grid size-full place-items-center">
+                <Building2 className="size-5" aria-hidden />
+              </span>
+            )}
+          </Link>
+
+          <div className="min-w-0">
+            <Link href={`/academies/${academy.id}`} className="font-semibold hover:underline">
+              {academy.name}
+            </Link>
+            {/* Nothing at all when the academy has named no place — an empty
+                line with a pin on it says "unknown" more loudly than silence. */}
+            {where &&
+              (mapsHref ? (
+                <a
+                  href={mapsHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted hover:text-foreground flex items-center gap-1.5 text-sm hover:underline"
+                >
+                  <MapPin className="size-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{where}</span>
+                  <span className="sr-only">({t.trials.openInMaps})</span>
+                </a>
+              ) : (
+                <p className="text-muted flex items-center gap-1.5 text-sm">
+                  <MapPin className="size-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{where}</span>
+                </p>
+              ))}
+          </div>
+        </div>
+      )}
+
       <header>
         <div className="flex flex-wrap items-center gap-2">
           {/* A private trial states no age range: it is for one named child who
@@ -107,6 +197,12 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
               {t.trials.ages} {trial?.ageRangeMin}–{trial?.ageRangeMax}
             </Badge>
           )}
+          {/* Only when it says something: every trial carries a gender (the
+              column is defaulted), so this is always shown — unlike the age
+              range above, which a private trial genuinely does not state. */}
+          <Badge variant="outline">
+            {trial?.gender === 'female' ? t.trials.genderFemale : t.trials.genderMale}
+          </Badge>
           {trial?.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
           {trial?.status === 'ARCHIVED' && (
             <Badge variant="neutral">{t.trials.statusArchived}</Badge>
@@ -119,6 +215,16 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
             <dt className="sr-only">{t.trials.examDate}</dt>
             <dd>{formatTrialDates(trial, t.trials.openEnded)}</dd>
           </div>
+          {/* The hours of each day, when the trial states them — a fortnight-long
+              window that runs 09:00–18:00 is a different commitment from one
+              that does not say, and the dates alone cannot carry it. */}
+          {dailyTimes && (
+            <div className="flex items-center gap-1.5">
+              <Clock className="size-4" aria-hidden />
+              <dt className="sr-only">{t.trials.dailyWindow}</dt>
+              <dd>{dailyTimes}</dd>
+            </div>
+          )}
           {/* The two dates are different promises — when to turn up, and by when
               to say you are coming — so both are on the page, not just the one. */}
           {trial?.applyDeadline && (

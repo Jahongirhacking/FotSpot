@@ -1,20 +1,19 @@
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
+
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, recommendations, trials } from '@/lib/api/resources';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
 
-import { CalendarDays, MapPin } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { MyTrialInvitations } from './MyTrialInvitations';
-import { formatTrialDates } from '@/lib/trial-window';
+import { TrialCard } from '@/components/trials/TrialCard';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -154,43 +153,15 @@ export default async function TrialsPage({
             }
           />
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          /*
+           * One column on a phone, two on a tablet, three on a laptop and four
+           * on a wide screen — the card is designed to stay readable at 375px,
+           * so the breakpoints add columns rather than shrinking it.
+           */
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {list?.map((trial) => (
               <li key={trial?.id}>
-                <Card className="hover:border-primary/40 h-full transition-colors">
-                  <Link href={`/trials/${trial?.id}`} className="block">
-                    <CardContent className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold">{trial?.title}</p>
-                        <Badge variant="primary" className="shrink-0">
-                          U{trial?.ageRangeMax}
-                        </Badge>
-                      </div>
-                      <dl className="text-muted space-y-1 text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5" aria-hidden />
-                          <dt className="sr-only">Date</dt>
-                          <dd>{formatTrialDates(trial, t.trials.openEnded)}</dd>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="size-3.5" aria-hidden />
-                          <dt className="sr-only">{t.trials.location}</dt>
-                          <dd>{trial?.location}</dd>
-                        </div>
-                      </dl>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline">
-                          Ages {trial?.ageRangeMin}–{trial?.ageRangeMax}
-                        </Badge>
-                        {trial?.positions.slice(0, 4).map((position) => (
-                          <Badge key={position} variant="neutral" className="font-mono">
-                            {position}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Link>
-                </Card>
+                <TrialCard trial={trial} t={t} />
               </li>
             ))}
           </ul>

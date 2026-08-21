@@ -23,6 +23,17 @@ import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
 import { academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
+
+/** The academy shape `withCoverUrl` folds into a trial. */
+interface AcademySummaryRow {
+  id: string;
+  name: string;
+  region: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  logoKey: string | null;
+}
 import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
@@ -307,6 +318,7 @@ export class TrialsService {
     const trials = await this.prisma.trial.findMany({
       where: { academyId, status: 'OPEN' },
       orderBy: { date: 'asc' },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
     return trials.map((trial) => this.withCoverUrl(trial));
   }
@@ -406,6 +418,7 @@ export class TrialsService {
         OR: [{ date: null }, { date: { gte: new Date() } }],
       },
       orderBy: { date: 'asc' },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
     return trials.map((trial) => this.withCoverUrl(trial));
   }
@@ -1034,7 +1047,10 @@ export class TrialsService {
   }
 
   async getById(trialId: string) {
-    const trial = await this.prisma.trial.findUnique({ where: { id: trialId } });
+    const trial = await this.prisma.trial.findUnique({
+      where: { id: trialId },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
+    });
     if (!trial) throw new NotFoundException('Trial not found');
     return this.withCoverUrl(trial);
   }
@@ -1219,9 +1235,51 @@ export class TrialsService {
    * editing a trial sends it straight back, and hiding it would mean the edit
    * form could not preserve a cover it did not re-upload.
    */
-  private withCoverUrl<T extends { coverKey: string | null }>(trial: T) {
-    return { ...trial, coverUrl: this.storage.publicUrlOrNull(trial.coverKey) };
+  private withCoverUrl<T extends { coverKey: string | null; academy?: AcademySummaryRow }>(
+    trial: T,
+  ) {
+    const { academy, ...rest } = trial;
+    return {
+      ...rest,
+      coverUrl: this.storage.publicUrlOrNull(trial.coverKey),
+      /*
+       * The host, for the screens that show a trial on its own.
+       *
+       * A player looking at a trial is deciding whether to travel to it, and
+       * "who is running this and where are they" is most of that decision. It
+       * used to take a second request to `/academies/:id` — or, on the list, was
+       * simply absent, so every card said only which town the *session* was in.
+       *
+       * `logoKey` becomes `logoUrl` here for the same reason it does on the
+       * academy's own endpoint: the key is what is stored, and the URL is built
+       * at read time so changing CDN or provider stays a config change.
+       */
+      academy: academy
+        ? {
+            id: academy.id,
+            name: academy.name,
+            region: academy.region,
+            district: academy.district,
+            // Nullable together and always read together — half a pair points at
+            // the Gulf of Guinea (see the schema note).
+            latitude: academy.latitude,
+            longitude: academy.longitude,
+            logoUrl: this.storage.publicUrlOrNull(academy.logoKey),
+          }
+        : undefined,
+    };
   }
+
+  /** The academy fields a trial carries. Deliberately not the whole profile. */
+  private static readonly ACADEMY_SUMMARY = {
+    id: true,
+    name: true,
+    region: true,
+    district: true,
+    latitude: true,
+    longitude: true,
+    logoKey: true,
+  } as const;
 
   private assertWindow(window: Parameters<typeof validateWindow>[0]): void {
     const problem = validateWindow(window);
