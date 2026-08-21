@@ -6,6 +6,7 @@ import { PLAYING_STYLES } from '@/lib/schemas/player';
 import { cn, humanizeEnum } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import * as React from 'react';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * Pick a playing style, with the sentence that says what it is.
@@ -129,10 +130,11 @@ function ExemplarCrest({
 }) {
   if (imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- a local static asset; next/image adds a loader for no gain here
-      <img
+       
+      <LoadingImage
         src={imageUrl}
         alt={name}
+        spinner={false}
         className="size-20 shrink-0 rounded-lg object-contain"
         loading="lazy"
       />

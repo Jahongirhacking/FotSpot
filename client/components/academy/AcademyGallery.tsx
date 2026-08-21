@@ -6,6 +6,7 @@ import type { AcademyPhoto } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { cn } from '@/lib/utils';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * The academy's own photographs — pitch, changing rooms, a squad.
@@ -55,12 +56,12 @@ export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
               className="border-border group relative block aspect-[4/3] w-full overflow-hidden rounded-lg border"
               aria-label={photo?.caption ?? `${t.academy?.galleryTitle} ${index + 1}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- bucket asset; next/image would add a loader for no gain */}
-              <img
+              { }
+              <LoadingImage
                 src={photo?.url ?? ''}
                 alt={photo?.caption ?? ''}
                 loading={index === 0 ? 'eager' : 'lazy'}
-                className="size-full object-cover transition-transform duration-200 group-hover:scale-105"
+                className="size-full object-cover group-hover:scale-105"
               />
               {photo?.caption && (
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-xs text-white">
@@ -81,8 +82,8 @@ export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
           </DialogTitle>
 
           <div className="relative bg-black">
-            {/* eslint-disable-next-line @next/next/no-img-element -- bucket asset */}
-            <img
+            { }
+            <LoadingImage
               src={current?.url ?? ''}
               alt={current?.caption ?? ''}
               className="max-h-[70dvh] w-full object-contain"

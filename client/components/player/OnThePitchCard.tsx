@@ -5,6 +5,7 @@ import type { Dictionary } from '@/lib/i18n';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
 import Link from 'next/link';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * Position, dominant foot and playing style, as pictures.
@@ -93,11 +94,12 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
 function StyleCrest({ name, imageUrl }: { name: string; imageUrl?: string }) {
   if (imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- bucket asset; next/image would add a loader for no gain
-      <img
+       
+      <LoadingImage
         src={imageUrl}
         alt={name}
         loading="lazy"
+        spinner={false}
         className="size-22 shrink-0 rounded-lg object-contain"
       />
     );

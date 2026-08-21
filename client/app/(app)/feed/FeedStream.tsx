@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { ShortViewer } from './ShortViewer';
 import { ageBand, cn, initials } from '@/lib/utils';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 const PAGE_SIZE = 6;
 /** Roughly one card at phone width; corrected by measurement as rows mount. */
@@ -247,8 +248,12 @@ function FeedCard({
                 className="size-full object-cover"
               />
             ) : clip?.posterUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL, not an optimisable asset
-              <img src={clip?.posterUrl} alt="" className="size-full object-cover" />
+              <LoadingImage
+                src={clip?.posterUrl}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover"
+              />
             ) : (
               <span className="text-muted grid size-full place-items-center">
                 <TriangleAlert className="size-5" aria-hidden />
@@ -308,7 +313,9 @@ function FeedCard({
           </span>
         </p>
         {clip?.title && <p className="text-sm font-medium">{clip?.title}</p>}
-        {clip?.description && <p className="text-muted line-clamp-2 text-sm">{clip?.description}</p>}
+        {clip?.description && (
+          <p className="text-muted line-clamp-2 text-sm">{clip?.description}</p>
+        )}
       </footer>
     </article>
   );
