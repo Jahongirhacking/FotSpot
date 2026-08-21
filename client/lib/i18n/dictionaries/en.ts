@@ -630,6 +630,34 @@ export const en: Dictionary = {
     highlights: 'Highlights',
   },
 
+  /** The Telegram section on /profile/edit. */
+  telegram: {
+    title: 'Telegram',
+    connected: 'Connected',
+    notConnected: 'Not connected',
+    connectHint: 'Connect Telegram to sign in with it and receive notifications.',
+    disconnecting: 'Disconnecting…',
+    connectSuccess: 'Telegram connected successfully.',
+    disconnectSuccess: 'Telegram disconnected successfully.',
+    connectFailed: 'Could not connect Telegram. Please try again.',
+    disconnectFailed: 'Could not disconnect Telegram. Please try again.',
+    alreadyConnected:
+      'This Telegram account is already connected to another FotSpot account. Please sign in with Telegram to access that account.',
+    startBotHint:
+      'Almost there — open the FotSpot bot and press Start so it can send you notifications.',
+    openBot: 'Open the bot',
+    enable: 'Enable notifications',
+    enabling: 'Enabling…',
+    disable: 'Disable notifications',
+    enableSuccess: 'Telegram notifications enabled.',
+    enableFailed: 'Could not enable Telegram notifications. Please try again.',
+    notificationsLabel: 'Telegram notifications',
+    on: 'ON',
+    off: 'OFF',
+    identityKeptHint:
+      'Your Telegram account stays connected so you can keep signing in with it — only the messages stop.',
+  },
+
   clips: {
     coachRating: "Coach's rating",
     ratedBySelf: 'Right now this is the player’s own number.',

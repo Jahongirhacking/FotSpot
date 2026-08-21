@@ -629,6 +629,34 @@ export const ru: Dictionary = {
     highlights: 'Лучшие моменты',
   },
 
+  /** Раздел Telegram на /profile/edit. */
+  telegram: {
+    title: 'Telegram',
+    connected: 'Подключён',
+    notConnected: 'Не подключён',
+    connectHint: 'Подключите Telegram, чтобы входить через него и получать уведомления.',
+    disconnecting: 'Отключаем…',
+    connectSuccess: 'Telegram успешно подключён.',
+    disconnectSuccess: 'Telegram успешно отключён.',
+    connectFailed: 'Не удалось подключить Telegram. Попробуйте ещё раз.',
+    disconnectFailed: 'Не удалось отключить Telegram. Попробуйте ещё раз.',
+    alreadyConnected:
+      'Этот аккаунт Telegram уже подключён к другому аккаунту FotSpot. Войдите через Telegram, чтобы попасть в тот аккаунт.',
+    startBotHint:
+      'Почти готово — откройте бота FotSpot и нажмите «Start», чтобы он мог присылать уведомления.',
+    openBot: 'Открыть бота',
+    enable: 'Включить уведомления',
+    enabling: 'Включаем…',
+    disable: 'Отключить уведомления',
+    enableSuccess: 'Уведомления в Telegram включены.',
+    enableFailed: 'Не удалось включить уведомления в Telegram. Попробуйте ещё раз.',
+    notificationsLabel: 'Уведомления в Telegram',
+    on: 'ВКЛ',
+    off: 'ВЫКЛ',
+    identityKeptHint:
+      'Аккаунт Telegram остаётся привязанным, чтобы вы могли входить через него — прекращаются только сообщения.',
+  },
+
   clips: {
     coachRating: 'Оценка тренера',
     ratedBySelf: 'Сейчас это оценка самого игрока.',

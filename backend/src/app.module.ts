@@ -12,6 +12,7 @@ import { AuditModule } from './audit/audit.module';
 import { RequestsModule } from './requests/requests.module';
 import { EmailModule } from './email/email.module';
 import { SmsModule } from './sms/sms.module';
+import { TelegramModule } from './telegram/telegram.module';
 import { AuthModule } from './auth/auth.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { FollowsModule } from './follows/follows.module';
@@ -90,6 +91,7 @@ import { AppController } from './app.controller';
     RequestsModule,
     EmailModule,
     SmsModule,
+    TelegramModule,
     RbacModule,
     TariffsModule,
     AuthModule,

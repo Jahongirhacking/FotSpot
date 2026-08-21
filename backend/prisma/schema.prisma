@@ -132,6 +132,27 @@ model User {
   /// authentication lookup resolves to whichever row came back first.
   telegramId String? @unique
 
+  /// Whether this account wants FotSpot notifications delivered to Telegram.
+  ///
+  /// A *preference*, and the only thing the Disconnect button on /profile/edit
+  /// writes. `telegramId` is deliberately never cleared: it is the identity
+  /// `AuthService.telegramLogin` recognises a returning user by, so an id that
+  /// stopped being stored would stop being recognised and the next Telegram
+  /// sign-in would mint a **new account** — an unlimited supply of them, one per
+  /// disconnect. Turning messages off must not be a way to manufacture accounts.
+  ///
+  /// Default false, and set true when an account links Telegram or presses
+  /// /start in the bot. It is not a promise the bot can actually reach them:
+  /// Telegram refuses `sendMessage` to anybody who has never opened a chat with
+  /// the bot, and only /start fixes that. A refused delivery is logged and
+  /// dropped rather than switching this off, because overriding a preference the
+  /// person just set would leave them toggling it on and off with no explanation.
+  ///
+  /// There is no separate `telegramChatId`: in a private chat the chat id *is*
+  /// the user id, so a second column would hold a copy of `telegramId` and could
+  /// only ever disagree with it.
+  telegramNotificationsEnabled Boolean @default(false)
+
   /// Support requests this account raised, and the ones it handled as an admin.
   supportRequests        SupportRequest[] @relation("RequestsMade")
   handledSupportRequests SupportRequest[] @relation("RequestsHandled")

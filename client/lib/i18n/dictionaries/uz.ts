@@ -658,6 +658,34 @@ export const uz = {
     highlights: 'Eng yaxshi lahzalar',
   },
 
+  /** /profile/edit sahifasidagi Telegram bo‘limi. */
+  telegram: {
+    title: 'Telegram',
+    connected: 'Ulangan',
+    notConnected: 'Ulanmagan',
+    connectHint: 'Telegram orqali kirish va bildirishnomalar olish uchun uni ulang.',
+    disconnecting: 'Uzilmoqda…',
+    connectSuccess: 'Telegram muvaffaqiyatli ulandi.',
+    disconnectSuccess: 'Telegram muvaffaqiyatli uzildi.',
+    connectFailed: 'Telegramni ulab bo‘lmadi. Qaytadan urinib ko‘ring.',
+    disconnectFailed: 'Telegramni uzib bo‘lmadi. Qaytadan urinib ko‘ring.',
+    alreadyConnected:
+      'Bu Telegram hisobi allaqachon boshqa FotSpot hisobiga ulangan. O‘sha hisobga kirish uchun Telegram orqali tizimga kiring.',
+    startBotHint:
+      'Deyarli tayyor — FotSpot botini oching va «Start» tugmasini bosing, shunda u sizga bildirishnoma yubora oladi.',
+    openBot: 'Botni ochish',
+    enable: 'Bildirishnomalarni yoqish',
+    enabling: 'Yoqilmoqda…',
+    disable: 'Bildirishnomalarni o‘chirish',
+    enableSuccess: 'Telegram bildirishnomalari yoqildi.',
+    enableFailed: 'Telegram bildirishnomalarini yoqib bo‘lmadi. Qaytadan urinib ko‘ring.',
+    notificationsLabel: 'Telegram bildirishnomalari',
+    on: 'YOQILGAN',
+    off: 'O‘CHIQ',
+    identityKeptHint:
+      'Telegram hisobingiz ulangan holicha qoladi — u orqali tizimga kirishda davom etasiz, faqat xabarlar to‘xtaydi.',
+  },
+
   clips: {
     coachRating: 'Murabbiy bahosi',
     ratedBySelf: 'Hozircha o‘yinchining o‘z bahosi.',

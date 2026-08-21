@@ -98,6 +98,32 @@ export const users = {
       { method: 'POST', body, ...opts },
     ),
 
+  /** Whether Telegram is linked, and whether the bot can actually message us. */
+  telegramStatus: (opts: Opts = {}) => apiFetch<TelegramStatus>('/users/me/telegram', opts),
+
+  /**
+   * Link the Telegram account whose signed widget payload this is.
+   *
+   * The body is the widget's payload verbatim — the server takes the Telegram id
+   * from it only after checking the HMAC, so nothing here decides which account
+   * gets linked. 409 means it already belongs to somebody else.
+   */
+  connectTelegram: (body: TelegramWidgetPayload, opts: Opts = {}) =>
+    apiFetch<TelegramStatus>('/users/me/telegram/connect', { method: 'POST', body, ...opts }),
+
+  /**
+   * Turn Telegram notifications on or off.
+   *
+   * Never detaches the Telegram identity — that stays, because it is what signs
+   * the account back in. See the backend's `TelegramLinkService`.
+   */
+  setTelegramNotifications: (notificationsEnabled: boolean, opts: Opts = {}) =>
+    apiFetch<TelegramStatus>('/users/me/telegram', {
+      method: 'PATCH',
+      body: { notificationsEnabled },
+      ...opts,
+    }),
+
   /**
    * Become a scout — the one role a user may grant themselves, because it starts
    * with no authority (§1.5: a new scout's word carries the lowest weight).
@@ -139,6 +165,38 @@ export interface ContactChangeTicket {
   expiresInSeconds: number;
   /** Non-production only: SMS/email delivery is a documented stub. */
   devCode?: string;
+}
+
+/**
+ * What the Telegram section knows about the account.
+ *
+ * Two booleans, not one. `connected` says a Telegram identity is attached — and
+ * once attached it stays, because it is what signs the account back in.
+ * `notificationsEnabled` is the separate, freely toggleable preference for
+ * whether messages are delivered. Turning notifications off leaves `connected`
+ * true, which is exactly the point: the alternative detaches an identity and
+ * hands out a fresh account on the next Telegram sign-in.
+ *
+ * Deliberately carries no Telegram id, username or photo: the screen never needs
+ * them, and a stable cross-service identifier in every response is not something
+ * to hand out for nothing.
+ */
+export interface TelegramStatus {
+  connected: boolean;
+  notificationsEnabled: boolean;
+  /** The bot's public @handle, so the UI can link to it. Never a token. */
+  botUsername: string | null;
+}
+
+/** The Telegram Login Widget's payload, passed through untouched. */
+export interface TelegramWidgetPayload {
+  id: string;
+  hash: string;
+  auth_date: string;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
 }
 
 export interface MeResponse {

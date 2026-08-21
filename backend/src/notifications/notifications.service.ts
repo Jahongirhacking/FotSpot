@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { NotificationEvent, Prisma } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
+import { TelegramNotificationsService } from '../telegram/telegram-notifications.service';
 
 /**
  * Who caused a notification, and in what capacity.
@@ -26,6 +27,7 @@ export class NotificationsService {
     private prisma: PrismaService,
     private gateway: NotificationsGateway,
     private storage: StorageService,
+    private telegram: TelegramNotificationsService,
   ) {}
 
   async notify(
@@ -48,6 +50,24 @@ export class NotificationsService {
     // The socket carries the same shape the list returns, so a notification
     // arriving live and one loaded on refresh render identically.
     this.gateway.emitToUser(userId, 'notification', this.withActor(notification));
+
+    /*
+     * Telegram, as an extra copy — and strictly after the notification exists.
+     *
+     * Ordering is the whole safety argument. The row is written and the socket
+     * has fired before this line runs, so the notification is already delivered
+     * by every means that matters; Telegram is an additional channel layered on
+     * top, never a step the original depends on.
+     *
+     * `enqueue` is documented never to throw and swallows its own failures, so
+     * an unconfigured bot, an unreachable Redis or a user who has not linked
+     * anything all end here silently. The `await` is only so `notify` does not
+     * return while a database read is still outstanding — the Telegram *request*
+     * itself happens on the queue, not here, so this adds no third-party network
+     * call to the caller's request.
+     */
+    await this.telegram.enqueue(userId, event, payload);
+
     return notification;
   }
 
