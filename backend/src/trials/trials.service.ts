@@ -21,6 +21,20 @@ import { InvitationsService } from '../academies/invitations.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
+import { academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
+import { StorageService } from '../storage/storage.service';
+
+/** The academy shape `withCoverUrl` folds into a trial. */
+interface AcademySummaryRow {
+  id: string;
+  name: string;
+  region: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  logoKey: string | null;
+}
+import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 import { SmsService } from '../sms/sms.service';
@@ -37,6 +51,7 @@ export class TrialsService {
     private recommendations: RecommendationsService,
     private redis: RedisService,
     private sms: SmsService,
+    private storage: StorageService,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -58,21 +73,48 @@ export class TrialsService {
     if (!academy) throw new NotFoundException('Academy not found');
     assertNotLocalTeam(academy.kind, 'hold trials');
 
-    const date = new Date(dto.date);
-    const applyDeadline = new Date(dto.applyDeadline);
-    if (applyDeadline > date) {
-      throw new BadRequestException('Applications cannot close after the trial has happened');
-    }
+    /*
+     * The window is optional as a whole, and validated as a whole.
+     *
+     * `validateWindow` owns the rules (all four fields or none, end not before
+     * start, deadline not after the opening day); this owns the wording. An
+     * open-ended trial passes with every field null, which is the case the
+     * checkbox on the form produces.
+     */
+    const date = dto.date ? new Date(dto.date) : null;
+    const endDate = dto.endDate ? new Date(dto.endDate) : null;
+    const applyDeadline = dto.applyDeadline ? new Date(dto.applyDeadline) : null;
+
+    this.assertWindow({
+      startsAt: date,
+      endsAt: endDate,
+      startTime: dto.startTime ?? null,
+      endTime: dto.endTime ?? null,
+      applyDeadline,
+    });
+
+    const coverKey = dto.coverKey ? this.assertOwnCoverKey(academyId, dto.coverKey) : null;
 
     const trial = await this.prisma.trial.create({
       // Sanitised here rather than trusted from the client: the editor cleans as
       // a convenience for the person typing, but this endpoint is reachable
       // without it.
-      data: { academyId, ...dto, date, applyDeadline, note: sanitizeRichText(dto.note) },
+      data: {
+        academyId,
+        ...dto,
+        date,
+        endDate,
+        startTime: dto.startTime ?? null,
+        endTime: dto.endTime ?? null,
+        gender: dto.gender ?? 'male',
+        coverKey,
+        applyDeadline,
+        note: sanitizeRichText(dto.note),
+      },
     });
 
     await this.announceToMatchingPlayers(trial, userId);
-    return trial;
+    return this.withCoverUrl(trial);
   }
 
   /**
@@ -103,7 +145,7 @@ export class TrialsService {
       id: string;
       academyId: string;
       title: string;
-      date: Date;
+      date: Date | null;
       type: string;
       positions: string[];
       ageRangeMin: number | null;
@@ -136,9 +178,15 @@ export class TrialsService {
      * somebody turning `min` *on* the trial date is old enough, and inclusive is
      * what makes that true.
      */
-    if (trial.ageRangeMax != null) bounds.gt = birthDateForAge(trial.date, trial.ageRangeMax + 1);
-    // Youngest allowed: born no later than (trial date − minAge).
-    if (trial.ageRangeMin != null) bounds.lte = birthDateForAge(trial.date, trial.ageRangeMin);
+    /*
+     * An open-ended trial has no day to judge against, so age is judged today —
+     * see `ageReferenceDate`. Treating a missing date as "no age limit" would
+     * quietly widen a 12–14 trial to everybody.
+     */
+    const judgedOn = ageReferenceDate(trial);
+    if (trial.ageRangeMax != null) bounds.gt = birthDateForAge(judgedOn, trial.ageRangeMax + 1);
+    // Youngest allowed: born no later than (reference date − minAge).
+    if (trial.ageRangeMin != null) bounds.lte = birthDateForAge(judgedOn, trial.ageRangeMin);
 
     const matches = await this.prisma.playerProfile.findMany({
       where: {
@@ -226,9 +274,21 @@ export class TrialsService {
       : {
           status: 'OPEN' as const,
           type: 'GENERAL' as const,
-          date: { gte: now },
-          // Only ones they could still act on: a closed deadline is not news.
-          OR: [{ applyDeadline: null }, { applyDeadline: { gte: now } }],
+          /*
+           * Two independent conditions, so `AND` of two `OR`s rather than two
+           * `OR` keys — an object cannot hold the same key twice, and the second
+           * would silently replace the first.
+           *
+           * Each says the same thing about a missing value: null means "no
+           * limit given", never "already past". An open-ended trial has no date
+           * to be in the future and runs until it is archived; a trial with no
+           * deadline takes applications until it does.
+           */
+          AND: [
+            { OR: [{ date: null }, { date: { gte: now } }] },
+            // Only ones they could still act on: a closed deadline is not news.
+            { OR: [{ applyDeadline: null }, { applyDeadline: { gte: now } }] },
+          ],
         };
 
     const count = await this.prisma.trial.count({
@@ -255,10 +315,12 @@ export class TrialsService {
    * growing either.
    */
   async listForAcademy(academyId: string) {
-    return this.prisma.trial.findMany({
+    const trials = await this.prisma.trial.findMany({
       where: { academyId, status: 'OPEN' },
       orderBy: { date: 'asc' },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
+    return trials.map((trial) => this.withCoverUrl(trial));
   }
 
   /**
@@ -348,10 +410,17 @@ export class TrialsService {
    * academy's interest public before the family had answered.
    */
   async listUpcoming() {
-    return this.prisma.trial.findMany({
-      where: { date: { gte: new Date() }, status: 'OPEN', type: 'GENERAL' },
+    const trials = await this.prisma.trial.findMany({
+      where: {
+        status: 'OPEN',
+        type: 'GENERAL',
+        // See `list`: a dateless trial runs until it is archived.
+        OR: [{ date: null }, { date: { gte: new Date() } }],
+      },
       orderBy: { date: 'asc' },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
+    return trials.map((trial) => this.withCoverUrl(trial));
   }
 
   /**
@@ -873,16 +942,35 @@ export class TrialsService {
       throw new BadRequestException('The minimum age cannot be above the maximum');
     }
 
-    const date = dto.date !== undefined ? new Date(dto.date) : trial.date;
-    const applyDeadline =
-      dto.applyDeadline !== undefined ? new Date(dto.applyDeadline) : trial.applyDeadline;
-    if (applyDeadline && applyDeadline > date) {
-      throw new BadRequestException('Applications cannot close after the trial has happened');
-    }
+    /*
+     * Each field falls back to what the trial already holds, so a partial edit
+     * cannot silently drop the other half of the window — changing only the end
+     * time must not blank the dates.
+     */
+    const date = patchedDate(dto.date, trial.date);
+    const endDate = patchedDate(dto.endDate, trial.endDate);
+    const startTime = dto.startTime !== undefined ? (dto.startTime ?? null) : trial.startTime;
+    const endTime = dto.endTime !== undefined ? (dto.endTime ?? null) : trial.endTime;
+    const applyDeadline = patchedDate(dto.applyDeadline, trial.applyDeadline);
 
-    // Compared before the write, because afterwards there is nothing to compare
-    // against — the old date is gone.
-    const moved = dto.date !== undefined && date.getTime() !== trial.date.getTime();
+    this.assertWindow({ startsAt: date, endsAt: endDate, startTime, endTime, applyDeadline });
+
+    const coverKey =
+      dto.coverKey !== undefined
+        ? this.assertOwnCoverKey(trial.academyId, dto.coverKey)
+        : trial.coverKey;
+
+    /*
+     * Compared before the write, because afterwards there is nothing to compare
+     * against. Both sides must exist: giving a date to a trial that never had
+     * one is not a reschedule — nobody was told a date to be moved from — so it
+     * announces nothing.
+     */
+    const moved =
+      dto.date !== undefined &&
+      trial.date !== null &&
+      date !== null &&
+      date.getTime() !== trial.date.getTime();
 
     const updated = await this.prisma.trial.update({
       where: { id: trialId },
@@ -890,6 +978,11 @@ export class TrialsService {
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
         ...(dto.location !== undefined ? { location: dto.location.trim() } : {}),
         ...(dto.date !== undefined ? { date } : {}),
+        ...(dto.endDate !== undefined ? { endDate } : {}),
+        ...(dto.startTime !== undefined ? { startTime } : {}),
+        ...(dto.endTime !== undefined ? { endTime } : {}),
+        ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
+        ...(dto.coverKey !== undefined ? { coverKey } : {}),
         ...(dto.applyDeadline !== undefined ? { applyDeadline } : {}),
         ...(dto.ageRangeMin !== undefined ? { ageRangeMin: dto.ageRangeMin } : {}),
         ...(dto.ageRangeMax !== undefined ? { ageRangeMax: dto.ageRangeMax } : {}),
@@ -902,10 +995,13 @@ export class TrialsService {
       },
     });
 
-    if (moved)
+    // `moved` is only true when both dates exist, so the non-null assertion the
+    // signature would otherwise need is already established above.
+    if (moved && trial.date) {
       await this.announceReschedule(updated, trial.date, { userId, role: 'academy_manager' });
+    }
 
-    return updated;
+    return this.withCoverUrl(updated);
   }
 
   /**
@@ -920,7 +1016,7 @@ export class TrialsService {
    * a verdict — their trial is over and the new date is not about them.
    */
   private async announceReschedule(
-    trial: { id: string; title: string; date: Date },
+    trial: { id: string; title: string; date: Date | null },
     was: Date,
     actor: { userId: string; role: string },
   ) {
@@ -940,7 +1036,9 @@ export class TrialsService {
           applicationId: application.id,
           trialId: trial.id,
           trialTitle: trial.title,
-          date: trial.date.toISOString(),
+          // Non-null by construction: `update` only announces when both the old
+          // and the new date exist (see `moved`).
+          date: trial.date?.toISOString() ?? null,
           previousDate: was.toISOString(),
         },
         actor,
@@ -949,9 +1047,12 @@ export class TrialsService {
   }
 
   async getById(trialId: string) {
-    const trial = await this.prisma.trial.findUnique({ where: { id: trialId } });
+    const trial = await this.prisma.trial.findUnique({
+      where: { id: trialId },
+      include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
+    });
     if (!trial) throw new NotFoundException('Trial not found');
-    return trial;
+    return this.withCoverUrl(trial);
   }
 
   /**
@@ -993,7 +1094,7 @@ export class TrialsService {
      * Only a trial that states a range can turn somebody away on age. A private
      * trial states none — nobody applies to one, so there is nothing to check.
      */
-    const age = ageAt(player.birthDate, trial.date);
+    const age = ageAt(player.birthDate, ageReferenceDate(trial));
     if (
       trial.ageRangeMin != null &&
       trial.ageRangeMax != null &&
@@ -1114,6 +1215,104 @@ export class TrialsService {
     );
 
     return updated;
+  }
+
+  /**
+   * Turns a window problem into the sentence a manager should read.
+   *
+   * The rules live in `trial-window.util.ts` and the wording lives here, so the
+   * checks can be tested without a Nest container and the copy can change
+   * without touching them.
+   */
+  /**
+   * Attaches the cover's public URL, the same way the academy gallery does.
+   *
+   * The key is what is stored and the URL is built at read time (storage.keys.ts):
+   * a stored URL outlives every decision that produced it, so changing CDN,
+   * domain or provider would be a migration rather than a config change.
+   *
+   * `coverKey` is left on the object rather than stripped — an academy manager
+   * editing a trial sends it straight back, and hiding it would mean the edit
+   * form could not preserve a cover it did not re-upload.
+   */
+  private withCoverUrl<T extends { coverKey: string | null; academy?: AcademySummaryRow }>(
+    trial: T,
+  ) {
+    const { academy, ...rest } = trial;
+    return {
+      ...rest,
+      coverUrl: this.storage.publicUrlOrNull(trial.coverKey),
+      /*
+       * The host, for the screens that show a trial on its own.
+       *
+       * A player looking at a trial is deciding whether to travel to it, and
+       * "who is running this and where are they" is most of that decision. It
+       * used to take a second request to `/academies/:id` — or, on the list, was
+       * simply absent, so every card said only which town the *session* was in.
+       *
+       * `logoKey` becomes `logoUrl` here for the same reason it does on the
+       * academy's own endpoint: the key is what is stored, and the URL is built
+       * at read time so changing CDN or provider stays a config change.
+       */
+      academy: academy
+        ? {
+            id: academy.id,
+            name: academy.name,
+            region: academy.region,
+            district: academy.district,
+            // Nullable together and always read together — half a pair points at
+            // the Gulf of Guinea (see the schema note).
+            latitude: academy.latitude,
+            longitude: academy.longitude,
+            logoUrl: this.storage.publicUrlOrNull(academy.logoKey),
+          }
+        : undefined,
+    };
+  }
+
+  /** The academy fields a trial carries. Deliberately not the whole profile. */
+  private static readonly ACADEMY_SUMMARY = {
+    id: true,
+    name: true,
+    region: true,
+    district: true,
+    latitude: true,
+    longitude: true,
+    logoKey: true,
+  } as const;
+
+  private assertWindow(window: Parameters<typeof validateWindow>[0]): void {
+    const problem = validateWindow(window);
+    if (!problem) return;
+
+    const messages: Record<NonNullable<typeof problem>, string> = {
+      'time-without-date': 'An open-ended trial cannot carry dates or times',
+      'partial-time': 'Give both a start time and an end time, or neither',
+      'end-before-start': 'The trial cannot end before it starts',
+      'end-time-before-start-time': 'The daily end time must be after the start time',
+      'deadline-after-start': 'Applications cannot close after the trial has started',
+    };
+    throw new BadRequestException(messages[problem]);
+  }
+
+  /**
+   * Accepts a cover key only if it names this academy's own directory.
+   *
+   * The key comes from `POST /academies/:id/images/upload-url`, which mints it
+   * server-side — but this endpoint takes it back from the client, and a caller
+   * who could name any key could point a trial's cover at another academy's
+   * private object and have it served under their own trial. `assertKeyUnder`
+   * is the same guard the academy gallery uses.
+   *
+   * `null` or an empty string clears the cover, which is how the form removes
+   * one — an edit that took the picture off has to say so, since PATCH reads an
+   * absent field as "leave it alone".
+   */
+  private assertOwnCoverKey(academyId: string, key: string | null | undefined): string | null {
+    const trimmed = (key ?? '').trim();
+    if (!trimmed) return null;
+    assertKeyUnder(trimmed, academyMediaPrefix(academyId));
+    return trimmed;
   }
 
   private async assertAcademyManager(userId: string, academyId: string) {

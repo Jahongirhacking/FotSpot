@@ -10,7 +10,8 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { formatDate } from '@/lib/utils';
+
+import { formatTrialDates } from '@/lib/trial-window';
 
 /**
  * The private trials a player has been asked to.
@@ -65,7 +66,7 @@ export function MyTrialInvitations() {
                     {row?.trial?.title}
                   </Link>
                   <p className="text-muted flex flex-wrap items-center gap-x-3 text-xs">
-                    <span>{row?.trial && formatDate(row?.trial.date)}</span>
+                    <span>{row?.trial && formatTrialDates(row?.trial, t.trials.openEnded)}</span>
                     <span className="flex items-center gap-1">
                       <MapPin className="size-3" aria-hidden />
                       {row?.trial?.location}

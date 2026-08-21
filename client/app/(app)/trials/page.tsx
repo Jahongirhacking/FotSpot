@@ -1,19 +1,19 @@
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
+
+import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, recommendations, trials } from '@/lib/api/resources';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
-import { formatDate } from '@/lib/utils';
-import { CalendarDays, MapPin } from 'lucide-react';
+
+import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { MyTrialInvitations } from './MyTrialInvitations';
+import { TrialCard } from '@/components/trials/TrialCard';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,9 +21,21 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.nav.trials };
 }
 
-export default async function TrialsPage() {
+/**
+ * NOTE (Next 16): `searchParams` is a Promise — see app/(app)/players/page.tsx.
+ *
+ * `?edit=<id>` puts the trial being edited in the URL, so the edit form is
+ * directly linkable and survives a reload. The trial page's Edit button points
+ * here rather than opening a second, drifting copy of the form.
+ */
+export default async function TrialsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
   const session = await getSession();
   const { t } = await getServerT();
+  const editId = (await searchParams)?.edit;
 
   /*
    * A coach's Trials is a different screen, not the public board with extras.
@@ -76,6 +88,27 @@ export default async function TrialsPage() {
         .catch(() => [])
     : [];
 
+  /*
+   * Resolved here rather than in the client component, so a bad `?edit=` is
+   * answered before anything renders.
+   *
+   * Only looked up for a manager: `editTrial` is what puts the form on screen,
+   * and a player following a stray link should see the ordinary board rather
+   * than an edit form they could not save. The API refuses the PATCH either way
+   * (`assertAcademyManager`) — this is so the screen agrees with it.
+   *
+   * A trial that does not exist, or belongs to another academy, leaves this null
+   * and the page says so below instead of opening an empty form that would
+   * create a *second* trial on save.
+   */
+  const editTrial =
+    managed && editId
+      ? await trials
+          .getById(editId, { token: session!.accessToken, cache: 'no-store' })
+          .then((found) => (found.academyId === managed.id ? found : null))
+          .catch(() => null)
+      : null;
+
   return (
     <div className="space-y-6">
       {/* Guests have no badge to clear, so it is only mounted for a session. */}
@@ -94,8 +127,17 @@ export default async function TrialsPage() {
           every visit to this page. */}
       {session?.activeRole === 'player' && <MyTrialInvitations />}
 
+      {editId && !editTrial && (
+        <Alert tone="danger">{managed ? t.trials.editNotFound : t.trials.editNotAllowed}</Alert>
+      )}
+
       {managed && (
-        <AcademyTrials academyId={managed.id} academyName={managed.name} initial={managedTrials} />
+        <AcademyTrials
+          academyId={managed.id}
+          academyName={managed.name}
+          initial={managedTrials}
+          editTrial={editTrial}
+        />
       )}
 
       {!managed &&
@@ -111,43 +153,15 @@ export default async function TrialsPage() {
             }
           />
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
+          /*
+           * One column on a phone, two on a tablet, three on a laptop and four
+           * on a wide screen — the card is designed to stay readable at 375px,
+           * so the breakpoints add columns rather than shrinking it.
+           */
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {list?.map((trial) => (
               <li key={trial?.id}>
-                <Card className="hover:border-primary/40 h-full transition-colors">
-                  <Link href={`/trials/${trial?.id}`} className="block">
-                    <CardContent className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold">{trial?.title}</p>
-                        <Badge variant="primary" className="shrink-0">
-                          U{trial?.ageRangeMax}
-                        </Badge>
-                      </div>
-                      <dl className="text-muted space-y-1 text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <CalendarDays className="size-3.5" aria-hidden />
-                          <dt className="sr-only">Date</dt>
-                          <dd>{formatDate(trial?.date)}</dd>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="size-3.5" aria-hidden />
-                          <dt className="sr-only">{t.trials.location}</dt>
-                          <dd>{trial?.location}</dd>
-                        </div>
-                      </dl>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="outline">
-                          Ages {trial?.ageRangeMin}–{trial?.ageRangeMax}
-                        </Badge>
-                        {trial?.positions.slice(0, 4).map((position) => (
-                          <Badge key={position} variant="neutral" className="font-mono">
-                            {position}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Link>
-                </Card>
+                <TrialCard trial={trial} t={t} />
               </li>
             ))}
           </ul>

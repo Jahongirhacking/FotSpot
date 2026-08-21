@@ -11,6 +11,7 @@ import { Prisma, VerificationChannel } from '@prisma/client';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { OWN_MEDIA_WHERE } from '../media/media-visibility.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { RedisService } from '../redis/redis.service';
@@ -103,7 +104,31 @@ export class UsersService {
             district: true,
             height: true,
             weight: true,
-            _count: { select: { media: true, trialApplications: true, recommendations: true } },
+            /*
+             * Clips that still exist, not clips ever uploaded.
+             *
+             * `media: true` counted every row, and deleting a clip does not
+             * remove its row — `MediaService.remove` is a soft delete that keeps
+             * the rating history, the likes and the moderation trail while the
+             * object itself is dropped from the bucket. So a player who uploaded
+             * three clips and deleted all three still read "3", and no amount of
+             * refreshing changed it: the number was right about a history nobody
+             * asked to see.
+             *
+             * `OWN_MEDIA_WHERE` is the same filter `MediaService.listForPlayer`
+             * gives the owner, which is the point of reusing it rather than
+             * writing `status: { not: 'REMOVED' }` here. This stat sits directly
+             * above that list on /profile, so the two now agree by construction
+             * — the number says exactly what the person can count on screen, and
+             * a later change to what an owner may see moves both together.
+             */
+            _count: {
+              select: {
+                media: { where: OWN_MEDIA_WHERE },
+                trialApplications: true,
+                recommendations: true,
+              },
+            },
           },
         }),
         this.prisma.coachProfile.findUnique({

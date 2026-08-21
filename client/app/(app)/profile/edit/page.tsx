@@ -7,6 +7,7 @@ import { users } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
 import { EditIdentity } from './EditIdentity';
 import { ChangeContact } from './ChangeContact';
+import { TelegramConnection } from './TelegramConnection';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Feedback';
 
@@ -17,7 +18,24 @@ export default async function EditProfilePage() {
   if (!session) redirect('/login?next=/profile/edit');
 
   const { t } = await getServerT();
-  const me = await users?.me({ token: session?.accessToken, cache: 'no-store' }).catch(() => null);
+  /*
+   * Fetched together, but the Telegram half is allowed to fail on its own.
+   *
+   * A `Promise.all` would let an unreachable Telegram status take the whole edit
+   * screen down — you could not change your email because a bot status could not
+   * be read. `allSettled` plus a fallback keeps the section degraded rather than
+   * the page broken.
+   */
+  const [meResult, telegramResult] = await Promise.allSettled([
+    users?.me({ token: session?.accessToken, cache: 'no-store' }),
+    users?.telegramStatus({ token: session?.accessToken, cache: 'no-store' }),
+  ]);
+
+  const me = meResult.status === 'fulfilled' ? meResult.value : null;
+  const telegram =
+    telegramResult.status === 'fulfilled' && telegramResult.value
+      ? telegramResult.value
+      : { connected: false, notificationsEnabled: false, botUsername: null };
 
   if (!me) return <Alert tone="danger">{t.common.couldNotLoad}</Alert>;
 
@@ -43,6 +61,8 @@ export default async function EditProfilePage() {
 
       <ChangeContact channel="PHONE" current={me.phone ?? null} />
       <ChangeContact channel="EMAIL" current={me.email ?? null} />
+
+      <TelegramConnection initial={telegram} />
     </div>
   );
 }

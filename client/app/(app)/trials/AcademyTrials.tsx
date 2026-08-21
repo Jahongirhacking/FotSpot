@@ -1,20 +1,18 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
-import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
+
 import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
-import { NoteEditor } from '@/components/trials/NoteEditor';
+import { TrialForm } from '@/components/trials/TrialForm';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
-import { Field, Input, Textarea } from '@/components/ui/Field';
-import { RangeSlider } from '@/components/ui/RangeSlider';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyProfile, Trial } from '@/lib/api/types';
-import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-import { formatDate, localNowInput } from '@/lib/utils';
-import { useMutation, useQuery } from '@tanstack/react-query';
+
+import { formatTrialDates, isTrialUpcoming } from '@/lib/trial-window';
+import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -41,97 +39,49 @@ import { TrialHistory } from './TrialHistory';
  * trial" presented them as equal choices and let a manager mint one before any
  * coach had looked at anybody — the shortcut Rule 6 exists to close.
  */
-/** Youth football, both ends inclusive — the same bounds the old number inputs carried. */
-const TRIAL_AGE_MIN = 6;
-const TRIAL_AGE_MAX = 21;
 
 export function AcademyTrials({
   academyId,
   academyName,
   initial,
+  editTrial,
 }: {
   academyId: string;
   academyName: string;
   initial: Trial[];
+  /** Set by `?edit=<id>` on the page. Opens the form on that trial. */
+  editTrial?: Trial | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
+  /*
+   * The panel is open when the manager pressed the button, and always when the
+   * URL names a trial to edit — `?edit=<id>` has to be enough on its own, or the
+   * link from the trial page would land on a closed panel.
+   */
   const [open, setOpen] = React.useState(false);
-  /*
-   * The age range and the wanted positions are controlled, unlike the rest of
-   * the form, because both are now pickers rather than text. They reset with the
-   * dialog so a second trial does not inherit the first one's answers.
-   */
-  const [ageRange, setAgeRange] = React.useState<[number, number]>([12, 14]);
-  const [positions, setPositions] = React.useState<Position[]>([]);
-  /*
-   * The two dates are controlled for one reason: the deadline's ceiling is the
-   * exam date, and an uncontrolled input cannot know what the other one says.
-   * Applications closing after the session has been played is the one
-   * combination the API refuses, and it used to be refusable only by submitting.
-   */
-  const [examDate, setExamDate] = React.useState('');
-  const [deadline, setDeadline] = React.useState('');
-  const deadlineAfterExam = Boolean(examDate && deadline && deadline > examDate);
+  const editing = Boolean(editTrial);
+  const showForm = open || editing;
   const [trials, setTrials] = React.useState(initial);
-  /** Null until the manager edits — the academy's default shows through. */
-  const [typedNote, setTypedNote] = React.useState<string | null>(null);
 
+  /** Leaves edit mode by clearing the query, so Back does what it looks like. */
+  const closeForm = React.useCallback(() => {
+    setOpen(false);
+    if (editing) router.replace('/trials');
+  }, [editing, router]);
+
+  /*
+   * The academy is fetched for one thing: its house note, which the form offers
+   * as a starting point on a new trial. Everything the form needs beyond that it
+   * owns itself — see `TrialForm`.
+   */
   const academy = useQuery({
     queryKey: ['academy', academyId],
     queryFn: () => browserFetch<AcademyProfile>(`/academies/${academyId}`),
   });
 
-  // A default is a starting point, so the box opens with it already written.
-  const note = typedNote ?? htmlToMarkdown(academy?.data?.defaultTrialNote);
-
-  const create = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      browserFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body }),
-    onSuccess: (trial) => {
-      setTrials((current) => [trial, ...current]);
-      setOpen(false);
-      // The rest of the form is uncontrolled and clears when the panel unmounts;
-      // these two live up here, so a second trial would open on the first one's
-      // dates.
-      setExamDate('');
-      setDeadline('');
-      router.refresh();
-    },
-    meta: { success: t.trials.trialCreated },
-  });
-
   const globalTrials = trials?.filter((trial) => trial?.type === 'GENERAL');
   const privateTrials = trials?.filter((trial) => trial?.type === 'PRIVATE');
-
-  function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // The `max` on the picker already blocks this, but only where the browser
-    // enforces it — and the API refuses it either way, in English, after a round
-    // trip. Cheaper and clearer to say so here.
-    if (deadlineAfterExam) return;
-
-    const form = new FormData(event.currentTarget);
-    create.mutate({
-      // Never PRIVATE. See the note above the component.
-      type: 'GENERAL',
-      title: String(form.get('title') ?? '').trim(),
-      location: String(form.get('location') ?? '').trim(),
-      date: new Date(examDate).toISOString(),
-      applyDeadline: new Date(deadline).toISOString(),
-      // Both come from controlled inputs now — the age range from a slider and
-      // the positions from the pitch — so they are read from state rather than
-      // from the form. A typed list of codes was a place to mistype "CV".
-      ageRangeMin: ageRange[0],
-      ageRangeMax: ageRange[1],
-      positions,
-      requirements: String(form.get('requirements') ?? '').trim() || undefined,
-      // Sanitised on the way out as well as the way in: the server cleans it
-      // again, but sending markup it would strip means saving something that
-      // does not come back the same.
-      note: note.trim() ? sanitizeNote(markdownToHtml(note)) : undefined,
-    });
-  }
 
   return (
     <div className="space-y-6">
@@ -155,128 +105,28 @@ export function AcademyTrials({
         <CardContent className="space-y-4">
           <p className="text-muted text-sm">{t.trials.globalTrialsHint}</p>
 
-          {open && (
-            <form onSubmit={submit} className="border-border space-y-3 rounded-lg border p-3">
-              <Field label={t.trials.title} htmlFor="trial-title" required>
-                <Input
-                  id="trial-title"
-                  name="title"
-                  required
-                  placeholder={t.placeholders.trialTitle}
-                />
-              </Field>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={t.trials.location} htmlFor="trial-location" required>
-                  <Input
-                    id="trial-location"
-                    name="location"
-                    required
-                    placeholder={t.placeholders.district}
-                  />
-                </Field>
-                <Field label={t.trials.examDate} htmlFor="trial-date" required>
-                  <Input
-                    id="trial-date"
-                    name="date"
-                    type="datetime-local"
-                    required
-                    min={localNowInput()}
-                    value={examDate}
-                    onChange={(event) => setExamDate(event.target.value)}
-                  />
-                </Field>
-              </div>
-
-              <Field
-                label={t.trials.applyDeadline}
-                htmlFor="trial-deadline"
-                hint={t.trials.applyDeadlineHint}
-                error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
-                required
-              >
-                {/* Capped at the exam date: applications closing after the
-                    session has been played is the one thing the API refuses,
-                    and a picker that cannot offer it beats an error afterwards. */}
-                <Input
-                  id="trial-deadline"
-                  name="applyDeadline"
-                  type="datetime-local"
-                  required
-                  min={localNowInput()}
-                  max={examDate || undefined}
-                  value={deadline}
-                  onChange={(event) => setDeadline(event.target.value)}
-                />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3"></div>
-
-              {/* One control for what is one decision. Two number boxes let a
-                  manager save a range whose ends are the wrong way round; the
-                  slider clamps instead, and still carries the boxes for anyone
-                  who already knows the exact ages they want. */}
-              <Field
-                label={t.trials.ageRange}
-                htmlFor="trial-age-range"
-                hint={t.trials.ageRangeHint}
-              >
-                <RangeSlider
-                  min={TRIAL_AGE_MIN}
-                  max={TRIAL_AGE_MAX}
-                  value={ageRange}
-                  onChange={setAgeRange}
-                  labelFrom={t.trials.ageMin}
-                  labelTo={t.trials.ageMax}
-                />
-              </Field>
-
-              {/* Pressed on a pitch rather than typed as "GK, CB, LB": the typed
-                  version accepted anything, and a mistyped code silently
-                  narrowed who the trial was announced to. */}
-              <Field
-                label={t.trials.positions}
-                htmlFor="trial-positions"
-                hint={t.trials.positionsPickHint}
-              >
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-                  <PitchPositionPicker
-                    mode="multi"
-                    label={t.trials.positions}
-                    value={positions}
-                    onChange={setPositions}
-                  />
-                  <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
-                    {positions.length === 0 ? (
-                      <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
-                    ) : (
-                      positions.map((position) => (
-                        <Badge key={position} variant="primary">
-                          {position}
-                        </Badge>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </Field>
-
-              <Field label={t.trials.requirements} htmlFor="trial-req">
-                <Textarea id="trial-req" name="requirements" placeholder={t.placeholders.note} />
-              </Field>
-
-              <Field label={t.notes.playerNote} htmlFor="trial-note" hint={t.notes.playerNoteHint}>
-                <NoteEditor id="trial-note" value={note} onChange={setTypedNote} />
-              </Field>
-
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-                  {t.common.cancel}
-                </Button>
-                <Button type="submit" loading={create.isPending}>
-                  {t.trials.createGlobalTrial}
-                </Button>
-              </div>
-            </form>
+          {showForm && (
+            <TrialForm
+              /*
+               * Keyed on the trial, so switching from creating to editing (or
+               * between two trials) remounts rather than keeping the previous
+               * one's answers — the state is seeded from props on first render.
+               */
+              key={editTrial?.id ?? 'new'}
+              academyId={academyId}
+              trial={editTrial ?? undefined}
+              defaultNote={academy?.data?.defaultTrialNote}
+              onSaved={(saved: Trial) => {
+                setTrials((current) =>
+                  editing
+                    ? current.map((row) => (row.id === saved.id ? saved : row))
+                    : [saved, ...current],
+                );
+                closeForm();
+                router.refresh();
+              }}
+              onCancel={closeForm}
+            />
           )}
 
           {globalTrials.length === 0 ? (
@@ -328,9 +178,9 @@ function TrialList({ trials }: { trials: Trial[] }) {
   const { t } = useI18n();
 
   return (
-    <ul className="divide-border divide-y">
+    <ul className="divide-border space-y-2 divide-y">
       {trials?.map((trial) => (
-        <li key={trial?.id}>
+        <li key={trial?.id} className="pb-2">
           <Link
             href={`/trials/${trial?.id}`}
             className="hover:bg-surface-2 border-border flex flex-wrap items-center gap-3 rounded-lg border-1 border-dashed p-2"
@@ -344,7 +194,8 @@ function TrialList({ trials }: { trials: Trial[] }) {
               </span>
               <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                 <span className="flex items-center gap-1">
-                  <CalendarDays className="size-3" aria-hidden /> {formatDate(trial?.date)}
+                  <CalendarDays className="size-3" aria-hidden />{' '}
+                  {formatTrialDates(trial, t.trials.openEnded)}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="size-3" aria-hidden /> {trial?.location}
@@ -354,8 +205,8 @@ function TrialList({ trials }: { trials: Trial[] }) {
                 </span>
               </span>
             </span>
-            <Badge variant="primary" className="shrink-0">
-              {new Date(trial?.date) > new Date() ? t.trials.open : t.trials.closed}
+            <Badge variant={isTrialUpcoming(trial) ? 'primary' : 'danger'} className="shrink-0">
+              {isTrialUpcoming(trial) ? t.trials.open : t.trials.closed}
             </Badge>
           </Link>
         </li>

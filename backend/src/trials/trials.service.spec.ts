@@ -7,6 +7,7 @@ import type { RecommendationsService } from '../recommendations/recommendations.
 import type { InvitationsService } from '../academies/invitations.service';
 import type { RedisService } from '../redis/redis.service';
 import type { SmsService } from '../sms/sms.service';
+import type { StorageService } from '../storage/storage.service';
 
 /**
  * The rules under test are TRIAL.md's, not this file's inventions:
@@ -139,6 +140,9 @@ function build() {
     recommendations as unknown as RecommendationsService,
     redis as unknown as RedisService,
     sms as unknown as SmsService,
+    // Only reached when a trial is returned, to turn a cover key into a URL.
+    // These tests are about scheduling and eligibility, so no trial has a cover.
+    { publicUrlOrNull: () => null } as unknown as StorageService,
   );
 
   return { service, prisma, tx, notifications, processA, invitations, recommendations, redis, sms };

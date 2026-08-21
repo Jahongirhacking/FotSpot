@@ -7,6 +7,7 @@ import { CARD_THEME, positionGroup } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ClipModerationBadge } from '@/components/player/ClipModerationBadge';
 import { cn } from '@/lib/utils';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * One square in the clip grid.
@@ -44,20 +45,21 @@ export function ClipTile({ clip, onOpen }: { clip: Media; onOpen: () => void }) 
       aria-label={`${label}${clip?.rating != null ? ` ${clip?.rating}` : ''} — ${t.clips.play}`}
       className="group focus-visible:ring-ring relative block aspect-square w-full overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:outline-none"
     >
-      {clip?.posterUrl ? (
-        <img
-          src={clip?.posterUrl}
-          alt=""
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 size-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
-      ) : (
-        <span
-          className="absolute inset-0"
-          style={{ backgroundImage: `linear-gradient(160deg, ${theme.from}, ${theme.to})` }}
-          aria-hidden
-        />
-      )}
+      {/* The gradient is both the no-poster state and the failed-poster state:
+          a tile that lost its frame should still look like the player's card. */}
+      <LoadingImage
+        src={clip?.posterUrl}
+        alt=""
+        loading="lazy"
+        className="absolute inset-0 size-full object-cover group-hover:scale-105"
+        fallback={
+          <span
+            className="absolute inset-0"
+            style={{ backgroundImage: `linear-gradient(160deg, ${theme.from}, ${theme.to})` }}
+            aria-hidden
+          />
+        }
+      />
 
       {/* Dark wash so the label is legible over any frame, bright or dark. */}
       <span className="absolute inset-0 bg-black/45 transition-colors group-hover:bg-black/30" />

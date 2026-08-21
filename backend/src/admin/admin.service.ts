@@ -20,6 +20,7 @@ import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { generatePassword, generateUsername } from '../academies/manager-credentials.util';
 import { CreateAdminDto, SearchUsersDto } from './dto/admin.dto';
 import { TariffsService } from '../tariffs/tariffs.service';
+import { OWN_MEDIA_WHERE } from '../media/media-visibility.util';
 
 @Injectable()
 export class AdminService {
@@ -186,7 +187,22 @@ export class AdminService {
             matches: true,
             goals: true,
             assists: true,
-            _count: { select: { media: true, trialApplications: true, recommendations: true } },
+            /*
+             * Clips that still exist — the same filter, and the same reason, as
+             * the player's own profile card (`UsersService.findMeWithStats`).
+             *
+             * A soft-deleted clip keeps its row, so an unfiltered count told an
+             * admin a player had three clips when all three had been deleted.
+             * That is worse here than on the player's own screen: this is the
+             * view someone acts on.
+             */
+            _count: {
+              select: {
+                media: { where: OWN_MEDIA_WHERE },
+                trialApplications: true,
+                recommendations: true,
+              },
+            },
           },
         },
         coachProfile: {

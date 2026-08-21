@@ -683,6 +683,110 @@
         ]
       }
     },
+    "/api/v1/users/me/telegram": {
+      "get": {
+        "operationId": "telegramlink_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Whether this account has Telegram connected, and whether the bot can reach it.\n\nReturns no Telegram id, username or photo — only the two booleans the screen\nneeds and the bot's public handle so the UI can link to it.",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "telegramlink_setNotifications",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramNotificationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Turns Telegram notifications on or off.\n\nThe Telegram identity is **not** touched — see `TelegramLinkService` for why\ndetaching one is neither this endpoint's job nor a safe thing for a settings\ntoggle to do. The account can still sign in with Telegram afterwards.",
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "operationId": "telegramlink_disconnect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Turns Telegram notifications off. The identity is kept.\n\nKept as a `DELETE` because that is the shape the rest of the API uses for\n\"switch this off\", and because the screen's button says Disconnect. It is\nexactly `PATCH { notificationsEnabled: false }` — the same code path, so the\ntwo cannot come to disagree about what disconnecting means.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/me/telegram/connect": {
+      "post": {
+        "operationId": "telegramlink_connect",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectTelegramDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Connects the Telegram account whose signed Login Widget payload is supplied.\n\nThe body is the widget's own payload; the id is taken from it only after the\nHMAC verifies. Answers 409 when that Telegram account already belongs to\nsomebody else — nothing is moved, merged or overwritten.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/tariff-plans": {
       "get": {
         "operationId": "tariffs_list",
@@ -4635,7 +4739,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4661,7 +4772,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4720,7 +4841,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4798,7 +4929,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4835,7 +4973,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -6469,6 +6614,55 @@
           "newPassword"
         ]
       },
+      "ConnectTelegramDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "hash": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "auth_date": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "first_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "photo_url": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "hash",
+          "auth_date"
+        ]
+      },
+      "TelegramNotificationsDto": {
+        "type": "object",
+        "properties": {
+          "notificationsEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notificationsEnabled"
+        ]
+      },
       "PlanTier": {
         "type": "string",
         "enum": [
@@ -7562,11 +7756,37 @@
           },
           "date": {
             "type": "string",
-            "description": "When the examination happens — the day the player is tested."
+            "description": "When the trial window opens. **Optional** — omit it for an open-ended trial.\n\nOptional and not merely nullable because an open-ended trial is created by\na form that never showed these fields, so it sends nothing rather than\nsending nulls. `validateWindow` is what enforces the real rule: all four of\n`date` / `endDate` / `startTime` / `endTime`, or none of them."
+          },
+          "endDate": {
+            "type": "string",
+            "description": "When the window closes. Same date as `date` for a one-day trial."
+          },
+          "startTime": {
+            "type": "string",
+            "description": "The daily window, `HH:mm` wall clock — `\"09:00\"` to `\"18:00\"`.\n\nA pattern rather than a date type: this is a time of day at a place, not an\ninstant, and parsing it into one would need a day to attach it to. See the\nschema comment on `Trial.startTime`.",
+            "pattern": "TIME_PATTERN"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "TIME_PATTERN"
+          },
+          "gender": {
+            "type": "string",
+            "description": "Who the trial is for. Defaults to `male`, matching the player card's own\n`z.enum(['male', 'female'])` rather than introducing a second vocabulary.",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "coverKey": {
+            "type": "string",
+            "description": "R2 object key for the cover image, from `POST /academies/:id/images/upload-url`.\n\nA key, never a URL (storage.keys.ts). It is checked against the academy's\nown prefix server-side, so a key naming another academy's directory is\nrefused rather than stored.",
+            "maxLength": 512
           },
           "applyDeadline": {
             "type": "string",
-            "description": "Last moment somebody may apply. Must not be after the exam.\n\nRequired on creation even though the column is nullable: the null is only\nfor trials written before deadlines existed, and a new trial without one is\na list nobody can close."
+            "description": "Last moment somebody may apply. Must not be after the window opens.\n\n**Optional since open-ended trials.** A closing date for a trial with no\ndates is a deadline about nothing; a dated trial should still carry one, and\nthe form asks for it."
           },
           "requirements": {
             "type": "string"
@@ -7582,9 +7802,7 @@
           "ageRangeMin",
           "ageRangeMax",
           "positions",
-          "location",
-          "date",
-          "applyDeadline"
+          "location"
         ]
       },
       "AssignCoachesDto": {
@@ -7641,10 +7859,39 @@
           },
           "date": {
             "type": "string",
+            "nullable": true,
             "description": "Moving this notifies every applicant — see `TrialsService.update`.\n\nA venue that falls through the week before is the ordinary case, and a\nmanager whose only recourse is a second trial leaves the first collecting\napplications for a session nobody will run."
           },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "The other end of the window. See `CreateTrialDto`."
+          },
+          "startTime": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "TIME_PATTERN"
+          },
+          "endTime": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "TIME_PATTERN"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "coverKey": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 512
+          },
           "applyDeadline": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "requirements": {
             "type": "string"

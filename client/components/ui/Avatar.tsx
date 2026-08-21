@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { useImageFallback } from './use-image-fallback';
+import { useImageLoad } from './LoadingImage';
 
 /**
  * Avatar image with an initials fallback.
@@ -19,6 +19,11 @@ import { useImageFallback } from './use-image-fallback';
  * The same initials stand in when a URL is present but does not load. Without
  * that the browser falls back to the `alt` text, which is how a broken object
  * ends up printing a username where a face should be.
+ *
+ * It blurs while loading, like every other image, but takes no spinner: an
+ * avatar is typically 40px and a loader centred in it would be larger than the
+ * face it covers — noise rather than information. The blur alone is enough to
+ * stop the progressive top-to-bottom paint, which is the actual complaint.
  */
 export function Avatar({
   src,
@@ -32,16 +37,24 @@ export function Avatar({
   alt?: string;
 }) {
   const base = 'grid shrink-0 place-items-center overflow-hidden rounded-full font-semibold';
-  const { failed, onError } = useImageFallback(src);
+  const { status, ref, onLoad, onError } = useImageLoad(src);
 
-  if (src && !failed) {
+  if (src && status !== 'failed') {
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- CDN asset; see above
       <img
+        ref={ref}
         src={src}
         alt={alt}
+        onLoad={onLoad}
         onError={onError}
         referrerPolicy="no-referrer"
-        className={cn(base, 'bg-surface-3 size-10 object-cover', className)}
+        className={cn(
+          base,
+          'bg-surface-3 size-10 object-cover transition-[filter] duration-300 ease-out',
+          status === 'loading' ? 'blur-md' : 'blur-0',
+          className,
+        )}
       />
     );
   }

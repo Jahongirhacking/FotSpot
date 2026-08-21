@@ -663,6 +663,22 @@ export type TrialStatus = 'OPEN' | 'ARCHIVED';
 /** GENERAL is the open board; PRIVATE is by invitation and never listed. */
 export type TrialType = 'GENERAL' | 'PRIVATE';
 
+/**
+ * Just enough of the academy to show who is running a trial and where they are.
+ *
+ * `latitude`/`longitude` are nullable together — half a pair points at the Gulf
+ * of Guinea — and are only ever read through `yandexMapsUrl`, which checks both.
+ */
+export interface TrialAcademy {
+  id: string;
+  name: string;
+  region: string | null;
+  district: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  logoUrl: string | null;
+}
+
 export interface Trial {
   id: string;
   academyId: string;
@@ -675,8 +691,32 @@ export interface Trial {
   ageRangeMax: number | null;
   positions: string[];
   location: string;
-  /** When the examination happens — the day the player is tested. */
-  date: string;
+  /**
+   * When the trial window opens. **Null on an open-ended trial**, which runs
+   * until the academy archives it.
+   *
+   * Render through `lib/trial-window.ts`, never `formatDate` directly:
+   * `new Date(null)` is the epoch, so a direct call prints "1 Jan 1970".
+   */
+  date: string | null;
+  /** When the window closes. Null on a single-day or open-ended trial. */
+  endDate?: string | null;
+  /** The daily window, `HH:mm` wall clock — applies to each day. */
+  startTime?: string | null;
+  endTime?: string | null;
+  /** Who the trial is for. */
+  gender?: 'male' | 'female';
+  /** R2 key for the cover image; `coverUrl` is what to render. */
+  coverKey?: string | null;
+  coverUrl?: string | null;
+  /**
+   * The academy running it, folded into the trial by the API.
+   *
+   * Absent on the responses to creating and updating a trial, which return the
+   * row they just wrote — the screens that need the host are the ones that read
+   * a trial, and those include it.
+   */
+  academy?: TrialAcademy;
   /**
    * Last moment somebody may apply. Null only on trials written before
    * deadlines existed; those stay open until their exam date.

@@ -1,0 +1,16 @@
+-- Whether the Telegram bot may message this account.
+--
+-- Additive and defaulted, so it is safe on a live table: Postgres 11+ records a
+-- column default in the catalogue rather than rewriting every row, so this does
+-- not take a long ACCESS EXCLUSIVE lock on "User".
+--
+-- Default false is the load-bearing part. Telegram refuses `sendMessage` to
+-- anybody who has never opened a chat with the bot, so an account that has
+-- linked Telegram is still not reachable until it presses /start. Backfilling
+-- true for existing linked accounts would queue a delivery for every one of them
+-- that is guaranteed to fail.
+--
+-- `telegramId` is deliberately untouched: it is already nullable and unique from
+-- 20260813090000_telegram_account_link, which is exactly what account linking
+-- and disconnection need.
+ALTER TABLE "User" ADD COLUMN     "telegramNotificationsEnabled" BOOLEAN NOT NULL DEFAULT false;

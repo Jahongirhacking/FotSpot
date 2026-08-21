@@ -29,6 +29,7 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import type { LatLng } from '@/components/academy/LocationPicker';
 import { cn, initials } from '@/lib/utils';
 import { yandexMapsUrl } from '@/lib/maps';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * Leaflet only exists on this screen.
@@ -560,11 +561,12 @@ function PhotosCard({ academyId }: { academyId: string }) {
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {list.map((photo, index) => (
               <li key={photo?.id} className="group relative">
-                {/* eslint-disable-next-line @next/next/no-img-element -- bucket asset */}
-                <img
+                { }
+                <LoadingImage
                   src={photo?.url ?? ''}
                   alt={photo?.caption ?? ''}
                   loading="lazy"
+                  spinner={false}
                   className="bg-surface-3 aspect-video w-full rounded-lg object-cover"
                 />
                 {index === 0 && (

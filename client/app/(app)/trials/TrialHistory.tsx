@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
-import { formatDate } from '@/lib/utils';
+
+import { formatTrialDates } from '@/lib/trial-window';
 
 const PAGE_SIZE = 10;
 
@@ -92,7 +93,8 @@ export function TrialHistory({ academyId }: { academyId: string }) {
                       </span>
                       <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
                         <span className="flex items-center gap-1">
-                          <CalendarDays className="size-3" aria-hidden /> {formatDate(trial?.date)}
+                          <CalendarDays className="size-3" aria-hidden />{' '}
+                          {formatTrialDates(trial, t.trials.openEnded)}
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="size-3" aria-hidden /> {trial?.location}

@@ -4,6 +4,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
 import Link from 'next/link';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * One playing style, as a card.
@@ -118,10 +119,11 @@ function ExemplarCrest({
 }) {
   if (imageUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- a local static asset; next/image adds a loader for no gain here
-      <img
+       
+      <LoadingImage
         src={imageUrl}
         alt={name}
+        spinner={false}
         className={cn('shrink-0 rounded-lg object-contain', getImageSize(imageSize))}
         loading="lazy"
       />

@@ -23,6 +23,7 @@ import {
   type MemberFilterState,
 } from '@/components/academy/MemberFilters';
 import { cn } from '@/lib/utils';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 const TABS: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
 
@@ -293,10 +294,11 @@ export function SquadManager({
               className="border-border hover:bg-surface-2 flex items-center gap-2 rounded-lg border p-2 transition-colors"
             >
               {group?.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL
-                <img
+                 
+                <LoadingImage
                   src={group?.imageUrl}
                   alt=""
+                  spinner={false}
                   className="size-8 shrink-0 rounded object-cover"
                 />
               ) : (

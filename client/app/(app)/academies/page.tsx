@@ -11,6 +11,7 @@ import { getSession } from '@/lib/session';
 import { Building2, MapPin } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * The directory, described by what is actually in it.
@@ -144,11 +145,12 @@ export default async function AcademiesPage() {
                           records have no logo yet, and an empty square would be
                           worse than the icon it replaced. */}
                       {academy?.logoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- bucket asset; next/image would add a loader for no gain
-                        <img
+                         
+                        <LoadingImage
                           src={academy?.logoUrl}
                           alt={academy?.name || 'Akademiya'}
                           loading="lazy"
+                          spinner={false}
                           className="border-border bg-surface size-10 shrink-0 rounded-xl border object-cover"
                         />
                       ) : (

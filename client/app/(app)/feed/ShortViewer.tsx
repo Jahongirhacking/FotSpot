@@ -9,6 +9,7 @@ import type { FeedClip } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn, initials } from '@/lib/utils';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
  * How long a slide must actually play before it counts as watched.
@@ -283,8 +284,8 @@ function Slide({
             className="size-full object-contain"
           />
         ) : clip?.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- signed R2 URL, not an optimisable asset
-          <img src={clip?.posterUrl} alt="" className="size-full object-contain" />
+           
+          <LoadingImage src={clip?.posterUrl} alt="" className="size-full object-contain" />
         ) : (
           <span className="grid size-full place-items-center text-white/70">
             <TriangleAlert className="size-6" aria-hidden />
