@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
@@ -10,10 +11,6 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
-import { Field, Input, Textarea } from '@/components/ui/Field';
-import { NoteEditor } from '@/components/trials/NoteEditor';
-import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-import { toLocalInput } from '@/lib/utils';
 
 /**
  * The host's controls on a published trial.
@@ -36,63 +33,29 @@ import { toLocalInput } from '@/lib/utils';
 export function TrialAdmin({ trial }: { trial: Trial }) {
   const { t } = useI18n();
   const router = useRouter();
-  const [editing, setEditing] = React.useState(false);
 
   const archived = trial?.status === 'ARCHIVED';
-  /** Null until edited, so the stored note shows through unchanged. */
-  const [typedNote, setTypedNote] = React.useState<string | null>(null);
-  const note = typedNote ?? htmlToMarkdown(trial?.note);
-
-  /*
-   * Controlled, unlike the rest of the form, because the deadline's ceiling is
-   * whatever the exam date currently says — including after the manager moves it.
-   * Editing is where this matters most: pushing a trial back a week leaves a
-   * deadline that was valid and no longer is.
-   */
-  const [examDate, setExamDate] = React.useState(() => toLocalInput(trial?.date));
-  const [deadline, setDeadline] = React.useState(() =>
-    toLocalInput(trial?.applyDeadline ?? trial?.date),
-  );
-  const deadlineAfterExam = Boolean(examDate && deadline && deadline > examDate);
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       browserFetch<Trial>(`/trials/${trial?.id}`, { method: 'PATCH', body }),
     meta: { success: t.trials.trialUpdated },
-    onSuccess: () => {
-      setEditing(false);
-      router.refresh();
-    },
+    // Only archive/reopen reaches this now; editing lives on /trials.
+    onSuccess: () => router.refresh(),
   });
-
-  function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (deadlineAfterExam) return;
-
-    const form = new FormData(event.currentTarget);
-    save.mutate({
-      title: String(form.get('title') ?? '').trim(),
-      location: String(form.get('location') ?? '').trim(),
-      date: new Date(examDate).toISOString(),
-      applyDeadline: new Date(deadline).toISOString(),
-      note: note.trim() ? sanitizeNote(markdownToHtml(note)) : '',
-      ageRangeMin: Number(form.get('ageMin')),
-      ageRangeMax: Number(form.get('ageMax')),
-      positions: String(form.get('positions') ?? '')
-        .split(',')
-        .map((value) => value?.trim().toUpperCase())
-        .filter(Boolean),
-      requirements: String(form.get('requirements') ?? '').trim(),
-    });
-  }
 
   return (
     <Card>
       <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 pb-2">
         <CardTitle className="text-base">{t.trials.manageTrial}</CardTitle>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setEditing((was) => !was)}>
-            <Pencil aria-hidden /> {editing ? t.common.cancel : t.common.edit}
+          {/* Editing happens on the trials screen, in the same form that creates
+              one — see `TrialForm`. A link rather than a panel here, so the edit
+              state lives in the URL and the two forms cannot drift apart again. */}
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={`/trials?edit=${trial?.id}`}>
+              <Pencil aria-hidden /> {t.common.edit}
+            </Link>
           </Button>
           <Button
             size="sm"
@@ -118,117 +81,6 @@ export function TrialAdmin({ trial }: { trial: Trial }) {
         <Alert tone={archived ? 'warning' : 'info'}>
           {archived ? t.trials.archivedHint : t.trials.openHint}
         </Alert>
-
-        {editing && (
-          <form onSubmit={submit} className="border-border space-y-3 rounded-lg border p-3">
-            <Field label={t.trials.title} htmlFor="edit-title" required>
-              <Input id="edit-title" name="title" required defaultValue={trial?.title} />
-            </Field>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t.trials.location} htmlFor="edit-location" required>
-                <Input id="edit-location" name="location" required defaultValue={trial?.location} />
-              </Field>
-              <Field
-                label={t.trials.examDate}
-                htmlFor="edit-date"
-                hint={t.trials.moveDateWarning}
-                required
-              >
-                <Input
-                  id="edit-date"
-                  name="date"
-                  type="datetime-local"
-                  required
-                  value={examDate}
-                  onChange={(event) => setExamDate(event.target.value)}
-                />
-              </Field>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field
-                label={t.trials.applyDeadline}
-                htmlFor="edit-deadline"
-                hint={t.trials.applyDeadlineHint}
-                error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
-                required
-              >
-                {/* No `min` here, unlike the create form: an existing trial's
-                    deadline may already be in the past, and a bound that made
-                    the current value invalid would block every other edit. */}
-                <Input
-                  id="edit-deadline"
-                  name="applyDeadline"
-                  type="datetime-local"
-                  required
-                  max={examDate || undefined}
-                  value={deadline}
-                  onChange={(event) => setDeadline(event.target.value)}
-                />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t.trials.ageMin} htmlFor="edit-age-min" required>
-                <Input
-                  id="edit-age-min"
-                  name="ageMin"
-                  type="number"
-                  min={6}
-                  max={21}
-                  required
-                  defaultValue={trial?.ageRangeMin ?? undefined}
-                />
-              </Field>
-              <Field label={t.trials.ageMax} htmlFor="edit-age-max" required>
-                <Input
-                  id="edit-age-max"
-                  name="ageMax"
-                  type="number"
-                  min={6}
-                  max={21}
-                  required
-                  defaultValue={trial?.ageRangeMax ?? undefined}
-                />
-              </Field>
-            </div>
-
-            <Field
-              label={t.trials.positions}
-              htmlFor="edit-positions"
-              hint={t.trials.positionsHint}
-            >
-              <Input
-                id="edit-positions"
-                name="positions"
-                defaultValue={trial?.positions.join(', ')}
-              />
-            </Field>
-
-            <Field label={t.trials.requirements} htmlFor="edit-req">
-              <Textarea id="edit-req" name="requirements" defaultValue={trial?.requirements ?? ''} />
-            </Field>
-
-            <Field label={t.notes.playerNote} htmlFor="edit-note" hint={t.notes.playerNoteHint}>
-              <NoteEditor id="edit-note" value={note} onChange={setTypedNote} />
-            </Field>
-
-            {/* Narrowing the age range can strand somebody who has already
-                applied, so say it before rather than refusing afterwards. */}
-            <Alert tone="warning">{t.trials.editWarning}</Alert>
-
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                size="sm"
-                loading={save.isPending && save.variables?.status === undefined}
-              >
-                {t.common.save}
-              </Button>
-            </div>
-          </form>
-        )}
       </CardContent>
     </Card>
   );

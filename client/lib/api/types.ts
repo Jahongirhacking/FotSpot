@@ -675,8 +675,24 @@ export interface Trial {
   ageRangeMax: number | null;
   positions: string[];
   location: string;
-  /** When the examination happens — the day the player is tested. */
-  date: string;
+  /**
+   * When the trial window opens. **Null on an open-ended trial**, which runs
+   * until the academy archives it.
+   *
+   * Render through `lib/trial-window.ts`, never `formatDate` directly:
+   * `new Date(null)` is the epoch, so a direct call prints "1 Jan 1970".
+   */
+  date: string | null;
+  /** When the window closes. Null on a single-day or open-ended trial. */
+  endDate?: string | null;
+  /** The daily window, `HH:mm` wall clock — applies to each day. */
+  startTime?: string | null;
+  endTime?: string | null;
+  /** Who the trial is for. */
+  gender?: 'male' | 'female';
+  /** R2 key for the cover image; `coverUrl` is what to render. */
+  coverKey?: string | null;
+  coverUrl?: string | null;
   /**
    * Last moment somebody may apply. Null only on trials written before
    * deadlines existed; those stay open until their exam date.

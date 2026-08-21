@@ -14,7 +14,7 @@ import {
 } from '@/lib/api/resources';
 import type { AcademyProfile, RankedRecommendation, Trial } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
-import { ageBand, formatDate, initials } from '@/lib/utils';
+import { ageBand, initials } from '@/lib/utils';
 import {
   Building2,
   CalendarDays,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
+import { formatTrialDates } from '@/lib/trial-window';
 
 /**
  * Academy manager home.
@@ -187,7 +188,9 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
                     <li key={trial?.id}>
                       <Link href={`/trials/${trial?.id}`} className="block hover:underline">
                         <span className="font-medium">{trial?.title}</span>
-                        <span className="text-muted block text-xs">{formatDate(trial?.date)}</span>
+                        <span className="text-muted block text-xs">
+                          {formatTrialDates(trial, t.trials.openEnded)}
+                        </span>
                       </Link>
                     </li>
                   ))}

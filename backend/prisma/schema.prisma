@@ -1485,8 +1485,57 @@ model Trial {
   /// Wanted positions. Empty on a private trial, for the same reason.
   positions     String[]
   location      String
-  /// When the examination itself happens — the day the player is tested.
-  date          DateTime
+  /**
+   * When the trial window opens — the first day a player can be tested.
+   * **Nullable since open-ended trials.** An academy that runs continuous
+   * selection has no date to give, and requiring one made them invent a fake
+   * one. Null means exactly that: the trial runs until the academy closes it.
+   * Still the *only* column existing trials use, and they are unchanged by the
+   * move: every trial written before this held a single exam datetime here, and
+   * a row with `date` set and `endDate` null still means precisely that. The
+   * nullability is new capability, not a new meaning for old rows.
+   * Two things read it and must cope with null (see `TrialsService`): age
+   * eligibility, which falls back to judging age on the application day, and the
+   * upcoming-trials filter, which treats a dateless trial as always upcoming.
+   */
+  date          DateTime?
+  /**
+   * When the trial window closes. Null on a single-day trial and on an
+   * open-ended one — so null is "no end given", never "ends immediately".
+   * Separate from `applyDeadline`, which is about the *list* rather than the
+   * sessions: applications can close a week before a window that runs a
+   * fortnight.
+   */
+  endDate       DateTime?
+  /**
+   * The daily window, as wall-clock `HH:mm` — `"09:00"` to `"18:00"`.
+   * Strings rather than DateTimes on purpose. "Nine in the morning, every day of
+   * the trial" is a wall-clock fact about a place, not an instant: stored as a
+   * timestamp it would need a date to attach to (which day's 09:00?) and would
+   * shift for anybody reading it in another zone, so a trial that runs 09:00–18:00
+   * in Tashkent would display as 04:00–13:00 to a scout abroad. The rest of the
+   * schema stores instants because they *are* instants; these are not.
+   */
+  startTime     String?
+  endTime       String?
+  /**
+   * Who the trial is for: `"male"` or `"female"`.
+   * A plain string with a default rather than a Prisma enum, because that is how
+   * gender is already stored on `PlayerProfile` and two representations of one
+   * concept is the thing worth avoiding. The values are validated at the edge
+   * (`CreateTrialDto`) and match the client's existing
+   * `z.enum(['male', 'female'])`.
+   * Defaulted rather than nullable so every existing trial gets an answer at
+   * migration time instead of a null every reader has to interpret.
+   */
+  gender        String    @default("male")
+  /**
+   * R2 object key for the cover image, never a URL — see storage.keys.ts.
+   * Optional: a trial without a picture is the ordinary case. Lives under the
+   * academy's own media prefix, so it is minted by the same server-side helper
+   * as the gallery and cannot be pointed at another academy's directory.
+   */
+  coverKey      String?
   /**
    * Last moment a player may put themselves forward.
    * Separate from `date` because an academy needs the list closed before the

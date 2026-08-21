@@ -4739,7 +4739,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4765,7 +4772,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4824,7 +4841,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4902,7 +4929,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4939,7 +4973,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -7715,11 +7756,37 @@
           },
           "date": {
             "type": "string",
-            "description": "When the examination happens — the day the player is tested."
+            "description": "When the trial window opens. **Optional** — omit it for an open-ended trial.\n\nOptional and not merely nullable because an open-ended trial is created by\na form that never showed these fields, so it sends nothing rather than\nsending nulls. `validateWindow` is what enforces the real rule: all four of\n`date` / `endDate` / `startTime` / `endTime`, or none of them."
+          },
+          "endDate": {
+            "type": "string",
+            "description": "When the window closes. Same date as `date` for a one-day trial."
+          },
+          "startTime": {
+            "type": "string",
+            "description": "The daily window, `HH:mm` wall clock — `\"09:00\"` to `\"18:00\"`.\n\nA pattern rather than a date type: this is a time of day at a place, not an\ninstant, and parsing it into one would need a day to attach it to. See the\nschema comment on `Trial.startTime`.",
+            "pattern": "TIME_PATTERN"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "TIME_PATTERN"
+          },
+          "gender": {
+            "type": "string",
+            "description": "Who the trial is for. Defaults to `male`, matching the player card's own\n`z.enum(['male', 'female'])` rather than introducing a second vocabulary.",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "coverKey": {
+            "type": "string",
+            "description": "R2 object key for the cover image, from `POST /academies/:id/images/upload-url`.\n\nA key, never a URL (storage.keys.ts). It is checked against the academy's\nown prefix server-side, so a key naming another academy's directory is\nrefused rather than stored.",
+            "maxLength": 512
           },
           "applyDeadline": {
             "type": "string",
-            "description": "Last moment somebody may apply. Must not be after the exam.\n\nRequired on creation even though the column is nullable: the null is only\nfor trials written before deadlines existed, and a new trial without one is\na list nobody can close."
+            "description": "Last moment somebody may apply. Must not be after the window opens.\n\n**Optional since open-ended trials.** A closing date for a trial with no\ndates is a deadline about nothing; a dated trial should still carry one, and\nthe form asks for it."
           },
           "requirements": {
             "type": "string"
@@ -7735,9 +7802,7 @@
           "ageRangeMin",
           "ageRangeMax",
           "positions",
-          "location",
-          "date",
-          "applyDeadline"
+          "location"
         ]
       },
       "AssignCoachesDto": {
@@ -7794,10 +7859,39 @@
           },
           "date": {
             "type": "string",
+            "nullable": true,
             "description": "Moving this notifies every applicant — see `TrialsService.update`.\n\nA venue that falls through the week before is the ordinary case, and a\nmanager whose only recourse is a second trial leaves the first collecting\napplications for a session nobody will run."
           },
+          "endDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "The other end of the window. See `CreateTrialDto`."
+          },
+          "startTime": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "TIME_PATTERN"
+          },
+          "endTime": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "TIME_PATTERN"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
+          "coverKey": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 512
+          },
           "applyDeadline": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "requirements": {
             "type": "string"

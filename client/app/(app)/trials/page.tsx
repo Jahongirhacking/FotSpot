@@ -1,12 +1,12 @@
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
+import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, recommendations, trials } from '@/lib/api/resources';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
-import { formatDate } from '@/lib/utils';
+
 import { CalendarDays, MapPin } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { MyTrialInvitations } from './MyTrialInvitations';
+import { formatTrialDates } from '@/lib/trial-window';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,9 +22,21 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.nav.trials };
 }
 
-export default async function TrialsPage() {
+/**
+ * NOTE (Next 16): `searchParams` is a Promise — see app/(app)/players/page.tsx.
+ *
+ * `?edit=<id>` puts the trial being edited in the URL, so the edit form is
+ * directly linkable and survives a reload. The trial page's Edit button points
+ * here rather than opening a second, drifting copy of the form.
+ */
+export default async function TrialsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
   const session = await getSession();
   const { t } = await getServerT();
+  const editId = (await searchParams)?.edit;
 
   /*
    * A coach's Trials is a different screen, not the public board with extras.
@@ -76,6 +89,27 @@ export default async function TrialsPage() {
         .catch(() => [])
     : [];
 
+  /*
+   * Resolved here rather than in the client component, so a bad `?edit=` is
+   * answered before anything renders.
+   *
+   * Only looked up for a manager: `editTrial` is what puts the form on screen,
+   * and a player following a stray link should see the ordinary board rather
+   * than an edit form they could not save. The API refuses the PATCH either way
+   * (`assertAcademyManager`) — this is so the screen agrees with it.
+   *
+   * A trial that does not exist, or belongs to another academy, leaves this null
+   * and the page says so below instead of opening an empty form that would
+   * create a *second* trial on save.
+   */
+  const editTrial =
+    managed && editId
+      ? await trials
+          .getById(editId, { token: session!.accessToken, cache: 'no-store' })
+          .then((found) => (found.academyId === managed.id ? found : null))
+          .catch(() => null)
+      : null;
+
   return (
     <div className="space-y-6">
       {/* Guests have no badge to clear, so it is only mounted for a session. */}
@@ -94,8 +128,17 @@ export default async function TrialsPage() {
           every visit to this page. */}
       {session?.activeRole === 'player' && <MyTrialInvitations />}
 
+      {editId && !editTrial && (
+        <Alert tone="danger">{managed ? t.trials.editNotFound : t.trials.editNotAllowed}</Alert>
+      )}
+
       {managed && (
-        <AcademyTrials academyId={managed.id} academyName={managed.name} initial={managedTrials} />
+        <AcademyTrials
+          academyId={managed.id}
+          academyName={managed.name}
+          initial={managedTrials}
+          editTrial={editTrial}
+        />
       )}
 
       {!managed &&
@@ -127,7 +170,7 @@ export default async function TrialsPage() {
                         <div className="flex items-center gap-1.5">
                           <CalendarDays className="size-3.5" aria-hidden />
                           <dt className="sr-only">Date</dt>
-                          <dd>{formatDate(trial?.date)}</dd>
+                          <dd>{formatTrialDates(trial, t.trials.openEnded)}</dd>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <MapPin className="size-3.5" aria-hidden />

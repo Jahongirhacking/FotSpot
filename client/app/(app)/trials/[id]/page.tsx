@@ -17,6 +17,7 @@ import { TrialAdmin } from './TrialAdmin';
 import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 import { TrialNote } from '@/components/trials/TrialNote';
+import { formatTrialDates } from '@/lib/trial-window';
 
 export async function generateMetadata({
   params,
@@ -116,7 +117,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           <div className="flex items-center gap-1.5">
             <CalendarDays className="size-4" aria-hidden />
             <dt className="sr-only">{t.trials.examDate}</dt>
-            <dd>{formatDate(trial?.date)}</dd>
+            <dd>{formatTrialDates(trial, t.trials.openEnded)}</dd>
           </div>
           {/* The two dates are different promises — when to turn up, and by when
               to say you are coming — so both are on the page, not just the one. */}

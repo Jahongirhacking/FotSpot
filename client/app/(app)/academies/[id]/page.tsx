@@ -21,7 +21,7 @@ import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import { getSession } from '@/lib/session';
-import { formatDate } from '@/lib/utils';
+
 import {
   Building2,
   CalendarDays,
@@ -38,6 +38,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type * as React from 'react';
 import { AcademyProfileEditor } from './AcademyProfileEditor';
+import { LoadingImage } from '@/components/ui/LoadingImage';
+import { formatTrialDates } from '@/lib/trial-window';
 
 /**
  * The academy's own details, as the tab title and the share card.
@@ -313,10 +315,10 @@ export default async function AcademyDetailPage({
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
           {academy?.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- bucket asset; next/image would add a loader for no gain
-            <img
+            <LoadingImage
               src={academy?.logoUrl}
               alt=""
+              spinner={false}
               className="border-border size-16 shrink-0 rounded-2xl border object-cover sm:size-20"
             />
           ) : (
@@ -477,8 +479,8 @@ export default async function AcademyDetailPage({
                               {trial?.title}
                             </Link>
                             <p className="text-muted text-xs">
-                              {formatDate(trial?.date)} · {trial?.location} · {trial?.ageRangeMin}–
-                              {trial?.ageRangeMax}
+                              {formatTrialDates(trial, t.trials.openEnded)} · {trial?.location} ·{' '}
+                              {trial?.ageRangeMin}–{trial?.ageRangeMax}
                             </p>
                           </div>
                           <Button asChild size="sm" variant="outline">
