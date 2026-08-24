@@ -1281,6 +1281,10 @@ model RecommendationReview {
   coachUserId        String
   coachProfileId     String
 
+  /// How this review began — see `ReviewSource`. Defaulted, so every review
+  /// written before coach discovery existed reads as what it was.
+  source ReviewSource @default(MANAGER_SUBMITTED)
+
   status ReviewStatus @default(PENDING)
   note   String?
 
@@ -1347,6 +1351,21 @@ model ReviewCoach {
 
   @@id([reviewId, coachUserId])
   @@index([coachUserId])
+}
+
+/**
+ * Who put this player in front of the coach.
+ * The review itself is the same object and the same decision either way — this
+ * only records how it started, because the manager reading the result wants a
+ * different sentence for each: "the coach you sent this player to approved
+ * them" against "a coach put this player forward". It is **not** a second state
+ * machine; nothing branches on it but the wording.
+ */
+enum ReviewSource {
+  /// A manager sent the player for review (`assignReview`), or a trial did.
+  MANAGER_SUBMITTED
+  /// A coach found the player themselves and approved them from their profile.
+  COACH_DISCOVERED
 }
 
 enum ReviewStatus {

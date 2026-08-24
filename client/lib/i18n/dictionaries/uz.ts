@@ -1117,6 +1117,18 @@ export const uz = {
     statusRejected: 'rad etildi',
     statusPending: 'ko‘rib chiqilmoqda',
     reviewAskedOf: 'Sizdan bu futbolchini baholash so‘ralgan',
+    /* Murabbiy o‘zi topgan futbolchini ilgari suradi — bu taklifnoma emas. */
+    coachDiscoverTitle: 'Futbolchini o‘zingiz topdingizmi?',
+    coachDiscoverHint:
+      'Uni «{academy}» uchun ma’qullang. Sinovga taklif qilishni menejeringiz hal qiladi — taklifnomani siz yubormaysiz.',
+    coachDiscoverAction: 'Akademiyam uchun ma’qullash',
+    coachDiscoverConfirmTitle: '{name} «{academy}» uchun ma’qullansinmi?',
+    coachDiscoverConfirmBody:
+      'Bu xuddi kiruvchi ro‘yxatdagidek onlayn baho sifatida yoziladi. Shundan so‘ng menejer uni yopiq sinovga taklif qila oladi. Buni bekor qilib bo‘lmaydi.',
+    coachBlockedMember: 'U allaqachon sizning akademiyangizda.',
+    coachBlockedApproved: 'Siz uni allaqachon ma’qullagansiz — endi menejerda.',
+    coachBlockedPending: 'Bu futbolchi bo‘yicha baholash akademiyangizda allaqachon ochiq.',
+    coachBlockedTrial: 'Uning akademiyangiz bilan ochiq sinovi bor.',
     confirmApproveTitle: 'Bu futbolchini qabul qilasizmi?',
     confirmApproveBody:
       'Buni orqaga qaytarib bo‘lmaydi. Akademiya menejeri uni yopiq sinovga taklif qila oladi.',
@@ -1267,6 +1279,15 @@ export const uz = {
     manageScoutNetwork: 'Skautlar tarmog‘ini boshqarish',
     yourTrials: 'Sizning sinovlaringiz',
     noTrialsPosted: 'Hali sinov e’lon qilinmagan.',
+
+    /* Menejerning qaroriga bog‘liq ishlar — PendingTrialActions ga qarang. */
+    pendingActions: 'Sizning qaroringizni kutmoqda',
+    pendingActionsHint:
+      'Murabbiy javob berdi yoki futbolchi sinovdan o‘tdi. Siz qaror qilmaguningizcha hech narsa siljimaydi.',
+    inviteToTrial: 'Sinovga taklif qilish',
+    coachFound: 'Uni o‘zi topgan murabbiy ma’qulladi',
+    coachApproved: 'Murabbiyingiz ma’qulladi',
+    passedTrial: 'Sinovdan o‘tdi',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     noAcademyLinkedBody:
       'Akademiyangizni ro‘yxatdan o‘tkazing, administrator uni ko‘rib chiqadi. Tasdiqlangach sinov e’lon qilib, tavsiyalar qabul qila olasiz.',

@@ -29,6 +29,7 @@ import {
 import Link from 'next/link';
 import * as React from 'react';
 import { formatTrialDates } from '@/lib/trial-window';
+import { PendingTrialActions } from './PendingTrialActions';
 
 /**
  * Academy manager home.
@@ -129,6 +130,13 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
           />
         </dl>
       )}
+
+      {/*
+        Above the inbox, because it is the only thing on this page that is
+        blocked on the manager. The inbox is a queue to work through; this is
+        work already half done that stops until they finish it.
+      */}
+      <PendingTrialActions academyId={academy?.id} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>

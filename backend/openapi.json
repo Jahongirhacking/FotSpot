@@ -4545,6 +4545,101 @@
         ]
       }
     },
+    "/api/v1/recommendations/players/{playerId}/coach-state": {
+      "get": {
+        "operationId": "recommendations_coachDiscoveryState",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether this coach could accept this player, and why not if they could not.\n\nRead-only, and answers for any caller — the profile page asks before it\ndraws the coach's button, so a control never appears that the POST would\nrefuse.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/players/{playerId}/coach-accept": {
+      "post": {
+        "operationId": "recommendations_acceptFromProfile",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachAcceptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A coach approves a player they found themselves — an online review ACCEPT.\n\nDeliberately **not** an invitation. The coach's authority ends at \"this\nplayer deserves a look\" (TRIAL.md §11); creating the private trial and\ninviting the player is `players/:playerId/invite` below, which only a\nmanager can reach. The two are separate routes because they are separate\ndecisions by separate people.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/manager/pending-actions": {
+      "get": {
+        "operationId": "recommendations_pendingManagerActions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everything waiting on the manager, derived from state rather than from\nunread notifications — see `pendingManagerActions`.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/players/{playerId}/invite": {
       "post": {
         "operationId": "recommendations_invitePlayer",
@@ -7774,6 +7869,16 @@
         "required": [
           "decision"
         ]
+      },
+      "CoachAcceptDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Why, for the manager who has to decide whether to invite. Optional.",
+            "maxLength": 2000
+          }
+        }
       },
       "InvitePlayerDto": {
         "type": "object",

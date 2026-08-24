@@ -1078,6 +1078,18 @@ export const en: Dictionary = {
     statusRejected: 'rejected',
     statusPending: 'still pending',
     reviewAskedOf: 'You were asked to judge this player',
+    /* A coach putting forward a player nobody sent them — never an invitation. */
+    coachDiscoverTitle: 'Found this player yourself?',
+    coachDiscoverHint:
+      'Approve them for {academy}. Your manager decides whether a trial follows — you are not sending an invitation.',
+    coachDiscoverAction: 'Approve for my academy',
+    coachDiscoverConfirmTitle: 'Approve {name} for {academy}?',
+    coachDiscoverConfirmBody:
+      'This records your approval as an online review, exactly as it would from your inbox. Your manager can then invite them to a private trial. It cannot be undone.',
+    coachBlockedMember: 'They are already at your academy.',
+    coachBlockedApproved: 'You have already approved them — it is with your manager now.',
+    coachBlockedPending: 'A review of this player is already open at your academy.',
+    coachBlockedTrial: 'They already have an open trial with your academy.',
     confirmApproveTitle: 'Accept this player?',
     confirmApproveBody:
       'This cannot be undone. The academy manager will be able to invite them to a private trial.',
@@ -1227,6 +1239,15 @@ export const en: Dictionary = {
     manageScoutNetwork: 'Manage scout network',
     yourTrials: 'Your trials',
     noTrialsPosted: 'No trials posted yet.',
+
+    /* What is blocked on the manager — see PendingTrialActions. */
+    pendingActions: 'Waiting on you',
+    pendingActionsHint:
+      'A coach has answered, or a player has passed a trial. Nothing moves until you decide.',
+    inviteToTrial: 'Invite to trial',
+    coachFound: 'Approved by a coach who found them',
+    coachApproved: 'Approved by your coach',
+    passedTrial: 'Passed the trial',
     noAcademyLinked: 'No academy linked to your account yet',
     noAcademyLinkedBody:
       'Register your academy and an admin will review it. Once approved you can post trials and receive recommendations.',
