@@ -437,6 +437,13 @@ export type AcademyKind = 'ACADEMY' | 'LOCAL_TEAM';
 
 export interface AcademyProfile {
   /**
+   * Public handle, resolving `/academies/@handle`. Stored without the `@`.
+   *
+   * Null until the manager chooses one — an academy is reached by id until then.
+   */
+  username?: string | null;
+
+  /**
    * Search terms for this page's metadata. **Never rendered as page content.**
    *
    * Set by a super admin on an academy and by the hosting manager on a trial;

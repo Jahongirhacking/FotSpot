@@ -29,6 +29,7 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import type { LatLng } from '@/components/academy/LocationPicker';
 import { cn, initials } from '@/lib/utils';
 import { yandexMapsUrl } from '@/lib/maps';
+import { AtSign } from 'lucide-react';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
@@ -124,6 +125,7 @@ export function AcademyProfileEditor({
         </Button>
       </div>
 
+      <HandleCard academy={academy} onSaved={toPreview} />
       <ContactCard academy={academy} onSaved={toPreview} />
       <IdentityCard academy={academy} />
       <LocationCard academy={academy} onSaved={toPreview} />
@@ -151,6 +153,99 @@ export function AcademyProfileEditor({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * The academy's public handle — `/academies/@bunyodkorfc_academy`.
+ *
+ * Its own card rather than a field on the contact one: a handle is an address
+ * that appears in links other people share, so changing it is a different kind
+ * of decision from correcting a phone number, and it deserves its own Save.
+ *
+ * The shape is enforced by the API (`academy-username.util.ts`) and mirrored
+ * here only so the manager reads the rule before a round trip. Uniqueness is
+ * *not* mirrored: only the database can answer that, and a check here would
+ * read as a guarantee it cannot make.
+ */
+function HandleCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: () => void }) {
+  const { t } = useI18n();
+  const [handle, setHandle] = React.useState(academy?.username ?? '');
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Typed without the `@`; the sigil is shown as a prefix so the field reads the
+  // way the finished URL does without the manager having to type it.
+  const value = handle.replace(/^@+/, '').toLowerCase();
+  const changed = value !== (academy?.username ?? '');
+  const malformed = value.length > 0 && !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(value);
+  const missingSuffix = value.length > 0 && !malformed && !value.endsWith('academy');
+
+  const save = useMutation({
+    mutationFn: () =>
+      browserFetch<AcademyProfile>(`/academies/${academy?.id}`, {
+        method: 'PATCH',
+        // An empty string clears it — the API reads that as giving the handle up,
+        // where an absent field would mean "leave it alone".
+        body: { username: value },
+      }),
+    onSuccess: () => {
+      setError(null);
+      onSaved();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AtSign className="text-primary size-4" aria-hidden /> {t.academy.handleTitle}
+        </CardTitle>
+        <p className="text-muted text-xs">{t.academy.handleHint}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <Field
+          label={t.academy.handleLabel}
+          htmlFor="academy-handle"
+          error={
+            malformed ? t.academy.handleShape : missingSuffix ? t.academy.handleSuffix : undefined
+          }
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-muted shrink-0 text-sm" aria-hidden>
+              @
+            </span>
+            <Input
+              id="academy-handle"
+              value={value}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={t.academy.handlePlaceholder}
+              onChange={(event) => setHandle(event.target.value)}
+            />
+          </div>
+        </Field>
+
+        {/* The finished address, so the manager can see what they are choosing
+            rather than assembling it in their head. */}
+        {value && !malformed && !missingSuffix && (
+          <p className="text-muted font-mono text-xs break-all">/academies/@{value}</p>
+        )}
+
+        <Button
+          size="sm"
+          onClick={() => save.mutate()}
+          loading={save.isPending}
+          disabled={!changed || malformed || missingSuffix}
+        >
+          {t.common.save}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -561,7 +656,7 @@ function PhotosCard({ academyId }: { academyId: string }) {
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {list.map((photo, index) => (
               <li key={photo?.id} className="group relative">
-                { }
+                {}
                 <LoadingImage
                   src={photo?.url ?? ''}
                   alt={photo?.caption ?? ''}

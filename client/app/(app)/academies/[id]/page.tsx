@@ -53,6 +53,35 @@ import { formatTrialDates } from '@/lib/trial-window';
  * as much as for readers, and neither needs the description to be seconds old.
  * The same call is cached for the page below it, so the pair costs one request.
  */
+/**
+ * One segment serves both `/academies/<uuid>` and `/academies/@handle`.
+ *
+ * The `@` decides which lookup runs rather than sniffing whether the value
+ * parses as a UUID — an explicit marker cannot be ambiguous, and a handle that
+ * happened to look like an id would resolve to the wrong academy, or to nobody.
+ *
+ * The param is decoded first. A browser sends `/academies/@bunyodkor_academy` as
+ * `/academies/%40bunyodkor_academy`, so without this the `@` test fails, the
+ * handle is looked up as an id and every `@handle` link answers "not found". It
+ * is only visible in a real browser: curl leaves the `@` alone and the bug
+ * hides. The same trap `/players/[id]` documents.
+ */
+function fetchAcademy(idOrHandle: string, opts: Parameters<typeof academies.getById>[1]) {
+  const value = safeDecode(idOrHandle);
+  return value?.startsWith('@')
+    ? academies.getByUsername(value, opts)
+    : academies.getById(value, opts);
+}
+
+/** A stray `%` in a URL throws rather than decoding; the raw value is the answer. */
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -62,14 +91,24 @@ export async function generateMetadata({
 
   let academy: AcademyProfile;
   try {
-    academy = await academies.getById(id, { revalidate: 300 });
+    academy = await fetchAcademy(id, { revalidate: 300 });
   } catch {
     // A deleted or private academy still needs a title; the page itself will
     // 404 a moment later.
     return { title: 'Academy' };
   }
 
-  const url = absoluteUrl(`/academies/${id}`);
+  /*
+   * The handle is the canonical address when there is one.
+   *
+   * Both URLs serve the same page, so without a canonical a crawler indexes two
+   * of them and splits whatever authority the page has between them. The handle
+   * wins because it is the address people share — the same rule
+   * `/players/[id]` applies.
+   */
+  const url = absoluteUrl(
+    academy?.username ? `/academies/@${academy.username}` : `/academies/${academy?.id ?? id}`,
+  );
   const where = locationText({ region: academy?.region, district: academy?.district });
   const isLocalTeam = academy?.kind === 'LOCAL_TEAM';
 
@@ -153,7 +192,7 @@ export default async function AcademyDetailPage({
 
   let academy: AcademyProfile;
   try {
-    academy = await academies.getById(
+    academy = await fetchAcademy(
       id,
       session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 300 },
     );

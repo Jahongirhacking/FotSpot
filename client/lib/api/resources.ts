@@ -390,6 +390,18 @@ export const academies = {
 
   getById: (id: string, opts: Opts = {}) => apiFetch<AcademyProfile>(`/academies/${id}`, opts),
 
+  /**
+   * Resolves `/academies/@handle`.
+   *
+   * The `@` is stripped here rather than sent: it is a sigil the URL wears, and
+   * the API stores handles without one. Mirrors `players.getByUsername`.
+   */
+  getByUsername: (handle: string, opts: Opts = {}) =>
+    apiFetch<AcademyProfile>(
+      `/academies/by-username/${encodeURIComponent(handle.replace(/^@+/, ''))}`,
+      opts,
+    ),
+
   register: (
     body: { name: string; region?: string; district?: string; description?: string },
     opts: Opts = {},

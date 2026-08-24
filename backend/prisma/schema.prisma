@@ -508,6 +508,23 @@ model AcademyProfile {
   /// `seo-keywords.util.ts`, so the column cannot accumulate near-duplicates.
   seoKeywords String[] @default([])
 
+  /// Public handle, resolving `/academies/@handle`. Chosen by the manager.
+  ///
+  /// Stored without the `@` and lowercased — the sigil is what the URL and the
+  /// UI wear, never part of the value, so a unique index cannot be fooled by
+  /// `@Bunyodkor_Academy` versus `bunyodkor_academy`.
+  ///
+  /// Unique because it is an identity: two academies answering to one handle
+  /// would make `/academies/@x` ambiguous, and an ambiguity in a lookup resolves
+  /// to whichever row came back first. Nullable because an academy that has not
+  /// chosen one is still an academy — it is reached by id until it does.
+  ///
+  /// The shape (`name_academy`, underscores only) lives in
+  /// `academy-username.util.ts`, which also explains why it uses underscores
+  /// where player handles use hyphens: the two share the `@` sigil, and
+  /// disjoint shapes make a collision impossible without a cross-table check.
+  username String? @unique
+
   /// R2 object key for the academy's logo, never a URL — see storage.keys.ts.
   logoKey String?
 

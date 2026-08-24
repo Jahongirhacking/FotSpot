@@ -419,6 +419,12 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    handleTitle: 'Публичный адрес',
+    handleHint: 'Короткий адрес академии для ссылок, которыми вы делитесь.',
+    handleLabel: 'Адрес',
+    handlePlaceholder: 'bunyodkorfc_academy',
+    handleShape: 'Используйте строчные буквы, цифры и одиночные подчёркивания.',
+    handleSuffix: 'Адрес должен заканчиваться на «academy».',
     subtitle: 'Находите академии, подписывайтесь на понравившиеся и подавайте заявки на просмотр.',
     memberType: 'Тип участника',
     pickMemberTypeHint: 'Сначала выберите тип участника — затем появятся подходящие фильтры.',

@@ -446,6 +446,12 @@ export const uz = {
   },
 
   academy: {
+    handleTitle: 'Ommaviy manzil',
+    handleHint: 'Akademiyangiz uchun qisqa manzil — ulashadigan havolalarda ishlatiladi.',
+    handleLabel: 'Manzil',
+    handlePlaceholder: 'bunyodkorfc_academy',
+    handleShape: 'Kichik harflar, raqamlar va bitta pastki chiziqdan foydalaning.',
+    handleSuffix: 'Manzil “academy” bilan tugashi kerak.',
     subtitle: 'Akademiyalarni toping, yoqqanlarini kuzating va sinovlar uchun ariza bering',
     memberType: 'A’zo turi',
     pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',

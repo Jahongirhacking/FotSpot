@@ -83,6 +83,17 @@ export class AcademiesController {
     return this.academiesService.findMine(user.userId);
   }
 
+  /**
+   * Resolves `/academies/@handle`. Declared before `:id` — Nest matches in
+   * declaration order, and `by-username` would otherwise be read as an academy
+   * id. The same arrangement as `PlayersController`.
+   */
+  @Public()
+  @Get('by-username/:username')
+  getByUsername(@Param('username') username: string) {
+    return this.academiesService.getByUsername(username);
+  }
+
   @Public()
   @Get(':id')
   getPublicProfile(@Param('id') id: string) {

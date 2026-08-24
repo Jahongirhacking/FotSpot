@@ -28,6 +28,19 @@ import {
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import { normaliseKeywords } from '../common/seo-keywords.util';
 import {
+  normaliseAcademyUsername,
+  validateAcademyUsername,
+} from './academy-username.util';
+
+/** One sentence per way a handle can be wrong, so the manager can fix it. */
+const ACADEMY_HANDLE_MESSAGE = {
+  'too-short': 'That handle is too short — try something like bunyodkorfc_academy',
+  'too-long': 'That handle is too long',
+  shape: 'A handle can use lowercase letters, numbers and single underscores only',
+  suffix: 'A handle must end in "academy" — for example bunyodkorfc_academy',
+  'suffix-only': 'Put the academy\'s own name before "academy"',
+} as const;
+import {
   AddAcademyPhotoDto,
   SetFeaturedDto,
   CreateCoachDto,
@@ -387,6 +400,30 @@ export class AcademiesService {
   }
 
   /** Read-heavy, slow-changing (1.19) - served from cache, invalidated on every write below. */
+  /**
+   * Resolves `/academies/@handle`.
+   *
+   * A separate route rather than letting `:id` accept both: a handle and a UUID
+   * are different keys, and a lookup that guesses which one it was handed is a
+   * lookup that will one day guess wrong.
+   *
+   * Normalised before the lookup so `@Bunyodkor_Academy` finds the row stored as
+   * `bunyodkor_academy` — the same normalisation the write applied, which is why
+   * both go through one function.
+   */
+  async getByUsername(rawUsername: string) {
+    const username = normaliseAcademyUsername(rawUsername);
+    if (!username) throw new NotFoundException('Academy not found');
+
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    if (!academy) throw new NotFoundException('Academy not found');
+
+    return this.getPublicProfile(academy.id);
+  }
+
   async getPublicProfile(academyId: string) {
     const academy = await this.redis.wrap(
       RedisKeys.academyProfile(academyId),
@@ -484,6 +521,7 @@ export class AcademiesService {
      * back would reasonably believe they were saved.
      */
     const keywords = this.keywordsFor(dto.seoKeywords, isSuperAdmin);
+    const handle = this.handleFor(dto.username);
 
     /*
      * The region/district pair as the row would *end up*.
@@ -544,23 +582,43 @@ export class AcademiesService {
       if (value !== undefined) phones[field] = value === '' ? null : value;
     }
 
-    const updated = await this.prisma.academyProfile.update({
-      where: { id: academyId },
-      data: {
-        ...dto,
-        ...socials,
-        ...location,
-        ...phones,
-        // After `...dto`, so a manager's rejected keywords cannot ride in on the
-        // spread — `keywordsFor` returns nothing at all when they may not write.
-        ...keywords,
-        // The one field that carries markup. Cleaned here because this endpoint
-        // is reachable without the editor that cleans it on the way in.
-        ...(dto.defaultTrialNote !== undefined
-          ? { defaultTrialNote: sanitizeRichText(dto.defaultTrialNote) }
-          : {}),
-      },
-    });
+    /*
+     * The unique index has the last word on the handle.
+     *
+     * Two managers can pass every check in this method at the same moment and
+     * both reach this write; the index is what makes only one of them succeed.
+     * Catching P2002 turns the loser into a 409 rather than a 500 — and, more
+     * importantly, means nothing above pretends to have reserved a handle it
+     * had only observed to be free.
+     */
+    let updated;
+    try {
+      const updated = await this.prisma.academyProfile.update({
+        where: { id: academyId },
+        data: {
+          ...dto,
+          ...socials,
+          ...location,
+          ...phones,
+          // After `...dto`, so a manager's rejected keywords cannot ride in on the
+          // spread — `keywordsFor` returns nothing at all when they may not write.
+          ...keywords,
+          // Likewise: the raw `dto.username` must not survive the spread, or an
+          // unnormalised `@Bunyodkor_Academy` would reach the unique index.
+          ...handle,
+          // The one field that carries markup. Cleaned here because this endpoint
+          // is reachable without the editor that cleans it on the way in.
+          ...(dto.defaultTrialNote !== undefined
+            ? { defaultTrialNote: sanitizeRichText(dto.defaultTrialNote) }
+            : {}),
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('That handle is already taken');
+      }
+      throw error;
+    }
     await this.invalidate(academyId, updated.region);
     return updated;
   }
@@ -1270,6 +1328,30 @@ export class AcademiesService {
    * would reasonably believe they were saved, and silently discarding a field is
    * the kind of "success" that is discovered months later.
    */
+  /**
+   * The handle field, normalised — or nothing when the request did not mention it.
+   *
+   * An empty string is a deliberate clear, not an omission: a manager giving up
+   * a handle has to be able to say so, and `undefined` already means "leave it".
+   *
+   * Only the *shape* is decided here. Uniqueness is the database's answer, taken
+   * from the unique index when the write lands — see the P2002 catch in `update`.
+   * Checking first and writing second would still race, and a check that can be
+   * beaten is a check that reads as a guarantee and is not one.
+   */
+  private handleFor(username: string | undefined): { username?: string | null } {
+    if (username === undefined) return {};
+
+    const value = normaliseAcademyUsername(username);
+    if (!value) return { username: null };
+
+    const problem = validateAcademyUsername(value);
+    if (problem) {
+      throw new BadRequestException(ACADEMY_HANDLE_MESSAGE[problem.reason]);
+    }
+    return { username: value };
+  }
+
   private keywordsFor(
     keywords: string[] | undefined,
     isSuperAdmin: boolean,

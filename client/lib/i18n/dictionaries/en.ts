@@ -422,6 +422,12 @@ export const en: Dictionary = {
   },
 
   academy: {
+    handleTitle: 'Public handle',
+    handleHint: 'A short address for your academy, used in links you share.',
+    handleLabel: 'Handle',
+    handlePlaceholder: 'bunyodkorfc_academy',
+    handleShape: 'Use lowercase letters, numbers and single underscores.',
+    handleSuffix: 'The handle must end in “academy”.',
     subtitle: 'Discover academies, follow the ones you like, and apply for trials.',
     memberType: 'Member type',
     pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
