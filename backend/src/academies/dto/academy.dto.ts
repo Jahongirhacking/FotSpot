@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsRegionDistrictPair } from '../../common/validators/region-district.validator';
 import { AcademyKind, AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
+import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
 import {
   ArrayMaxSize,
   IsArray,
@@ -45,6 +46,23 @@ export class NewManagerDto {
  * knowing who runs it and assign the manager later.
  */
 export class CreateAcademyDto {
+  /**
+   * Search terms for the page's metadata. **Super admin only** — the service
+   * refuses them from anyone else, including the admins who onboard academies
+   * and the manager who runs one (§8).
+   *
+   * Normalised server-side by `normaliseKeywords`: trimmed, de-duplicated
+   * case-insensitively and capped. The bounds here are the outer limit on the
+   * payload, so an oversized request is refused rather than silently trimmed to
+   * something the caller did not send.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsString() name: string;
 
   /**
@@ -81,6 +99,23 @@ export class SetManagerDto {
 }
 
 export class UpdateAcademyDto {
+  /**
+   * Search terms for the page's metadata. **Super admin only** — the service
+   * refuses them from anyone else, including the admins who onboard academies
+   * and the manager who runs one (§8).
+   *
+   * Normalised server-side by `normaliseKeywords`: trimmed, de-duplicated
+   * case-insensitively and capped. The bounds here are the outer limit on the
+   * payload, so an oversized request is refused rather than silently trimmed to
+   * something the caller did not send.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;

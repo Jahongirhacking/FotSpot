@@ -6980,6 +6980,14 @@
               }
             ]
           },
+          "seoKeywords": {
+            "description": "Search terms for the page's metadata. **Super admin only** — the service\nrefuses them from anyone else, including the admins who onboard academies\nand the manager who runs one (§8).\n\nNormalised server-side by `normaliseKeywords`: trimmed, de-duplicated\ncase-insensitively and capped. The bounds here are the outer limit on the\npayload, so an oversized request is refused rather than silently trimmed to\nsomething the caller did not send.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
           "name": {
             "type": "string"
           },
@@ -7035,6 +7043,14 @@
           "backupPhone": {
             "type": "string",
             "description": "E.164, or \"\" to clear"
+          },
+          "seoKeywords": {
+            "description": "Search terms for the page's metadata. **Super admin only** — the service\nrefuses them from anyone else, including the admins who onboard academies\nand the manager who runs one (§8).\n\nNormalised server-side by `normaliseKeywords`: trimmed, de-duplicated\ncase-insensitively and capped. The bounds here are the outer limit on the\npayload, so an oversized request is refused rather than silently trimmed to\nsomething the caller did not send.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
           },
           "name": {
             "type": "string"
@@ -7734,6 +7750,14 @@
               }
             ]
           },
+          "seoKeywords": {
+            "description": "Search terms for the trial's page metadata.\n\nNo extra permission of its own: creating and editing a trial is already the\nhosting academy's manager (`assertAcademyManager`), which is exactly who §8\ngrants this to. Adding a second gate here would be a second answer to a\nquestion the endpoint has already asked.\n\nNormalised server-side — trimmed, de-duplicated case-insensitively, capped.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
           "title": {
             "type": "string"
           },
@@ -7836,6 +7860,14 @@
                 "$ref": "#/components/schemas/TrialStatus"
               }
             ]
+          },
+          "seoKeywords": {
+            "description": "Search terms for the trial's page metadata.\n\nNo extra permission of its own: creating and editing a trial is already the\nhosting academy's manager (`assertAcademyManager`), which is exactly who §8\ngrants this to. Adding a second gate here would be a second answer to a\nquestion the endpoint has already asked.\n\nNormalised server-side — trimmed, de-duplicated case-insensitively, capped.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
           },
           "title": {
             "type": "string"

@@ -19,6 +19,7 @@ import type {
 import type { Dictionary } from '@/lib/i18n';
 import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
+import { seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import { getSession } from '@/lib/session';
 
@@ -87,6 +88,14 @@ export async function generateMetadata({
   return {
     title: academy?.name,
     description: summary,
+    /*
+     * The operator's terms, plus the two facts every academy has.
+     *
+     * Next escapes the content on output, so nothing here is inserted into HTML
+     * by hand — see §18. An academy with no keywords set yields `undefined` and
+     * the tag is simply not emitted.
+     */
+    keywords: seoKeywords(academy?.seoKeywords, [academy?.name, academy?.region]),
     alternates: { canonical: url },
     openGraph: {
       type: 'profile',

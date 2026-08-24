@@ -26,6 +26,7 @@ import {
   normaliseRegion,
 } from '../common/uzbekistan';
 import { generatePassword, generateUsername } from './manager-credentials.util';
+import { normaliseKeywords } from '../common/seo-keywords.util';
 import {
   AddAcademyPhotoDto,
   SetFeaturedDto,
@@ -85,9 +86,11 @@ export class AcademiesService {
    * Returns `credentials` only when an account was created — the generated password
    * is shown once and is unrecoverable afterwards.
    */
-  async register(actorId: string, dto: CreateAcademyDto) {
-    const { managerUserId, newManager, ...profile } = dto;
+  async register(actorId: string, dto: CreateAcademyDto, isSuperAdmin = false) {
+    const { managerUserId, newManager, seoKeywords, ...profile } = dto;
     this.assertOneManagerSource(managerUserId, newManager);
+
+    const keywords = this.keywordsFor(seoKeywords, isSuperAdmin);
 
     if (managerUserId) await this.assertAssignable(managerUserId);
 
@@ -95,7 +98,7 @@ export class AcademiesService {
 
     const academy = await this.prisma.$transaction(async (tx) => {
       const created = await tx.academyProfile.create({
-        data: { ...profile, status: 'VERIFIED' },
+        data: { ...profile, ...keywords, status: 'VERIFIED' },
       });
 
       let userId = managerUserId;
@@ -458,13 +461,29 @@ export class AcademiesService {
     }));
   }
 
-  async update(userId: string, academyId: string, dto: UpdateAcademyDto, isAdmin = false) {
+  async update(
+    userId: string,
+    academyId: string,
+    dto: UpdateAcademyDto,
+    isAdmin = false,
+    isSuperAdmin = false,
+  ) {
     // Admins onboard academies (§1.10) and therefore have to be able to correct
     // them; a manager can still edit their own.
     if (!isAdmin) await this.assertManager(userId, academyId);
     // A key made a round trip through the browser, so re-check it addresses this
     // academy's own directory before a row points at it.
     if (dto.logoKey) assertKeyUnder(dto.logoKey, academyMediaPrefix(academyId));
+
+    /*
+     * SEO keywords are the one field on this endpoint a manager may not touch.
+     *
+     * `isAdmin` above is not enough: an ordinary admin onboards academies and
+     * corrects them, but §8 reserves the metadata to a super admin. Refused
+     * loudly rather than dropped — a manager who sent keywords and got a 200
+     * back would reasonably believe they were saved.
+     */
+    const keywords = this.keywordsFor(dto.seoKeywords, isSuperAdmin);
 
     /*
      * The region/district pair as the row would *end up*.
@@ -532,6 +551,9 @@ export class AcademiesService {
         ...socials,
         ...location,
         ...phones,
+        // After `...dto`, so a manager's rejected keywords cannot ride in on the
+        // spread — `keywordsFor` returns nothing at all when they may not write.
+        ...keywords,
         // The one field that carries markup. Cleaned here because this endpoint
         // is reachable without the editor that cleans it on the way in.
         ...(dto.defaultTrialNote !== undefined
@@ -1234,6 +1256,29 @@ export class AcademiesService {
     });
     if (!academy) throw new NotFoundException('Academy not found');
     assertNotLocalTeam(academy.kind, action);
+  }
+
+  /**
+   * The keyword field, or nothing, depending on who is asking.
+   *
+   * Returns a *fragment* rather than a value so the caller can spread it: an
+   * absent field must leave whatever is stored alone, which `undefined` in a
+   * Prisma `data` would also do — but returning `{}` makes that explicit rather
+   * than relying on the reader knowing Prisma's rule.
+   *
+   * Throws rather than dropping. A caller who sent keywords and got a 200 back
+   * would reasonably believe they were saved, and silently discarding a field is
+   * the kind of "success" that is discovered months later.
+   */
+  private keywordsFor(
+    keywords: string[] | undefined,
+    isSuperAdmin: boolean,
+  ): { seoKeywords?: string[] } {
+    if (keywords === undefined) return {};
+    if (!isSuperAdmin) {
+      throw new ForbiddenException('Only a super admin can set an academy\'s SEO keywords');
+    }
+    return { seoKeywords: normaliseKeywords(keywords) };
   }
 
   private async assertManager(userId: string, academyId: string) {

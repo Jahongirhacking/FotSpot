@@ -240,8 +240,8 @@ export const uz = {
       'Hozircha faqat asosiy ma’lumot. Tug‘ilgan sana qaysi yosh guruhida taqqoslanishingizni belgilaydi — biz hech qachon yosh guruhlari o‘rtasida taqqoslamaymiz.',
     dateOfBirth: 'Tug‘ilgan sana',
     gender: 'Jins',
-    male: 'Erkak',
-    female: 'Ayol',
+    male: 'O‘g‘il bolalar',
+    female: 'Qiz bolalar',
     guardianTitle: 'Ota-ona yoki vasiy ishtirok etishi kerak',
     guardianSubtitle:
       'Siz {age} yoshdasiz, shuning uchun profil akademiyalarga ko‘rinishidan oldin ota-ona yoki vasiy biriktirilishi kerak.',
@@ -865,6 +865,14 @@ export const uz = {
       'Murabbiy baholamaguncha ko‘rsatkichlaringiz o‘zingiz kiritgan bo‘lib qoladi. Tasdiqlangan ko‘rsatkich akademiyalar uchun ancha qimmatli.',
   },
 
+  /** SEO kalit so‘zlar maydoni — akademiya va trial shakllari uchun umumiy. */
+  seoKeywords: {
+    label: 'SEO kalit so‘zlar',
+    placeholder: 'Kalit so‘z yozing va Enter bosing',
+    hint: 'Shu sahifa uchun qidiruv so‘zlari. Tashrifchilarga ko‘rinmaydi.',
+    full: 'Kalit so‘zlar chegarasiga yetdingiz',
+  },
+
   trials: {
     editNotFound: 'Bunday trial topilmadi, tahrirlash uchun hech narsa yo‘q.',
     editNotAllowed: 'Siz bu trialni boshqarmaysiz, shuning uchun uni tahrirlay olmaysiz.',
@@ -891,8 +899,8 @@ export const uz = {
     endBeforeStart: 'Tugash sanasi boshlanish sanasidan oldin bo‘lishi mumkin emas.',
     endTimeBeforeStart: 'Tugash vaqti boshlanish vaqtidan keyin bo‘lishi kerak.',
     gender: 'Jinsi',
-    genderMale: 'Erkak',
-    genderFemale: 'Ayol',
+    genderMale: 'O‘g‘il bolalar',
+    genderFemale: 'Qiz bolalar',
     cover: 'Trial muqovasi',
     coverHint: 'Ixtiyoriy. JPG, PNG yoki WebP, 5 MB gacha.',
     coverUpload: 'Rasm yuklash',

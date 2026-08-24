@@ -4,6 +4,7 @@ import { PitchPositionPicker, type Position } from '@/components/player/PitchPos
 import { useI18n } from '@/components/layout/I18nProvider';
 import { NoteEditor } from '@/components/trials/NoteEditor';
 import { TrialCoverPicker } from '@/components/trials/TrialCoverPicker';
+import { SeoKeywordInput } from '@/components/ui/SeoKeywordInput';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Textarea } from '@/components/ui/Field';
@@ -88,6 +89,7 @@ export function TrialForm({
   const [cover, setCover] = React.useState<{ key: string; url: string } | null>(
     trial?.coverKey && trial?.coverUrl ? { key: trial.coverKey, url: trial.coverUrl } : null,
   );
+  const [seoKeywords, setSeoKeywords] = React.useState<string[]>(trial?.seoKeywords ?? []);
   const [coverBusy, setCoverBusy] = React.useState(false);
   const [coverError, setCoverError] = React.useState<string | null>(null);
 
@@ -153,6 +155,9 @@ export function TrialForm({
       gender,
       // Same reasoning: an edit that removed the cover has to say so.
       ...(cover ? { coverKey: cover.key } : editing ? { coverKey: null } : {}),
+      // Always the whole list: a removed keyword is expressed by its absence,
+      // and the API has no delete verb for one entry.
+      seoKeywords,
       ageRangeMin: ageRange[0],
       ageRangeMax: ageRange[1],
       positions,
@@ -319,6 +324,13 @@ export function TrialForm({
             </label>
           ))}
         </div>
+      </Field>
+
+      {/* Not visible to players anywhere — these feed the page's metadata only
+          (§9). The manager already has permission to edit this trial, so the
+          field needs no gate of its own beyond that. */}
+      <Field label={t.seoKeywords.label} htmlFor="trial-seo">
+        <SeoKeywordInput id="trial-seo" value={seoKeywords} onChange={setSeoKeywords} />
       </Field>
 
       <Field label={t.trials.cover} htmlFor="trial-cover" hint={t.trials.coverHint}>

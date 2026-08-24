@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TrialStatus, TrialType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -18,9 +19,27 @@ import {
   MinLength,
 } from 'class-validator';
 
+import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
 import { TIME_PATTERN } from '../trial-window.util';
 
 export class CreateTrialDto {
+  /**
+   * Search terms for the trial's page metadata.
+   *
+   * No extra permission of its own: creating and editing a trial is already the
+   * hosting academy's manager (`assertAcademyManager`), which is exactly who §8
+   * grants this to. Adding a second gate here would be a second answer to a
+   * question the endpoint has already asked.
+   *
+   * Normalised server-side — trimmed, de-duplicated case-insensitively, capped.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsString() title: string;
 
   /** GENERAL is the open day; PRIVATE is a session for players the academy picks. */
@@ -105,6 +124,23 @@ export class CreateTrialDto {
  * applications for a session nobody will run.
  */
 export class UpdateTrialDto {
+  /**
+   * Search terms for the trial's page metadata.
+   *
+   * No extra permission of its own: creating and editing a trial is already the
+   * hosting academy's manager (`assertAcademyManager`), which is exactly who §8
+   * grants this to. Adding a second gate here would be a second answer to a
+   * question the endpoint has already asked.
+   *
+   * Normalised server-side — trimmed, de-duplicated case-insensitively, capped.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsOptional() @IsString() title?: string;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) ageRangeMin?: number;

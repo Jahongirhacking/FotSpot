@@ -60,7 +60,9 @@ export class AcademiesController {
   @Roles('admin', 'super_admin')
   @Post()
   register(@CurrentUser() user: AuthUser, @Body() dto: CreateAcademyDto) {
-    return this.academiesService.register(user.userId, dto);
+    // The route admits both admins; only a super admin may set SEO keywords, so
+    // the capability travels separately from the role gate (§8).
+    return this.academiesService.register(user.userId, dto, isSuperAdmin(user));
   }
 
   @Public()
@@ -117,7 +119,7 @@ export class AcademiesController {
   @Patch(':id')
   update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateAcademyDto) {
     const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin');
-    return this.academiesService.update(user.userId, id, dto, isAdmin);
+    return this.academiesService.update(user.userId, id, dto, isAdmin, isSuperAdmin(user));
   }
 
   /**
@@ -430,4 +432,16 @@ export class AcademiesController {
   ) {
     return this.endorsements.listForAcademy(user.userId, id, dto.role);
   }
+}
+
+/**
+ * Whether the caller is acting as a super admin.
+ *
+ * Reads `roles`, which `JwtStrategy` narrows to the *active* role when the
+ * client sent one — so a super admin who has switched to another hat does not
+ * carry the capability while wearing it (§1.2.1). That is the same source every
+ * other check on this controller uses.
+ */
+function isSuperAdmin(user: AuthUser): boolean {
+  return user.roles.includes('super_admin');
 }

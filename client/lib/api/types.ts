@@ -436,6 +436,15 @@ export interface PlayerProfile {
 export type AcademyKind = 'ACADEMY' | 'LOCAL_TEAM';
 
 export interface AcademyProfile {
+  /**
+   * Search terms for this page's metadata. **Never rendered as page content.**
+   *
+   * Set by a super admin on an academy and by the hosting manager on a trial;
+   * the API refuses the field from anyone else. Read by `generateMetadata`,
+   * which escapes on output — nothing here is inserted into HTML by hand.
+   */
+  seoKeywords?: string[];
+
   id: string;
   name: string;
   kind: AcademyKind;
@@ -716,6 +725,14 @@ export interface Trial {
    * row they just wrote — the screens that need the host are the ones that read
    * a trial, and those include it.
    */
+  /**
+   * Search terms for this page's metadata. **Never rendered as page content.**
+   *
+   * Set by a super admin on an academy and by the hosting manager on a trial;
+   * the API refuses the field from anyone else. Read by `generateMetadata`,
+   * which escapes on output — nothing here is inserted into HTML by hand.
+   */
+  seoKeywords?: string[];
   academy?: TrialAcademy;
   /**
    * Last moment somebody may apply. Null only on trials written before

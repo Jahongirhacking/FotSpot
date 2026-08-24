@@ -220,8 +220,8 @@ export const en: Dictionary = {
       "Just the basics for now. Your date of birth decides which age group you're compared in — we never compare across age groups.",
     dateOfBirth: 'Date of birth',
     gender: 'Gender',
-    male: 'Male',
-    female: 'Female',
+    male: 'Boys',
+    female: 'Girls',
     guardianTitle: 'A parent or guardian needs to be involved',
     guardianSubtitle:
       "You're {age}, so FotSpot needs a parent or guardian linked to this profile before it can be seen by academies.",
@@ -833,6 +833,14 @@ export const en: Dictionary = {
       'Your numbers are self-reported until a verified coach assesses you. A coach-verified bar counts for far more with academies.',
   },
 
+  /** The SEO keyword tag input — shared by the academy and trial forms. */
+  seoKeywords: {
+    label: 'SEO keywords',
+    placeholder: 'Type a keyword and press Enter',
+    hint: 'Search terms for this page. Not shown to visitors.',
+    full: 'Keyword limit reached',
+  },
+
   trials: {
     editNotFound: 'That trial could not be found, so there is nothing to edit.',
     editNotAllowed: 'You do not manage that trial, so you cannot edit it.',
@@ -858,8 +866,8 @@ export const en: Dictionary = {
     endBeforeStart: 'The end date cannot be before the start date.',
     endTimeBeforeStart: 'The end time must be after the start time.',
     gender: 'Gender',
-    genderMale: 'Male',
-    genderFemale: 'Female',
+    genderMale: 'Boys',
+    genderFemale: 'Girls',
     cover: 'Trial cover',
     coverHint: 'Optional. JPG, PNG or WebP, up to 5 MB.',
     coverUpload: 'Upload image',

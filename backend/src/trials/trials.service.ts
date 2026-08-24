@@ -21,6 +21,7 @@ import { InvitationsService } from '../academies/invitations.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
+import { normaliseKeywords } from '../common/seo-keywords.util';
 import { academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
 
@@ -108,6 +109,9 @@ export class TrialsService {
         endTime: dto.endTime ?? null,
         gender: dto.gender ?? 'male',
         coverKey,
+        // Normalised rather than trusted: the form de-duplicates as a courtesy,
+        // this endpoint is reachable without it.
+        seoKeywords: normaliseKeywords(dto.seoKeywords),
         applyDeadline,
         note: sanitizeRichText(dto.note),
       },
@@ -983,6 +987,9 @@ export class TrialsService {
         ...(dto.endTime !== undefined ? { endTime } : {}),
         ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
         ...(dto.coverKey !== undefined ? { coverKey } : {}),
+        ...(dto.seoKeywords !== undefined
+          ? { seoKeywords: normaliseKeywords(dto.seoKeywords) }
+          : {}),
         ...(dto.applyDeadline !== undefined ? { applyDeadline } : {}),
         ...(dto.ageRangeMin !== undefined ? { ageRangeMin: dto.ageRangeMin } : {}),
         ...(dto.ageRangeMax !== undefined ? { ageRangeMax: dto.ageRangeMax } : {}),
