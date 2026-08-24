@@ -203,11 +203,41 @@ export default async function AcademyDetailPage({
 
   const { t } = await getServerT();
 
+  /*
+   * Everything below asks the API by **this** id, never by the route param.
+   *
+   * The param is whatever was in the URL — a uuid on `/academies/<uuid>` and
+   * `@handle` on the other route. `fetchAcademy` above knows the difference;
+   * nothing after it did, so on the handle route every follow-up request asked
+   * the API for an academy whose id was `@handle`. Those endpoints filter by
+   * `academyId` rather than looking one up, so they answered **200 with an
+   * empty list** — no 404 for the `.catch()` to swallow, and no error anywhere.
+   * The page rendered a real academy with no trials, no photos, no featured
+   * members and no manager relation: incomplete rather than broken, which is
+   * exactly why it survived review.
+   *
+   * One resolved id, used for every request and for every component that makes
+   * one. Links are a separate question — see `canonicalPath`.
+   */
+  const academyId = academy.id;
+
+  /**
+   * The one address that speaks for this academy, for search engines only.
+   *
+   * Matches `generateMetadata`'s canonical, and is used for the JSON-LD `url`
+   * and nothing else. Links *inside* the page deliberately keep the param the
+   * reader arrived with: sending somebody who opened the id URL off to the
+   * handle URL when they press Edit is a navigation they did not ask for.
+   */
+  const canonicalPath = academy.username
+    ? `/academies/@${academy.username}`
+    : `/academies/${academyId}`;
+
   // Only for signed-in viewers, and failure is silent: the badge is a courtesy,
   // not information the page is about.
   const relation = session
     ? await academies
-        .relation(id, {
+        .relation(academyId, {
           token: session?.accessToken,
           activeRole: session?.activeRole,
           cache: 'no-store',
@@ -234,9 +264,9 @@ export default async function AcademyDetailPage({
     : { revalidate: 300 };
 
   const [academyTrials, photos, featured] = await Promise.all([
-    trials.listForAcademy(id, fresh).catch(() => [] as Trial[]),
-    academies.photos(id, fresh).catch(() => [] as AcademyPhoto[]),
-    academies.featured(id, fresh).catch(() => [] as AcademyFeatured[]),
+    trials.listForAcademy(academyId, fresh).catch(() => [] as Trial[]),
+    academies.photos(academyId, fresh).catch(() => [] as AcademyPhoto[]),
+    academies.featured(academyId, fresh).catch(() => [] as AcademyFeatured[]),
   ]);
 
   /*
@@ -249,7 +279,7 @@ export default async function AcademyDetailPage({
   const roster =
     isManager && editing
       ? await academyRoster
-          .list(id, {}, { token: session!.accessToken, cache: 'no-store' })
+          .list(academyId, {}, { token: session!.accessToken, cache: 'no-store' })
           .catch(() => [] as AcademyMember[])
       : [];
 
@@ -326,7 +356,7 @@ export default async function AcademyDetailPage({
   const structuredData = {
     '@type': 'SportsOrganization',
     name: academy?.name,
-    url: absoluteUrl(`/academies/${id}`),
+    url: absoluteUrl(canonicalPath),
     sport: 'Football',
     ...(academy?.description ? { description: academy.description } : {}),
     ...(academy?.logoUrl ? { logo: academy.logoUrl } : {}),
@@ -377,7 +407,9 @@ export default async function AcademyDetailPage({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold break-words sm:text-2xl">{academy?.name}</h1>
+              <h1 className="sm:text- line-clamp0=-2 text-xl font-bold break-words">
+                {academy?.name}
+              </h1>
               <RelationBadge relation={relation} kind={academy?.kind} t={t} />
             </div>
 
@@ -438,7 +470,7 @@ export default async function AcademyDetailPage({
 
           {!isManager && canFollowForTrials && (
             <AcademyFollowButton
-              academyId={id}
+              academyId={academyId}
               isAuthenticated={Boolean(session)}
               loginHref={`/login?next=${encodeURIComponent(`/academies/${id}`)}`}
               className="sm:text-right"

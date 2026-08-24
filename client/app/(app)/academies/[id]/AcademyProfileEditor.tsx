@@ -1,11 +1,23 @@
 'use client';
 
-import * as React from 'react';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import type { LatLng } from '@/components/academy/LocationPicker';
+import { useI18n } from '@/components/layout/I18nProvider';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert, Skeleton } from '@/components/ui/Feedback';
+import { Field, Input } from '@/components/ui/Field';
+import { LoadingImage } from '@/components/ui/LoadingImage';
+import { handleProblem, normaliseHandle, suggestHandle } from '@/lib/academy-handle';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyFeatured, AcademyMember, AcademyPhoto, AcademyProfile } from '@/lib/api/types';
+import { uploadToStorage } from '@/lib/api/upload';
+import { yandexMapsUrl } from '@/lib/maps';
+import { cn, initials } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  AtSign,
   Check,
   GripVertical,
   ImagePlus,
@@ -16,22 +28,10 @@ import {
   Trophy,
   X,
 } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import { uploadToStorage } from '@/lib/api/upload';
-import type { AcademyFeatured, AcademyMember, AcademyPhoto, AcademyProfile } from '@/lib/api/types';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { Avatar } from '@/components/ui/Avatar';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Field, Input } from '@/components/ui/Field';
-import { Alert, Skeleton } from '@/components/ui/Feedback';
-import type { LatLng } from '@/components/academy/LocationPicker';
-import { cn, initials } from '@/lib/utils';
-import { yandexMapsUrl } from '@/lib/maps';
-import { handleProblem, normaliseHandle, suggestHandle } from '@/lib/academy-handle';
-import { AtSign } from 'lucide-react';
-import { LoadingImage } from '@/components/ui/LoadingImage';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 /**
  * Leaflet only exists on this screen.
@@ -500,9 +500,6 @@ function LocationCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: 
           <span className="text-muted">{t.academy?.currentLocation}</span>
           {saved ? (
             <>
-              <span className="font-mono">
-                {saved?.latitude?.toFixed(5)}, {saved?.longitude?.toFixed(5)}
-              </span>
               {savedHref && (
                 <a
                   href={savedHref}

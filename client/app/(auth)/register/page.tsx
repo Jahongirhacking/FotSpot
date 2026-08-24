@@ -1,9 +1,9 @@
+import { OAuthButtons } from '@/components/auth/OAuthButtons';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { getServerT } from '@/lib/i18n/server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RegisterForm } from './RegisterForm';
-import { OAuthButtons } from '@/components/auth/OAuthButtons';
-import { getServerT } from '@/lib/i18n/server';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,9 +18,7 @@ export default async function RegisterPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-xl">{t.auth.createAccountTitle}</CardTitle>
-        <CardDescription>
-          Free, always. We&apos;ll ask what you&apos;re here for once you&apos;re in.
-        </CardDescription>
+        <CardDescription>{t.auth.createAccountSubtitle}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <RegisterForm />

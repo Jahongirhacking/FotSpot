@@ -158,6 +158,18 @@ export function PendingTrialActions({ academyId }: { academyId: string }) {
                       ? t.dashboard.coachFound
                       : t.dashboard.coachApproved}
                 </p>
+
+                {/*
+                  TRIAL.md §30 names the manager's action "Add Player to Squad",
+                  so the button keeps that name. What it actually does is send an
+                  `AcademyInvitation` the player has to accept — nobody is placed
+                  by pressing it — and a button reading as an immediate placement
+                  hides the step the player still owns. This is the sentence the
+                  squad screens already use, not a second wording of it.
+                */}
+                {item?.type === 'ADD_TO_SQUAD' && (
+                  <p className="text-muted mt-0.5 text-xs">{t.academy.addWarning}</p>
+                )}
               </div>
 
               {item?.type === 'INVITE_TO_PRIVATE_TRIAL' ? (
