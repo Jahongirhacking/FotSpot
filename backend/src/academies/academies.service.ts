@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { AcademyMemberRole, Prisma } from '@prisma/client';
+import { AcademyMemberRole, AcademyProfile, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { RedisService } from '../redis/redis.service';
@@ -591,9 +591,12 @@ export class AcademiesService {
      * importantly, means nothing above pretends to have reserved a handle it
      * had only observed to be free.
      */
-    let updated;
+    // Typed, not bare `let updated;`. An un-annotated declaration is implicitly
+    // `any` under this project's `noImplicitAny: false`, which is exactly how the
+    // shadowed `const` that used to sit inside this `try` escaped the compiler.
+    let updated: AcademyProfile;
     try {
-      const updated = await this.prisma.academyProfile.update({
+      updated = await this.prisma.academyProfile.update({
         where: { id: academyId },
         data: {
           ...dto,

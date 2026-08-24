@@ -29,6 +29,7 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import type { LatLng } from '@/components/academy/LocationPicker';
 import { cn, initials } from '@/lib/utils';
 import { yandexMapsUrl } from '@/lib/maps';
+import { handleProblem, normaliseHandle, suggestHandle } from '@/lib/academy-handle';
 import { AtSign } from 'lucide-react';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
@@ -175,10 +176,26 @@ function HandleCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: ()
 
   // Typed without the `@`; the sigil is shown as a prefix so the field reads the
   // way the finished URL does without the manager having to type it.
-  const value = handle.replace(/^@+/, '').toLowerCase();
+  const value = normaliseHandle(handle);
   const changed = value !== (academy?.username ?? '');
-  const malformed = value.length > 0 && !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(value);
-  const missingSuffix = value.length > 0 && !malformed && !value.endsWith('academy');
+  // Mirrors the server's rules so the manager reads them while typing; the
+  // server re-checks everything — see lib/academy-handle.ts.
+  const problem = handleProblem(value);
+  const blocked = problem !== null;
+
+  /*
+   * A suggestion the manager has to ask for, and may then edit or ignore.
+   *
+   * Never applied on mount or on a name change: a handle is part of a public URL
+   * and choosing one is the manager's decision, so anything that filled it in
+   * for them would be publishing a guess the moment they pressed Save on some
+   * unrelated field.
+   *
+   * Empty when the name has nothing the shape can carry — a Cyrillic name yields
+   * no suggestion rather than a transliterated guess — and the button is simply
+   * not offered in that case.
+   */
+  const suggestion = React.useMemo(() => suggestHandle(academy?.name ?? ''), [academy?.name]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -210,7 +227,13 @@ function HandleCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: ()
           label={t.academy.handleLabel}
           htmlFor="academy-handle"
           error={
-            malformed ? t.academy.handleShape : missingSuffix ? t.academy.handleSuffix : undefined
+            problem === 'shape'
+              ? t.academy.handleShape
+              : problem === 'suffix'
+                ? t.academy.handleSuffix
+                : problem === 'too-long'
+                  ? t.academy.handleTooLong
+                  : undefined
           }
         >
           <div className="flex items-center gap-2">
@@ -232,18 +255,28 @@ function HandleCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: ()
 
         {/* The finished address, so the manager can see what they are choosing
             rather than assembling it in their head. */}
-        {value && !malformed && !missingSuffix && (
+        {value && !blocked && (
           <p className="text-muted font-mono text-xs break-all">/academies/@{value}</p>
         )}
 
-        <Button
-          size="sm"
-          onClick={() => save.mutate()}
-          loading={save.isPending}
-          disabled={!changed || malformed || missingSuffix}
-        >
-          {t.common.save}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => save.mutate()}
+            loading={save.isPending}
+            disabled={!changed || blocked}
+          >
+            {t.common.save}
+          </Button>
+
+          {/* Offered only when there is something to suggest and the box is not
+              already holding it. Fills the field; it does not save. */}
+          {suggestion && suggestion !== value && (
+            <Button size="sm" variant="ghost" onClick={() => setHandle(suggestion)}>
+              {t.academy.handleSuggest}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

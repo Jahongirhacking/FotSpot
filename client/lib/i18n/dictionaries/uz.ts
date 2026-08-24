@@ -446,6 +446,8 @@ export const uz = {
   },
 
   academy: {
+    handleSuggest: 'Nomdan taklif qilish',
+    handleTooLong: 'Manzil juda uzun.',
     handleTitle: 'Ommaviy manzil',
     handleHint: 'Akademiyangiz uchun qisqa manzil — ulashadigan havolalarda ishlatiladi.',
     handleLabel: 'Manzil',

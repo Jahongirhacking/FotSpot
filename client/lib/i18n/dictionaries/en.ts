@@ -422,6 +422,8 @@ export const en: Dictionary = {
   },
 
   academy: {
+    handleSuggest: 'Suggest from name',
+    handleTooLong: 'That handle is too long.',
     handleTitle: 'Public handle',
     handleHint: 'A short address for your academy, used in links you share.',
     handleLabel: 'Handle',

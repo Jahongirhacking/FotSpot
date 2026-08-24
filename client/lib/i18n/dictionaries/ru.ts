@@ -419,6 +419,8 @@ export const ru: Dictionary = {
   },
 
   academy: {
+    handleSuggest: 'Предложить из названия',
+    handleTooLong: 'Адрес слишком длинный.',
     handleTitle: 'Публичный адрес',
     handleHint: 'Короткий адрес академии для ссылок, которыми вы делитесь.',
     handleLabel: 'Адрес',
