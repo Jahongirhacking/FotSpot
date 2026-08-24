@@ -313,3 +313,57 @@ export function isValidRegionDistrict(region?: string | null, district?: string 
 
   return normaliseDistrict(canonicalRegion, district) !== null;
 }
+
+/**
+ * Roughly where each province is, as a point.
+ *
+ * ## Why an approximation is the honest answer here
+ *
+ * A player's profile stores a *place name* — province, optionally district —
+ * because that is as much as the platform asks a fourteen-year-old for. An
+ * academy stores real coordinates, because it is a building somebody drives to.
+ * Ranking trials by proximity therefore needs one end approximated, and the
+ * province's administrative centre is the least-wrong point available: it is
+ * where most of the province's population is, and it is a fact rather than a
+ * guess about the individual.
+ *
+ * These are the provincial capitals, to four decimal places (~10m — far finer
+ * than the claim deserves, and kept only so the numbers are recognisable).
+ *
+ * **Only ever used for ordering**, never displayed and never stored on a player.
+ * The distance it produces is a sorting key, not a statement that a player lives
+ * in their provincial capital — which is why `distanceKm` is never surfaced in
+ * the UI.
+ */
+const REGION_CENTRES: Record<string, { latitude: number; longitude: number }> = {
+  'Qoraqalpog‘iston Respublikasi': { latitude: 42.4531, longitude: 59.6103 }, // Nukus
+  'Andijon viloyati': { latitude: 40.7821, longitude: 72.3442 },
+  'Buxoro viloyati': { latitude: 39.7747, longitude: 64.4286 },
+  'Jizzax viloyati': { latitude: 40.1158, longitude: 67.8422 },
+  'Qashqadaryo viloyati': { latitude: 38.8611, longitude: 65.7887 }, // Qarshi
+  'Navoiy viloyati': { latitude: 40.0844, longitude: 65.3792 },
+  'Namangan viloyati': { latitude: 40.9983, longitude: 71.6726 },
+  'Samarqand viloyati': { latitude: 39.627, longitude: 66.975 },
+  'Sirdaryo viloyati': { latitude: 40.4897, longitude: 68.7842 }, // Guliston
+  'Surxondaryo viloyati': { latitude: 37.2242, longitude: 67.2783 }, // Termiz
+  'Toshkent viloyati': { latitude: 41.0058, longitude: 69.6294 }, // Nurafshon
+  'Farg‘ona viloyati': { latitude: 40.3864, longitude: 71.7864 },
+  'Xorazm viloyati': { latitude: 41.55, longitude: 60.6333 }, // Urganch
+  'Toshkent shahri': { latitude: 41.2995, longitude: 69.2401 },
+};
+
+/**
+ * A point for a player's stated place, or null if they have not stated one.
+ *
+ * `district` is accepted and currently unused: districts have no coordinate
+ * table, and inventing one per district would be a much larger claim than the
+ * province centre already makes. It is in the signature so the call sites do not
+ * change the day that data exists.
+ */
+export function regionCentre(
+  region?: string | null,
+  _district?: string | null,
+): { latitude: number; longitude: number } | null {
+  const canonical = normaliseRegion(region);
+  return canonical ? (REGION_CENTRES[canonical] ?? null) : null;
+}

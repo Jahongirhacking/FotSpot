@@ -4867,7 +4867,61 @@
     "/api/v1/trials": {
       "get": {
         "operationId": "trials_listUpcoming",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "region",
+            "required": false,
+            "in": "query",
+            "description": "Province. Validated against the canonical list, so a typo returns nothing\n      rather than silently matching nothing and looking like an empty board.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "district",
+            "required": false,
+            "in": "query",
+            "description": "District within the province. Only meaningful alongside `region`.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "age",
+            "required": false,
+            "in": "query",
+            "description": "The player's age, matched against each trial's stated range.\n\nBounded by the same youth-football range the creation form offers, so a\nnonsense age is a 400 rather than an empty list somebody has to explain.",
+            "schema": {
+              "minimum": 4,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
+            "name": "position",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "`newest` (default) or `recommended`.\n\n`recommended` needs to know who is asking, so it falls back to `newest` for\na signed-out visitor or an account with no player card — there is nothing to\nrecommend against, and pretending otherwise would return an arbitrary order\nunder a label that promises a considered one.",
+            "schema": {
+              "enum": [
+                "newest",
+                "recommended"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -4888,6 +4942,7 @@
             "bearer": []
           }
         ],
+        "summary": "The public board, filtered and ordered.\n\n`@OptionalUser` rather than `@CurrentUser`: the board is public, but\n`sort=recommended` needs to know who is asking. A signed-out visitor simply\ngets the newest-first order, which is what they would have got anyway.",
         "tags": [
           "trials"
         ]

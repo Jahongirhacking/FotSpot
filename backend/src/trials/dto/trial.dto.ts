@@ -246,3 +246,38 @@ export class InviteToTrialDto {
 export class RespondToInvitationDto {
   @IsBoolean() accept: boolean;
 }
+
+/**
+ * Filters and ordering for the public trials board.
+ *
+ * Every field is optional and they combine — nothing selected means every
+ * eligible trial, which is what a player arriving at the page should see.
+ */
+export class ListTrialsQueryDto {
+  /** Province. Validated against the canonical list, so a typo returns nothing
+      rather than silently matching nothing and looking like an empty board. */
+  @IsOptional() @IsString() @MaxLength(64) region?: string;
+
+  /** District within the province. Only meaningful alongside `region`. */
+  @IsOptional() @IsString() @MaxLength(64) district?: string;
+
+  /**
+   * The player's age, matched against each trial's stated range.
+   *
+   * Bounded by the same youth-football range the creation form offers, so a
+   * nonsense age is a 400 rather than an empty list somebody has to explain.
+   */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(4) @Max(60) age?: number;
+
+  @IsOptional() @IsString() @MaxLength(8) position?: string;
+
+  /**
+   * `newest` (default) or `recommended`.
+   *
+   * `recommended` needs to know who is asking, so it falls back to `newest` for
+   * a signed-out visitor or an account with no player card — there is nothing to
+   * recommend against, and pretending otherwise would return an arbitrary order
+   * under a label that promises a considered one.
+   */
+  @IsOptional() @IsIn(['newest', 'recommended']) sort?: 'newest' | 'recommended';
+}

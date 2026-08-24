@@ -4,6 +4,7 @@
  */
 import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
 import type {
+  TrialListFilters,
   AcademyInvitation,
   MyInvitation,
   AcademyProfile,
@@ -1049,8 +1050,25 @@ export const trials = {
   markSeen: (opts: Opts = {}) =>
     apiFetch<{ seenAt: string }>('/trials/seen', { method: 'POST', ...opts }),
 
-  /** GET /trials — @Public(), returns upcoming trials. */
-  listUpcoming: (opts: Opts = {}) => apiFetch<Trial[]>('/trials', opts),
+  /**
+   * GET /trials — @Public(), the upcoming board, filtered and ordered.
+   *
+   * Filtering and ranking happen on the server: the endpoint is unpaginated, so
+   * doing it here would mean sending every trial in the country to a phone in
+   * order to discard most of them. `sort=recommended` also needs the viewer's
+   * player card, which only the API can see.
+   *
+   * Empty values are dropped rather than sent blank — `?region=` is a filter the
+   * API would have to decide how to read, where an absent key plainly is not one.
+   */
+  listUpcoming: (filters: TrialListFilters = {}, opts: Opts = {}) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && `${value}` !== '') params.set(key, `${value}`);
+    }
+    const query = params.toString();
+    return apiFetch<Trial[]>(`/trials${query ? `?${query}` : ''}`, opts);
+  },
 
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Trial[]>(`/trials/academy/${academyId}`, opts),

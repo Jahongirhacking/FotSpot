@@ -685,6 +685,15 @@ export type TrialType = 'GENERAL' | 'PRIVATE';
  * `latitude`/`longitude` are nullable together — half a pair points at the Gulf
  * of Guinea — and are only ever read through `yandexMapsUrl`, which checks both.
  */
+/** What the trials board can be narrowed and ordered by — see `ListTrialsQueryDto`. */
+export interface TrialListFilters {
+  region?: string;
+  district?: string;
+  age?: number | string;
+  position?: string;
+  sort?: 'newest' | 'recommended';
+}
+
 export interface TrialAcademy {
   id: string;
   name: string;
