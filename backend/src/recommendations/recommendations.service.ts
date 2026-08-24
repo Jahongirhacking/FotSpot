@@ -940,41 +940,67 @@ export class RecommendationsService {
   /**
    * The academy a coach is acting for, and why they are acting for none.
    *
-   * ## Endorsement, not membership
+   * ## On the staff *and* endorsed — both, at the same academy
    *
-   * The authority to judge a player for an academy is the **endorsement**
-   * (§1.5.3) — it is what an academy's trust in a coach *is*, and it is what
-   * `ProcessAService.pickCoaches` requires before it will open a review. Gating
-   * on `AcademyMember` instead looked equivalent, because taking somebody onto
-   * the staff writes both rows in one transaction, and was not: an academy that
-   * revoked an endorsement without ending the membership would leave a coach
-   * passing this check and then meeting *"Add a coach to the academy before
-   * sending players for review"* from three layers down. Same row, same rule,
-   * one answer.
+   * A coach may only accept a player for an academy they are currently on the
+   * coaching staff of. Two rows say that, and the authority is the **overlap**
+   * of them, because each one alone lets somebody through who should not be:
+   *
+   * - `AcademyMember` (role COACH, ACTIVE) is the squad. Alone it is not
+   *   enough: `ProcessAService.pickCoaches` opens a review only for an
+   *   *endorsed* coach, so a membership-only gate let a coach whose endorsement
+   *   had been withdrawn through to a 400 about somebody else's problem.
+   * - `AcademyEndorsement` (role COACH, ACTIVE) is the academy's trust
+   *   (§1.5.3). Alone it is not enough either: `releaseMember` revokes it when
+   *   somebody is expelled, but `updateMember` — the manager standing a coach
+   *   down to INACTIVE, or changing their role — does not. A coach who had been
+   *   stood down kept an ACTIVE endorsement, and with it the ability to accept
+   *   players for a squad they were no longer part of.
+   *
+   * Requiring both closes each hole with the other, and neither row is the
+   * client's to supply: the academy is derived here, from the caller's own
+   * membership, so there is no request in which a coach could name a different
+   * one. `Accepting coach's academy === review's academy` holds structurally
+   * rather than by validation.
    *
    * ## When a coach works for more than one
    *
-   * The first academy that endorsed them — and a local team only if there is no
+   * The first academy that took them on — and a local team only if there is no
    * academy at all, since a local team runs no online review and must not be the
    * one picked while a real academy is on offer. Deterministic rather than
    * arbitrary, because the read behind the button and the write have to land on
    * the same academy, and the screen shows its name before anybody confirms.
    */
   private async coachAcademy(userId: string) {
-    const endorsements = await this.prisma.academyEndorsement.findMany({
-      where: { userId, role: 'COACH', status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
-      select: { academy: { select: { id: true, name: true, kind: true } } },
-    });
+    const [memberships, endorsements] = await Promise.all([
+      this.prisma.academyMember.findMany({
+        where: { userId, role: 'COACH', status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+        select: { academy: { select: { id: true, name: true, kind: true } } },
+      }),
+      this.prisma.academyEndorsement.findMany({
+        where: { userId, role: 'COACH', status: 'ACTIVE' },
+        select: { academyId: true },
+      }),
+    ]);
 
-    const academy = endorsements.find((row) => row.academy?.kind === 'ACADEMY')?.academy;
+    const endorsed = new Set(endorsements.map((row) => row.academyId));
+    const eligible = memberships.filter((row) => endorsed.has(row.academy?.id));
+
+    const academy = eligible.find((row) => row.academy?.kind === 'ACADEMY')?.academy;
     if (academy) {
       return { academy: { id: academy.id, name: academy.name }, reason: null };
     }
 
+    /*
+     * `NOT_A_COACH` also covers the coach who *was* one here — stood down, or
+     * no longer endorsed. The profile draws nothing for it, which is right:
+     * somebody who cannot act should see the page a non-coach sees, not a
+     * notice about their own standing on every player they open.
+     */
     return {
       academy: null,
-      reason: (endorsements.length > 0 ? 'LOCAL_TEAM' : 'NOT_A_COACH') as CoachAcceptBlocker,
+      reason: (eligible.length > 0 ? 'LOCAL_TEAM' : 'NOT_A_COACH') as CoachAcceptBlocker,
     };
   }
 
@@ -1244,8 +1270,11 @@ export class RecommendationsService {
    * player was worth seeing, and somebody has to be able to record the verdict.
    */
   async invitePlayer(userId: string, playerId: string, dto: InvitePlayerDto) {
+    // ACTIVE, like `pendingManagerActions` and `inboxAwaitingReviewCount`: this
+    // one creates a trial and sends an invitation to a child's family, so a
+    // manager who has been stood down must not still be able to send it.
     const membership = await this.prisma.academyMember.findFirst({
-      where: { userId, role: 'MANAGER' },
+      where: { userId, role: 'MANAGER', status: 'ACTIVE' },
       select: { academyId: true, academy: { select: { name: true } } },
     });
     if (!membership) throw new ForbiddenException('Only an academy manager can do that');

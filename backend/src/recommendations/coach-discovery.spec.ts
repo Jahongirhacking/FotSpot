@@ -55,6 +55,23 @@ describe('what a coach can and cannot do', () => {
     expect(method.toString()).toMatch(/role: 'MANAGER'/);
   });
 
+  /*
+   * `Accepting coach's academy === hosting manager's academy`.
+   *
+   * Both ends read their academy from their own ACTIVE membership rather than
+   * from the request, so the two cannot diverge: a manager can only invite from
+   * the academy they manage, against a review that can only have been written
+   * by a coach of that same academy.
+   */
+  it('the manager invites only from the academy they actively manage', () => {
+    const source = RecommendationsService.prototype.invitePlayer.toString();
+
+    expect(source).toMatch(/role: 'MANAGER'/);
+    expect(source).toMatch(/status: 'ACTIVE'/);
+    expect(source).toMatch(/academyId = membership\.academyId/);
+    expect(source).not.toMatch(/dto\.academyId/);
+  });
+
   it.each([
     ['invite', TrialsService.prototype.invite],
     ['addToSquad', TrialsService.prototype.addToSquad],
@@ -103,24 +120,49 @@ describe('what a coach can and cannot do', () => {
   });
 
   /*
-   * Endorsement, not membership.
+   * On the staff *and* endorsed — the overlap, not either one.
    *
-   * The two look interchangeable — taking a coach onto the staff writes both
-   * rows in one transaction — and are not: `ProcessAService.pickCoaches` opens a
-   * review only for an *endorsed* coach, so a gate that read membership let a
-   * coach whose endorsement had been revoked past it, to be refused three layers
-   * down by a sentence about somebody else's problem. Both the ACCEPT and the
-   * read behind its button have to ask the endorsement.
+   * Each row alone lets somebody through who should not be. Membership alone
+   * misses that `ProcessAService.pickCoaches` opens a review only for an
+   * endorsed coach, so a withdrawn endorsement surfaced three layers down as a
+   * 400 about somebody else's problem. Endorsement alone misses that
+   * `AcademiesService.updateMember` stands a coach down to INACTIVE *without*
+   * revoking it — which left a coach accepting players for a squad they had
+   * been removed from. Dropping either half reopens one of those.
    */
-  it('coach discovery asks the endorsement, not the membership', () => {
+  it('coach discovery requires both an active membership and an active endorsement', () => {
     const resolver = (
       RecommendationsService.prototype as unknown as Record<string, () => unknown>
     ).coachAcademy.toString();
 
-    expect(resolver).toMatch(/academyEndorsement/);
-    expect(resolver).toMatch(/role: 'COACH'/);
-    expect(resolver).toMatch(/status: 'ACTIVE'/);
-    expect(resolver).not.toMatch(/academyMember/);
+    // Each lookup named separately: asserting that ACTIVE appears *somewhere*
+    // passed while the membership query was reading stood-down coaches too.
+    const active = (table: string) =>
+      new RegExp(
+        `${table}\\.findMany\\(\\{\\s*where: \\{ userId, role: 'COACH', status: 'ACTIVE' \\}`,
+      );
+
+    expect(resolver).toMatch(active('academyMember'));
+    expect(resolver).toMatch(active('academyEndorsement'));
+    // The overlap has to be taken, not merely both lists fetched.
+    expect(resolver).toMatch(/endorsed\.has/);
+  });
+
+  /*
+   * The academy is never named by the caller.
+   *
+   * This is what makes "a coach of Academy A cannot accept for Academy B"
+   * structural rather than a validation somebody could forget: there is no
+   * request in which an academy id could arrive. It is read from the caller's
+   * own membership, so the review can only ever belong to their own academy.
+   */
+  it('takes the academy from the coach, never from the request', () => {
+    const source = RecommendationsService.prototype.acceptFromProfile.toString();
+
+    expect(source).toMatch(/coachAcademy\(userId\)/);
+    expect(source).toMatch(/academyId = found\.academy\.id/);
+    // The DTO carries a note and nothing else — no academy to be trusted.
+    expect(source).not.toMatch(/dto\.academyId/);
   });
 
   it('coach discovery refuses anybody the endorsement does not cover', () => {
