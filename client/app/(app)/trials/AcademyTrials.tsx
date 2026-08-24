@@ -105,6 +105,12 @@ export function AcademyTrials({
         <CardContent className="space-y-4">
           <p className="text-muted text-sm">{t.trials.globalTrialsHint}</p>
 
+          {/*
+            Rendered only while it should be showing, rather than mounted closed.
+            The dialog would unmount its own content anyway, but this also keeps
+            the form's state from being seeded before there is a trial to seed it
+            from — `?edit=<id>` arrives with the page, not after it.
+          */}
           {showForm && (
             <TrialForm
               /*
@@ -113,6 +119,7 @@ export function AcademyTrials({
                * one's answers — the state is seeded from props on first render.
                */
               key={editTrial?.id ?? 'new'}
+              open={showForm}
               academyId={academyId}
               trial={editTrial ?? undefined}
               defaultNote={academy?.data?.defaultTrialNote}

@@ -81,10 +81,16 @@ export class CreateTrialDto {
   endTime?: string;
 
   /**
-   * Who the trial is for. Defaults to `male`, matching the player card's own
-   * `z.enum(['male', 'female'])` rather than introducing a second vocabulary.
+   * Who the trial is open to: `male`, `female` or `general`.
+   *
+   * `male`/`female` match the player card's own `z.enum(['male', 'female'])`
+   * rather than introducing a second vocabulary. `general` is a third value that
+   * exists only here — a *trial* can be open to everybody, where a player's own
+   * gender is a fact about one person and has no such option.
+   *
+   * Defaults to `male`, which is what every trial written before this held.
    */
-  @IsOptional() @IsIn(['male', 'female']) gender?: string;
+  @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
 
   /**
    * R2 object key for the cover image, from `POST /academies/:id/images/upload-url`.
@@ -171,7 +177,7 @@ export class UpdateTrialDto {
   @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string | null;
 
-  @IsOptional() @IsIn(['male', 'female']) gender?: string;
+  @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
 
   @IsOptional() @IsString() @MaxLength(512) coverKey?: string | null;
 

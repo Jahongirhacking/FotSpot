@@ -721,7 +721,8 @@ export interface Trial {
   startTime?: string | null;
   endTime?: string | null;
   /** Who the trial is for. */
-  gender?: 'male' | 'female';
+  /** `general` is trial-only — a session can be open to everybody. */
+  gender?: 'male' | 'female' | 'general';
   /** R2 key for the cover image; `coverUrl` is what to render. */
   coverKey?: string | null;
   coverUrl?: string | null;

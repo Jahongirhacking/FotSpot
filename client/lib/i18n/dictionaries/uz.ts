@@ -884,6 +884,15 @@ export const uz = {
   trials: {
     editNotFound: 'Bunday trial topilmadi, tahrirlash uchun hech narsa yo‘q.',
     editNotAllowed: 'Siz bu trialni boshqarmaysiz, shuning uchun uni tahrirlay olmaysiz.',
+    editTrial: 'Trialni tahrirlash',
+    editTrialHint: 'O‘zgarishlar o‘yinchilarga darhol ko‘rinadi.',
+    createTrialHint:
+      'Ochiq kunni e’lon qiling. Mos keladigan har bir o‘yinchi ariza topshira oladi.',
+    genderGeneral: 'Umumiy',
+    sectionBasics: 'Trial',
+    sectionSchedule: 'Qachon',
+    sectionEligibility: 'Kim ariza topshira oladi',
+    sectionDetails: 'Tafsilotlar',
     saveChanges: 'O‘zgarishlarni saqlash',
     dailyWindow: 'Kunlik vaqt',
     statusClosed: 'Yopiq',

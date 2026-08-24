@@ -7,14 +7,40 @@ import { TrialCoverPicker } from '@/components/trials/TrialCoverPicker';
 import { SeoKeywordInput } from '@/components/ui/SeoKeywordInput';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { browserFetch } from '@/lib/api/browser';
 import type { Trial } from '@/lib/api/types';
+import type { Dictionary } from '@/lib/i18n';
 import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
-import { localNowInput } from '@/lib/utils';
+import { cn, localNowInput } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import * as React from 'react';
+
+/**
+ * Who a trial is open to.
+ *
+ * `general` exists only on a trial — a session can be open to everybody, where
+ * a player's own gender is a fact about one person and has no such option. The
+ * order here is the order the segmented control renders.
+ */
+const GENDERS = ['male', 'female', 'general'] as const;
+type TrialGender = (typeof GENDERS)[number];
+
+const GENDER_LABEL: Record<TrialGender, (t: Dictionary) => string> = {
+  male: (t) => t.trials.genderMale,
+  female: (t) => t.trials.genderFemale,
+  general: (t) => t.trials.genderGeneral,
+};
 
 /** Youth football, both ends inclusive — the bounds the old number inputs carried. */
 export const TRIAL_AGE_MIN = 6;
@@ -47,12 +73,15 @@ export const TRIAL_AGE_MAX = 21;
  * ends. That split is inherited from the create form rather than invented here.
  */
 export function TrialForm({
+  open,
   academyId,
   trial,
   defaultNote,
   onSaved,
   onCancel,
 }: {
+  /** Whether the dialog is showing. Closing it runs `onCancel`. */
+  open: boolean;
   academyId: string;
   /** The trial to edit. Absent means this is a new one. */
   trial?: Trial;
@@ -83,8 +112,8 @@ export function TrialForm({
   const [fromTime, setFromTime] = React.useState(trial?.startTime ?? '09:00');
   const [toTime, setToTime] = React.useState(trial?.endTime ?? '18:00');
   const [deadline, setDeadline] = React.useState(minuteValue(trial?.applyDeadline));
-  const [gender, setGender] = React.useState<'male' | 'female'>(
-    trial?.gender === 'female' ? 'female' : 'male',
+  const [gender, setGender] = React.useState<TrialGender>(() =>
+    GENDERS.includes(trial?.gender as TrialGender) ? (trial?.gender as TrialGender) : 'male',
   );
   const [cover, setCover] = React.useState<{ key: string; url: string } | null>(
     trial?.coverKey && trial?.coverUrl ? { key: trial.coverKey, url: trial.coverUrl } : null,
@@ -169,244 +198,324 @@ export function TrialForm({
     });
   }
 
+  const busy = save.isPending || coverBusy;
+
   return (
-    <form onSubmit={submit} className="border-border space-y-3 rounded-lg border p-3">
-      <Field label={t.trials.title} htmlFor="trial-title" required>
-        <Input
-          id="trial-title"
-          name="title"
-          required
-          defaultValue={trial?.title ?? ''}
-          placeholder={t.placeholders.trialTitle}
-        />
-      </Field>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        /*
+         * Not dismissable mid-save.
+         *
+         * Radix closes on Escape and on an outside click, and a form that
+         * vanishes while its request is in flight leaves the manager unable to
+         * tell whether the trial was saved. `onSaved` is what closes it on
+         * success.
+         */
+        if (!next && !save.isPending) onCancel();
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{editing ? t.trials.editTrial : t.trials.createGlobalTrial}</DialogTitle>
+          <DialogDescription>
+            {editing ? t.trials.editTrialHint : t.trials.createTrialHint}
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t.trials.location} htmlFor="trial-location" required>
-          <Input
-            id="trial-location"
-            name="location"
-            required
-            defaultValue={trial?.location ?? ''}
-            placeholder={t.placeholders.district}
-          />
-        </Field>
-      </div>
-
-      {/*
-          The switch that makes dates optional.
-          Unchecked by default, and the fields below are hidden rather
-          than disabled while it is: a greyed-out input still marked
-          required tells a manager they have missed something, when in
-          fact they have chosen something.
+        {/*
+          `contents` so the body and the footer are direct children of the
+          dialog's flex column. A plain wrapper would put the whole form into one
+          scrolling block and carry the actions off screen with it.
         */}
-      <label className="border-border bg-surface-2 flex cursor-pointer items-start gap-3 rounded-lg border p-3">
-        <input
-          type="checkbox"
-          checked={scheduled}
-          onChange={(event) => setScheduled(event.target.checked)}
-          className="accent-primary mt-0.5 size-4 shrink-0 cursor-pointer"
-        />
-        <span>
-          <span className="block text-sm font-medium">{t.trials.scheduled}</span>
-          <span className="text-muted block text-xs">{t.trials.scheduledHint}</span>
-        </span>
-      </label>
+        <form onSubmit={submit} className="contents">
+          <DialogBody className="space-y-5">
+            <Section title={t.trials.sectionBasics}>
+              {/* Paired: a title and a place are one thought, and stacked they
+                  left half the row empty on a laptop. */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t.trials.title} htmlFor="trial-title" required>
+                  <Input
+                    id="trial-title"
+                    name="title"
+                    required
+                    defaultValue={trial?.title ?? ''}
+                    placeholder={t.placeholders.trialTitle}
+                  />
+                </Field>
 
-      {scheduled && (
-        <div className="border-border space-y-3 rounded-lg border border-dashed p-3">
+                <Field label={t.trials.location} htmlFor="trial-location" required>
+                  <Input
+                    id="trial-location"
+                    name="location"
+                    required
+                    defaultValue={trial?.location ?? ''}
+                    placeholder={t.placeholders.district}
+                  />
+                </Field>
+              </div>
+
+              {/*
+                Segmented rather than loose radios: three options read as one
+                choice when they share a track, and the target is the whole cell
+                rather than a 16px circle — which is what somebody on a phone is
+                aiming at. Still radios underneath, so arrow keys and screen
+                readers behave as they should.
+              */}
+              <Field label={t.trials.gender} htmlFor="trial-gender-male" required>
+                <div
+                  role="radiogroup"
+                  aria-label={t.trials.gender}
+                  className="border-border bg-surface-2 grid grid-cols-3 gap-1 rounded-lg border p-1"
+                >
+                  {GENDERS.map((value) => (
+                    <label
+                      key={value}
+                      htmlFor={`trial-gender-${value}`}
+                      className={cn(
+                        'focus-within:ring-ring cursor-pointer rounded-md px-2 py-1.5 text-center text-sm transition focus-within:ring-2',
+                        gender === value
+                          ? 'bg-surface text-foreground font-medium shadow-sm'
+                          : 'text-muted hover:text-foreground',
+                      )}
+                    >
+                      <input
+                        id={`trial-gender-${value}`}
+                        type="radio"
+                        name="gender"
+                        value={value}
+                        checked={gender === value}
+                        onChange={() => setGender(value)}
+                        className="sr-only"
+                      />
+                      {GENDER_LABEL[value](t)}
+                    </label>
+                  ))}
+                </div>
+              </Field>
+            </Section>
+
+            <Section title={t.trials.sectionSchedule}>
+              <label className="border-border bg-surface-2 flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+                <input
+                  type="checkbox"
+                  checked={scheduled}
+                  onChange={(event) => setScheduled(event.target.checked)}
+                  className="accent-primary mt-0.5 size-4 shrink-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-sm font-medium">{t.trials.scheduled}</span>
+                  <span className="text-muted block text-xs">{t.trials.scheduledHint}</span>
+                </span>
+              </label>
+
+              {scheduled && (
+                <div className="border-border space-y-3 rounded-lg border border-dashed p-3">
+                  {/*
+                      Two native date inputs rather than a range calendar.
+                      The project has no date library and no picker component — every
+                      other form here uses the native control, which gives a real
+                      calendar on desktop and the system wheel on a phone. A range
+                      picker would mean a new dependency for one form.
+                    */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={t.trials.fromDate} htmlFor="trial-from-date" required>
+                      <Input
+                        id="trial-from-date"
+                        type="date"
+                        required
+                        min={localNowInput().slice(0, 10)}
+                        value={fromDate}
+                        onChange={(event) => setFromDate(event.target.value)}
+                      />
+                    </Field>
+                    <Field
+                      label={t.trials.toDate}
+                      htmlFor="trial-to-date"
+                      required
+                      error={endBeforeStart ? t.trials.endBeforeStart : undefined}
+                    >
+                      {/* Floored at the start date, so the invalid half of the
+                            calendar is simply not offered. */}
+                      <Input
+                        id="trial-to-date"
+                        type="date"
+                        required
+                        min={fromDate || localNowInput().slice(0, 10)}
+                        value={toDate}
+                        onChange={(event) => setToDate(event.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={t.trials.fromTime} htmlFor="trial-from-time" required>
+                      <Input
+                        id="trial-from-time"
+                        type="time"
+                        required
+                        value={fromTime}
+                        onChange={(event) => setFromTime(event.target.value)}
+                      />
+                    </Field>
+                    <Field
+                      label={t.trials.toTime}
+                      htmlFor="trial-to-time"
+                      required
+                      error={endTimeBeforeStart ? t.trials.endTimeBeforeStart : undefined}
+                    >
+                      <Input
+                        id="trial-to-time"
+                        type="time"
+                        required
+                        value={toTime}
+                        onChange={(event) => setToTime(event.target.value)}
+                      />
+                    </Field>
+                  </div>
+
+                  <p className="text-muted text-xs">{t.trials.dailyWindowHint}</p>
+
+                  <Field
+                    label={t.trials.applyDeadline}
+                    htmlFor="trial-deadline"
+                    hint={t.trials.applyDeadlineHint}
+                    error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
+                  >
+                    {/* Capped at the opening day: applications closing after the
+                          trial has started is the one thing the API refuses, and a
+                          picker that cannot offer it beats an error afterwards. */}
+                    <Input
+                      id="trial-deadline"
+                      type="datetime-local"
+                      min={localNowInput()}
+                      max={fromDate ? `${fromDate}T${fromTime}` : undefined}
+                      value={deadline}
+                      onChange={(event) => setDeadline(event.target.value)}
+                    />
+                  </Field>
+                </div>
+              )}
+            </Section>
+
+            <Section title={t.trials.sectionEligibility}>
+              <Field
+                label={t.trials.ageRange}
+                htmlFor="trial-age-range"
+                hint={t.trials.ageRangeHint}
+              >
+                <RangeSlider
+                  min={TRIAL_AGE_MIN}
+                  max={TRIAL_AGE_MAX}
+                  value={ageRange}
+                  onChange={setAgeRange}
+                  labelFrom={t.trials.ageMin}
+                  labelTo={t.trials.ageMax}
+                />
+              </Field>
+
+              <Field
+                label={t.trials.positions}
+                htmlFor="trial-positions"
+                hint={t.trials.positionsPickHint}
+              >
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+                  <PitchPositionPicker
+                    mode="multi"
+                    label={t.trials.positions}
+                    value={positions}
+                    onChange={setPositions}
+                  />
+                  <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
+                    {positions.length === 0 ? (
+                      <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
+                    ) : (
+                      positions.map((position) => (
+                        <Badge key={position} variant="primary">
+                          {position}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </Field>
+            </Section>
+
+            <Section title={t.trials.sectionDetails}>
+              <Field label={t.trials.cover} htmlFor="trial-cover" hint={t.trials.coverHint}>
+                <TrialCoverPicker
+                  academyId={academyId}
+                  cover={cover}
+                  busy={coverBusy}
+                  error={coverError}
+                  onBusy={setCoverBusy}
+                  onError={setCoverError}
+                  onPicked={setCover}
+                />
+              </Field>
+
+              <Field label={t.trials.requirements} htmlFor="trial-req">
+                <Textarea
+                  id="trial-req"
+                  name="requirements"
+                  defaultValue={trial?.requirements ?? ''}
+                  placeholder={t.placeholders.note}
+                />
+              </Field>
+
+              <Field label={t.notes.playerNote} htmlFor="trial-note" hint={t.notes.playerNoteHint}>
+                <NoteEditor id="trial-note" value={note} onChange={setTypedNote} />
+              </Field>
+
+              <Field label={t.seoKeywords.label} htmlFor="trial-seo">
+                <SeoKeywordInput id="trial-seo" value={seoKeywords} onChange={setSeoKeywords} />
+              </Field>
+            </Section>
+          </DialogBody>
+
           {/*
-              Two native date inputs rather than a range calendar.
-              The project has no date library and no picker component — every
-              other form here uses the native control, which gives a real
-              calendar on desktop and the system wheel on a phone. A range
-              picker would mean a new dependency for one form.
-            */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={t.trials.fromDate} htmlFor="trial-from-date" required>
-              <Input
-                id="trial-from-date"
-                type="date"
-                required
-                min={localNowInput().slice(0, 10)}
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-              />
-            </Field>
-            <Field
-              label={t.trials.toDate}
-              htmlFor="trial-to-date"
-              required
-              error={endBeforeStart ? t.trials.endBeforeStart : undefined}
+            Stuck to the bottom of the scrolling area, so the actions stay
+            reachable without scrolling a long form to its end — and backed by
+            the surface colour, or the fields would show through as they pass
+            under it.
+          */}
+          <DialogFooter className="bg-surface border-border sticky bottom-0 border-t pt-4">
+            <Button type="button" variant="ghost" onClick={onCancel} disabled={save.isPending}>
+              {t.common.cancel}
+            </Button>
+            <Button
+              type="submit"
+              /*
+               * `loading` disables the button too, which is what stops a second
+               * press creating a second trial. Also disabled while a cover is
+               * still uploading: saving then would store a key that does not
+               * exist in the bucket yet.
+               */
+              loading={save.isPending}
+              disabled={busy || windowInvalid}
             >
-              {/* Floored at the start date, so the invalid half of the
-                    calendar is simply not offered. */}
-              <Input
-                id="trial-to-date"
-                type="date"
-                required
-                min={fromDate || localNowInput().slice(0, 10)}
-                value={toDate}
-                onChange={(event) => setToDate(event.target.value)}
-              />
-            </Field>
-          </div>
+              {editing ? t.trials.saveChanges : t.trials.createGlobalTrial}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={t.trials.fromTime} htmlFor="trial-from-time" required>
-              <Input
-                id="trial-from-time"
-                type="time"
-                required
-                value={fromTime}
-                onChange={(event) => setFromTime(event.target.value)}
-              />
-            </Field>
-            <Field
-              label={t.trials.toTime}
-              htmlFor="trial-to-time"
-              required
-              error={endTimeBeforeStart ? t.trials.endTimeBeforeStart : undefined}
-            >
-              <Input
-                id="trial-to-time"
-                type="time"
-                required
-                value={toTime}
-                onChange={(event) => setToTime(event.target.value)}
-              />
-            </Field>
-          </div>
-
-          <p className="text-muted text-xs">{t.trials.dailyWindowHint}</p>
-
-          <Field
-            label={t.trials.applyDeadline}
-            htmlFor="trial-deadline"
-            hint={t.trials.applyDeadlineHint}
-            error={deadlineAfterExam ? t.trials?.deadlineAfterExam : undefined}
-          >
-            {/* Capped at the opening day: applications closing after the
-                  trial has started is the one thing the API refuses, and a
-                  picker that cannot offer it beats an error afterwards. */}
-            <Input
-              id="trial-deadline"
-              type="datetime-local"
-              min={localNowInput()}
-              max={fromDate ? `${fromDate}T${fromTime}` : undefined}
-              value={deadline}
-              onChange={(event) => setDeadline(event.target.value)}
-            />
-          </Field>
-        </div>
-      )}
-
-      {/* Radios rather than a select: two options, both worth seeing
-            without a press, and one of them is already chosen. */}
-      <Field label={t.trials.gender} htmlFor="trial-gender-male" required>
-        <div id="trial-gender" className="flex gap-4" role="radiogroup">
-          {(['male', 'female'] as const).map((value) => (
-            <label
-              key={value}
-              htmlFor={`trial-gender-${value}`}
-              className="flex cursor-pointer items-center gap-2 text-sm"
-            >
-              <input
-                id={`trial-gender-${value}`}
-                type="radio"
-                name="gender"
-                value={value}
-                checked={gender === value}
-                onChange={() => setGender(value)}
-                className="accent-primary size-4 cursor-pointer"
-              />
-              {value === 'male' ? t.trials.genderMale : t.trials.genderFemale}
-            </label>
-          ))}
-        </div>
-      </Field>
-
-      {/* Not visible to players anywhere — these feed the page's metadata only
-          (§9). The manager already has permission to edit this trial, so the
-          field needs no gate of its own beyond that. */}
-      <Field label={t.seoKeywords.label} htmlFor="trial-seo">
-        <SeoKeywordInput id="trial-seo" value={seoKeywords} onChange={setSeoKeywords} />
-      </Field>
-
-      <Field label={t.trials.cover} htmlFor="trial-cover" hint={t.trials.coverHint}>
-        <TrialCoverPicker
-          academyId={academyId}
-          cover={cover}
-          busy={coverBusy}
-          error={coverError}
-          onBusy={setCoverBusy}
-          onError={setCoverError}
-          onPicked={setCover}
-        />
-      </Field>
-
-      {/* One control for what is one decision. Two number boxes let a
-            manager save a range whose ends are the wrong way round; the
-            slider clamps instead, and still carries the boxes for anyone
-            who already knows the exact ages they want. */}
-      <Field label={t.trials.ageRange} htmlFor="trial-age-range" hint={t.trials.ageRangeHint}>
-        <RangeSlider
-          min={TRIAL_AGE_MIN}
-          max={TRIAL_AGE_MAX}
-          value={ageRange}
-          onChange={setAgeRange}
-          labelFrom={t.trials.ageMin}
-          labelTo={t.trials.ageMax}
-        />
-      </Field>
-
-      {/* Pressed on a pitch rather than typed as "GK, CB, LB": the typed
-            version accepted anything, and a mistyped code silently
-            narrowed who the trial was announced to. */}
-      <Field label={t.trials.positions} htmlFor="trial-positions" hint={t.trials.positionsPickHint}>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-          <PitchPositionPicker
-            mode="multi"
-            label={t.trials.positions}
-            value={positions}
-            onChange={setPositions}
-          />
-          <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
-            {positions.length === 0 ? (
-              <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
-            ) : (
-              positions.map((position) => (
-                <Badge key={position} variant="primary">
-                  {position}
-                </Badge>
-              ))
-            )}
-          </div>
-        </div>
-      </Field>
-
-      <Field label={t.trials.requirements} htmlFor="trial-req">
-        <Textarea
-          id="trial-req"
-          name="requirements"
-          defaultValue={trial?.requirements ?? ''}
-          placeholder={t.placeholders.note}
-        />
-      </Field>
-
-      <Field label={t.notes.playerNote} htmlFor="trial-note" hint={t.notes.playerNoteHint}>
-        <NoteEditor id="trial-note" value={note} onChange={setTypedNote} />
-      </Field>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          {t.common.cancel}
-        </Button>
-        <Button type="submit" loading={save.isPending}>
-          {editing ? t.trials.saveChanges : t.trials.createGlobalTrial}
-        </Button>
-      </div>
-    </form>
+/**
+ * One labelled group of fields.
+ *
+ * A heading per group rather than one long column: the form asks for four
+ * different kinds of thing, and a manager changing the time should not have to
+ * read past the positions picker to find it.
+ */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-muted text-xs font-semibold tracking-wide uppercase">{title}</h3>
+      {children}
+    </section>
   );
 }
 

@@ -7831,10 +7831,11 @@
           },
           "gender": {
             "type": "string",
-            "description": "Who the trial is for. Defaults to `male`, matching the player card's own\n`z.enum(['male', 'female'])` rather than introducing a second vocabulary.",
+            "description": "Who the trial is open to: `male`, `female` or `general`.\n\n`male`/`female` match the player card's own `z.enum(['male', 'female'])`\nrather than introducing a second vocabulary. `general` is a third value that\nexists only here — a *trial* can be open to everybody, where a player's own\ngender is a fact about one person and has no such option.\n\nDefaults to `male`, which is what every trial written before this held.",
             "enum": [
               "male",
-              "female"
+              "female",
+              "general"
             ]
           },
           "coverKey": {
@@ -7947,7 +7948,8 @@
             "type": "string",
             "enum": [
               "male",
-              "female"
+              "female",
+              "general"
             ]
           },
           "coverKey": {

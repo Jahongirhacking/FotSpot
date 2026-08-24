@@ -237,7 +237,11 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
               column is defaulted), so this is always shown — unlike the age
               range above, which a private trial genuinely does not state. */}
           <Badge variant="outline">
-            {trial?.gender === 'female' ? t.trials.genderFemale : t.trials.genderMale}
+            {trial?.gender === 'female'
+              ? t.trials.genderFemale
+              : trial?.gender === 'general'
+                ? t.trials.genderGeneral
+                : t.trials.genderMale}
           </Badge>
           {trial?.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
           {trial?.status === 'ARCHIVED' && (

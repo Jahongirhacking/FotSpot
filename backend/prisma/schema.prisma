@@ -1552,12 +1552,15 @@ model Trial {
   startTime   String?
   endTime     String?
   /**
-   * Who the trial is for: `"male"` or `"female"`.
+   * Who the trial is open to: `"male"`, `"female"` or `"general"`.
    * A plain string with a default rather than a Prisma enum, because that is how
    * gender is already stored on `PlayerProfile` and two representations of one
    * concept is the thing worth avoiding. The values are validated at the edge
    * (`CreateTrialDto`) and match the client's existing
-   * `z.enum(['male', 'female'])`.
+   * `z.enum(['male', 'female'])`. `general` is a third value that exists only
+   * on a trial — a trial can be open to everybody, where a player's own gender
+   * is a fact about one person. No migration: the column is already a defaulted
+   * string, so a new permitted value is a validation change, not a schema one.
    * Defaulted rather than nullable so every existing trial gets an answer at
    * migration time instead of a null every reader has to interpret.
    */
