@@ -6,6 +6,7 @@ import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { getSession } from '@/lib/session';
 
+import { TrialCard } from '@/components/trials/TrialCard';
 import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -13,7 +14,6 @@ import { AcademyTrials } from './AcademyTrials';
 import { CoachTrials } from './CoachTrials';
 import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { MyTrialInvitations } from './MyTrialInvitations';
-import { TrialCard } from '@/components/trials/TrialCard';
 import { TrialFilters } from './TrialFilters';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
@@ -163,7 +163,7 @@ export default async function TrialsPage({
           every visit to this page. */}
       {session?.activeRole === 'player' && <MyTrialInvitations />}
 
-      {editId && !editTrial && (
+      {session?.activeRole === 'academy_manager' && editId && !editTrial && (
         <Alert tone="danger">{managed ? t.trials.editNotFound : t.trials.editNotAllowed}</Alert>
       )}
 

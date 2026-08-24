@@ -102,8 +102,8 @@ async function bootstrap() {
   // timestamps and formatting as everything else — a boot message that looks
   // unlike the rest of the log is one that gets scrolled past.
   const logger = new Logger('Bootstrap');
-  logger.log(`FotSpot API running on http://api.hotspot.uz/api/v1`);
-  logger.log(`API reference at    http://api.hotspot.uz/docs`);
+  logger.log(`FotSpot API running on http://api.fotspot.uz/api/v1`);
+  logger.log(`API reference at    http://api.fotspot.uz/docs`);
 }
 
 /**

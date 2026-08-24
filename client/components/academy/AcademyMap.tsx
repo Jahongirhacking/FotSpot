@@ -1,9 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { MapPin, ExternalLink } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { yandexMapsUrl } from '@/lib/maps';
+import { MapPin } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Button } from '../ui/Button';
 
 /**
  * `ssr: false` is not allowed in a Server Component (Next 16), and Leaflet
@@ -55,17 +56,16 @@ export function AcademyMap({
       </div>
 
       <div className="text-muted mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="inline-flex items-center gap-1">
-          <MapPin className="size-3.5" aria-hidden />
-          {latitude.toFixed(5)}, {longitude.toFixed(5)}
-        </span>
         <a
-          className="text-primary inline-flex items-center gap-1 hover:underline"
+          className="text-primary inline-flex w-full items-center gap-1 hover:underline"
           href={yandexMapsUrl({ latitude, longitude, address: name }) ?? undefined}
           target="_blank"
           rel="noopener noreferrer"
         >
-          {t.academy?.openInMaps} <ExternalLink className="size-3" aria-hidden />
+          <Button className="w-full cursor-pointer">
+            <MapPin className="size-3.5" aria-hidden />
+            {t.academy?.openInMaps}
+          </Button>
         </a>
       </div>
     </div>

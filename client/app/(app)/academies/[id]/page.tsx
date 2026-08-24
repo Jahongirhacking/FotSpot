@@ -377,7 +377,9 @@ export default async function AcademyDetailPage({
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold break-words sm:text-2xl">{academy?.name}</h1>
+              <h1 className="sm:text- line-clamp0=-2 text-xl font-bold break-words">
+                {academy?.name}
+              </h1>
               <RelationBadge relation={relation} kind={academy?.kind} t={t} />
             </div>
 
