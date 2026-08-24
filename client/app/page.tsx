@@ -47,7 +47,7 @@ export default async function LandingPage() {
       pageSize: 6,
     })),
     academies.listPublic(undefined, { revalidate: 600 }).catch(() => []),
-    trials?.listUpcoming({ revalidate: 600 }).catch(() => []),
+    trials?.listUpcoming({}, { revalidate: 600 }).catch(() => []),
     // One request for the strip. This used to fetch a page of players and then
     // one media request per player — seven round trips, on the most-visited page
     // in the product, for visitors on the worst connections it ever serves.

@@ -1790,6 +1790,35 @@
         ]
       }
     },
+    "/api/v1/academies/by-username/{username}": {
+      "get": {
+        "operationId": "academies_getByUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolves `/academies/@handle`. Declared before `:id` — Nest matches in\ndeclaration order, and `by-username` would otherwise be read as an academy\nid. The same arrangement as `PlayersController`.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}": {
       "get": {
         "operationId": "academies_getPublicProfile",
@@ -4516,6 +4545,101 @@
         ]
       }
     },
+    "/api/v1/recommendations/players/{playerId}/coach-state": {
+      "get": {
+        "operationId": "recommendations_coachDiscoveryState",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether this coach could accept this player, and why not if they could not.\n\nRead-only, and answers for any caller — the profile page asks before it\ndraws the coach's button, so a control never appears that the POST would\nrefuse.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/players/{playerId}/coach-accept": {
+      "post": {
+        "operationId": "recommendations_acceptFromProfile",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachAcceptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A coach approves a player they found themselves — an online review ACCEPT.\n\nDeliberately **not** an invitation. The coach's authority ends at \"this\nplayer deserves a look\" (TRIAL.md §11); creating the private trial and\ninviting the player is `players/:playerId/invite` below, which only a\nmanager can reach. The two are separate routes because they are separate\ndecisions by separate people.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
+    "/api/v1/recommendations/manager/pending-actions": {
+      "get": {
+        "operationId": "recommendations_pendingManagerActions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everything waiting on the manager, derived from state rather than from\nunread notifications — see `pendingManagerActions`.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/players/{playerId}/invite": {
       "post": {
         "operationId": "recommendations_invitePlayer",
@@ -4838,7 +4962,61 @@
     "/api/v1/trials": {
       "get": {
         "operationId": "trials_listUpcoming",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "region",
+            "required": false,
+            "in": "query",
+            "description": "Province. Validated against the canonical list, so a typo returns nothing\n      rather than silently matching nothing and looking like an empty board.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "district",
+            "required": false,
+            "in": "query",
+            "description": "District within the province. Only meaningful alongside `region`.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "age",
+            "required": false,
+            "in": "query",
+            "description": "The player's age, matched against each trial's stated range.\n\nBounded by the same youth-football range the creation form offers, so a\nnonsense age is a 400 rather than an empty list somebody has to explain.",
+            "schema": {
+              "minimum": 4,
+              "maximum": 60,
+              "type": "number"
+            }
+          },
+          {
+            "name": "position",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "`newest` (default) or `recommended`.\n\n`recommended` needs to know who is asking, so it falls back to `newest` for\na signed-out visitor or an account with no player card — there is nothing to\nrecommend against, and pretending otherwise would return an arbitrary order\nunder a label that promises a considered one.",
+            "schema": {
+              "enum": [
+                "newest",
+                "recommended"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -4859,6 +5037,7 @@
             "bearer": []
           }
         ],
+        "summary": "The public board, filtered and ordered.\n\n`@OptionalUser` rather than `@CurrentUser`: the board is public, but\n`sort=recommended` needs to know who is asking. A signed-out visitor simply\ngets the newest-first order, which is what they would have got anyway.",
         "tags": [
           "trials"
         ]
@@ -6980,6 +7159,14 @@
               }
             ]
           },
+          "seoKeywords": {
+            "description": "Search terms for the page's metadata. **Super admin only** — the service\nrefuses them from anyone else, including the admins who onboard academies\nand the manager who runs one (§8).\n\nNormalised server-side by `normaliseKeywords`: trimmed, de-duplicated\ncase-insensitively and capped. The bounds here are the outer limit on the\npayload, so an oversized request is refused rather than silently trimmed to\nsomething the caller did not send.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
           "name": {
             "type": "string"
           },
@@ -7035,6 +7222,19 @@
           "backupPhone": {
             "type": "string",
             "description": "E.164, or \"\" to clear"
+          },
+          "username": {
+            "type": "string",
+            "description": "The public handle, `name_academy`. The manager's to choose.\n\nOnly the outer bounds are checked here; the shape, the suffix and the\nnormalisation live in `academy-username.util.ts` and are applied by the\nservice, so one file answers \"what is a valid handle\" for validation, for\nlookup and for the suggestion the form offers.\n\nAbsent leaves it alone; an empty string clears it, which is how a manager\ngives a handle up.",
+            "maxLength": 41
+          },
+          "seoKeywords": {
+            "description": "Search terms for the page's metadata. **Super admin only** — the service\nrefuses them from anyone else, including the admins who onboard academies\nand the manager who runs one (§8).\n\nNormalised server-side by `normaliseKeywords`: trimmed, de-duplicated\ncase-insensitively and capped. The bounds here are the outer limit on the\npayload, so an oversized request is refused rather than silently trimmed to\nsomething the caller did not send.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
           },
           "name": {
             "type": "string"
@@ -7670,6 +7870,16 @@
           "decision"
         ]
       },
+      "CoachAcceptDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Why, for the manager who has to decide whether to invite. Optional.",
+            "maxLength": 2000
+          }
+        }
+      },
       "InvitePlayerDto": {
         "type": "object",
         "properties": {
@@ -7734,6 +7944,14 @@
               }
             ]
           },
+          "seoKeywords": {
+            "description": "Search terms for the trial's page metadata.\n\nNo extra permission of its own: creating and editing a trial is already the\nhosting academy's manager (`assertAcademyManager`), which is exactly who §8\ngrants this to. Adding a second gate here would be a second answer to a\nquestion the endpoint has already asked.\n\nNormalised server-side — trimmed, de-duplicated case-insensitively, capped.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
           "title": {
             "type": "string"
           },
@@ -7773,10 +7991,11 @@
           },
           "gender": {
             "type": "string",
-            "description": "Who the trial is for. Defaults to `male`, matching the player card's own\n`z.enum(['male', 'female'])` rather than introducing a second vocabulary.",
+            "description": "Who the trial is open to: `male`, `female` or `general`.\n\n`male`/`female` match the player card's own `z.enum(['male', 'female'])`\nrather than introducing a second vocabulary. `general` is a third value that\nexists only here — a *trial* can be open to everybody, where a player's own\ngender is a fact about one person and has no such option.\n\nDefaults to `male`, which is what every trial written before this held.",
             "enum": [
               "male",
-              "female"
+              "female",
+              "general"
             ]
           },
           "coverKey": {
@@ -7837,6 +8056,14 @@
               }
             ]
           },
+          "seoKeywords": {
+            "description": "Search terms for the trial's page metadata.\n\nNo extra permission of its own: creating and editing a trial is already the\nhosting academy's manager (`assertAcademyManager`), which is exactly who §8\ngrants this to. Adding a second gate here would be a second answer to a\nquestion the endpoint has already asked.\n\nNormalised server-side — trimmed, de-duplicated case-insensitively, capped.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
           "title": {
             "type": "string"
           },
@@ -7881,7 +8108,8 @@
             "type": "string",
             "enum": [
               "male",
-              "female"
+              "female",
+              "general"
             ]
           },
           "coverKey": {

@@ -436,6 +436,22 @@ export interface PlayerProfile {
 export type AcademyKind = 'ACADEMY' | 'LOCAL_TEAM';
 
 export interface AcademyProfile {
+  /**
+   * Public handle, resolving `/academies/@handle`. Stored without the `@`.
+   *
+   * Null until the manager chooses one — an academy is reached by id until then.
+   */
+  username?: string | null;
+
+  /**
+   * Search terms for this page's metadata. **Never rendered as page content.**
+   *
+   * Set by a super admin on an academy and by the hosting manager on a trial;
+   * the API refuses the field from anyone else. Read by `generateMetadata`,
+   * which escapes on output — nothing here is inserted into HTML by hand.
+   */
+  seoKeywords?: string[];
+
   id: string;
   name: string;
   kind: AcademyKind;
@@ -669,6 +685,15 @@ export type TrialType = 'GENERAL' | 'PRIVATE';
  * `latitude`/`longitude` are nullable together — half a pair points at the Gulf
  * of Guinea — and are only ever read through `yandexMapsUrl`, which checks both.
  */
+/** What the trials board can be narrowed and ordered by — see `ListTrialsQueryDto`. */
+export interface TrialListFilters {
+  region?: string;
+  district?: string;
+  age?: number | string;
+  position?: string;
+  sort?: 'newest' | 'recommended';
+}
+
 export interface TrialAcademy {
   id: string;
   name: string;
@@ -705,7 +730,8 @@ export interface Trial {
   startTime?: string | null;
   endTime?: string | null;
   /** Who the trial is for. */
-  gender?: 'male' | 'female';
+  /** `general` is trial-only — a session can be open to everybody. */
+  gender?: 'male' | 'female' | 'general';
   /** R2 key for the cover image; `coverUrl` is what to render. */
   coverKey?: string | null;
   coverUrl?: string | null;
@@ -716,6 +742,14 @@ export interface Trial {
    * row they just wrote — the screens that need the host are the ones that read
    * a trial, and those include it.
    */
+  /**
+   * Search terms for this page's metadata. **Never rendered as page content.**
+   *
+   * Set by a super admin on an academy and by the hosting manager on a trial;
+   * the API refuses the field from anyone else. Read by `generateMetadata`,
+   * which escapes on output — nothing here is inserted into HTML by hand.
+   */
+  seoKeywords?: string[];
   academy?: TrialAcademy;
   /**
    * Last moment somebody may apply. Null only on trials written before

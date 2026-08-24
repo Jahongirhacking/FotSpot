@@ -60,3 +60,16 @@ export class InvitePlayerDto {
   /** What to bring, and anything else the family needs — the invitation itself. */
   @IsString() @MinLength(1) @MaxLength(1000) note: string;
 }
+
+/**
+ * A coach approving a player they found themselves.
+ *
+ * Carries no decision field: this endpoint exists for the ACCEPT, and there is
+ * nothing to reject — a coach who does not rate a player they discovered simply
+ * does not act. Modelling a REJECT here would create a decision about a player
+ * nobody had put forward, which is a record of nothing.
+ */
+export class CoachAcceptDto {
+  /** Why, for the manager who has to decide whether to invite. Optional. */
+  @IsOptional() @IsString() @MaxLength(2000) note?: string;
+}

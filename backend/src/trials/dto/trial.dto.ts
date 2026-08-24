@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TrialStatus, TrialType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -18,9 +19,27 @@ import {
   MinLength,
 } from 'class-validator';
 
+import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
 import { TIME_PATTERN } from '../trial-window.util';
 
 export class CreateTrialDto {
+  /**
+   * Search terms for the trial's page metadata.
+   *
+   * No extra permission of its own: creating and editing a trial is already the
+   * hosting academy's manager (`assertAcademyManager`), which is exactly who §8
+   * grants this to. Adding a second gate here would be a second answer to a
+   * question the endpoint has already asked.
+   *
+   * Normalised server-side — trimmed, de-duplicated case-insensitively, capped.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsString() title: string;
 
   /** GENERAL is the open day; PRIVATE is a session for players the academy picks. */
@@ -62,10 +81,16 @@ export class CreateTrialDto {
   endTime?: string;
 
   /**
-   * Who the trial is for. Defaults to `male`, matching the player card's own
-   * `z.enum(['male', 'female'])` rather than introducing a second vocabulary.
+   * Who the trial is open to: `male`, `female` or `general`.
+   *
+   * `male`/`female` match the player card's own `z.enum(['male', 'female'])`
+   * rather than introducing a second vocabulary. `general` is a third value that
+   * exists only here — a *trial* can be open to everybody, where a player's own
+   * gender is a fact about one person and has no such option.
+   *
+   * Defaults to `male`, which is what every trial written before this held.
    */
-  @IsOptional() @IsIn(['male', 'female']) gender?: string;
+  @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
 
   /**
    * R2 object key for the cover image, from `POST /academies/:id/images/upload-url`.
@@ -105,6 +130,23 @@ export class CreateTrialDto {
  * applications for a session nobody will run.
  */
 export class UpdateTrialDto {
+  /**
+   * Search terms for the trial's page metadata.
+   *
+   * No extra permission of its own: creating and editing a trial is already the
+   * hosting academy's manager (`assertAcademyManager`), which is exactly who §8
+   * grants this to. Adding a second gate here would be a second answer to a
+   * question the endpoint has already asked.
+   *
+   * Normalised server-side — trimmed, de-duplicated case-insensitively, capped.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsOptional() @IsString() title?: string;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) ageRangeMin?: number;
@@ -135,7 +177,7 @@ export class UpdateTrialDto {
   @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string | null;
 
-  @IsOptional() @IsIn(['male', 'female']) gender?: string;
+  @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
 
   @IsOptional() @IsString() @MaxLength(512) coverKey?: string | null;
 
@@ -203,4 +245,39 @@ export class InviteToTrialDto {
 
 export class RespondToInvitationDto {
   @IsBoolean() accept: boolean;
+}
+
+/**
+ * Filters and ordering for the public trials board.
+ *
+ * Every field is optional and they combine — nothing selected means every
+ * eligible trial, which is what a player arriving at the page should see.
+ */
+export class ListTrialsQueryDto {
+  /** Province. Validated against the canonical list, so a typo returns nothing
+      rather than silently matching nothing and looking like an empty board. */
+  @IsOptional() @IsString() @MaxLength(64) region?: string;
+
+  /** District within the province. Only meaningful alongside `region`. */
+  @IsOptional() @IsString() @MaxLength(64) district?: string;
+
+  /**
+   * The player's age, matched against each trial's stated range.
+   *
+   * Bounded by the same youth-football range the creation form offers, so a
+   * nonsense age is a 400 rather than an empty list somebody has to explain.
+   */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(4) @Max(60) age?: number;
+
+  @IsOptional() @IsString() @MaxLength(8) position?: string;
+
+  /**
+   * `newest` (default) or `recommended`.
+   *
+   * `recommended` needs to know who is asking, so it falls back to `newest` for
+   * a signed-out visitor or an account with no player card — there is nothing to
+   * recommend against, and pretending otherwise would return an arbitrary order
+   * under a label that promises a considered one.
+   */
+  @IsOptional() @IsIn(['newest', 'recommended']) sort?: 'newest' | 'recommended';
 }

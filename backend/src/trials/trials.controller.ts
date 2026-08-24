@@ -11,8 +11,10 @@ import {
 } from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import {
+  ListTrialsQueryDto,
   AssignCoachesDto,
   CreateTrialDto,
   InviteToTrialDto,
@@ -57,10 +59,17 @@ export class TrialsController {
     return this.trialsService.markSeen(user.userId);
   }
 
+  /**
+   * The public board, filtered and ordered.
+   *
+   * `@OptionalUser` rather than `@CurrentUser`: the board is public, but
+   * `sort=recommended` needs to know who is asking. A signed-out visitor simply
+   * gets the newest-first order, which is what they would have got anyway.
+   */
   @Public()
   @Get()
-  listUpcoming() {
-    return this.trialsService.listUpcoming();
+  listUpcoming(@Query() query: ListTrialsQueryDto, @OptionalUser() viewer?: AuthUser) {
+    return this.trialsService.listUpcoming(query, viewer?.userId);
   }
 
   /**

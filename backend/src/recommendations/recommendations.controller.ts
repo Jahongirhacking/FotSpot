@@ -5,7 +5,12 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
-import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
+import {
+  AssignReviewDto,
+  CoachAcceptDto,
+  InvitePlayerDto,
+  ReviewDecisionDto,
+} from './dto/review.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('recommendations')
@@ -122,6 +127,45 @@ export class RecommendationsController {
     @Body() dto: ReviewDecisionDto,
   ) {
     return this.recommendationsService.decideReview(user.userId, reviewId, dto);
+  }
+
+  /**
+   * Whether this coach could accept this player, and why not if they could not.
+   *
+   * Read-only, and answers for any caller — the profile page asks before it
+   * draws the coach's button, so a control never appears that the POST would
+   * refuse.
+   */
+  @Get('players/:playerId/coach-state')
+  coachDiscoveryState(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
+    return this.recommendationsService.coachDiscoveryState(user.userId, playerId);
+  }
+
+  /**
+   * A coach approves a player they found themselves — an online review ACCEPT.
+   *
+   * Deliberately **not** an invitation. The coach's authority ends at "this
+   * player deserves a look" (TRIAL.md §11); creating the private trial and
+   * inviting the player is `players/:playerId/invite` below, which only a
+   * manager can reach. The two are separate routes because they are separate
+   * decisions by separate people.
+   */
+  @Post('players/:playerId/coach-accept')
+  acceptFromProfile(
+    @CurrentUser() user: AuthUser,
+    @Param('playerId') playerId: string,
+    @Body() dto: CoachAcceptDto,
+  ) {
+    return this.recommendationsService.acceptFromProfile(user.userId, playerId, dto);
+  }
+
+  /**
+   * Everything waiting on the manager, derived from state rather than from
+   * unread notifications — see `pendingManagerActions`.
+   */
+  @Get('manager/pending-actions')
+  pendingManagerActions(@CurrentUser() user: AuthUser) {
+    return this.recommendationsService.pendingManagerActions(user.userId);
   }
 
   /** The manager invites an approved player, with a note they will read. */

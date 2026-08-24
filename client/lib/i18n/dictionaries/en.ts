@@ -220,8 +220,8 @@ export const en: Dictionary = {
       "Just the basics for now. Your date of birth decides which age group you're compared in — we never compare across age groups.",
     dateOfBirth: 'Date of birth',
     gender: 'Gender',
-    male: 'Male',
-    female: 'Female',
+    male: 'Boys',
+    female: 'Girls',
     guardianTitle: 'A parent or guardian needs to be involved',
     guardianSubtitle:
       "You're {age}, so FotSpot needs a parent or guardian linked to this profile before it can be seen by academies.",
@@ -422,6 +422,14 @@ export const en: Dictionary = {
   },
 
   academy: {
+    handleSuggest: 'Suggest from name',
+    handleTooLong: 'That handle is too long.',
+    handleTitle: 'Public handle',
+    handleHint: 'A short address for your academy, used in links you share.',
+    handleLabel: 'Handle',
+    handlePlaceholder: 'bunyodkorfc_academy',
+    handleShape: 'Use lowercase letters, numbers and single underscores.',
+    handleSuffix: 'The handle must end in “academy”.',
     subtitle: 'Discover academies, follow the ones you like, and apply for trials.',
     memberType: 'Member type',
     pickMemberTypeHint: 'Pick a kind of member first — the filters that fit it appear then.',
@@ -833,9 +841,34 @@ export const en: Dictionary = {
       'Your numbers are self-reported until a verified coach assesses you. A coach-verified bar counts for far more with academies.',
   },
 
+  /** The SEO keyword tag input — shared by the academy and trial forms. */
+  seoKeywords: {
+    label: 'SEO keywords',
+    placeholder: 'Type a keyword and press Enter',
+    hint: 'Search terms for this page. Not shown to visitors.',
+    full: 'Keyword limit reached',
+  },
+
   trials: {
     editNotFound: 'That trial could not be found, so there is nothing to edit.',
     editNotAllowed: 'You do not manage that trial, so you cannot edit it.',
+    editTrial: 'Edit trial',
+    editTrialHint: 'Changes are visible to players straight away.',
+    createTrialHint: 'Announce an open day. Any eligible player can apply.',
+    genderGeneral: 'General',
+    sectionBasics: 'Trial',
+    sectionSchedule: 'When',
+    sectionEligibility: 'Who can apply',
+    sectionDetails: 'Details',
+    sortLabel: 'Sort',
+    sortNewest: 'Newest',
+    sortRecommended: 'Recommended',
+    ageFilter: 'Age',
+    anyDistrict: 'Any district',
+    noMatches: 'No trials match those filters',
+    noMatchesHint: 'Try a wider age range, another province, or clear the filters.',
+    anyAge: 'Any age',
+    anyPosition: 'Any position',
     saveChanges: 'Save changes',
     dailyWindow: 'Daily times',
     statusClosed: 'Closed',
@@ -858,8 +891,8 @@ export const en: Dictionary = {
     endBeforeStart: 'The end date cannot be before the start date.',
     endTimeBeforeStart: 'The end time must be after the start time.',
     gender: 'Gender',
-    genderMale: 'Male',
-    genderFemale: 'Female',
+    genderMale: 'Boys',
+    genderFemale: 'Girls',
     cover: 'Trial cover',
     coverHint: 'Optional. JPG, PNG or WebP, up to 5 MB.',
     coverUpload: 'Upload image',
@@ -1045,6 +1078,18 @@ export const en: Dictionary = {
     statusRejected: 'rejected',
     statusPending: 'still pending',
     reviewAskedOf: 'You were asked to judge this player',
+    /* A coach putting forward a player nobody sent them — never an invitation. */
+    coachDiscoverTitle: 'Found this player yourself?',
+    coachDiscoverHint:
+      'Approve them for {academy}. Your manager decides whether a trial follows — you are not sending an invitation.',
+    coachDiscoverAction: 'Approve for my academy',
+    coachDiscoverConfirmTitle: 'Approve {name} for {academy}?',
+    coachDiscoverConfirmBody:
+      'This records your approval as an online review, exactly as it would from your inbox. Your manager can then invite them to a private trial. It cannot be undone.',
+    coachBlockedMember: 'They are already at your academy.',
+    coachBlockedApproved: 'You have already approved them — it is with your manager now.',
+    coachBlockedPending: 'A review of this player is already open at your academy.',
+    coachBlockedTrial: 'They already have an open trial with your academy.',
     confirmApproveTitle: 'Accept this player?',
     confirmApproveBody:
       'This cannot be undone. The academy manager will be able to invite them to a private trial.',
@@ -1194,6 +1239,15 @@ export const en: Dictionary = {
     manageScoutNetwork: 'Manage scout network',
     yourTrials: 'Your trials',
     noTrialsPosted: 'No trials posted yet.',
+
+    /* What is blocked on the manager — see PendingTrialActions. */
+    pendingActions: 'Waiting on you',
+    pendingActionsHint:
+      'A coach has answered, or a player has passed a trial. Nothing moves until you decide.',
+    inviteToTrial: 'Invite to trial',
+    coachFound: 'Approved by a coach who found them',
+    coachApproved: 'Approved by your coach',
+    passedTrial: 'Passed the trial',
     noAcademyLinked: 'No academy linked to your account yet',
     noAcademyLinkedBody:
       'Register your academy and an admin will review it. Once approved you can post trials and receive recommendations.',

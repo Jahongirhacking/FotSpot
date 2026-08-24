@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Building2 } from 'lucide-react';
 import { getSession } from '@/lib/session';
-import { isAdminActing } from '@/lib/roles';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin } from '@/lib/api/resources';
 import type { AcademyProfile } from '@/lib/api/types';
@@ -22,7 +22,11 @@ export default async function AdminAcademiesPage() {
   if (!isAdmin) return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
 
   const academies = await admin
-    .listAllAcademies({ token: session?.accessToken, activeRole: session?.activeRole, cache: 'no-store' })
+    .listAllAcademies({
+      token: session?.accessToken,
+      activeRole: session?.activeRole,
+      cache: 'no-store',
+    })
     .catch(() => [] as (AcademyProfile & { members: { userId: string }[] })[]);
 
   return (
@@ -34,7 +38,9 @@ export default async function AdminAcademiesPage() {
         <p className="text-muted text-sm">{t.admin.manageAcademiesHint}</p>
       </header>
 
-      <AcademyManager initial={academies} />
+      {/* Only a super admin may write SEO keywords (§8) — the field is hidden
+          for an ordinary admin, and the API refuses it from them regardless. */}
+      <AcademyManager initial={academies} canEditSeo={isSuperAdminActing(session?.activeRole)} />
     </div>
   );
 }

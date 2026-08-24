@@ -18,7 +18,12 @@ import { AuthUser } from '../common/decorators/current-user.decorator';
 import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { richTextToPlain, sanitizeRichText } from '../common/rich-text.util';
 import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
-import { AssignReviewDto, InvitePlayerDto, ReviewDecisionDto } from './dto/review.dto';
+import {
+  AssignReviewDto,
+  CoachAcceptDto,
+  InvitePlayerDto,
+  ReviewDecisionDto,
+} from './dto/review.dto';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { TariffsService } from '../tariffs/tariffs.service';
@@ -39,6 +44,38 @@ import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util'
  * to weigh another's record.
  */
 const ALLOWED_SCOUT_VIEWERS = ['player', 'academy_manager', 'admin', 'super_admin'];
+
+/**
+ * Enough of the player for a dashboard row to be worth acting on.
+ *
+ * Name, age and position — the three facts a manager weighs before deciding
+ * whether to invite somebody, and the ones the mock-up in the brief shows.
+ */
+const PENDING_PLAYER_CARD = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  birthDate: true,
+  primaryPosition: true,
+  region: true,
+} as const;
+
+/**
+ * Why a coach may not open a review on a player they have found.
+ *
+ * A code rather than a sentence, because the same four checks answer two
+ * different questions: the POST turns them into a 409 the coach reads, and the
+ * GET behind the button turns them into an explanation shown *before* they
+ * press it. One list, so the button and the endpoint can never disagree about
+ * what is allowed.
+ */
+export type CoachAcceptBlocker =
+  | 'NOT_A_COACH'
+  | 'LOCAL_TEAM'
+  | 'ALREADY_MEMBER'
+  | 'ALREADY_APPROVED'
+  | 'ALREADY_PENDING'
+  | 'OPEN_TRIAL';
 
 @Injectable()
 export class RecommendationsService {
@@ -710,6 +747,341 @@ export class RecommendationsService {
    * invite anybody: the coach judges the football, the manager decides whether the
    * academy wants them, and that second step is `invitePlayer`.
    */
+  /**
+   * A coach finds a player themselves and approves them for a trial look.
+   *
+   * ## This is an online review, not an invitation
+   *
+   * The only thing new here is *who put the player forward*. A coach browsing
+   * player discovery reaches the same decision, on the same row, with the same
+   * consequences as one answering a review a manager sent them — and it ends in
+   * exactly the same place: an APPROVED review that only the **manager** can act
+   * on (TRIAL.md Rule 6, §11). A coach never invites anybody to a trial, never
+   * moves an application to INVITED, and never puts anyone in a squad.
+   *
+   * ## Why it composes the two existing steps rather than writing the row
+   *
+   * `ProcessA.start` opens the review and assigns the coach; `decideReview`
+   * records the answer. Writing an APPROVED row directly would skip everything
+   * hanging off that second step — settling the scouts riding on this player,
+   * moving their success rates, and the REVIEW_DECIDED notification that tells
+   * the manager their move is next. Those are the whole point of the decision,
+   * and a shortcut that produced the right status with none of them would look
+   * identical in the database and be wrong everywhere else.
+   *
+   * The coach is assigned to themselves, which is what makes `decideReview`
+   * accept them: they are answering a question they asked.
+   */
+
+  /**
+   * Every player whose next move belongs to the manager.
+   *
+   * ## Read from state, never from notifications
+   *
+   * A notification says something happened; this says something is *owed*. If it
+   * were built from unread notifications the list would empty when the manager
+   * read them, which is precisely when they still have the work to do — and a
+   * manager who cleared their notifications would have no way back to the
+   * players waiting on them. So each item is derived from the row that makes it
+   * true, and disappears only when that row moves on.
+   *
+   * ## Two kinds of item, from two different tables
+   *
+   * `INVITE_TO_PRIVATE_TRIAL` — a coach has approved the player and no
+   * invitation exists yet. That is an APPROVED review with no live application,
+   * whether the manager sent the player for review or a coach found them.
+   *
+   * `ADD_TO_SQUAD` — a coach passed the player at a real trial, general or
+   * private. That is an application at PASSED.
+   *
+   * A FAIL at either stage produces nothing, which is the asymmetry TRIAL.md
+   * states: a rejection is complete on its own and asks the manager for nothing.
+   */
+  async pendingManagerActions(userId: string) {
+    const membership = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { academyId: true },
+    });
+    if (!membership) throw new ForbiddenException('Only an academy manager can do that');
+    const academyId = membership.academyId;
+
+    const [approved, passed] = await Promise.all([
+      this.prisma.recommendationReview.findMany({
+        where: {
+          academyId,
+          status: 'APPROVED',
+          /*
+           * Nothing already in flight.
+           *
+           * Once the manager has invited, the player is the *player's* to answer
+           * — the manager owes nothing until that answer arrives. Filtering on
+           * the application rather than on a flag is what makes the item vanish
+           * by itself the moment the invitation is sent.
+           */
+          player: {
+            trialApplications: {
+              none: {
+                status: { in: ['SHORTLISTED', 'INVITED', 'CONFIRMED', 'PASSED', 'ACCEPTED'] },
+                trial: { academyId },
+              },
+            },
+          },
+        },
+        orderBy: { decidedAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          source: true,
+          decidedAt: true,
+          note: true,
+          // The coach who answered, so the manager reads a name rather than an id.
+          coachUser: { select: { id: true, firstName: true, lastName: true } },
+          player: { select: PENDING_PLAYER_CARD },
+        },
+      }),
+      this.prisma.trialApplication.findMany({
+        where: { status: 'PASSED', trial: { academyId } },
+        orderBy: { updatedAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          updatedAt: true,
+          trial: { select: { id: true, title: true, type: true, date: true } },
+          player: { select: PENDING_PLAYER_CARD },
+        },
+      }),
+    ]);
+
+    return {
+      /*
+       * `INVITE_TO_PRIVATE_TRIAL` carries the **player** id, not an application
+       * id, because there is no application yet — the manager's invitation is
+       * what creates one (`invitePlayer`). `ADD_TO_SQUAD` carries the
+       * application, which is what `addToSquad` acts on. The two actions take
+       * different keys because they act on different things.
+       */
+      items: [
+        ...approved.map((review) => ({
+          type: 'INVITE_TO_PRIVATE_TRIAL' as const,
+          reviewId: review.id,
+          playerId: review.player.id,
+          player: review.player,
+          source: review.source,
+          note: review.note,
+          decidedAt: review.decidedAt,
+          approvedBy: review.coachUser,
+        })),
+        ...passed.map((application) => ({
+          type: 'ADD_TO_SQUAD' as const,
+          applicationId: application.id,
+          playerId: application.player.id,
+          player: application.player,
+          trial: application.trial,
+          passedAt: application.updatedAt,
+        })),
+      ],
+    };
+  }
+
+  async acceptFromProfile(userId: string, playerId: string, dto: CoachAcceptDto = {}) {
+    const found = await this.coachAcademy(userId);
+    if (!found.academy) {
+      throw new ForbiddenException(
+        found.reason === 'LOCAL_TEAM'
+          ? 'A local team does not run online reviews'
+          : 'Only a coach at an academy can do that',
+      );
+    }
+    const academyId = found.academy.id;
+
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { id: true, userId: true, firstName: true, lastName: true },
+    });
+    if (!player) throw new NotFoundException('Player not found');
+
+    /*
+     * The four states that make a review pointless or destructive, asked once
+     * and shared with the read behind the button — see `coachAcceptBlocker`.
+     * The sentences stay here because they are what the coach reads.
+     */
+    const blocker = await this.coachAcceptBlocker(academyId, playerId, player.userId);
+    if (blocker === 'ALREADY_MEMBER') {
+      throw new ConflictException('This player is already at your academy');
+    }
+    if (blocker === 'ALREADY_APPROVED') {
+      throw new ConflictException('This player has already been approved for your academy');
+    }
+    if (blocker === 'ALREADY_PENDING') {
+      throw new ConflictException('This player is already waiting on a review at your academy');
+    }
+    if (blocker === 'OPEN_TRIAL') {
+      throw new ConflictException('This player already has an open trial with your academy');
+    }
+
+    const review = await this.processA.start({
+      playerId,
+      academyId,
+      mode: 'manual',
+      coachUserId: userId,
+      actor: { userId, role: 'coach' },
+    });
+
+    await this.prisma.recommendationReview.update({
+      where: { id: review.id },
+      data: { source: 'COACH_DISCOVERED' },
+    });
+
+    // The same decision path a review from the inbox takes, so the scouts, the
+    // reputations and the manager's notification all move exactly as they would.
+    return this.decideReview(userId, review.id, { decision: 'APPROVED', note: dto.note });
+  }
+
+  /**
+   * The academy a coach is acting for, and why they are acting for none.
+   *
+   * ## On the staff *and* endorsed — both, at the same academy
+   *
+   * A coach may only accept a player for an academy they are currently on the
+   * coaching staff of. Two rows say that, and the authority is the **overlap**
+   * of them, because each one alone lets somebody through who should not be:
+   *
+   * - `AcademyMember` (role COACH, ACTIVE) is the squad. Alone it is not
+   *   enough: `ProcessAService.pickCoaches` opens a review only for an
+   *   *endorsed* coach, so a membership-only gate let a coach whose endorsement
+   *   had been withdrawn through to a 400 about somebody else's problem.
+   * - `AcademyEndorsement` (role COACH, ACTIVE) is the academy's trust
+   *   (§1.5.3). Alone it is not enough either: `releaseMember` revokes it when
+   *   somebody is expelled, but `updateMember` — the manager standing a coach
+   *   down to INACTIVE, or changing their role — does not. A coach who had been
+   *   stood down kept an ACTIVE endorsement, and with it the ability to accept
+   *   players for a squad they were no longer part of.
+   *
+   * Requiring both closes each hole with the other, and neither row is the
+   * client's to supply: the academy is derived here, from the caller's own
+   * membership, so there is no request in which a coach could name a different
+   * one. `Accepting coach's academy === review's academy` holds structurally
+   * rather than by validation.
+   *
+   * ## When a coach works for more than one
+   *
+   * The first academy that took them on — and a local team only if there is no
+   * academy at all, since a local team runs no online review and must not be the
+   * one picked while a real academy is on offer. Deterministic rather than
+   * arbitrary, because the read behind the button and the write have to land on
+   * the same academy, and the screen shows its name before anybody confirms.
+   */
+  private async coachAcademy(userId: string) {
+    const [memberships, endorsements] = await Promise.all([
+      this.prisma.academyMember.findMany({
+        where: { userId, role: 'COACH', status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+        select: { academy: { select: { id: true, name: true, kind: true } } },
+      }),
+      this.prisma.academyEndorsement.findMany({
+        where: { userId, role: 'COACH', status: 'ACTIVE' },
+        select: { academyId: true },
+      }),
+    ]);
+
+    const endorsed = new Set(endorsements.map((row) => row.academyId));
+    const eligible = memberships.filter((row) => endorsed.has(row.academy?.id));
+
+    const academy = eligible.find((row) => row.academy?.kind === 'ACADEMY')?.academy;
+    if (academy) {
+      return { academy: { id: academy.id, name: academy.name }, reason: null };
+    }
+
+    /*
+     * `NOT_A_COACH` also covers the coach who *was* one here — stood down, or
+     * no longer endorsed. The profile draws nothing for it, which is right:
+     * somebody who cannot act should see the page a non-coach sees, not a
+     * notice about their own standing on every player they open.
+     */
+    return {
+      academy: null,
+      reason: (eligible.length > 0 ? 'LOCAL_TEAM' : 'NOT_A_COACH') as CoachAcceptBlocker,
+    };
+  }
+
+  /**
+   * The four checks a coach's ACCEPT has to survive, or null if it would.
+   *
+   * Ordered as a coach would read them: the ones about the academy first, then
+   * the ones about the pipeline. Shared with `coachDiscoveryState` so the button
+   * and the endpoint behind it are answering the same question — a button drawn
+   * from one rule and refused by another is worse than no button.
+   */
+  private async coachAcceptBlocker(
+    academyId: string,
+    playerId: string,
+    playerUserId: string,
+  ): Promise<CoachAcceptBlocker | null> {
+    /*
+     * Somebody already at the academy is not a candidate for its trial.
+     *
+     * RELEASED is deliberately not counted: a player who left can be looked at
+     * again, which is the case this would otherwise block for good.
+     */
+    const already = await this.prisma.academyMember.findFirst({
+      where: { userId: playerUserId, academyId, status: { not: 'RELEASED' } },
+      select: { id: true },
+    });
+    if (already) return 'ALREADY_MEMBER';
+
+    /*
+     * One live answer per player per academy.
+     *
+     * The review row is unique on (player, academy), so a second acceptance
+     * would overwrite the first — and if the manager has already acted on it,
+     * that first answer is what a live invitation or trial is standing on.
+     */
+    const existing = await this.prisma.recommendationReview.findUnique({
+      where: { playerId_academyId: { playerId, academyId } },
+      select: { status: true },
+    });
+    if (existing?.status === 'APPROVED') return 'ALREADY_APPROVED';
+    if (existing?.status === 'PENDING') return 'ALREADY_PENDING';
+
+    const outstanding = await this.prisma.trialApplication.findFirst({
+      where: {
+        playerId,
+        status: { in: ['SHORTLISTED', 'INVITED', 'CONFIRMED'] },
+        trial: { academyId, status: 'OPEN' },
+      },
+      select: { id: true },
+    });
+    if (outstanding) return 'OPEN_TRIAL';
+
+    return null;
+  }
+
+  /**
+   * Whether this coach may accept this player, asked before the button is drawn.
+   *
+   * A read, and only a read. It exists so the profile can say *"already at your
+   * academy"* instead of offering a control that answers 409 — the coach learns
+   * the state by looking rather than by failing.
+   *
+   * Answers for everybody, including somebody who is not a coach at all: the
+   * caller then simply draws nothing. Refusing here would make an ordinary
+   * profile view produce a 403 in the console for every scout and manager.
+   */
+  async coachDiscoveryState(userId: string, playerId: string) {
+    const { academy, reason } = await this.coachAcademy(userId);
+    // Not a coach anywhere, or a coach at a local team, which runs no review.
+    if (!academy) return { academy: null, canAccept: false, reason };
+
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true },
+    });
+    if (!player) throw new NotFoundException('Player not found');
+
+    const blocker = await this.coachAcceptBlocker(academy.id, playerId, player.userId);
+    return { academy, canAccept: blocker === null, reason: blocker };
+  }
+
   async decideReview(userId: string, reviewId: string, dto: ReviewDecisionDto) {
     const review = await this.prisma.recommendationReview.findUnique({
       where: { id: reviewId },
@@ -898,8 +1270,11 @@ export class RecommendationsService {
    * player was worth seeing, and somebody has to be able to record the verdict.
    */
   async invitePlayer(userId: string, playerId: string, dto: InvitePlayerDto) {
+    // ACTIVE, like `pendingManagerActions` and `inboxAwaitingReviewCount`: this
+    // one creates a trial and sends an invitation to a child's family, so a
+    // manager who has been stood down must not still be able to send it.
     const membership = await this.prisma.academyMember.findFirst({
-      where: { userId, role: 'MANAGER' },
+      where: { userId, role: 'MANAGER', status: 'ACTIVE' },
       select: { academyId: true, academy: { select: { name: true } } },
     });
     if (!membership) throw new ForbiddenException('Only an academy manager can do that');

@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsRegionDistrictPair } from '../../common/validators/region-district.validator';
 import { AcademyKind, AcademyMemberRole, AcademyMemberStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
+import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
+import { ACADEMY_USERNAME_MAX } from '../academy-username.util';
 import {
   ArrayMaxSize,
   IsArray,
@@ -45,6 +47,23 @@ export class NewManagerDto {
  * knowing who runs it and assign the manager later.
  */
 export class CreateAcademyDto {
+  /**
+   * Search terms for the page's metadata. **Super admin only** — the service
+   * refuses them from anyone else, including the admins who onboard academies
+   * and the manager who runs one (§8).
+   *
+   * Normalised server-side by `normaliseKeywords`: trimmed, de-duplicated
+   * case-insensitively and capped. The bounds here are the outer limit on the
+   * payload, so an oversized request is refused rather than silently trimmed to
+   * something the caller did not send.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsString() name: string;
 
   /**
@@ -81,6 +100,39 @@ export class SetManagerDto {
 }
 
 export class UpdateAcademyDto {
+  /**
+   * The public handle, `name_academy`. The manager's to choose.
+   *
+   * Only the outer bounds are checked here; the shape, the suffix and the
+   * normalisation live in `academy-username.util.ts` and are applied by the
+   * service, so one file answers "what is a valid handle" for validation, for
+   * lookup and for the suggestion the form offers.
+   *
+   * Absent leaves it alone; an empty string clears it, which is how a manager
+   * gives a handle up.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(ACADEMY_USERNAME_MAX + 1)
+  username?: string;
+
+  /**
+   * Search terms for the page's metadata. **Super admin only** — the service
+   * refuses them from anyone else, including the admins who onboard academies
+   * and the manager who runs one (§8).
+   *
+   * Normalised server-side by `normaliseKeywords`: trimmed, de-duplicated
+   * case-insensitively and capped. The bounds here are the outer limit on the
+   * payload, so an oversized request is refused rather than silently trimmed to
+   * something the caller did not send.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_KEYWORDS)
+  @IsString({ each: true })
+  @MaxLength(MAX_KEYWORD_LENGTH, { each: true })
+  seoKeywords?: string[];
+
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;

@@ -14,6 +14,7 @@ import { CoachTrials } from './CoachTrials';
 import { MarkTrialsSeen } from './MarkTrialsSeen';
 import { MyTrialInvitations } from './MyTrialInvitations';
 import { TrialCard } from '@/components/trials/TrialCard';
+import { TrialFilters } from './TrialFilters';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,11 +32,37 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TrialsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{
+    edit?: string;
+    region?: string;
+    district?: string;
+    age?: string;
+    position?: string;
+    sort?: string;
+  }>;
 }) {
   const session = await getSession();
   const { t } = await getServerT();
-  const editId = (await searchParams)?.edit;
+  const params = await searchParams;
+  const editId = params?.edit;
+
+  /*
+   * Handed straight to the API rather than filtered here.
+   *
+   * The endpoint is unpaginated, so filtering on this side would mean fetching
+   * every trial in the country in order to discard most of them — and
+   * `sort=recommended` needs the viewer's player card, which only the API can
+   * see. Values are passed through unvalidated on purpose: the DTO rejects a
+   * nonsense one with a 400, which is a better answer than a board silently
+   * showing everything.
+   */
+  const filters = {
+    region: params?.region,
+    district: params?.district,
+    age: params?.age,
+    position: params?.position,
+    sort: params?.sort as 'newest' | 'recommended' | undefined,
+  };
 
   /*
    * A coach's Trials is a different screen, not the public board with extras.
@@ -64,8 +91,17 @@ export default async function TrialsPage({
     );
   }
 
+  /** Whether the board is narrowed — `sort` is not a filter. */
+  const filtered = Boolean(params?.region || params?.district || params?.age || params?.position);
+
   const list = await trials
     .listUpcoming(
+      filters,
+      /*
+       * Never cached once there is a session: `sort=recommended` is computed for
+       * *this* player, so a shared cache entry would hand one player's ranking to
+       * another. A signed-out board is the same for everybody and can be.
+       */
       session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
     )
     .catch(() => []);
@@ -140,12 +176,23 @@ export default async function TrialsPage({
         />
       )}
 
+      {/*
+        Only on the public board. A manager's screen is their own two lists, and
+        filtering somebody else's trials is not what they came for.
+      */}
+      {!managed && <TrialFilters />}
+
       {!managed &&
         (list?.length === 0 ? (
           <EmptyState
             icon={CalendarDays}
-            title={t.trials.noTrials}
-            description={t.trials.noTrialsHint}
+            /*
+             * "No trials yet" is wrong when the board is filtered — the trials
+             * exist, the filter excluded them, and telling somebody the platform
+             * is empty sends them away rather than back to the filter.
+             */
+            title={filtered ? t.trials.noMatches : t.trials.noTrials}
+            description={filtered ? t.trials.noMatchesHint : t.trials.noTrialsHint}
             action={
               <Button asChild variant="outline">
                 <Link href="/academies">{t.trials.browseAcademies}</Link>

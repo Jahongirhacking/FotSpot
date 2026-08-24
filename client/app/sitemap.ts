@@ -38,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [playerPage, academyList, trialList] = await Promise.all([
     players.search({ pageSize: 200 }, { revalidate }).catch(() => ({ items: [] })),
     academiesApi.listPublic(undefined, { revalidate }).catch(() => []),
-    trials.listUpcoming({ revalidate }).catch(() => []),
+    trials.listUpcoming({}, { revalidate }).catch(() => []),
   ]);
 
   return [

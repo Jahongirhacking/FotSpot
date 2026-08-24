@@ -36,6 +36,21 @@ interface MyRecommendation {
   canRecommendAgainAt: string | null;
 }
 
+/** What `GET /recommendations/players/:id/coach-state` answers. */
+interface CoachDiscoveryState {
+  /** The academy this viewer coaches at, or null if they coach nowhere. */
+  academy: { id: string; name: string } | null;
+  canAccept: boolean;
+  reason:
+    | 'NOT_A_COACH'
+    | 'LOCAL_TEAM'
+    | 'ALREADY_MEMBER'
+    | 'ALREADY_APPROVED'
+    | 'ALREADY_PENDING'
+    | 'OPEN_TRIAL'
+    | null;
+}
+
 interface AcademyState {
   academy: { id: string; name: string; kind: AcademyKind };
   recommendation: { id: string; status: string; note: string | null } | null;
@@ -217,7 +232,10 @@ export function PlayerActions({
           )}
 
           {isCoach && !isOwnProfile && (
-            <CoachReviewAction playerId={playerId} playerName={playerName} />
+            <>
+              <CoachReviewAction playerId={playerId} playerName={playerName} />
+              <CoachDiscoveryAction playerId={playerId} playerName={playerName} />
+            </>
           )}
 
           {/* Says so, rather than leaving a titled card with nothing under it.
@@ -717,6 +735,124 @@ function CoachReviewAction({ playerId, playerName }: { playerId: string; playerN
           <X aria-hidden /> {t.recommendations.rejectPlayer}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A coach putting forward a player nobody sent them.
+ *
+ * ## Why this is not an invitation
+ *
+ * A coach never invites anybody to a trial — that is the manager's decision, and
+ * the player's to answer (TRIAL.md §11). What a coach has is an opinion, and this
+ * is the button for it: the same **online review ACCEPT** they would give a player
+ * their manager had sent them, reached from the player's own profile instead of
+ * from the inbox. The manager then sees the approval waiting on their dashboard
+ * and decides whether a trial follows.
+ *
+ * So the label says "approve", the confirmation says what happens next, and the
+ * word "invite" appears nowhere.
+ *
+ * ## Why it asks before it draws
+ *
+ * `/recommendations/players/:id/coach-state` answers with the same four checks the
+ * POST applies, so a coach reads *"already at your academy"* rather than pressing
+ * a button that answers 409. A viewer who is not a coach at an academy gets
+ * `NOT_A_COACH` and nothing is drawn — the query is harmless for them, and the
+ * server never has to 403 an ordinary profile view.
+ */
+function CoachDiscoveryAction({ playerId, playerName }: { playerId: string; playerName: string }) {
+  const { t, f } = useI18n();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
+
+  const state = useQuery({
+    queryKey: ['coach-state', playerId],
+    queryFn: () =>
+      browserFetch<CoachDiscoveryState>(`/recommendations/players/${playerId}/coach-state`),
+  });
+
+  const accept = useMutation({
+    mutationFn: () =>
+      browserFetch(`/recommendations/players/${playerId}/coach-accept`, {
+        method: 'POST',
+        body: {},
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['coach-state', playerId] });
+      void queryClient.invalidateQueries({ queryKey: ['my-review', playerId] });
+      void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+    },
+  });
+
+  if (state?.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
+
+  const data = state?.data;
+  // Not a coach anywhere, or a local team, which runs no online review at all.
+  if (!data?.academy || data?.reason === 'LOCAL_TEAM') return null;
+
+  /*
+   * A blocked coach is told why, not shown a disabled button.
+   *
+   * `ALREADY_PENDING` is the one worth naming: it is the case where *this* coach
+   * may be the one holding the review, and `CoachReviewAction` above is already
+   * showing them the accept/reject pair. Repeating it as a blocked action would
+   * read as a contradiction, so it says what is true and stops.
+   */
+  if (!data?.canAccept) {
+    const reasons: Record<string, string> = {
+      ALREADY_MEMBER: t.recommendations.coachBlockedMember,
+      ALREADY_APPROVED: t.recommendations.coachBlockedApproved,
+      ALREADY_PENDING: t.recommendations.coachBlockedPending,
+      OPEN_TRIAL: t.recommendations.coachBlockedTrial,
+    };
+    const reason = data?.reason ? reasons[data?.reason] : undefined;
+    if (!reason) return null;
+    return <p className="text-muted text-xs">{reason}</p>;
+  }
+
+  return (
+    <div className="border-border space-y-2 rounded-lg border p-3">
+      <p className="text-sm font-medium">{t.recommendations.coachDiscoverTitle}</p>
+      <p className="text-muted text-xs">
+        {f(t.recommendations.coachDiscoverHint, { academy: data?.academy.name })}
+      </p>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button size="sm" className="w-full">
+            <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {f(t.recommendations.coachDiscoverConfirmTitle, {
+                name: playerName,
+                academy: data?.academy.name,
+              })}
+            </DialogTitle>
+            <DialogDescription>{t.recommendations.coachDiscoverConfirmBody}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {accept.isError && (
+              <Alert tone="danger">
+                {(accept.error as Error)?.message ?? t.common.somethingWrong}
+              </Alert>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              {t.common.cancel}
+            </Button>
+            <Button loading={accept.isPending} onClick={() => accept.mutate()}>
+              <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

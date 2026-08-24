@@ -22,10 +22,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { formatDate } from '@/lib/utils';
+import { SeoKeywordInput } from '@/components/ui/SeoKeywordInput';
 
 type Academy = AcademyProfile & { members?: { userId: string }[] };
 
-export function AcademyManager({ initial }: { initial: Academy[] }) {
+export function AcademyManager({
+  initial,
+  canEditSeo = false,
+}: {
+  initial: Academy[];
+  /** Whether the signed-in admin is a super admin — see §8. */
+  canEditSeo?: boolean;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [error, setError] = React.useState<string | null>(null);
@@ -118,6 +126,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
           submitLabel={t.admin.createAcademy}
           pending={create.isPending}
           withManager
+          canEditSeo={canEditSeo}
           onCancel={() => setCreating(false)}
           onSubmit={(values) => create.mutate(values)}
         />
@@ -143,6 +152,7 @@ export function AcademyManager({ initial }: { initial: Academy[] }) {
                   submitLabel={t.common.save}
                   pending={update.isPending}
                   defaults={academy}
+                  canEditSeo={canEditSeo}
                   onCancel={() => setEditingId(null)}
                   onSubmit={(values) => update.mutate({ id: academy?.id, body: values })}
                 />
@@ -249,6 +259,7 @@ function AcademyForm({
   pending,
   defaults,
   withManager = false,
+  canEditSeo = false,
   onSubmit,
   onCancel,
 }: {
@@ -257,6 +268,8 @@ function AcademyForm({
   pending: boolean;
   defaults?: Academy;
   withManager?: boolean;
+  /** Super admin only (§8). The API refuses the field from anyone else. */
+  canEditSeo?: boolean;
   onSubmit: (values: Record<string, unknown>) => void;
   onCancel: () => void;
 }) {
@@ -277,6 +290,7 @@ function AcademyForm({
    * not showing one.
    */
   const [kind, setKind] = React.useState<AcademyKind>(defaults?.kind ?? 'ACADEMY');
+  const [seoKeywords, setSeoKeywords] = React.useState<string[]>(defaults?.seoKeywords ?? []);
 
   return (
     <Card>
@@ -297,6 +311,19 @@ function AcademyForm({
               ...(description.trim() ? { description: description.trim() } : {}),
               ...(withManager ? managerBody(manager) : {}),
               ...(withManager && kind === 'LOCAL_TEAM' ? { kind } : {}),
+              /*
+               * Sent only by a super admin, and only ever as the complete list.
+               *
+               * The API refuses the field outright from anyone else (§8) — a
+               * 403, not a silent drop — so an ordinary admin must not send it
+               * at all, or every save they make would fail. The server is still
+               * the authority; this is what keeps the honest case working.
+               *
+               * The whole collection each time, because a removed keyword is
+               * expressed by its absence: a diff would need a delete verb the
+               * API does not have.
+               */
+              ...(canEditSeo ? { seoKeywords } : {}),
             });
           }}
         >
@@ -329,6 +356,15 @@ function AcademyForm({
             onRegionChange={setRegion}
             onDistrictChange={setDistrict}
           />
+
+          {/* Hidden from an ordinary admin rather than disabled: they cannot
+              write it, and a control that always fails is worse than none. The
+              backend refuses it regardless of what this renders. */}
+          {canEditSeo && (
+            <Field label={t.seoKeywords.label} htmlFor="ac-seo">
+              <SeoKeywordInput id="ac-seo" value={seoKeywords} onChange={setSeoKeywords} />
+            </Field>
+          )}
 
           <Field label={t.academy.about} htmlFor="ac-about" hint={t.academy.aboutHint}>
             <Textarea

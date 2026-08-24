@@ -29,6 +29,8 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import type { LatLng } from '@/components/academy/LocationPicker';
 import { cn, initials } from '@/lib/utils';
 import { yandexMapsUrl } from '@/lib/maps';
+import { handleProblem, normaliseHandle, suggestHandle } from '@/lib/academy-handle';
+import { AtSign } from 'lucide-react';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
@@ -124,6 +126,7 @@ export function AcademyProfileEditor({
         </Button>
       </div>
 
+      <HandleCard academy={academy} onSaved={toPreview} />
       <ContactCard academy={academy} onSaved={toPreview} />
       <IdentityCard academy={academy} />
       <LocationCard academy={academy} onSaved={toPreview} />
@@ -151,6 +154,131 @@ export function AcademyProfileEditor({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * The academy's public handle — `/academies/@bunyodkorfc_academy`.
+ *
+ * Its own card rather than a field on the contact one: a handle is an address
+ * that appears in links other people share, so changing it is a different kind
+ * of decision from correcting a phone number, and it deserves its own Save.
+ *
+ * The shape is enforced by the API (`academy-username.util.ts`) and mirrored
+ * here only so the manager reads the rule before a round trip. Uniqueness is
+ * *not* mirrored: only the database can answer that, and a check here would
+ * read as a guarantee it cannot make.
+ */
+function HandleCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: () => void }) {
+  const { t } = useI18n();
+  const [handle, setHandle] = React.useState(academy?.username ?? '');
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Typed without the `@`; the sigil is shown as a prefix so the field reads the
+  // way the finished URL does without the manager having to type it.
+  const value = normaliseHandle(handle);
+  const changed = value !== (academy?.username ?? '');
+  // Mirrors the server's rules so the manager reads them while typing; the
+  // server re-checks everything — see lib/academy-handle.ts.
+  const problem = handleProblem(value);
+  const blocked = problem !== null;
+
+  /*
+   * A suggestion the manager has to ask for, and may then edit or ignore.
+   *
+   * Never applied on mount or on a name change: a handle is part of a public URL
+   * and choosing one is the manager's decision, so anything that filled it in
+   * for them would be publishing a guess the moment they pressed Save on some
+   * unrelated field.
+   *
+   * Empty when the name has nothing the shape can carry — a Cyrillic name yields
+   * no suggestion rather than a transliterated guess — and the button is simply
+   * not offered in that case.
+   */
+  const suggestion = React.useMemo(() => suggestHandle(academy?.name ?? ''), [academy?.name]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      browserFetch<AcademyProfile>(`/academies/${academy?.id}`, {
+        method: 'PATCH',
+        // An empty string clears it — the API reads that as giving the handle up,
+        // where an absent field would mean "leave it alone".
+        body: { username: value },
+      }),
+    onSuccess: () => {
+      setError(null);
+      onSaved();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AtSign className="text-primary size-4" aria-hidden /> {t.academy.handleTitle}
+        </CardTitle>
+        <p className="text-muted text-xs">{t.academy.handleHint}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <Alert tone="danger">{error}</Alert>}
+
+        <Field
+          label={t.academy.handleLabel}
+          htmlFor="academy-handle"
+          error={
+            problem === 'shape'
+              ? t.academy.handleShape
+              : problem === 'suffix'
+                ? t.academy.handleSuffix
+                : problem === 'too-long'
+                  ? t.academy.handleTooLong
+                  : undefined
+          }
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-muted shrink-0 text-sm" aria-hidden>
+              @
+            </span>
+            <Input
+              id="academy-handle"
+              value={value}
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={t.academy.handlePlaceholder}
+              onChange={(event) => setHandle(event.target.value)}
+            />
+          </div>
+        </Field>
+
+        {/* The finished address, so the manager can see what they are choosing
+            rather than assembling it in their head. */}
+        {value && !blocked && (
+          <p className="text-muted font-mono text-xs break-all">/academies/@{value}</p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => save.mutate()}
+            loading={save.isPending}
+            disabled={!changed || blocked}
+          >
+            {t.common.save}
+          </Button>
+
+          {/* Offered only when there is something to suggest and the box is not
+              already holding it. Fills the field; it does not save. */}
+          {suggestion && suggestion !== value && (
+            <Button size="sm" variant="ghost" onClick={() => setHandle(suggestion)}>
+              {t.academy.handleSuggest}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -561,7 +689,7 @@ function PhotosCard({ academyId }: { academyId: string }) {
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {list.map((photo, index) => (
               <li key={photo?.id} className="group relative">
-                { }
+                {}
                 <LoadingImage
                   src={photo?.url ?? ''}
                   alt={photo?.caption ?? ''}

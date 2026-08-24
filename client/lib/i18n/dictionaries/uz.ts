@@ -240,8 +240,8 @@ export const uz = {
       'Hozircha faqat asosiy ma’lumot. Tug‘ilgan sana qaysi yosh guruhida taqqoslanishingizni belgilaydi — biz hech qachon yosh guruhlari o‘rtasida taqqoslamaymiz.',
     dateOfBirth: 'Tug‘ilgan sana',
     gender: 'Jins',
-    male: 'Erkak',
-    female: 'Ayol',
+    male: 'O‘g‘il bolalar',
+    female: 'Qiz bolalar',
     guardianTitle: 'Ota-ona yoki vasiy ishtirok etishi kerak',
     guardianSubtitle:
       'Siz {age} yoshdasiz, shuning uchun profil akademiyalarga ko‘rinishidan oldin ota-ona yoki vasiy biriktirilishi kerak.',
@@ -446,6 +446,14 @@ export const uz = {
   },
 
   academy: {
+    handleSuggest: 'Nomdan taklif qilish',
+    handleTooLong: 'Manzil juda uzun.',
+    handleTitle: 'Ommaviy manzil',
+    handleHint: 'Akademiyangiz uchun qisqa manzil — ulashadigan havolalarda ishlatiladi.',
+    handleLabel: 'Manzil',
+    handlePlaceholder: 'bunyodkorfc_academy',
+    handleShape: 'Kichik harflar, raqamlar va bitta pastki chiziqdan foydalaning.',
+    handleSuffix: 'Manzil “academy” bilan tugashi kerak.',
     subtitle: 'Akademiyalarni toping, yoqqanlarini kuzating va sinovlar uchun ariza bering',
     memberType: 'A’zo turi',
     pickMemberTypeHint: 'Avval a’zo turini tanlang — keyin o‘sha turga mos filtrlar chiqadi.',
@@ -865,9 +873,35 @@ export const uz = {
       'Murabbiy baholamaguncha ko‘rsatkichlaringiz o‘zingiz kiritgan bo‘lib qoladi. Tasdiqlangan ko‘rsatkich akademiyalar uchun ancha qimmatli.',
   },
 
+  /** SEO kalit so‘zlar maydoni — akademiya va trial shakllari uchun umumiy. */
+  seoKeywords: {
+    label: 'SEO kalit so‘zlar',
+    placeholder: 'Kalit so‘z yozing va Enter bosing',
+    hint: 'Shu sahifa uchun qidiruv so‘zlari. Tashrifchilarga ko‘rinmaydi.',
+    full: 'Kalit so‘zlar chegarasiga yetdingiz',
+  },
+
   trials: {
     editNotFound: 'Bunday trial topilmadi, tahrirlash uchun hech narsa yo‘q.',
     editNotAllowed: 'Siz bu trialni boshqarmaysiz, shuning uchun uni tahrirlay olmaysiz.',
+    editTrial: 'Trialni tahrirlash',
+    editTrialHint: 'O‘zgarishlar o‘yinchilarga darhol ko‘rinadi.',
+    createTrialHint:
+      'Ochiq kunni e’lon qiling. Mos keladigan har bir o‘yinchi ariza topshira oladi.',
+    genderGeneral: 'Umumiy',
+    sectionBasics: 'Trial',
+    sectionSchedule: 'Qachon',
+    sectionEligibility: 'Kim ariza topshira oladi',
+    sectionDetails: 'Tafsilotlar',
+    sortLabel: 'Saralash',
+    sortNewest: 'Yangilari',
+    sortRecommended: 'Tavsiya etilgan',
+    ageFilter: 'Yosh',
+    anyDistrict: 'Har qanday tuman',
+    noMatches: 'Bu filtrlarga mos trial yo‘q',
+    noMatchesHint: 'Boshqa yosh, boshqa viloyatni tanlang yoki filtrlarni tozalang.',
+    anyAge: 'Har qanday yosh',
+    anyPosition: 'Har qanday pozitsiya',
     saveChanges: 'O‘zgarishlarni saqlash',
     dailyWindow: 'Kunlik vaqt',
     statusClosed: 'Yopiq',
@@ -891,8 +925,8 @@ export const uz = {
     endBeforeStart: 'Tugash sanasi boshlanish sanasidan oldin bo‘lishi mumkin emas.',
     endTimeBeforeStart: 'Tugash vaqti boshlanish vaqtidan keyin bo‘lishi kerak.',
     gender: 'Jinsi',
-    genderMale: 'Erkak',
-    genderFemale: 'Ayol',
+    genderMale: 'O‘g‘il bolalar',
+    genderFemale: 'Qiz bolalar',
     cover: 'Trial muqovasi',
     coverHint: 'Ixtiyoriy. JPG, PNG yoki WebP, 5 MB gacha.',
     coverUpload: 'Rasm yuklash',
@@ -1083,6 +1117,18 @@ export const uz = {
     statusRejected: 'rad etildi',
     statusPending: 'ko‘rib chiqilmoqda',
     reviewAskedOf: 'Sizdan bu futbolchini baholash so‘ralgan',
+    /* Murabbiy o‘zi topgan futbolchini ilgari suradi — bu taklifnoma emas. */
+    coachDiscoverTitle: 'Futbolchini o‘zingiz topdingizmi?',
+    coachDiscoverHint:
+      'Uni «{academy}» uchun ma’qullang. Sinovga taklif qilishni menejeringiz hal qiladi — taklifnomani siz yubormaysiz.',
+    coachDiscoverAction: 'Akademiyam uchun ma’qullash',
+    coachDiscoverConfirmTitle: '{name} «{academy}» uchun ma’qullansinmi?',
+    coachDiscoverConfirmBody:
+      'Bu xuddi kiruvchi ro‘yxatdagidek onlayn baho sifatida yoziladi. Shundan so‘ng menejer uni yopiq sinovga taklif qila oladi. Buni bekor qilib bo‘lmaydi.',
+    coachBlockedMember: 'U allaqachon sizning akademiyangizda.',
+    coachBlockedApproved: 'Siz uni allaqachon ma’qullagansiz — endi menejerda.',
+    coachBlockedPending: 'Bu futbolchi bo‘yicha baholash akademiyangizda allaqachon ochiq.',
+    coachBlockedTrial: 'Uning akademiyangiz bilan ochiq sinovi bor.',
     confirmApproveTitle: 'Bu futbolchini qabul qilasizmi?',
     confirmApproveBody:
       'Buni orqaga qaytarib bo‘lmaydi. Akademiya menejeri uni yopiq sinovga taklif qila oladi.',
@@ -1233,6 +1279,15 @@ export const uz = {
     manageScoutNetwork: 'Skautlar tarmog‘ini boshqarish',
     yourTrials: 'Sizning sinovlaringiz',
     noTrialsPosted: 'Hali sinov e’lon qilinmagan.',
+
+    /* Menejerning qaroriga bog‘liq ishlar — PendingTrialActions ga qarang. */
+    pendingActions: 'Sizning qaroringizni kutmoqda',
+    pendingActionsHint:
+      'Murabbiy javob berdi yoki futbolchi sinovdan o‘tdi. Siz qaror qilmaguningizcha hech narsa siljimaydi.',
+    inviteToTrial: 'Sinovga taklif qilish',
+    coachFound: 'Uni o‘zi topgan murabbiy ma’qulladi',
+    coachApproved: 'Murabbiyingiz ma’qulladi',
+    passedTrial: 'Sinovdan o‘tdi',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     noAcademyLinkedBody:
       'Akademiyangizni ro‘yxatdan o‘tkazing, administrator uni ko‘rib chiqadi. Tasdiqlangach sinov e’lon qilib, tavsiyalar qabul qila olasiz.',

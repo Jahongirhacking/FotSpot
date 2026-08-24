@@ -492,6 +492,39 @@ model AcademyProfile {
   latitude  Float?
   longitude Float?
 
+  /// Search terms an operator wants this academy found by.
+  ///
+  /// Never rendered as page content — see `lib/seo.ts` on the client. They feed
+  /// the metadata a crawler reads, alongside the real title, description and
+  /// canonical, and they supplement that content rather than replacing it.
+  ///
+  /// A Postgres text array rather than a join table, matching `Trial.positions`:
+  /// the values are short, unordered, never queried individually and only ever
+  /// read as a whole with the row they belong to.
+  ///
+  /// Defaulted to empty so every existing row has an answer at migration time
+  /// rather than a null every reader would have to interpret. Normalised on the
+  /// way in — trimmed, de-duplicated case-insensitively, capped — by
+  /// `seo-keywords.util.ts`, so the column cannot accumulate near-duplicates.
+  seoKeywords String[] @default([])
+
+  /// Public handle, resolving `/academies/@handle`. Chosen by the manager.
+  ///
+  /// Stored without the `@` and lowercased — the sigil is what the URL and the
+  /// UI wear, never part of the value, so a unique index cannot be fooled by
+  /// `@Bunyodkor_Academy` versus `bunyodkor_academy`.
+  ///
+  /// Unique because it is an identity: two academies answering to one handle
+  /// would make `/academies/@x` ambiguous, and an ambiguity in a lookup resolves
+  /// to whichever row came back first. Nullable because an academy that has not
+  /// chosen one is still an academy — it is reached by id until it does.
+  ///
+  /// The shape (`name_academy`, underscores only) lives in
+  /// `academy-username.util.ts`, which also explains why it uses underscores
+  /// where player handles use hyphens: the two share the `@` sigil, and
+  /// disjoint shapes make a collision impossible without a cross-table check.
+  username String? @unique
+
   /// R2 object key for the academy's logo, never a URL — see storage.keys.ts.
   logoKey String?
 
@@ -1248,6 +1281,10 @@ model RecommendationReview {
   coachUserId        String
   coachProfileId     String
 
+  /// How this review began — see `ReviewSource`. Defaulted, so every review
+  /// written before coach discovery existed reads as what it was.
+  source ReviewSource @default(MANAGER_SUBMITTED)
+
   status ReviewStatus @default(PENDING)
   note   String?
 
@@ -1314,6 +1351,21 @@ model ReviewCoach {
 
   @@id([reviewId, coachUserId])
   @@index([coachUserId])
+}
+
+/**
+ * Who put this player in front of the coach.
+ * The review itself is the same object and the same decision either way — this
+ * only records how it started, because the manager reading the result wants a
+ * different sentence for each: "the coach you sent this player to approved
+ * them" against "a coach put this player forward". It is **not** a second state
+ * machine; nothing branches on it but the wording.
+ */
+enum ReviewSource {
+  /// A manager sent the player for review (`assignReview`), or a trial did.
+  MANAGER_SUBMITTED
+  /// A coach found the player themselves and approved them from their profile.
+  COACH_DISCOVERED
 }
 
 enum ReviewStatus {
@@ -1472,7 +1524,7 @@ model Trial {
   academyId String
   academy   AcademyProfile @relation(fields: [academyId], references: [id], onDelete: Cascade)
 
-  title         String
+  title       String
   /**
    * Who a trial is open to. Null on a private trial, which is open to nobody.
    * A range answers "may I apply?", and on a private trial nobody may: it exists
@@ -1480,11 +1532,11 @@ model Trial {
    * was a number that looked like a rule and was really a fact about one person
    * — and it was shown to them as a restriction they had passed.
    */
-  ageRangeMin   Int?
-  ageRangeMax   Int?
+  ageRangeMin Int?
+  ageRangeMax Int?
   /// Wanted positions. Empty on a private trial, for the same reason.
-  positions     String[]
-  location      String
+  positions   String[]
+  location    String
   /**
    * When the trial window opens — the first day a player can be tested.
    * **Nullable since open-ended trials.** An academy that runs continuous
@@ -1498,7 +1550,7 @@ model Trial {
    * eligibility, which falls back to judging age on the application day, and the
    * upcoming-trials filter, which treats a dateless trial as always upcoming.
    */
-  date          DateTime?
+  date        DateTime?
   /**
    * When the trial window closes. Null on a single-day trial and on an
    * open-ended one — so null is "no end given", never "ends immediately".
@@ -1506,7 +1558,7 @@ model Trial {
    * sessions: applications can close a week before a window that runs a
    * fortnight.
    */
-  endDate       DateTime?
+  endDate     DateTime?
   /**
    * The daily window, as wall-clock `HH:mm` — `"09:00"` to `"18:00"`.
    * Strings rather than DateTimes on purpose. "Nine in the morning, every day of
@@ -1516,26 +1568,46 @@ model Trial {
    * in Tashkent would display as 04:00–13:00 to a scout abroad. The rest of the
    * schema stores instants because they *are* instants; these are not.
    */
-  startTime     String?
-  endTime       String?
+  startTime   String?
+  endTime     String?
   /**
-   * Who the trial is for: `"male"` or `"female"`.
+   * Who the trial is open to: `"male"`, `"female"` or `"general"`.
    * A plain string with a default rather than a Prisma enum, because that is how
    * gender is already stored on `PlayerProfile` and two representations of one
    * concept is the thing worth avoiding. The values are validated at the edge
    * (`CreateTrialDto`) and match the client's existing
-   * `z.enum(['male', 'female'])`.
+   * `z.enum(['male', 'female'])`. `general` is a third value that exists only
+   * on a trial — a trial can be open to everybody, where a player's own gender
+   * is a fact about one person. No migration: the column is already a defaulted
+   * string, so a new permitted value is a validation change, not a schema one.
    * Defaulted rather than nullable so every existing trial gets an answer at
    * migration time instead of a null every reader has to interpret.
    */
-  gender        String    @default("male")
+  gender      String    @default("male")
   /**
    * R2 object key for the cover image, never a URL — see storage.keys.ts.
    * Optional: a trial without a picture is the ordinary case. Lives under the
    * academy's own media prefix, so it is minted by the same server-side helper
    * as the gallery and cannot be pointed at another academy's directory.
    */
-  coverKey      String?
+  coverKey    String?
+
+  /// Search terms an operator wants this trial found by.
+  ///
+  /// Never rendered as page content — see `lib/seo.ts` on the client. They feed
+  /// the metadata a crawler reads, alongside the real title, description and
+  /// canonical, and they supplement that content rather than replacing it.
+  ///
+  /// A Postgres text array rather than a join table, matching `Trial.positions`:
+  /// the values are short, unordered, never queried individually and only ever
+  /// read as a whole with the row they belong to.
+  ///
+  /// Defaulted to empty so every existing row has an answer at migration time
+  /// rather than a null every reader would have to interpret. Normalised on the
+  /// way in — trimmed, de-duplicated case-insensitively, capped — by
+  /// `seo-keywords.util.ts`, so the column cannot accumulate near-duplicates.
+  seoKeywords String[] @default([])
+
   /**
    * Last moment a player may put themselves forward.
    * Separate from `date` because an academy needs the list closed before the

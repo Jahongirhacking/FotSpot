@@ -18,6 +18,7 @@ import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 import { TrialNote } from '@/components/trials/TrialNote';
 import { formatTrialDates, formatTrialTimes } from '@/lib/trial-window';
+import { absoluteUrl, seoKeywords } from '@/lib/seo';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
 
@@ -27,12 +28,47 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const { t } = await getServerT();
+
+  let trial: Trial;
   try {
-    const trial = await trials?.getById(id, { revalidate: 300 });
-    return { title: trial?.title };
+    trial = await trials?.getById(id, { revalidate: 300 });
   } catch {
-    return { title: 'Trial' };
+    // The page itself 404s a moment later; a title is still needed for the tab.
+    return { title: t.nav.trials };
   }
+
+  const url = absoluteUrl(`/trials/${id}`);
+  const host = trial?.academy?.name;
+  const when = formatTrialDates(trial, t.trials.openEnded);
+
+  /*
+   * A description built from what the trial actually says.
+   *
+   * Host, place and dates are the three facts somebody scanning a search result
+   * needs to decide whether it is for them, and every trial has all three (the
+   * dates fall back to "open-ended", which is itself the answer). The academy's
+   * own note is deliberately not used: it is HTML, written for a player who has
+   * already opened the page, and it is often long.
+   */
+  const summary = [host, trial?.location, when].filter(Boolean).join(' · ');
+
+  return {
+    title: trial?.title,
+    description: summary,
+    keywords: seoKeywords(trial?.seoKeywords, [trial?.title, host, trial?.location]),
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website',
+      url,
+      title: trial?.title,
+      description: summary,
+      // The cover when there is one; the site default otherwise, which the root
+      // layout already supplies. An unfurl with a broken image is worse than one
+      // with the site's own.
+      ...(trial?.coverUrl ? { images: [{ url: trial.coverUrl }] } : {}),
+    },
+  };
 }
 
 export default async function TrialDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -201,7 +237,11 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
               column is defaulted), so this is always shown — unlike the age
               range above, which a private trial genuinely does not state. */}
           <Badge variant="outline">
-            {trial?.gender === 'female' ? t.trials.genderFemale : t.trials.genderMale}
+            {trial?.gender === 'female'
+              ? t.trials.genderFemale
+              : trial?.gender === 'general'
+                ? t.trials.genderGeneral
+                : t.trials.genderMale}
           </Badge>
           {trial?.type === 'PRIVATE' && <Badge variant="warning">{t.trials.typePrivate}</Badge>}
           {trial?.status === 'ARCHIVED' && (

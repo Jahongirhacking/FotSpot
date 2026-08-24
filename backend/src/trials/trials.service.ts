@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  ListTrialsQueryDto,
   AssignCoachesDto,
   CreateTrialDto,
   InviteToTrialDto,
@@ -21,6 +22,7 @@ import { InvitationsService } from '../academies/invitations.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { ageAt, birthDateForAge } from '../common/age.util';
+import { normaliseKeywords } from '../common/seo-keywords.util';
 import { academyMediaPrefix, assertKeyUnder } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
 
@@ -35,6 +37,13 @@ interface AcademySummaryRow {
   logoKey: string | null;
 }
 import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
+import {
+  compareNewest,
+  compareRecommended,
+  matchesAge,
+  type ViewerProfile,
+} from './trial-recommendation.util';
+import { regionCentre } from '../common/uzbekistan';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 import { SmsService } from '../sms/sms.service';
@@ -108,6 +117,9 @@ export class TrialsService {
         endTime: dto.endTime ?? null,
         gender: dto.gender ?? 'male',
         coverKey,
+        // Normalised rather than trusted: the form de-duplicates as a courtesy,
+        // this endpoint is reachable without it.
+        seoKeywords: normaliseKeywords(dto.seoKeywords),
         applyDeadline,
         note: sanitizeRichText(dto.note),
       },
@@ -409,18 +421,94 @@ export class TrialsService {
    * reaches that child through an invitation, and listing it here would make the
    * academy's interest public before the family had answered.
    */
-  async listUpcoming() {
+  async listUpcoming(query: ListTrialsQueryDto = {}, viewerUserId?: string) {
+    /*
+     * The filters go in the query; only the ranking happens in memory.
+     *
+     * Region, district and position narrow the set the database returns, so a
+     * player filtering to one province is not sent every trial in the country to
+     * discard on their phone. Age cannot: it is a *range* on the trial compared
+     * against one number, and expressing "12 is inside [min,max], or the trial
+     * states no range" as a Prisma filter is possible but reads far worse than
+     * the predicate it duplicates — so age filters after the fetch, over a set
+     * the other three have already narrowed.
+     */
     const trials = await this.prisma.trial.findMany({
       where: {
         status: 'OPEN',
         type: 'GENERAL',
         // See `list`: a dateless trial runs until it is archived.
         OR: [{ date: null }, { date: { gte: new Date() } }],
+        ...(query.region ? { academy: { region: query.region } } : {}),
+        ...(query.district ? { academy: { district: query.district } } : {}),
+        // A trial that names no positions wants anybody, so it stays in the list
+        // whatever is filtered for — filtering it out would hide the trials most
+        // open to the person doing the filtering.
+        ...(query.position
+          ? { OR: [{ positions: { has: query.position } }, { positions: { isEmpty: true } }] }
+          : {}),
       },
-      orderBy: { date: 'asc' },
       include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
-    return trials.map((trial) => this.withCoverUrl(trial));
+
+    const byAge =
+      query.age === undefined
+        ? trials
+        : trials.filter((trial) => matchesAge(trial, query.age ?? null));
+
+    /*
+     * `recommended` needs a player to recommend *to*.
+     *
+     * A signed-out visitor, or an account with no player card, has no age, no
+     * position and no location — so there is nothing to rank against and the
+     * order would be arbitrary under a label promising otherwise. It falls back
+     * to newest, which is honest and is what they would have got anyway.
+     */
+    const viewer = query.sort === 'recommended' ? await this.viewerProfile(viewerUserId) : null;
+
+    const ordered = viewer
+      ? byAge.sort((a, b) => compareRecommended(a, b, viewer))
+      : byAge.sort(compareNewest);
+
+    return ordered.map((trial) => this.withCoverUrl(trial));
+  }
+
+  /**
+   * The player behind the request, as the ranking needs them.
+   *
+   * Location comes from the player's own region/district resolved to a point,
+   * because a player profile stores a place by name rather than by coordinates —
+   * the academy is the end that has a precise position, and "which province are
+   * you in" is as much as the platform asks a fourteen-year-old for.
+   *
+   * Returns null when there is nobody to rank for, which is what makes the
+   * caller fall back to newest.
+   */
+  private async viewerProfile(userId?: string): Promise<ViewerProfile | null> {
+    if (!userId) return null;
+
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { userId },
+      select: {
+        birthDate: true,
+        primaryPosition: true,
+        secondaryPosition: true,
+        region: true,
+        district: true,
+      },
+    });
+    if (!player) return null;
+
+    const point = regionCentre(player.region, player.district);
+
+    return {
+      age: ageAt(player.birthDate, new Date()),
+      positions: [player.primaryPosition, player.secondaryPosition].filter(
+        (position): position is string => Boolean(position),
+      ),
+      latitude: point?.latitude ?? null,
+      longitude: point?.longitude ?? null,
+    };
   }
 
   /**
@@ -983,6 +1071,9 @@ export class TrialsService {
         ...(dto.endTime !== undefined ? { endTime } : {}),
         ...(dto.gender !== undefined ? { gender: dto.gender } : {}),
         ...(dto.coverKey !== undefined ? { coverKey } : {}),
+        ...(dto.seoKeywords !== undefined
+          ? { seoKeywords: normaliseKeywords(dto.seoKeywords) }
+          : {}),
         ...(dto.applyDeadline !== undefined ? { applyDeadline } : {}),
         ...(dto.ageRangeMin !== undefined ? { ageRangeMin: dto.ageRangeMin } : {}),
         ...(dto.ageRangeMax !== undefined ? { ageRangeMax: dto.ageRangeMax } : {}),
