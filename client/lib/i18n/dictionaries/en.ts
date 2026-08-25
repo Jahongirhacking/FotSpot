@@ -932,6 +932,8 @@ export const en: Dictionary = {
     privateNotice:
       'This is a private trial — only you, the academy and its coaches on it can see it.',
     yourInvitation: 'Your invitation',
+    invitationNeedsAnswer:
+      'The academy is holding a place for you. Tell them whether you can come — they cannot plan the session until you answer.',
     acceptInvitation: 'Accept',
     declineInvitation: 'Decline',
     confirmedNotice: 'You have confirmed you are coming.',
@@ -1016,6 +1018,12 @@ export const en: Dictionary = {
     sheetHint: 'Who turned up, and what you said about them. The verdict is PASS or FAIL.',
     sheetForbidden: 'Only the coaches working this trial can see it.',
     recordVerdict: 'Record verdict',
+    /* The applicant grid a coach scans — see components/trials/ApplicantGrid. */
+    ageYears: '{age} years',
+    searchApplicants: 'Search applicants',
+    filterByStatus: 'Filter by status',
+    allStatuses: 'All statuses',
+    noApplicantsMatch: 'No applicants match that.',
     pass: 'Pass',
     fail: 'Fail',
     confirmPass: 'Pass this player?',
@@ -1080,8 +1088,7 @@ export const en: Dictionary = {
     reviewAskedOf: 'You were asked to judge this player',
     /* A coach putting forward a player nobody sent them — never an invitation. */
     coachDiscoverTitle: 'Found this player yourself?',
-    coachDiscoverHint:
-      'Approve them for {academy}. Your manager decides whether a trial follows — you are not sending an invitation.',
+    coachDiscoverHint: 'Approve them for {academy}. Your manager decides whether a trial follows',
     coachDiscoverAction: 'Approve for my academy',
     coachDiscoverConfirmTitle: 'Approve {name} for {academy}?',
     coachDiscoverConfirmBody:

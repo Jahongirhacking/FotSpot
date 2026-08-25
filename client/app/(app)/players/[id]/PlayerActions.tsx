@@ -234,7 +234,7 @@ export function PlayerActions({
           {isCoach && !isOwnProfile && (
             <>
               <CoachReviewAction playerId={playerId} playerName={playerName} />
-              <CoachDiscoveryAction playerId={playerId} playerName={playerName} />
+              <CoachDiscoveryAction playerId={playerId} />
             </>
           )}
 
@@ -762,11 +762,9 @@ function CoachReviewAction({ playerId, playerName }: { playerId: string; playerN
  * `NOT_A_COACH` and nothing is drawn — the query is harmless for them, and the
  * server never has to 403 an ordinary profile view.
  */
-function CoachDiscoveryAction({ playerId, playerName }: { playerId: string; playerName: string }) {
+function CoachDiscoveryAction({ playerId }: { playerId: string }) {
   const { t, f } = useI18n();
   const queryClient = useQueryClient();
-  const [open, setOpen] = React.useState(false);
-
   const state = useQuery({
     queryKey: ['coach-state', playerId],
     queryFn: () =>
@@ -780,7 +778,6 @@ function CoachDiscoveryAction({ playerId, playerName }: { playerId: string; play
         body: {},
       }),
     onSuccess: () => {
-      setOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['coach-state', playerId] });
       void queryClient.invalidateQueries({ queryKey: ['my-review', playerId] });
       void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
@@ -820,39 +817,26 @@ function CoachDiscoveryAction({ playerId, playerName }: { playerId: string; play
         {f(t.recommendations.coachDiscoverHint, { academy: data?.academy.name })}
       </p>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button size="sm" className="w-full">
-            <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {f(t.recommendations.coachDiscoverConfirmTitle, {
-                name: playerName,
-                academy: data?.academy.name,
-              })}
-            </DialogTitle>
-            <DialogDescription>{t.recommendations.coachDiscoverConfirmBody}</DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            {accept.isError && (
-              <Alert tone="danger">
-                {(accept.error as Error)?.message ?? t.common.somethingWrong}
-              </Alert>
-            )}
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              {t.common.cancel}
-            </Button>
-            <Button loading={accept.isPending} onClick={() => accept.mutate()}>
-              <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {accept.isError && (
+        <Alert tone="danger">{(accept.error as Error)?.message ?? t.common.somethingWrong}</Alert>
+      )}
+
+      {/*
+        Straight through, with no confirmation — the same rule the review queue
+        follows. An accept says "worth a look" and commits nobody: the manager
+        still decides whether to invite, the player still decides whether to
+        come, and the coach still has to judge them on a pitch. The academy it
+        goes to is named in the line above, which is the one fact a coach who
+        works for two clubs needs before pressing.
+      */}
+      <Button
+        size="sm"
+        className="w-full"
+        loading={accept.isPending}
+        onClick={() => accept.mutate()}
+      >
+        <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
+      </Button>
     </div>
   );
 }

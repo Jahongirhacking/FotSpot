@@ -967,6 +967,8 @@ export const uz = {
     privateNotice:
       'Bu yopiq sinov — u faqat sizga, akademiyaga va biriktirilgan murabbiylarga ko‘rinadi.',
     yourInvitation: 'Sizga taklif',
+    invitationNeedsAnswer:
+      'Akademiya siz uchun joy ajratib turibdi. Kela olasizmi — bildiring; javobingizsiz ular mashg‘ulotni rejalashtira olmaydi.',
     acceptInvitation: 'Qabul qilish',
     declineInvitation: 'Rad etish',
     confirmedNotice: 'Kelishingizni tasdiqladingiz.',
@@ -1053,6 +1055,12 @@ export const uz = {
     sheetHint: 'Kim keldi va ular haqida nima dedingiz. Hukm — PASS yoki FAIL.',
     sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
     recordVerdict: 'Hukm yozish',
+    /* Murabbiy ko‘zdan kechiradigan arizalar to‘ri — ApplicantGrid ga qarang. */
+    ageYears: '{age} yosh',
+    searchApplicants: 'Arizalardan qidirish',
+    filterByStatus: 'Holat bo‘yicha saralash',
+    allStatuses: 'Barcha holatlar',
+    noApplicantsMatch: 'Bunga mos ariza yo‘q.',
     pass: 'O‘tkazish',
     fail: 'O‘tkazmaslik',
     confirmPass: 'Bu futbolchini o‘tkazasizmi?',
@@ -1120,7 +1128,7 @@ export const uz = {
     /* Murabbiy o‘zi topgan futbolchini ilgari suradi — bu taklifnoma emas. */
     coachDiscoverTitle: 'Futbolchini o‘zingiz topdingizmi?',
     coachDiscoverHint:
-      'Uni «{academy}» uchun ma’qullang. Sinovga taklif qilishni menejeringiz hal qiladi — taklifnomani siz yubormaysiz.',
+      'Uni «{academy}» uchun ma’qullang. Sinovga taklif qilishni menejeringiz hal qiladi',
     coachDiscoverAction: 'Akademiyam uchun ma’qullash',
     coachDiscoverConfirmTitle: '{name} «{academy}» uchun ma’qullansinmi?',
     coachDiscoverConfirmBody:
