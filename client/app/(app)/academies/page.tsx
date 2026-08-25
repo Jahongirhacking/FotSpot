@@ -95,7 +95,11 @@ export default async function AcademiesPage() {
     itemListElement: list.slice(0, 20).map((academy, index) => ({
       '@type': 'ListItem',
       position: index + 1,
-      url: absoluteUrl(`/academies/${academy?.id}`),
+      // The handle when there is one — the same address the academy page names
+      // as its canonical, so the list does not point at a second URL for it.
+      url: absoluteUrl(
+        academy?.username ? `/academies/@${academy.username}` : `/academies/${academy?.id}`,
+      ),
       name: academy?.name,
     })),
   };
@@ -145,7 +149,6 @@ export default async function AcademiesPage() {
                           records have no logo yet, and an empty square would be
                           worse than the icon it replaced. */}
                       {academy?.logoUrl ? (
-                         
                         <LoadingImage
                           src={academy?.logoUrl}
                           alt={academy?.name || 'Akademiya'}

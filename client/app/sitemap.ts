@@ -51,7 +51,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     })),
     ...academyList.map((academy) => ({
-      url: absoluteUrl(`/academies/${academy.id}`),
+      // The handle where there is one, matching what the academy page declares
+      // as its canonical. Listing the id form while the page names the handle
+      // form advertises two URLs for one academy — the duplicate-content case
+      // Google's starter guide asks sites to avoid, and it spends crawl budget
+      // on the address that is not the preferred one. Players already do this.
+      url: absoluteUrl(
+        academy.username ? `/academies/@${academy.username}` : `/academies/${academy.id}`,
+      ),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
     })),

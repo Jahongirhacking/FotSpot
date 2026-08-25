@@ -18,7 +18,8 @@ import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 import { TrialNote } from '@/components/trials/TrialNote';
 import { formatTrialDates, formatTrialTimes } from '@/lib/trial-window';
-import { absoluteUrl, seoKeywords } from '@/lib/seo';
+import { absoluteUrl, jsonLd, seoKeywords } from '@/lib/seo';
+import { breadcrumbLd, trialEventLd } from '@/lib/structured-data';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
 
@@ -151,8 +152,30 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
   const dailyTimes = formatTrialTimes(trial);
   const where = locationText({ region: academy?.region, district: academy?.district });
 
+  /*
+   * A trial is an event, and Google shows events as a date-and-venue card
+   * rather than a blue link — which is the single biggest search win available
+   * on this site, because it is the page a parent is actually looking for.
+   *
+   * `trialEventLd` answers null for a private, archived or open-ended trial and
+   * the block simply is not rendered; see its own note for why each of those is
+   * a refusal rather than a gap to fill in.
+   */
+  const event = trialEventLd(trial);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {event && <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(event)} />}
+      {/* The trail a result shows instead of the raw URL. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbLd([
+            { name: t.nav.trials, path: '/trials' },
+            { name: trial?.title, path: `/trials/${id}` },
+          ]),
+        )}
+      />
       {/*
         The cover, above everything.
         `aspect-[3/1]` rather than the card's 16:9 — a banner at the top of a
