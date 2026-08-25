@@ -1137,6 +1137,8 @@ export const uz = {
     coachBlockedApproved: 'Siz uni allaqachon ma’qullagansiz — endi menejerda.',
     coachBlockedPending: 'Bu futbolchi bo‘yicha baholash akademiyangizda allaqachon ochiq.',
     coachBlockedTrial: 'Uning akademiyangiz bilan ochiq sinovi bor.',
+    coachBlockedGeneral:
+      'U allaqachon ochiq sinovlaringizdan biriga ariza bergan — u maydonda hal qilinadi, onlayn emas.',
     confirmApproveTitle: 'Bu futbolchini qabul qilasizmi?',
     confirmApproveBody:
       'Buni orqaga qaytarib bo‘lmaydi. Akademiya menejeri uni yopiq sinovga taklif qila oladi.',

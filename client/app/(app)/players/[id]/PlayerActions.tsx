@@ -48,6 +48,7 @@ interface CoachDiscoveryState {
     | 'ALREADY_APPROVED'
     | 'ALREADY_PENDING'
     | 'OPEN_TRIAL'
+    | 'GENERAL_TRIAL'
     | null;
 }
 
@@ -804,6 +805,7 @@ function CoachDiscoveryAction({ playerId }: { playerId: string }) {
       ALREADY_APPROVED: t.recommendations.coachBlockedApproved,
       ALREADY_PENDING: t.recommendations.coachBlockedPending,
       OPEN_TRIAL: t.recommendations.coachBlockedTrial,
+      GENERAL_TRIAL: t.recommendations.coachBlockedGeneral,
     };
     const reason = data?.reason ? reasons[data?.reason] : undefined;
     if (!reason) return null;

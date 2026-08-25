@@ -1097,6 +1097,8 @@ export const en: Dictionary = {
     coachBlockedApproved: 'You have already approved them — it is with your manager now.',
     coachBlockedPending: 'A review of this player is already open at your academy.',
     coachBlockedTrial: 'They already have an open trial with your academy.',
+    coachBlockedGeneral:
+      'They have already applied to one of your open trials — that one is decided on the day, not online.',
     confirmApproveTitle: 'Accept this player?',
     confirmApproveBody:
       'This cannot be undone. The academy manager will be able to invite them to a private trial.',
