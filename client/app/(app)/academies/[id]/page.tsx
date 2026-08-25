@@ -21,6 +21,7 @@ import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
 import { seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { breadcrumbLd } from '@/lib/structured-data';
 import { getSession } from '@/lib/session';
 
 import {
@@ -388,6 +389,17 @@ export default async function AcademyDetailPage({
       {/* Not rendered to the reader — the machine-readable copy of what the page
           already says, so the two cannot disagree. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(structuredData)} />
+      {/* The trail a result shows instead of the raw URL — the canonical path,
+          so it agrees with the SportsOrganization `url` above. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbLd([
+            { name: t.nav.academies, path: '/academies' },
+            { name: academy?.name, path: canonicalPath },
+          ]),
+        )}
+      />
 
       {/* ---------- Identity ---------- */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

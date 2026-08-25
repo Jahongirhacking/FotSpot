@@ -4,6 +4,8 @@ import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, recommendations, trials } from '@/lib/api/resources';
 import type { CoachReview, CoachTrial } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
+import { jsonLd } from '@/lib/seo';
+import { itemListLd } from '@/lib/structured-data';
 import { getSession } from '@/lib/session';
 
 import { TrialCard } from '@/components/trials/TrialCard';
@@ -147,6 +149,24 @@ export default async function TrialsPage({
 
   return (
     <div className="space-y-6">
+      {/*
+        The board as a list of pages, capped at the first twenty — a summary for
+        a result, not a second copy of the board. Each open trial carries its own
+        `Event` markup on its own page, which is what earns the date-and-venue
+        card; this only says that those pages are what this one lists.
+      */}
+      {list?.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLd(
+            itemListLd(
+              list
+                .slice(0, 20)
+                .map((trial) => ({ name: trial?.title, path: `/trials/${trial?.id}` })),
+            ),
+          )}
+        />
+      )}
       {/* Guests have no badge to clear, so it is only mounted for a session. */}
       {session && <MarkTrialsSeen />}
       <header>

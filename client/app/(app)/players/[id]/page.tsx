@@ -10,6 +10,8 @@ import { ApiError } from '@/lib/api/client';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
+import { jsonLd } from '@/lib/seo';
+import { breadcrumbLd, personLd } from '@/lib/structured-data';
 import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
 import { ageBand, formatDate } from '@/lib/utils';
@@ -152,8 +154,35 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     .then((page) => page.items)
     .catch(() => [] as Media[]);
 
+  /*
+   * The player, named and no more — see `personLd` for why it carries no birth
+   * date and no photograph. The canonical path, so the markup points at the same
+   * address `generateMetadata` declares rather than a second one.
+   */
+  const canonicalPath = player?.username ? `/players/@${player.username}` : `/players/${playerId}`;
+  const fullName = [player?.firstName, player?.lastName].filter(Boolean).join(' ');
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          personLd({
+            name: fullName,
+            path: canonicalPath,
+            jobTitle: player?.primaryPosition,
+          }),
+        )}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbLd([
+            { name: t.nav.players, path: '/players' },
+            { name: fullName, path: canonicalPath },
+          ]),
+        )}
+      />
       <div className="min-w-0 space-y-6">
         {/*
           Card | pitch on one row, the attribute board spanning both beneath —

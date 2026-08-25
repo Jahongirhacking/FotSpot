@@ -6,7 +6,12 @@ import { getServerT } from '@/lib/i18n/server';
 import type { MyInvitation } from '@/lib/api/types';
 import { InvitationList } from './InvitationList';
 
-export const metadata: Metadata = { title: 'Invitations' };
+// One person's invitations, and an empty shell to anybody without a session —
+// see the note in `feed/page.tsx`.
+export const metadata: Metadata = {
+  title: 'Invitations',
+  robots: { index: false, follow: true },
+};
 
 /**
  * Where an academy's invitation is answered.
