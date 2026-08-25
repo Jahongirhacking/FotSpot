@@ -147,7 +147,7 @@ export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
     script.setAttribute('data-telegram-login', TELEGRAM_BOT);
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-radius', '8');
-    script.setAttribute('data-userpic', 'true');
+    script.setAttribute('data-userpic', 'false');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     slot.appendChild(script);
 
