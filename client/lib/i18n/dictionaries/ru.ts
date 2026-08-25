@@ -932,6 +932,8 @@ export const ru: Dictionary = {
     typeHint: 'Общий просмотр виден всем. Закрытый — только выбранному игроку.',
     privateNotice: 'Это закрытый просмотр — он виден только вам, академии и назначенным тренерам.',
     yourInvitation: 'Ваше приглашение',
+    invitationNeedsAnswer:
+      'Академия держит для вас место. Сообщите, сможете ли вы прийти, — без вашего ответа они не могут спланировать просмотр.',
     acceptInvitation: 'Принять',
     declineInvitation: 'Отклонить',
     confirmedNotice: 'Вы подтвердили участие.',
@@ -1016,6 +1018,12 @@ export const ru: Dictionary = {
     sheetHint: 'Кто пришёл и что вы о них сказали. Вердикт — PASS или FAIL.',
     sheetForbidden: 'Этот просмотр видят только назначенные на него тренеры.',
     recordVerdict: 'Вынести вердикт',
+    /* Сетка заявок, которую просматривает тренер — см. ApplicantGrid. */
+    ageYears: '{age} лет',
+    searchApplicants: 'Поиск по заявкам',
+    filterByStatus: 'Фильтр по статусу',
+    allStatuses: 'Все статусы',
+    noApplicantsMatch: 'Нет заявок по этому запросу.',
     pass: 'Прошёл',
     fail: 'Не прошёл',
     confirmPass: 'Пропустить этого игрока?',
@@ -1080,8 +1088,7 @@ export const ru: Dictionary = {
     reviewAskedOf: 'Вас попросили оценить этого игрока',
     /* Тренер выдвигает игрока, которого ему никто не присылал, — это не приглашение. */
     coachDiscoverTitle: 'Нашли игрока сами?',
-    coachDiscoverHint:
-      'Одобрите его для «{academy}». Приглашать на просмотр решает ваш менеджер — вы приглашение не отправляете.',
+    coachDiscoverHint: 'Одобрите его для «{academy}». Приглашать на просмотр решает ваш менеджер',
     coachDiscoverAction: 'Одобрить для академии',
     coachDiscoverConfirmTitle: 'Одобрить {name} для «{academy}»?',
     coachDiscoverConfirmBody:
@@ -1090,6 +1097,8 @@ export const ru: Dictionary = {
     coachBlockedApproved: 'Вы уже одобрили его — решение за менеджером.',
     coachBlockedPending: 'Оценка этого игрока в вашей академии уже открыта.',
     coachBlockedTrial: 'У него уже есть открытый просмотр в вашей академии.',
+    coachBlockedGeneral:
+      'Он уже подал заявку на один из ваших открытых просмотров — там решают на поле, а не онлайн.',
     confirmApproveTitle: 'Принять этого игрока?',
     confirmApproveBody:
       'Отменить нельзя. Руководитель академии сможет пригласить его на закрытый просмотр.',

@@ -39,13 +39,18 @@ import { ageBand, formatDate } from '@/lib/utils';
  * cheap decision the expensive one, and a coach reading clips on a phone at the
  * side of a pitch is exactly the person that cost falls on.
  *
- * ## Why both answers confirm
+ * ## Why only the reject confirms
  *
- * Neither can be taken back. An accept commits the academy to inviting somebody
- * to a real session; a reject ends the line for this academy and starts the
- * scout's cooldown. So each opens a short warning that says what follows, and
- * the coach confirms from there rather than from a press that could have been a
- * mis-tap.
+ * The two answers are not symmetrical, so they should not cost the same.
+ *
+ * An accept says "worth a look". It commits nobody: the manager still decides
+ * whether an invitation follows, the player still decides whether to attend, and
+ * the coach still has to judge them on a pitch afterwards. Making the cheap,
+ * reversible-in-effect answer cost a second press taxed the decision a coach
+ * makes dozens of times an evening — which is how a queue stops getting worked.
+ *
+ * A reject ends the line for this academy and starts the scout's cooldown, and
+ * nothing downstream can undo it. That one keeps its warning.
  */
 export function ReviewQueue({
   initialPending,
@@ -147,7 +152,9 @@ function ReviewCard({
   const player = review?.player;
   const [note, setNote] = React.useState('');
   const [openClipId, setOpenClipId] = React.useState<string | null>(null);
-  const [confirming, setConfirming] = React.useState<'APPROVED' | 'REJECTED' | null>(null);
+  // Only a rejection is ever held for confirmation now, so this is a boolean in
+  // all but name — kept as the decision so the Alert below reads literally.
+  const [confirming, setConfirming] = React.useState<'REJECTED' | null>(null);
 
   // The clips are the evidence; without them the sliders are guesswork.
   const clips = useQuery({
@@ -216,16 +223,8 @@ function ReviewCard({
             <span className="flex items-start gap-2">
               <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span className="space-y-2">
-                <span className="block font-medium">
-                  {confirming === 'APPROVED'
-                    ? t.recommendations.confirmApproveTitle
-                    : t.recommendations.confirmRejectTitle}
-                </span>
-                <span className="block text-sm">
-                  {confirming === 'APPROVED'
-                    ? t.recommendations.confirmApproveBody
-                    : t.recommendations.confirmRejectBody}
-                </span>
+                <span className="block font-medium">{t.recommendations.confirmRejectTitle}</span>
+                <span className="block text-sm">{t.recommendations.confirmRejectBody}</span>
                 <span className="flex flex-wrap justify-end gap-2 pt-1">
                   <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
                     {t.common.cancel}
@@ -238,9 +237,7 @@ function ReviewCard({
                       setConfirming(null);
                     }}
                   >
-                    {confirming === 'APPROVED'
-                      ? t.recommendations.approvePlayer
-                      : t.recommendations.rejectPlayer}
+                    {t.recommendations.rejectPlayer}
                   </Button>
                 </span>
               </span>
@@ -256,7 +253,11 @@ function ReviewCard({
             >
               <X aria-hidden /> {t.recommendations.rejectPlayer}
             </Button>
-            <Button disabled={pending} onClick={() => setConfirming('APPROVED')}>
+            {/* Straight through — see the note at the top of this file. */}
+            <Button
+              loading={pending}
+              onClick={() => onDecide({ decision: 'APPROVED', note: note.trim() || undefined })}
+            >
               <Check aria-hidden /> {t.recommendations.approvePlayer}
             </Button>
           </div>

@@ -75,7 +75,9 @@ export type CoachAcceptBlocker =
   | 'ALREADY_MEMBER'
   | 'ALREADY_APPROVED'
   | 'ALREADY_PENDING'
-  | 'OPEN_TRIAL';
+  | 'OPEN_TRIAL'
+  /** Already in one of this academy's open days — Rule 5. */
+  | 'GENERAL_TRIAL';
 
 @Injectable()
 export class RecommendationsService {
@@ -622,6 +624,23 @@ export class RecommendationsService {
      */
     await this.assertIsAcademy(academyId, 'send players for coach review');
 
+    /*
+     * TRIAL.md Rule 5: a general trial is decided on the pitch, not online.
+     *
+     * The manager reaches this from the inbox or from search, where a player
+     * looks the same whether or not they are already on one of the academy's own
+     * open days. Sending that player to a coach would give one academy two live
+     * judgements of the same child by two different processes — and the online
+     * one can end in a private trial, which is the pipeline a general applicant
+     * is explicitly not in.
+     */
+    const inOpenDay = await this.openGeneralTrialApplication(playerId, academyId);
+    if (inOpenDay) {
+      throw new BadRequestException(
+        'This player has already applied to one of your open trials, which is decided on the day rather than online',
+      );
+    }
+
     // If a scout did recommend this player to us, the review records which one,
     // so accepting it later still moves that scout's reputation.
     const target = await this.prisma.recommendationTarget.findFirst({
@@ -918,6 +937,11 @@ export class RecommendationsService {
     if (blocker === 'OPEN_TRIAL') {
       throw new ConflictException('This player already has an open trial with your academy');
     }
+    if (blocker === 'GENERAL_TRIAL') {
+      throw new ConflictException(
+        'This player has already applied to one of your open trials, which is decided on the day rather than online',
+      );
+    }
 
     const review = await this.processA.start({
       playerId,
@@ -1005,6 +1029,49 @@ export class RecommendationsService {
   }
 
   /**
+   * This academy's own open general trial that the player is already in, if any.
+   *
+   * ## Rule 5, expressed as a row rather than as a screen
+   *
+   * A general trial is not screened online: the player applied, they turn up,
+   * and a coach judges them on the pitch. So an academy that already has
+   * somebody in one of its open days must not also be able to put them through
+   * the online review — the two are different answers to the same question, and
+   * having both is how a general trial acquires a review it should never have.
+   *
+   * ## Why each part of the condition is there
+   *
+   * **`academyId`** — the academy's own trial, not anybody's. A player at Metallurg's
+   * open day is an ordinary stranger to Bunyodkor, who may review them like any
+   * other. Scoping this to the player alone would mark somebody unreviewable
+   * everywhere because one club is looking at them.
+   *
+   * **`type: 'GENERAL'`** — a private trial is the *outcome* of a review, so a
+   * player in one has already been through this and is caught by the separate
+   * "already approved" check rather than by this one.
+   *
+   * **`status: 'OPEN'`** — an archived trial is over. Whatever happened on the
+   * day, the academy is no longer testing them through it, and a fresh look is a
+   * fresh context (which is also why this is not a permanent mark on a player).
+   *
+   * **The application statuses** are the domain's own definition of an
+   * application still owed an answer — the same set `TrialsService`
+   * `archiveIfSettled` counts as outstanding. A player who has been passed,
+   * failed or rejected is settled: the general trial has finished with them, and
+   * an academy that wants to look again may.
+   */
+  private async openGeneralTrialApplication(playerId: string, academyId: string) {
+    return this.prisma.trialApplication.findFirst({
+      where: {
+        playerId,
+        status: { in: ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INVITED', 'CONFIRMED'] },
+        trial: { academyId, type: 'GENERAL', status: 'OPEN' },
+      },
+      select: { id: true, trial: { select: { id: true, title: true } } },
+    });
+  }
+
+  /**
    * The four checks a coach's ACCEPT has to survive, or null if it would.
    *
    * Ordered as a coach would read them: the ones about the academy first, then
@@ -1052,6 +1119,16 @@ export class RecommendationsService {
       select: { id: true },
     });
     if (outstanding) return 'OPEN_TRIAL';
+
+    /*
+     * Rule 5 again, from the coach's side.
+     *
+     * A coach browsing profiles can land on somebody who has already applied to
+     * their own academy's open day — at `APPLIED`, which the check above does
+     * not cover. Accepting them there would put a general applicant into the
+     * online pipeline just as surely as the manager doing it.
+     */
+    if (await this.openGeneralTrialApplication(playerId, academyId)) return 'GENERAL_TRIAL';
 
     return null;
   }

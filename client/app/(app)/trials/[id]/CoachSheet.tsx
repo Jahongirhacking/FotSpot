@@ -1,21 +1,21 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardList, TriangleAlert, X } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { PlayerProfile, Trial, TrialApplication, TrialVerdict } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
-import { Badge } from '@/components/ui/Badge';
+import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
+import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { Field, Textarea } from '@/components/ui/Field';
-import { ageBand, formatDate } from '@/lib/utils';
+import { browserFetch } from '@/lib/api/browser';
+import type { Trial, TrialApplication, TrialVerdict } from '@/lib/api/types';
+import { formatDate } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, ClipboardList, TriangleAlert, X } from 'lucide-react';
+import * as React from 'react';
 
 interface Applicant extends TrialApplication {
-  player: PlayerProfile;
+  player: ApplicantPlayer;
 }
 
 /**
@@ -28,12 +28,21 @@ interface Applicant extends TrialApplication {
  * Nothing on this screen places a player anywhere either: a pass makes them
  * *eligible* for a squad, and the manager decides whether to take them (Rule 9).
  *
+ * ## Cards, and the verdict written on the card
+ *
+ * A coach holding a phone at the side of a pitch is matching a face to a name
+ * and answering one question about them. So each applicant is a card with their
+ * photograph on it, and PASS and FAIL are on that card — the verdict is recorded
+ * where the player is, on this page, with no navigation anywhere. The list this
+ * replaced put a name and a line of grey text in a row and made the coach open
+ * something else to answer.
+ *
  * ## Two buttons, and nothing else to fill in
  *
- * A coach at the side of a pitch answers one question: did they pass. There are
- * no attribute sliders here — eight numbers between a coach and that answer is
- * how verdicts stop being recorded on the day, and get written from memory a
- * week later or not at all.
+ * A coach answers one question: did they pass. There are no attribute sliders
+ * here — eight numbers between a coach and that answer is how verdicts stop
+ * being recorded on the day, and get written from memory a week later or not at
+ * all. The note is optional and stays folded away until it is wanted.
  *
  * ## Why a verdict asks twice
  *
@@ -54,6 +63,11 @@ export function CoachSheet({ trial }: { trial: Trial }) {
   const verdict = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       browserFetch(`/trials/applications/${id}/verdict`, { method: 'POST', body }),
+    /*
+     * Refetch rather than navigate. The card the coach just answered rerenders
+     * in place showing the verdict, which is the whole point of recording it
+     * here: nothing moves under them, and the next player is where it was.
+     */
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
@@ -68,14 +82,16 @@ export function CoachSheet({ trial }: { trial: Trial }) {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ClipboardList className="text-primary size-4" aria-hidden /> {t.trials.sheet}
-          {rows?.length > 0 && <Badge variant="neutral">{rows?.length}</Badge>}
+          {rows?.length > 0 && (
+            <span className="text-muted text-sm font-normal">({rows?.length})</span>
+          )}
         </CardTitle>
         <p className="text-muted text-sm">{t.trials.sheetHint}</p>
       </CardHeader>
 
-      <CardContent className="p-2">
+      <CardContent className="p-3">
         {applicants.isLoading ? (
-          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-48 w-full rounded-lg" />
         ) : applicants.isError ? (
           <Alert tone="danger">{t.trials.sheetForbidden}</Alert>
         ) : rows?.length === 0 ? (
@@ -85,23 +101,23 @@ export function CoachSheet({ trial }: { trial: Trial }) {
             description={t.admin.noApplicantsHint}
           />
         ) : (
-          <ul className="divide-border divide-y">
-            {rows?.map((application) => (
-              <SheetRow
+          <ApplicantGrid applicants={rows}>
+            {(application) => (
+              <SheetCard
                 key={application?.id}
                 application={application}
                 pending={verdict?.isPending && verdict?.variables?.id === application?.id}
                 onRecord={(body) => verdict?.mutate({ id: application?.id, body })}
               />
-            ))}
-          </ul>
+            )}
+          </ApplicantGrid>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function SheetRow({
+function SheetCard({
   application,
   pending,
   onRecord,
@@ -111,7 +127,7 @@ function SheetRow({
   onRecord: (body: Record<string, unknown>) => void;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = React.useState(false);
+  const [noting, setNoting] = React.useState(false);
   const [note, setNote] = React.useState('');
   const [confirming, setConfirming] = React.useState<TrialVerdict | null>(null);
 
@@ -123,69 +139,40 @@ function SheetRow({
   function submit(chosen: TrialVerdict) {
     onRecord({ verdict: chosen, note: note.trim() || undefined });
     setConfirming(null);
-    setOpen(false);
+    setNoting(false);
   }
 
   return (
-    <li className="space-y-2 p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/players/${application?.playerId}`} className="min-w-0 flex-1 hover:underline">
-          <span className="block truncate text-sm font-medium">
-            {application?.player?.firstName} {application?.player?.lastName}
-          </span>
-          <span className="text-muted block truncate text-xs">
-            {[
-              application?.player?.primaryPosition,
-              application?.player?.birthDate && ageBand(application?.player.birthDate),
-              application?.player?.region,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </Link>
-        <VerdictBadge status={status} />
-      </div>
-
-      {result && (
-        <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
-          {' · '}
-          {result?.decidedAt && formatDate(result?.decidedAt)}
-          {result?.note && ` — ${result?.note}`}
-        </p>
-      )}
-
-      {!result && !expected && <p className="text-muted text-xs">{t.trials.notExpectedYet}</p>}
-
-      {!result && expected && !open && (
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            {t.trials.recordVerdict}
-          </Button>
-        </div>
-      )}
-
-      {!result && expected && open && (
-        <div className="border-border space-y-3 rounded-lg border p-3">
-          <Field label={t.recommendations.coachNote} htmlFor={`${application?.id}-note`}>
-            <Textarea
-              id={`${application?.id}-note`}
-              value={note}
-              maxLength={1000}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={t.placeholders.note}
-            />
-          </Field>
-
-          {confirming ? (
-            <Alert tone="warning">
+    <ApplicantCard
+      player={application?.player}
+      status={status}
+      detail={
+        result ? (
+          <p className="bg-surface-3 rounded-lg p-2 text-xs">
+            <span className={result?.verdict === 'PASS' ? 'text-success' : 'text-danger'}>
+              {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
+            </span>
+            {result?.decidedAt && ` · ${formatDate(result.decidedAt)}`}
+            {result?.note && ` — ${result.note}`}
+          </p>
+        ) : !expected ? (
+          <p className="text-muted text-xs">{t.trials.notExpectedYet}</p>
+        ) : null
+      }
+      actions={
+        !result && expected ? (
+          confirming ? (
+            /* The warning takes the whole card: it is the only thing being
+               asked, and a two-line question beside two other buttons is how a
+               confirmation gets clicked through without being read. */
+            <Alert tone="warning" className="w-full">
               <span className="flex items-start gap-2">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <span className="space-y-2">
-                  <span className="block font-medium">
+                  <span className="block text-sm font-medium">
                     {confirming === 'PASS' ? t.trials.confirmPass : t.trials.confirmFail}
                   </span>
-                  <span className="block text-sm">
+                  <span className="block text-xs">
                     {confirming === 'PASS' ? t.trials.confirmPassBody : t.trials.confirmFailBody}
                   </span>
                   <span className="flex flex-wrap justify-end gap-2 pt-1">
@@ -200,52 +187,56 @@ function SheetRow({
               </span>
             </Alert>
           ) : (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="ghost" onClick={() => setOpen(false)}>
-                {t.common.cancel}
-              </Button>
-              <Button
-                variant="ghost"
-                className="text-danger"
-                disabled={pending}
-                onClick={() => setConfirming('FAIL')}
-              >
-                <X aria-hidden /> {t.trials.fail}
-              </Button>
-              <Button disabled={pending} onClick={() => setConfirming('PASS')}>
-                <Check aria-hidden /> {t.trials.pass}
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </li>
+            <>
+              {noting ? (
+                <Field
+                  label={t.recommendations.coachNote}
+                  htmlFor={`${application?.id}-note`}
+                  className="w-full"
+                >
+                  <Textarea
+                    id={`${application?.id}-note`}
+                    value={note}
+                    rows={2}
+                    maxLength={1000}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder={t.placeholders.note}
+                  />
+                </Field>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted w-full justify-start px-1 text-xs"
+                  onClick={() => setNoting(true)}
+                >
+                  + {t.recommendations.coachNote}
+                </Button>
+              )}
+
+              <div className="flex w-full gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-danger flex-1"
+                  disabled={pending}
+                  onClick={() => setConfirming('FAIL')}
+                >
+                  <X aria-hidden /> {t.trials.fail}
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={pending}
+                  onClick={() => setConfirming('PASS')}
+                >
+                  <Check aria-hidden /> {t.trials.pass}
+                </Button>
+              </div>
+            </>
+          )
+        ) : null
+      }
+    />
   );
-}
-
-function VerdictBadge({ status }: { status: Applicant['status'] }) {
-  const { t } = useI18n();
-
-  const variant =
-    status === 'PASSED' || status === 'ACCEPTED'
-      ? 'success'
-      : status === 'FAILED' || status === 'REJECTED'
-        ? 'neutral'
-        : status === 'CONFIRMED' || status === 'INVITED' || status === 'SHORTLISTED'
-          ? 'primary'
-          : 'warning';
-
-  const label = {
-    APPLIED: t.trials.statusApplied,
-    SCREENING: t.trials.statusScreening,
-    SHORTLISTED: t.trials.statusShortlisted,
-    INVITED: t.trials.statusInvited,
-    CONFIRMED: t.trials.statusConfirmed,
-    PASSED: t.trials.statusPassed,
-    FAILED: t.trials.statusFailed,
-    REJECTED: t.trials.statusRejected,
-    ACCEPTED: t.trials.statusAccepted,
-  }[status];
-
-  return <Badge variant={variant}>{label}</Badge>;
 }

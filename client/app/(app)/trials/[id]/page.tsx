@@ -366,6 +366,7 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         <ApplyToTrialButton
           trialId={trial?.id}
           existingStatus={existing?.status ?? null}
+          applicationId={existing?.id ?? null}
           ageRange={
             trial?.ageRangeMin != null && trial?.ageRangeMax != null
               ? { min: trial?.ageRangeMin, max: trial?.ageRangeMax }

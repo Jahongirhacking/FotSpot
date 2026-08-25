@@ -5,23 +5,32 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Hourglass, Mail, UserCheck, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { PlayerProfile, Trial, TrialApplication } from '@/lib/api/types';
+import type { Trial, TrialApplication } from '@/lib/api/types';
+import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
+import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { Textarea } from '@/components/ui/Field';
-import { ageBand, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 
 interface Applicant extends TrialApplication {
-  player: PlayerProfile;
+  player: ApplicantPlayer;
 }
 
 /**
  * Who applied, and the one thing to do about each of them.
  *
- * ## The row offers the next step, not every step
+ * ## Cards, because the applicant is a person
+ *
+ * The trial's own details are stated once in the header above; each card carries
+ * the player — face, name, position, age, foot — and the one thing this manager
+ * may do about them. The list this replaced repeated the trial on every row and
+ * gave the person a line of grey text.
+ *
+ * ## The card offers the next step, not every step
  *
  * A screen with four status buttons live at once asked the manager to know the
  * process by heart, and let them mark somebody ACCEPTED whom no coach had ever
@@ -83,7 +92,7 @@ export function Applicants({ trial }: { trial: Trial }) {
         <p className="text-muted text-sm">{t.academy.applicantsHint}</p>
       </CardHeader>
 
-      <CardContent className="p-2">
+      <CardContent className="p-3">
         {applicants.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : rows?.length === 0 ? (
@@ -93,9 +102,9 @@ export function Applicants({ trial }: { trial: Trial }) {
             description={t.admin.noApplicantsHint}
           />
         ) : (
-          <ul className="divide-border divide-y">
-            {rows?.map((application) => (
-              <ApplicantRow
+          <ApplicantGrid applicants={rows}>
+            {(application) => (
+              <ApplicantEntry
                 key={application?.id}
                 application={application}
                 isPrivate={trial?.type === 'PRIVATE'}
@@ -106,15 +115,15 @@ export function Applicants({ trial }: { trial: Trial }) {
                 onInvite={(note) => invite.mutate({ id: application?.id, note })}
                 onAddToSquad={() => addToSquad.mutate(application?.id)}
               />
-            ))}
-          </ul>
+            )}
+          </ApplicantGrid>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function ApplicantRow({
+function ApplicantEntry({
   application,
   isPrivate,
   pending,
@@ -141,130 +150,91 @@ function ApplicantRow({
   const awaitingTrial = status === 'APPLIED' || status === 'CONFIRMED';
 
   return (
-    <li className="space-y-2 p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/players/${application?.playerId}`} className="min-w-0 flex-1 hover:underline">
-          <span className="block truncate text-sm font-medium">
-            {application?.player?.firstName} {application?.player?.lastName}
-          </span>
-          <span className="text-muted block truncate text-xs">
-            {[
-              application?.player?.primaryPosition,
-              application?.player?.birthDate && ageBand(application?.player.birthDate),
-              application?.player?.region,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            {' · '}
-            {formatDate(application?.createdAt)}
-          </span>
-        </Link>
-        <StatusBadge status={status} />
-      </div>
+    <ApplicantCard
+      player={application?.player}
+      status={status}
+      detail={
+        <div className="space-y-1.5">
+          {/* Whose desk it is on. "In review" without a name is a status a
+              manager can do nothing with. */}
+          {screening && review && (
+            <p className="text-muted flex items-center gap-1.5 text-xs">
+              <Hourglass className="size-3.5 shrink-0" aria-hidden />
+              {t.trials.withCoach}: {review?.coachUser?.firstName} {review?.coachUser?.lastName}
+            </p>
+          )}
 
-      {/* Whose desk it is on. "In review" without a name is a status a manager
-          can do nothing with. */}
-      {screening && review && (
-        <p className="text-muted flex items-center gap-1.5 text-xs">
-          <Hourglass className="size-3.5" aria-hidden />
-          {t.trials.withCoach}: {review?.coachUser?.firstName} {review?.coachUser?.lastName}
-        </p>
-      )}
+          {/* The verdict, with the coach who gave it. A manager acting on "Add
+              to squad" should see whose judgement they are acting on. */}
+          {result && (
+            <p className="bg-surface-3 rounded-lg p-2 text-xs">
+              <span className={result?.verdict === 'PASS' ? 'text-success' : 'text-danger'}>
+                {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
+              </span>
+              {' · '}
+              {result?.coachUser?.firstName} {result?.coachUser?.lastName}
+              {result?.decidedAt && ` · ${formatDate(result.decidedAt)}`}
+              {result?.note && ` — ${result.note}`}
+            </p>
+          )}
 
-      {review?.note && review?.decidedAt && (
-        <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {t.recommendations.coachNote}: {review?.note}
-        </p>
-      )}
+          {status === 'INVITED' && <p className="text-muted text-xs">{t.trials.awaitingPlayer}</p>}
+          {awaitingTrial && <p className="text-muted text-xs">{t.trials.awaitingVerdict}</p>}
+          {status === 'ACCEPTED' && (
+            <p className="text-success flex items-center gap-1.5 text-xs font-medium">
+              <UserCheck className="size-3.5 shrink-0" aria-hidden /> {t.trials.addedToSquad}
+            </p>
+          )}
 
-      {/* The verdict, with the coach who gave it. A manager acting on "Add to
-          squad" should be able to see whose judgement they are acting on. */}
-      {result && (
-        <p className="bg-surface-2 rounded-lg p-2 text-xs">
-          {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed} ·{' '}
-          {result?.coachUser?.firstName} {result?.coachUser?.lastName} ·{' '}
-          {result?.decidedAt && formatDate(result?.decidedAt)}
-          {result?.note && ` — ${result?.note}`}
-        </p>
-      )}
-
-      {status === 'INVITED' && <p className="text-muted text-xs">{t.trials.awaitingPlayer}</p>}
-
-      {awaitingTrial && <p className="text-muted text-xs">{t.trials.awaitingVerdict}</p>}
-
-      {(canInvite || canAdd) && (
-        <div className="flex flex-wrap justify-end gap-2">
-          {canInvite &&
-            (writing ? (
-              <div className="w-full space-y-2">
-                <Textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  rows={2}
-                  placeholder={t.trials.invitePlaceholder}
-                  aria-label={t.recommendations.inviteNote}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setWriting(false)}>
-                    {t.common.cancel}
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={!note.trim()}
-                    loading={pending}
-                    onClick={() => onInvite(note.trim())}
-                  >
-                    <Mail aria-hidden /> {t.trials.invite}
-                  </Button>
-                </div>
+          <Link
+            href={`/players/${application?.playerId}`}
+            className="text-muted block text-xs hover:underline"
+          >
+            {t.academy.player} · {formatDate(application?.createdAt)}
+          </Link>
+        </div>
+      }
+      actions={
+        canInvite ? (
+          writing ? (
+            <div className="w-full space-y-2">
+              <Textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={2}
+                placeholder={t.trials.invitePlaceholder}
+                aria-label={t.recommendations.inviteNote}
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setWriting(false)}>
+                  {t.common.cancel}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!note.trim()}
+                  loading={pending}
+                  onClick={() => onInvite(note.trim())}
+                >
+                  <Mail aria-hidden /> {t.trials.invite}
+                </Button>
               </div>
-            ) : (
-              <Button size="sm" onClick={() => setWriting(true)}>
-                <Mail aria-hidden /> {t.trials.invite}
-              </Button>
-            ))}
-
-          {canAdd && (
-            <Button size="sm" loading={pending} onClick={onAddToSquad}>
+            </div>
+          ) : (
+            <Button size="sm" className="w-full" onClick={() => setWriting(true)}>
+              <Mail aria-hidden /> {t.trials.invite}
+            </Button>
+          )
+        ) : canAdd ? (
+          <div className="w-full space-y-1.5">
+            {/* Nobody is placed by pressing this — TRIAL.md §30's action sends an
+                invitation the player still has to accept. */}
+            <p className="text-muted text-xs">{t.academy.addWarning}</p>
+            <Button size="sm" className="w-full" loading={pending} onClick={onAddToSquad}>
               <UserPlus aria-hidden /> {t.trials.addToSquad}
             </Button>
-          )}
-        </div>
-      )}
-
-      {/* Done. The button is replaced by what happened to it, so the row reads
-          as finished rather than as an action somebody forgot to take. */}
-      {status === 'ACCEPTED' && (
-        <p className="text-success flex items-center gap-1.5 text-sm font-medium">
-          <UserCheck className="size-4" aria-hidden /> {t.trials.addedToSquad}
-        </p>
-      )}
-    </li>
+          </div>
+        ) : null
+      }
+    />
   );
-}
-
-function StatusBadge({ status }: { status: Applicant['status'] }) {
-  const { t } = useI18n();
-  const variant =
-    status === 'ACCEPTED' || status === 'PASSED'
-      ? 'success'
-      : status === 'REJECTED' || status === 'FAILED'
-        ? 'neutral'
-        : status === 'INVITED' || status === 'SHORTLISTED' || status === 'CONFIRMED'
-          ? 'primary'
-          : 'warning';
-
-  const label = {
-    APPLIED: t.trials.statusApplied,
-    SCREENING: t.trials.statusScreening,
-    SHORTLISTED: t.trials.statusShortlisted,
-    INVITED: t.trials.statusInvited,
-    CONFIRMED: t.trials.statusConfirmed,
-    PASSED: t.trials.statusPassed,
-    FAILED: t.trials.statusFailed,
-    REJECTED: t.trials.statusRejected,
-    ACCEPTED: t.trials.statusAccepted,
-  }[status];
-
-  return <Badge variant={variant}>{label}</Badge>;
 }

@@ -1245,10 +1245,19 @@ export class TrialsService {
       throw new ForbiddenException('Only this academy or a coach working this trial can see that');
     }
 
-    return this.prisma.trialApplication.findMany({
+    /*
+     * The player's photograph comes with them.
+     *
+     * `avatarKey` lives on the account rather than the profile, so a bare
+     * `player: true` returns a card with no face on it — and the applicant grid
+     * a coach scans is built around the face. Flattened to `avatarUrl` below,
+     * the same shape `PlayersService` returns, so the client has one field to
+     * read rather than a key it would have to know how to turn into a URL.
+     */
+    const applications = await this.prisma.trialApplication.findMany({
       where: { trialId },
       include: {
-        player: true,
+        player: { include: { user: { select: { avatarKey: true } } } },
         review: {
           select: {
             id: true,
@@ -1269,6 +1278,14 @@ export class TrialsService {
         },
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return applications.map(({ player, ...application }) => {
+      const { user, ...profile } = player;
+      return {
+        ...application,
+        player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
+      };
     });
   }
 

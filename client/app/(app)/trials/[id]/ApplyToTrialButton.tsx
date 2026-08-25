@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { Check, Send } from 'lucide-react';
+import { Check, Send, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { TrialApplicationStatus } from '@/lib/api/types';
 import { useSession } from '@/components/layout/SessionProvider';
@@ -22,11 +22,14 @@ import { formatDate } from '@/lib/utils';
 export function ApplyToTrialButton({
   trialId,
   existingStatus,
+  applicationId,
   ageRange,
   applyDeadline,
 }: {
   trialId: string;
   existingStatus: TrialApplicationStatus | null;
+  /** This player's application on this trial, when they have one. */
+  applicationId?: string | null;
   /** Null on a trial that states no age rule. */
   ageRange: { min: number; max: number } | null;
   /** Null on trials written before deadlines existed — those stay open. */
@@ -46,6 +49,17 @@ export function ApplyToTrialButton({
     // would throw away the confirmation before anybody could read it.
     onSuccess: () => router.refresh(),
     meta: { success: t.trials.applicationSent },
+  });
+
+  /** The player's yes or no — the one step nobody can take for them. */
+  const respond = useMutation({
+    mutationFn: (accept: boolean) =>
+      browserFetch(`/trials/applications/${applicationId}/respond`, {
+        method: 'POST',
+        body: { accept },
+      }),
+    meta: { success: t.trials.answerSent },
+    onSuccess: () => router.refresh(),
   });
 
   // A guest is asked to sign in; only a signed-in non-player is told they need a
@@ -81,6 +95,53 @@ export function ApplyToTrialButton({
    * where they stand rather than "applications closed" — which would read as if
    * they had missed it.
    */
+  /*
+   * An invitation is a question, so this page has to let them answer it.
+   *
+   * The notification a player gets links here, and a private trial cannot be
+   * applied to — so this is the page they land on holding an invitation. It used
+   * to render the status line below and stop, which left them reading
+   * "Application status: Invited" with nothing to press: the accept and decline
+   * buttons existed only in the list on /trials, which nothing told them to go
+   * back to. That is a dead end at the exact step the whole flow waits on.
+   *
+   * The same endpoint the list uses, so there is one answer path and not two.
+   */
+  if (existingStatus === 'INVITED') {
+    return (
+      <Card className="border-primary/30">
+        <CardContent className="space-y-3 p-5">
+          <p className="font-medium">{t.trials.yourInvitation}</p>
+          <p className="text-muted text-sm">{t.trials.invitationNeedsAnswer}</p>
+
+          {respond.isError && (
+            <Alert tone="danger">
+              {(respond.error as Error)?.message ?? t.common.somethingWrong}
+            </Alert>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="flex-1"
+              loading={respond.isPending && respond.variables === true}
+              onClick={() => respond.mutate(true)}
+            >
+              <Check aria-hidden /> {t.trials.acceptInvitation}
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex-1"
+              disabled={respond.isPending}
+              onClick={() => respond.mutate(false)}
+            >
+              <X aria-hidden /> {t.trials.declineInvitation}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (existingStatus) {
     return (
       <Alert
