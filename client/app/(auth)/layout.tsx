@@ -2,7 +2,6 @@ import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import Link from 'next/link';
-import './style.scss';
 
 /** Route group with no app chrome — a signed-out user has no nav to show. */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {

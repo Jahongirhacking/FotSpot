@@ -147,7 +147,7 @@ export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
     script.setAttribute('data-telegram-login', TELEGRAM_BOT);
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-radius', '8');
-    script.setAttribute('data-userpic', 'false');
+    script.setAttribute('data-userpic', 'true');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     slot.appendChild(script);
 
@@ -174,7 +174,7 @@ export function OAuthButtons({ redirectTo }: { redirectTo?: string }) {
           third-party popup and there is nothing of ours to disable. */}
       <div className="flex flex-col items-stretch gap-2" aria-busy={busy}>
         {GOOGLE_CLIENT_ID && <div ref={googleSlot} className="[&>div]:!w-full" />}
-        {TELEGRAM_BOT && <div ref={telegramSlot} className="flex justify-center" />}
+        {TELEGRAM_BOT && <div ref={telegramSlot} className="flex w-full justify-center" />}
       </div>
     </div>
   );
