@@ -4504,9 +4504,14 @@
           },
           {
             "name": "status",
-            "required": true,
+            "required": false,
             "in": "query",
+            "description": "Waiting on this coach, or already answered. Defaults to what is owed.",
             "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
               "type": "string"
             }
           }
