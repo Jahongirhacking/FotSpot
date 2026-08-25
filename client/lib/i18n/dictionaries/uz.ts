@@ -1056,6 +1056,16 @@ export const uz = {
     sheetHint: 'Kim keldi va ular haqida nima dedingiz. Hukm — PASS yoki FAIL.',
     sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
     recordVerdict: 'Hukm yozish',
+    /* Ariza bilan nima bo‘layotgani, har bir holat uchun — ApplicantCard. */
+    stepApplied: 'Sinovda murabbiy hukmini kutmoqda.',
+    stepScreening: 'Onlayn baholash uchun murabbiyda.',
+    stepShortlisted: 'Murabbiy ma’qulladi — menejer sinovga taklif qiladi.',
+    stepInvited: 'Taklif qilindi. Futbolchining javobi kutilmoqda.',
+    stepConfirmed: 'Sinovga keladi. Murabbiy hukmi kutilmoqda.',
+    stepPassed: 'Sinovdan o‘tdi — menejer tarkibdan joy taklif qilishi mumkin.',
+    stepFailed: 'Bu sinovdan o‘tmadi. Bu yerda boshqa amal yo‘q.',
+    stepRejected: 'Bu sinov uchun rad etildi.',
+    stepAccepted: 'Tarkibdan joy taklif qilindi — futbolchi javobi kutilmoqda.',
     privateTrial: 'Yopiq sinov',
     globalTrial: 'Ochiq sinov',
     /* Murabbiy ko‘zdan kechiradigan arizalar to‘ri — ApplicantGrid ga qarang. */

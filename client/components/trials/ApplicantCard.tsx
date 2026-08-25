@@ -108,6 +108,37 @@ function footLabel(foot: DominantFoot, t: ReturnType<typeof useI18n>['t']) {
 }
 
 /**
+ * What is happening to this applicant, in a sentence — for every status.
+ *
+ * A card shows an action when this viewer has one, and this when they do not.
+ * Exhaustive by type: `Record<TrialApplicationStatus, …>` means a new state
+ * cannot be added to the domain without the compiler asking what the card
+ * should say, which is how the blank rows happened — a status nobody had
+ * written a line for rendered nothing at all, and a reader could not tell
+ * "nothing to do" from "this failed to load".
+ *
+ * The sentences are written from the academy's side, because that is who reads
+ * them: a manager and the coaches working the session.
+ */
+export function useApplicationStep(status: TrialApplicationStatus): string {
+  const { t } = useI18n();
+
+  const step: Record<TrialApplicationStatus, string> = {
+    APPLIED: t.trials.stepApplied,
+    SCREENING: t.trials.stepScreening,
+    SHORTLISTED: t.trials.stepShortlisted,
+    INVITED: t.trials.stepInvited,
+    CONFIRMED: t.trials.stepConfirmed,
+    PASSED: t.trials.stepPassed,
+    FAILED: t.trials.stepFailed,
+    REJECTED: t.trials.stepRejected,
+    ACCEPTED: t.trials.stepAccepted,
+  };
+
+  return step[status] ?? '';
+}
+
+/**
  * Where this applicant stands, in one word.
  *
  * The tones carry the meaning for anybody scanning rather than reading: a

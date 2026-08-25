@@ -6,7 +6,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Hourglass, Mail, UserCheck, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Trial, TrialApplication } from '@/lib/api/types';
-import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
+import {
+  ApplicantCard,
+  useApplicationStep,
+  type ApplicantPlayer,
+} from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
@@ -141,13 +145,13 @@ function ApplicantEntry({
   const [writing, setWriting] = React.useState(false);
 
   const { status, review, result } = application;
+  // Every status says something, whether or not this manager has a button for
+  // it — see `useApplicationStep`.
+  const step = useApplicationStep(status);
   const screening = status === 'SCREENING';
   const canInvite = isPrivate && status === 'SHORTLISTED';
   // The one gate: a coach passed them in person. Nothing else reaches a squad.
   const canAdd = status === 'PASSED';
-  // Applied to an open day, or confirmed for a private one — either way the next
-  // thing that happens is the trial, and nobody here can hurry it.
-  const awaitingTrial = status === 'APPLIED' || status === 'CONFIRMED';
 
   return (
     <ApplicantCard
@@ -178,13 +182,19 @@ function ApplicantEntry({
             </p>
           )}
 
-          {status === 'INVITED' && <p className="text-muted text-xs">{t.trials.awaitingPlayer}</p>}
-          {awaitingTrial && <p className="text-muted text-xs">{t.trials.awaitingVerdict}</p>}
-          {status === 'ACCEPTED' && (
-            <p className="text-success flex items-center gap-1.5 text-xs font-medium">
-              <UserCheck className="size-3.5 shrink-0" aria-hidden /> {t.trials.addedToSquad}
-            </p>
-          )}
+          {/* The one line that is always there. A row with no action used to
+              render nothing at all, which reads as a card that failed to load
+              rather than as a player nobody is waiting on. */}
+          <p
+            className={
+              status === 'ACCEPTED'
+                ? 'text-success flex items-center gap-1.5 text-xs font-medium'
+                : 'text-muted text-xs'
+            }
+          >
+            {status === 'ACCEPTED' && <UserCheck className="size-3.5 shrink-0" aria-hidden />}
+            {step}
+          </p>
 
           <Link
             href={`/players/${application?.playerId}`}

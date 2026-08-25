@@ -1019,6 +1019,16 @@ export const en: Dictionary = {
     sheetHint: 'Who turned up, and what you said about them. The verdict is PASS or FAIL.',
     sheetForbidden: 'Only the coaches working this trial can see it.',
     recordVerdict: 'Record verdict',
+    /* What is happening to an applicant, for every status — ApplicantCard. */
+    stepApplied: 'Waiting on a coach’s verdict at the trial.',
+    stepScreening: 'With a coach for an online review.',
+    stepShortlisted: 'A coach approved them — the manager invites them to a trial.',
+    stepInvited: 'Invited. Waiting on the player’s answer.',
+    stepConfirmed: 'Coming to the trial. Waiting on a coach’s verdict.',
+    stepPassed: 'Passed the trial — the manager can offer them a squad place.',
+    stepFailed: 'Did not pass this trial. Nothing further here.',
+    stepRejected: 'Turned down for this trial.',
+    stepAccepted: 'Offered a squad place — waiting on the player to accept.',
     privateTrial: 'Private trial',
     globalTrial: 'Global trial',
     /* The applicant grid a coach scans — see components/trials/ApplicantGrid. */

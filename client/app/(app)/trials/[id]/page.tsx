@@ -127,8 +127,16 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
      * "Am I working this trial?" asked directly, rather than fetching the
      * assigned coaches and looking for myself in them — the session carries no
      * user id, and this is the same question in one request.
+     *
+     * Asked of anybody signed in, not only somebody wearing the coach hat.
+     * Working a session is an *assignment* — a `TrialCoach` row the manager
+     * created — and it does not stop being true because the person is currently
+     * reading the site as a manager. A small academy's manager is often the
+     * coach on the pitch, and gating this on the active role meant the one
+     * person who was going to test the players had no way to record a verdict
+     * and no hat to switch to that would show them this trial.
      */
-    session?.activeRole === 'coach'
+    session
       ? trials?.myCoaching({ token: session?.accessToken, cache: 'no-store' }).catch(() => [])
       : [],
   ]);
@@ -348,33 +356,46 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         </CardContent>
       </Card>
 
-      {hosts ? (
+      {/*
+        The two roles are not exclusive, and this used to treat them as if they
+        were. A small academy's manager is often also a coach on the session; the
+        `hosts ? … : works ? …` chain gave them the administrative half and
+        silently dropped the sheet, so the one person who was going to be on the
+        pitch had no way to record a verdict.
+
+        Each half now renders on its own condition. A manager gets the trial's
+        administration; a coach working the session gets the sheet and the
+        PASS/FAIL. Somebody who is both gets both, which is what they are.
+      */}
+      {hosts && (
         <>
           <TrialAdmin trial={trial} />
           <TrialStaff trial={trial} academyId={trial?.academyId} />
           <Applicants trial={trial} />
         </>
-      ) : works ? (
-        /* A coach on this trial gets the sheet and the verdict, and nothing
-           administrative — the staff list and the squad are the manager's. */
-        <CoachSheet trial={trial} />
-      ) : trial?.status === 'ARCHIVED' ? (
-        /* Applying would be refused by the server, so the button is replaced by
-           the reason rather than left to fail under the press. */
-        <Alert tone="warning">{t.trials.closedToApplications}</Alert>
-      ) : (
-        <ApplyToTrialButton
-          trialId={trial?.id}
-          existingStatus={existing?.status ?? null}
-          applicationId={existing?.id ?? null}
-          ageRange={
-            trial?.ageRangeMin != null && trial?.ageRangeMax != null
-              ? { min: trial?.ageRangeMin, max: trial?.ageRangeMax }
-              : null
-          }
-          applyDeadline={trial?.applyDeadline}
-        />
       )}
+
+      {works && <CoachSheet trial={trial} />}
+
+      {!hosts &&
+        !works &&
+        (trial?.status === 'ARCHIVED' ? (
+          /* Applying would be refused by the server, so the button is replaced by
+           the reason rather than left to fail under the press. */
+          <Alert tone="warning">{t.trials.closedToApplications}</Alert>
+        ) : (
+          <ApplyToTrialButton
+            trialId={trial?.id}
+            existingStatus={existing?.status ?? null}
+            applicationId={existing?.id ?? null}
+            ageRange={
+              trial?.ageRangeMin != null && trial?.ageRangeMax != null
+                ? { min: trial?.ageRangeMin, max: trial?.ageRangeMax }
+                : null
+            }
+            applyDeadline={trial?.applyDeadline}
+          />
+        ))}
     </div>
   );
 }
