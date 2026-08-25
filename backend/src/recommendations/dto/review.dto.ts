@@ -1,3 +1,4 @@
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   IsDateString,
   IsIn,
@@ -72,4 +73,17 @@ export class InvitePlayerDto {
 export class CoachAcceptDto {
   /** Why, for the manager who has to decide whether to invite. Optional. */
   @IsOptional() @IsString() @MaxLength(2000) note?: string;
+}
+
+/**
+ * A coach asking for their own queue: which half, and which page.
+ *
+ * `status` has to be declared here rather than read with `@Query('status')`
+ * beside a `PaginationDto`. The global pipe runs `forbidNonWhitelisted`, so an
+ * undeclared parameter is not ignored — it is a 400, and the queue answered
+ * "property status should not exist" to every request that named it.
+ */
+export class ReviewQueueDto extends PaginationDto {
+  /** Waiting on this coach, or already answered. Defaults to what is owed. */
+  @IsOptional() @IsIn(['PENDING', 'DECIDED']) status?: 'PENDING' | 'DECIDED';
 }

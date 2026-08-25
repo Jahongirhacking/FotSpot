@@ -4482,6 +4482,27 @@
         "operationId": "recommendations_listMyReviews",
         "parameters": [
           {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
             "name": "status",
             "required": true,
             "in": "query",
@@ -4914,6 +4935,7 @@
             "bearer": []
           }
         ],
+        "summary": "An academy's open trials. Public, but the private ones are staff-only —\na private trial names the child it was created for. See the service.",
         "tags": [
           "trials"
         ]
@@ -5296,6 +5318,48 @@
         ]
       }
     },
+    "/api/v1/trials/coaching/pending": {
+      "get": {
+        "operationId": "trials_listPendingForCoach",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The trials this coach is working.\n\nAssignment is the whole of a coach's relationship with a trial — it is what\nlets them read a private one, see the sheet and record a verdict — so it is\nalso what this lists.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
     "/api/v1/trials/coaching/mine": {
       "get": {
         "operationId": "trials_listMyCoaching",
@@ -5310,7 +5374,6 @@
             "bearer": []
           }
         ],
-        "summary": "The trials this coach is working.\n\nAssignment is the whole of a coach's relationship with a trial — it is what\nlets them read a private one, see the sheet and record a verdict — so it is\nalso what this lists.",
         "tags": [
           "trials"
         ]

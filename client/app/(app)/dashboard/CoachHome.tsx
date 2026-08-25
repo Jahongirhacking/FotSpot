@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
 import type { Dictionary } from '@/lib/i18n';
+import { CoachQueues } from './CoachQueues';
 
 export async function CoachHome({ token, t }: { token: string; t: Dictionary }) {
   const [profile, stats] = await Promise.all([
     safe<CoachProfile | null>(() => coaches?.getMine({ token, cache: 'no-store' }), null),
-    safe<ScoutStats | null>(() => recommendations?.myScoutStats({ token, cache: 'no-store' }), null),
+    safe<ScoutStats | null>(
+      () => recommendations?.myScoutStats({ token, cache: 'no-store' }),
+      null,
+    ),
   ]);
 
   const verified = profile?.status === 'VERIFIED';
@@ -33,6 +37,16 @@ export async function CoachHome({ token, t }: { token: string; t: Dictionary }) 
               : 'An admin reviews every coach before they can assess players. You can still scout and recommend in the meantime.'}
           </Alert>
         )}
+
+        {/*
+          The work, above everything else on the screen.
+
+          A coach opening their dashboard is asking "what am I being asked to
+          answer" — the profile card below is reference, not a task. Only for a
+          verified coach: an unverified one cannot be assigned anything, so the
+          queues would be two empty states under a banner already explaining why.
+        */}
+        {verified && <CoachQueues />}
 
         <Card>
           <CardHeader>

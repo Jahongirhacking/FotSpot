@@ -657,6 +657,43 @@ export interface AcademyHistoryRow {
 }
 
 /** One player waiting on this coach's verdict. */
+/**
+ * One page of anything the API paginates — `{ items, total, page, pageSize }`.
+ *
+ * The shape backend/CLAUDE.md §5 mandates for every paginated read, named once
+ * so a caller writes `Paged<CoachReview>` rather than restating the envelope.
+ */
+export interface Paged<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * A player a coach still owes a verdict, with the session they owe it on.
+ *
+ * Carries the trial because the coach's queue mixes both kinds deliberately —
+ * it is a list of jobs, not a catalogue — and the card has to say which flow
+ * each one is.
+ */
+export interface PendingTrialApplicant {
+  id: string;
+  status: TrialApplicationStatus;
+  createdAt: string;
+  trial: {
+    id: string;
+    title: string;
+    type: TrialType;
+    date: string | null;
+    endDate: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    location: string;
+  };
+  player: PlayerProfile & { avatarUrl?: string | null };
+}
+
 export interface CoachReview {
   id: string;
   status: ReviewStatus;
@@ -671,7 +708,11 @@ export interface CoachReview {
    * who put the player forward — see `RecommendationsService.listMyReviews` for
    * why that would put a thumb on the scale.
    */
-  player: NonNullable<RankedRecommendation['player']>;
+  player: NonNullable<RankedRecommendation['player']> & {
+    avatarUrl?: string | null;
+    secondaryPosition?: string | null;
+    dominantFoot?: DominantFoot | null;
+  };
 }
 
 export type TrialStatus = 'OPEN' | 'ARCHIVED';

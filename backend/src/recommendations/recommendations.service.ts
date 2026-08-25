@@ -719,38 +719,78 @@ export class RecommendationsService {
    * The recommendation's *note* goes too. It is written by a scout and signed by
    * their tone, and there is no way to show it without showing them.
    */
-  async listMyReviews(userId: string, status: 'PENDING' | 'DECIDED' = 'PENDING') {
-    return this.prisma.recommendationReview.findMany({
-      where: {
-        // Every coach the review was handed to sees it, not only the one whose
-        // id ended up on the row — a trial is worked by a staff.
-        assignees: { some: { coachUserId: userId } },
-        ...(status === 'PENDING' ? { status: 'PENDING' } : { status: { not: 'PENDING' } }),
-      },
-      orderBy: { assignedAt: 'desc' },
-      take: 50,
-      select: {
-        id: true,
-        status: true,
-        note: true,
-        assignedAt: true,
-        decidedAt: true,
-        academy: { select: { id: true, name: true } },
-        // The player hangs off the review, not the recommendation: a review the
-        // academy started itself has no recommendation, and the coach still has
-        // to see who they are judging.
-        player: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            birthDate: true,
-            primaryPosition: true,
-            region: true,
+  /**
+   * A coach's own review queue, one page at a time.
+   *
+   * Paginated because it is what the coach's dashboard is built from, and a
+   * busy academy's queue is not a screenful. `take: 50` with no total was fine
+   * for a page that showed everything it had; it cannot say "12 players, page 1
+   * of 3", and it silently stopped at fifty.
+   *
+   * The avatar comes with the row: the dashboard leads with the player's face,
+   * and fetching it per card would be a query per player.
+   */
+  async listMyReviews(
+    userId: string,
+    status: 'PENDING' | 'DECIDED' = 'PENDING',
+    { page = 1, pageSize = 12 } = {},
+  ) {
+    const where = {
+      // Every coach the review was handed to sees it, not only the one whose
+      // id ended up on the row — a trial is worked by a staff. This is also the
+      // authorization: a coach can only ever be sent their own assignments.
+      assignees: { some: { coachUserId: userId } },
+      ...(status === 'PENDING'
+        ? { status: 'PENDING' as const }
+        : { status: { not: 'PENDING' as const } }),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.recommendationReview.findMany({
+        where,
+        orderBy: { assignedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          status: true,
+          note: true,
+          assignedAt: true,
+          decidedAt: true,
+          academy: { select: { id: true, name: true } },
+          // The player hangs off the review, not the recommendation: a review the
+          // academy started itself has no recommendation, and the coach still has
+          // to see who they are judging.
+          player: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              birthDate: true,
+              primaryPosition: true,
+              secondaryPosition: true,
+              dominantFoot: true,
+              region: true,
+              user: { select: { avatarKey: true } },
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.recommendationReview.count({ where }),
+    ]);
+
+    return {
+      items: items.map(({ player, ...review }) => {
+        const { user, ...profile } = player;
+        return {
+          ...review,
+          player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
+        };
+      }),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   /**

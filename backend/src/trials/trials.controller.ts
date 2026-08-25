@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import {
@@ -92,10 +93,14 @@ export class TrialsController {
     );
   }
 
+  /**
+   * An academy's open trials. Public, but the private ones are staff-only —
+   * a private trial names the child it was created for. See the service.
+   */
   @Public()
   @Get('academy/:academyId')
-  listForAcademy(@Param('academyId') academyId: string) {
-    return this.trialsService.listForAcademy(academyId);
+  listForAcademy(@Param('academyId') academyId: string, @OptionalUser() viewer?: AuthUser) {
+    return this.trialsService.listForAcademy(academyId, viewer?.userId);
   }
 
   /**
@@ -156,6 +161,17 @@ export class TrialsController {
    * lets them read a private one, see the sheet and record a verdict — so it is
    * also what this lists.
    */
+  /**
+   * The players this coach still owes a verdict — their work queue.
+   *
+   * Scoped to the caller by the `TrialCoach` assignment, so it cannot return
+   * another coach's queue or another academy's workload whoever asks.
+   */
+  @Get('coaching/pending')
+  listPendingForCoach(@CurrentUser() user: AuthUser, @Query() page: PaginationDto) {
+    return this.trialsService.listPendingForCoach(user.userId, page);
+  }
+
   @Get('coaching/mine')
   listMyCoaching(@CurrentUser() user: AuthUser) {
     return this.trialsService.listForCoach(user.userId);

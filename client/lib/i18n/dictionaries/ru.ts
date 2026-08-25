@@ -37,6 +37,7 @@ export const ru: Dictionary = {
     of: 'из',
     previous: 'Назад',
     next: 'Далее',
+    pageOf: 'Страница {page} из {pages}',
     seeAll: 'Показать все',
     open: 'Открыть',
     language: 'Язык',
@@ -1018,6 +1019,8 @@ export const ru: Dictionary = {
     sheetHint: 'Кто пришёл и что вы о них сказали. Вердикт — PASS или FAIL.',
     sheetForbidden: 'Этот просмотр видят только назначенные на него тренеры.',
     recordVerdict: 'Вынести вердикт',
+    privateTrial: 'Закрытый просмотр',
+    globalTrial: 'Открытый просмотр',
     /* Сетка заявок, которую просматривает тренер — см. ApplicantGrid. */
     ageYears: '{age} лет',
     searchApplicants: 'Поиск по заявкам',
@@ -1245,6 +1248,21 @@ export const ru: Dictionary = {
     manageScoutNetwork: 'Управлять сетью скаутов',
     yourTrials: 'Ваши просмотры',
     noTrialsPosted: 'Просмотры ещё не объявлены.',
+    /* Две рабочие очереди тренера — см. dashboard/CoachQueues.tsx. */
+    onlineReviewQueue: 'Онлайн-оценки',
+    onlineReviewQueueHint: 'Игроки, которых академия попросила вас оценить по профилю.',
+    noPendingReviews: 'Оценок в ожидании нет',
+    noPendingReviewsHint: 'Когда академия пришлёт вам игрока, он появится здесь.',
+    reviewQueueFailed: 'Не удалось загрузить ваши оценки.',
+    reviewPlayer: 'Оценить игрока',
+    trialQueue: 'Просмотры для оценки',
+    trialQueueHint: 'Игроки, которых вам предстоит проверить лично и по которым ещё нет вердикта.',
+    noPendingTrials: 'Никто не ждёт вердикта',
+    noPendingTrialsHint: 'Игроки ваших просмотров будут здесь, пока вы не поставите вердикт.',
+    trialQueueFailed: 'Не удалось загрузить ваши просмотры.',
+    openTrial: 'Открыть просмотр',
+    coachQueuesFootnote:
+      'Оценка — это «да» или «нет» по профилю; просмотр — это вердикт на поле. Приглашение и место в составе — за менеджером.',
 
     /* То, что ждёт решения менеджера, — см. PendingTrialActions. */
     pendingActions: 'Ждут вашего решения',

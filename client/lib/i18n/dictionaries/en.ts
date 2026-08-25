@@ -37,6 +37,7 @@ export const en: Dictionary = {
     of: 'of',
     previous: 'Previous',
     next: 'Next',
+    pageOf: 'Page {page} of {pages}',
     seeAll: 'See all',
     open: 'Open',
     language: 'Language',
@@ -1018,6 +1019,8 @@ export const en: Dictionary = {
     sheetHint: 'Who turned up, and what you said about them. The verdict is PASS or FAIL.',
     sheetForbidden: 'Only the coaches working this trial can see it.',
     recordVerdict: 'Record verdict',
+    privateTrial: 'Private trial',
+    globalTrial: 'Global trial',
     /* The applicant grid a coach scans — see components/trials/ApplicantGrid. */
     ageYears: '{age} years',
     searchApplicants: 'Search applicants',
@@ -1248,6 +1251,21 @@ export const en: Dictionary = {
     manageScoutNetwork: 'Manage scout network',
     yourTrials: 'Your trials',
     noTrialsPosted: 'No trials posted yet.',
+    /* The coach's two work queues — see dashboard/CoachQueues.tsx. */
+    onlineReviewQueue: 'Online reviews',
+    onlineReviewQueueHint: 'Players an academy has asked you to judge from their profile.',
+    noPendingReviews: 'No reviews waiting',
+    noPendingReviewsHint: 'When an academy sends you a player, they appear here.',
+    reviewQueueFailed: 'Could not load your reviews.',
+    reviewPlayer: 'Review player',
+    trialQueue: 'Trials to judge',
+    trialQueueHint: 'Players you are due to test in person, and have not answered on yet.',
+    noPendingTrials: 'Nobody waiting on a verdict',
+    noPendingTrialsHint: 'Players on the trials you work appear here until you pass or fail them.',
+    trialQueueFailed: 'Could not load your trials.',
+    openTrial: 'Open trial',
+    coachQueuesFootnote:
+      'A review is a yes or no on a profile; a trial is a pass or fail on the pitch. Inviting a player and placing them in a squad are the manager’s.',
 
     /* What is blocked on the manager — see PendingTrialActions. */
     pendingActions: 'Waiting on you',

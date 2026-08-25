@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -326,9 +327,42 @@ export class TrialsService {
    * `listArchivedForAcademy`, which is paginated because that list never stops
    * growing either.
    */
-  async listForAcademy(academyId: string) {
+  /**
+   * An academy's trials, as the person asking is allowed to see them.
+   *
+   * ## Why this is not simply "the academy's trials"
+   *
+   * A **private trial exists for one named child**. Its title is generated as
+   * `Private trial — <player name>`, and the page it appears on carries the date
+   * and the place as well. This route is `@Public()`, and it was returning them
+   * to anybody: an anonymous request for an academy returned a list of the
+   * children that academy had invited, where each of them would be, and when.
+   *
+   * That is not a presentation problem to solve by hiding a section in the UI —
+   * the JSON was the leak. So the filter is here, and the caller decides nothing.
+   *
+   * ## Who may see the private half
+   *
+   * The academy's own staff: a manager runs the invitations, and a coach may be
+   * working the session. Anybody else — a guest, a player, a scout, another
+   * academy — gets the general trials, which are public by definition because
+   * they are advertised for people to apply to.
+   */
+  async listForAcademy(academyId: string, viewerUserId?: string) {
+    const staff = viewerUserId
+      ? await this.prisma.academyMember.findFirst({
+          where: {
+            academyId,
+            userId: viewerUserId,
+            role: { in: ['MANAGER', 'COACH'] },
+            status: 'ACTIVE',
+          },
+          select: { id: true },
+        })
+      : null;
+
     const trials = await this.prisma.trial.findMany({
-      where: { academyId, status: 'OPEN' },
+      where: { academyId, status: 'OPEN', ...(staff ? {} : { type: 'GENERAL' }) },
       orderBy: { date: 'asc' },
       include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
     });
@@ -376,6 +410,95 @@ export class TrialsService {
    * rather than per row on the client, which would be a request per trial on the
    * first screen a coach opens.
    */
+  /**
+   * The players this coach still owes a verdict, newest session first.
+   *
+   * ## What "still owes" means, exactly
+   *
+   * Three conditions, and each is the domain's own rather than a guess:
+   *
+   * - **assigned to this coach** — `TrialCoach`, the same row `recordVerdict`
+   *   checks before it will accept a verdict. A coach who is not on the session
+   *   cannot write one, so it must not be in their queue.
+   * - **APPLIED or CONFIRMED** — the two states `recordVerdict` accepts, which
+   *   is also exactly "no verdict yet": writing one moves the row to PASSED or
+   *   FAILED. Querying `status != 'PASSED'` instead would drag in every
+   *   rejection and failure the coach has already settled.
+   * - **nothing about the trial's own status.** Deliberate: `recordVerdict` does
+   *   not check it either, so an archived session with players still unanswered
+   *   is work the coach can do — and filtering it out here would hide work while
+   *   leaving the endpoint that performs it open.
+   *
+   * ## Both kinds of trial belong here
+   *
+   * This is an action queue, not a catalogue. A general trial's applicant and a
+   * private trial's confirmed invitee are the same job — stand on a pitch and
+   * decide — so both appear, and each row says which kind it is so the coach
+   * knows which flow they are in.
+   *
+   * The player and the trial come back on the row rather than being fetched per
+   * card, so a page of twenty costs one query and not forty-one.
+   */
+  async listPendingForCoach(userId: string, { page = 1, pageSize = 12 } = {}) {
+    const where: Prisma.TrialApplicationWhereInput = {
+      status: { in: ['APPLIED', 'CONFIRMED'] },
+      trial: { coaches: { some: { coachUserId: userId } } },
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.trialApplication.findMany({
+        where,
+        orderBy: [{ trial: { date: 'asc' } }, { createdAt: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          trial: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              date: true,
+              endDate: true,
+              startTime: true,
+              endTime: true,
+              location: true,
+            },
+          },
+          player: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              birthDate: true,
+              primaryPosition: true,
+              secondaryPosition: true,
+              dominantFoot: true,
+              region: true,
+              user: { select: { avatarKey: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.trialApplication.count({ where }),
+    ]);
+
+    return {
+      items: items.map(({ player, ...application }) => {
+        const { user, ...profile } = player;
+        return {
+          ...application,
+          player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
+        };
+      }),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   async listForCoach(userId: string) {
     const rows = await this.prisma.trialCoach.findMany({
       where: { coachUserId: userId },
