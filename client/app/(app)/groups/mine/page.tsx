@@ -9,7 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { GroupMembers } from './GroupMembers';
 
-export const metadata: Metadata = { title: 'My group' };
+// "My group" is one person's group, and reaches a crawler as an empty shell —
+// see the note in `feed/page.tsx` for why the redirect does not stop it.
+export const metadata: Metadata = {
+  title: 'My group',
+  robots: { index: false, follow: true },
+};
 
 /**
  * The squad a coach has been given.

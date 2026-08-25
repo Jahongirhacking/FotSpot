@@ -7,7 +7,25 @@ import type { FeedPage as FeedPageData, SuggestedPlayer } from '@/lib/api/types'
 import { FeedStream } from './FeedStream';
 import { SuggestedPlayers } from './SuggestedPlayers';
 
-export const metadata: Metadata = { title: 'Feed' };
+/*
+ * Never in search results.
+ *
+ * Signing out of this page does not stop a crawler reaching it: unlike
+ * `/dashboard`, `/feed` is not a `PROTECTED_PREFIXES` entry, so `proxy.ts` lets
+ * the request through and the redirect happens *inside* the component — which
+ * Next serves as a 200 with a meta refresh, not a 307. A crawler therefore gets
+ * a real page: a title, the nav, and no content, because the feed API answers
+ * 401 without a session and always will.
+ *
+ * `robots.txt` is the wrong tool for that (it governs fetching, not indexing),
+ * and the root layout's default is `index, follow`. So the page says no here.
+ * `follow` stays on: the nav links are worth crawling even though this page is
+ * not worth indexing.
+ */
+export const metadata: Metadata = {
+  title: 'Feed',
+  robots: { index: false, follow: true },
+};
 
 const PAGE_SIZE = 6;
 
