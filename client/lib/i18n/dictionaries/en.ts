@@ -1019,6 +1019,8 @@ export const en: Dictionary = {
     sheetHint: 'Who turned up, and what you said about them. The verdict is PASS or FAIL.',
     sheetForbidden: 'Only the coaches working this trial can see it.',
     recordVerdict: 'Record verdict',
+    trialHasNoCoaches:
+      'No coach is working this trial yet, so nobody can record a verdict on the applicants. Pick at least one below.',
     /* What is happening to an applicant, for every status — ApplicantCard. */
     stepApplied: 'Waiting on a coach’s verdict at the trial.',
     stepScreening: 'With a coach for an online review.',

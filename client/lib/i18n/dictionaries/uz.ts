@@ -1056,6 +1056,8 @@ export const uz = {
     sheetHint: 'Kim keldi va ular haqida nima dedingiz. Hukm — PASS yoki FAIL.',
     sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
     recordVerdict: 'Hukm yozish',
+    trialHasNoCoaches:
+      'Bu sinovda hali murabbiy yo‘q, shuning uchun arizalarga hukm yozadigan odam ham yo‘q. Quyidan kamida bittasini tanlang.',
     /* Ariza bilan nima bo‘layotgani, har bir holat uchun — ApplicantCard. */
     stepApplied: 'Sinovda murabbiy hukmini kutmoqda.',
     stepScreening: 'Onlayn baholash uchun murabbiyda.',

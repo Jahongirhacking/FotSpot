@@ -127,6 +127,33 @@ export class TrialsService {
     });
 
     await this.announceToMatchingPlayers(trial, userId);
+
+    /*
+     * The academy's coaches work it unless the manager says otherwise.
+     *
+     * A trial with no staff is a trial nobody can answer: `recordVerdict` only
+     * accepts a coach assigned to the session, so applications pile up against
+     * a verdict that cannot be written, and nothing on any screen says why. That
+     * is what happened — a published open day with four applicants and an empty
+     * `TrialCoach`, and a coach whose dashboard was correctly empty because
+     * nobody had given them the work.
+     *
+     * So creation attaches everybody the academy has endorsed as a coach, which
+     * is the same reading `ProcessAService.pickCoaches` already takes of "no
+     * named staff": send it to whoever is free. `assignCoaches` remains the way
+     * to narrow it to the two who are actually running this session, and any
+     * assigned coach may answer — the first verdict settles it.
+     */
+    const coaches = await this.prisma.academyEndorsement.findMany({
+      where: { academyId, role: 'COACH', status: 'ACTIVE' },
+      select: { userId: true },
+    });
+    if (coaches.length > 0) {
+      await this.prisma.trialCoach.createMany({
+        data: coaches.map(({ userId: coachUserId }) => ({ trialId: trial.id, coachUserId })),
+        skipDuplicates: true,
+      });
+    }
     return this.withCoverUrl(trial);
   }
 

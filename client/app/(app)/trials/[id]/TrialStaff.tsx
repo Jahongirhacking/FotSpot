@@ -66,6 +66,37 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
   const current = assigned.data ?? [];
   const currentIds = new Set(current?.map((coach) => coach?.id));
 
+  /*
+   * The staff toggles, as an element rather than a nested component: a
+   * component declared inside render is a new type on every pass, so React
+   * remounts it and any state inside resets.
+   */
+  const coachPicker = (
+    <ul className="flex flex-wrap gap-2">
+      {coaches?.map((coach) => {
+        const on = currentIds?.has(coach?.id);
+        return (
+          <li key={coach?.id}>
+            <Button
+              size="sm"
+              variant={on ? 'primary' : 'outline'}
+              disabled={assign.isPending}
+              onClick={() =>
+                assign.mutate(
+                  on
+                    ? [...currentIds].filter((id) => id !== coach?.id)
+                    : [...currentIds, coach?.id],
+                )
+              }
+            >
+              {coachName(coach)}
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -78,30 +109,25 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
       <CardContent className="space-y-3">
         {coaches?.length === 0 ? (
           <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
+        ) : current.length === 0 ? (
+          /*
+           * The academy has coaches; this session has none of them.
+           *
+           * The warning above only fired when the *academy* had nobody, so a
+           * club with staff saw an ordinary picker and no hint that leaving it
+           * untouched meant nobody could record a verdict. Applications then
+           * arrived against a session no one could answer, and the coach's
+           * dashboard was correctly empty because they had never been given the
+           * work. New trials attach the academy's coaches on creation; this is
+           * for the ones that already exist, and for a session whose staff were
+           * all released.
+           */
+          <>
+            <Alert tone="warning">{t.trials.trialHasNoCoaches}</Alert>
+            {coachPicker}
+          </>
         ) : (
-          <ul className="flex flex-wrap gap-2">
-            {coaches?.map((coach) => {
-              const on = currentIds?.has(coach?.id);
-              return (
-                <li key={coach?.id}>
-                  <Button
-                    size="sm"
-                    variant={on ? 'primary' : 'outline'}
-                    disabled={assign.isPending}
-                    onClick={() =>
-                      assign.mutate(
-                        on
-                          ? [...currentIds].filter((id) => id !== coach?.id)
-                          : [...currentIds, coach?.id],
-                      )
-                    }
-                  >
-                    {coachName(coach)}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
+          coachPicker
         )}
       </CardContent>
     </Card>

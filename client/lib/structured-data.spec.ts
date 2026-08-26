@@ -12,6 +12,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+/**
+ * JSON-LD is a nested bag by nature, and these tests reach into it by path —
+ * `event.location.address.addressCountry`. One named type for that, rather than
+ * an `any` at each call site.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any -- a JSON-LD tree is
+   arbitrarily nested and these tests walk it by path; the alternative is
+   declaring the whole of schema.org, which would test the declaration. */
+type Json = Record<string, any>;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 import {
   breadcrumbLd,
   itemListLd,
@@ -108,7 +119,7 @@ test('describes a public trial as a physical, scheduled event', () => {
 });
 
 test('names the venue and places it in the right province', () => {
-  const event = trialEventLd(trial()) as any;
+  const event = trialEventLd(trial()) as unknown as Json;
 
   assert.equal(event.location.name, 'Shurtan stadium');
   assert.equal(event.location.address.addressLocality, 'G‘uzor');
@@ -117,18 +128,18 @@ test('names the venue and places it in the right province', () => {
 });
 
 test('credits the hosting academy as the organizer', () => {
-  const event = trialEventLd(trial()) as any;
+  const event = trialEventLd(trial()) as unknown as Json;
 
   assert.equal(event.organizer.name, 'Shurtan FC');
   assert.match(event.organizer.url, /\/academies\/academy-1$/);
 });
 
 test('publishes coordinates only when the academy has published them', () => {
-  const known = trialEventLd(trial()) as any;
+  const known = trialEventLd(trial()) as unknown as Json;
   assert.equal(known.location.geo.latitude, 38.62033);
 
   // Half a pair points at the Gulf of Guinea, so neither half is emitted.
-  const half = trialEventLd(trial({ academy: { ...ACADEMY, latitude: null } })) as any;
+  const half = trialEventLd(trial({ academy: { ...ACADEMY, latitude: null } })) as unknown as Json;
   assert.equal(half.location.geo, undefined);
 });
 
@@ -191,7 +202,7 @@ test('links a player to their academy when there is one to show', () => {
     name: 'Aziz Karimov',
     path: '/players/@aziz',
     affiliation: { name: 'Shurtan FC', path: '/academies/academy-1' },
-  }) as any;
+  }) as unknown as Json;
 
   assert.equal(person.affiliation.name, 'Shurtan FC');
   assert.match(person.affiliation.url, /\/academies\/academy-1$/);
@@ -205,7 +216,7 @@ test('numbers a breadcrumb trail from one, in reading order', () => {
   const trail = breadcrumbLd([
     { name: 'Trials', path: '/trials' },
     { name: 'U16 open day', path: '/trials/trial-1' },
-  ]) as any;
+  ]) as unknown as Json;
 
   assert.equal(trail.itemListElement[0].position, 1);
   assert.equal(trail.itemListElement[0].name, 'Trials');
@@ -215,7 +226,9 @@ test('numbers a breadcrumb trail from one, in reading order', () => {
 
 test('makes every breadcrumb and list URL absolute', () => {
   // A relative URL in JSON-LD is not resolved by crawlers the way an href is.
-  const list = itemListLd([{ name: 'Shurtan FC', path: '/academies/academy-1' }]) as any;
+  const list = itemListLd([
+    { name: 'Shurtan FC', path: '/academies/academy-1' },
+  ]) as unknown as Json;
   assert.match(list.itemListElement[0].url, /^https?:\/\//);
 });
 

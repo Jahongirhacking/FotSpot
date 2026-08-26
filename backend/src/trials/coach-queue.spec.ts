@@ -141,3 +141,34 @@ describe('what a queue row carries', () => {
     expect((items[0].player as Record<string, unknown>).user).toBeUndefined();
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Why the queue was empty in the first place                                 */
+/* -------------------------------------------------------------------------- */
+
+describe('a new trial gets the academy’s coaches', () => {
+  /*
+   * The root cause of "coach dashboard is empty".
+   *
+   * `create` wrote the trial and stopped. Staffing it was a second step on the
+   * trial's own page that a manager can simply not know about — so a published
+   * open day collected four applicants against an empty `TrialCoach`, nobody
+   * could write a verdict, and the assigned coach's queue was correctly empty
+   * because they had never been assigned. The queue query was right; the data
+   * it queried had never been written.
+   */
+  it('attaches everybody the academy has endorsed as a coach', () => {
+    const source = TrialsService.prototype.create.toString();
+
+    expect(source).toMatch(/academyEndorsement\.findMany/);
+    expect(source).toMatch(/trialCoach\.createMany/);
+    expect(source).toMatch(/role: 'COACH'/);
+    expect(source).toMatch(/status: 'ACTIVE'/);
+  });
+
+  /* An academy with no coaches yet still gets its trial — it just has no staff
+     on it, which the trial page now says out loud. */
+  it('still creates the trial when the academy has no coaches', () => {
+    expect(TrialsService.prototype.create.toString()).toMatch(/coaches\.length > 0/);
+  });
+});

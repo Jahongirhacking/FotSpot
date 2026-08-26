@@ -233,8 +233,10 @@ function QueueCard<T>({
           <EmptyState icon={Icon} title={emptyTitle} description={emptyHint} />
         ) : (
           <>
+            {/* A list, matching the applicant list on a trial's own page — the
+                same rows, so a coach reads one layout in both places. */}
             <ul
-              className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+              className="border-border divide-border overflow-hidden rounded-lg border"
               aria-busy={state.isFetching}
             >
               {items.map((item) => children(item))}
