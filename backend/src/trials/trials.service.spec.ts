@@ -96,10 +96,19 @@ function fakePrisma() {
         trialId: 'trial-1',
         coachUserId: 'coach-1',
       })),
+      // `create` staffs a new trial with the academy's endorsed coaches.
+      createMany: jest.fn(async () => ({})),
     },
     coachProfile: {
       findUnique: jest.fn(async (): Promise<unknown> => ({ id: 'coach-profile-1' })),
     },
+    /*
+     * `create` staffs a new trial with the academy's endorsed coaches, so that a
+     * published session is never one nobody can record a verdict on. Empty by
+     * default here: these tests are about the trial row, and an academy with no
+     * coaches yet still gets its trial.
+     */
+    academyEndorsement: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
     academyMember: {
       findUnique: jest.fn(async (): Promise<unknown> => ({ role: 'MANAGER' })),
       findFirst: jest.fn(async (): Promise<unknown> => ({ userId: 'manager-1' })),

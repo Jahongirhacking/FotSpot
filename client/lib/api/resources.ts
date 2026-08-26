@@ -47,6 +47,8 @@ import type {
   RatingRevision,
   AcademyHistoryRow,
   CoachReview,
+  Paged,
+  PendingTrialApplicant,
   CoachTrial,
   MyCoachReview,
   SuggestedPlayer,
@@ -964,8 +966,16 @@ export const recommendations = {
     apiFetch<MyCoachReview | null>(`/recommendations/player/${playerId}/my-review`, opts),
 
   /** Coach: players an academy has asked me to judge. */
-  myReviews: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
-    apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
+  /** A coach's own queue, one page at a time. Scoped to the caller by the API. */
+  myReviews: (
+    status: 'PENDING' | 'DECIDED' = 'PENDING',
+    page: { page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) =>
+    apiFetch<Paged<CoachReview>>(
+      `/recommendations/reviews/mine${toQuery({ status, ...page })}`,
+      opts,
+    ),
 
   /** Settled: invited or turned down. */
   listHistory: (academyId: string, opts: Opts = {}) =>
@@ -1127,6 +1137,10 @@ export const trials = {
     body: { verdict: TrialVerdict; note?: string },
     opts: Opts = {},
   ) => apiFetch(`/trials/applications/${applicationId}/verdict`, { method: 'POST', body, ...opts }),
+
+  /** The players this coach still owes a verdict. Server-paginated. */
+  coachPending: (page: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
+    apiFetch<Paged<PendingTrialApplicant>>(`/trials/coaching/pending${toQuery(page)}`, opts),
 
   /** Take the player on — sends them an invitation to join the academy. */
   addToSquad: (applicationId: string, opts: Opts = {}) =>

@@ -121,12 +121,11 @@ export function ApplicantGrid<T extends Filterable>({
         (empty ?? <p className="text-muted p-2 text-sm">{t.trials.noApplicantsMatch}</p>)
       ) : (
         /*
-          One card per row on a phone, two on a tablet, three on a laptop. Capped
-          at three rather than four: the card leads with a photograph, and a
-          fourth column makes each face too small to recognise, which is the one
-          thing the photograph is there for.
+          A list, not a grid. See `ApplicantCard` — a coach going down a set of
+          applicants deciding one thing about each reads a column far faster
+          than a wall of tall cards.
         */
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="border-border divide-border overflow-hidden rounded-lg border">
           {shown.map((applicant) => children(applicant))}
         </ul>
       )}

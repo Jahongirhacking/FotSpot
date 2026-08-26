@@ -21,9 +21,15 @@ export default async function ReviewPage() {
   const { t } = await getServerT();
 
   const opts = { token: session?.accessToken, cache: 'no-store' as const };
+  /*
+   * The queue is paginated now, and this page shows the first page of each.
+   * `pageSize: 50` keeps what this screen always did — it is the coach's full
+   * working list, scrolled — while the dashboard asks for twelve at a time.
+   */
+  const empty = { items: [] as CoachReview[], total: 0, page: 1, pageSize: 50 };
   const [pending, decided] = await Promise.all([
-    recommendations?.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
-    recommendations?.myReviews('DECIDED', opts).catch(() => [] as CoachReview[]),
+    recommendations?.myReviews('PENDING', { pageSize: 50 }, opts).catch(() => empty),
+    recommendations?.myReviews('DECIDED', { pageSize: 50 }, opts).catch(() => empty),
   ]);
 
   return (
@@ -33,7 +39,7 @@ export default async function ReviewPage() {
         <p className="text-muted text-sm">{t.recommendations.reviewQueueHint}</p>
       </header>
 
-      <ReviewQueue initialPending={pending} initialDecided={decided} />
+      <ReviewQueue initialPending={pending.items} initialDecided={decided.items} />
     </div>
   );
 }

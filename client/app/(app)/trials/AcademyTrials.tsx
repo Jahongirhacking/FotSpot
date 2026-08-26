@@ -5,6 +5,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { DefaultNoteDialog } from '@/components/trials/DefaultNoteDialog';
 import { TrialForm } from '@/components/trials/TrialForm';
 import { Badge } from '@/components/ui/Badge';
+import { TrialThumb } from '@/components/trials/TrialThumb';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
@@ -192,6 +193,9 @@ function TrialList({ trials }: { trials: Trial[] }) {
             href={`/trials/${trial?.id}`}
             className="hover:bg-surface-2 border-border flex flex-wrap items-center gap-3 rounded-lg border-1 border-dashed p-2"
           >
+            {/* The session's own photograph, so a manager scanning their trials
+                recognises one by sight rather than by reading every title. */}
+            <TrialThumb coverUrl={trial?.coverUrl} />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium">{trial?.title}</span>

@@ -22,6 +22,7 @@ import { locationText, yandexMapsUrl } from '@/lib/maps';
 import { seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import { breadcrumbLd } from '@/lib/structured-data';
+import { TrialThumb } from '@/components/trials/TrialThumb';
 import { getSession } from '@/lib/session';
 
 import {
@@ -563,7 +564,11 @@ export default async function AcademyDetailPage({
                           key={trial?.id}
                           className="flex flex-wrap items-center justify-between gap-3 py-3"
                         >
-                          <div className="min-w-0">
+                          {/* The session's own photograph — a trial is a real
+                              place on a real day, and the picture says so
+                              faster than the line of text beside it. */}
+                          <TrialThumb coverUrl={trial?.coverUrl} />
+                          <div className="min-w-0 flex-1">
                             <Link
                               href={`/trials/${trial?.id}`}
                               className="font-medium hover:underline"

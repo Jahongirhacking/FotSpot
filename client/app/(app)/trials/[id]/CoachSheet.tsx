@@ -1,7 +1,11 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
-import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
+import {
+  ApplicantCard,
+  useApplicationStep,
+  type ApplicantPlayer,
+} from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -132,6 +136,7 @@ function SheetCard({
   const [confirming, setConfirming] = React.useState<TrialVerdict | null>(null);
 
   const { status, result } = application;
+  const step = useApplicationStep(status);
   // Whoever was expected on the day: a general trial's applicant, or a private
   // trial's invitee who said yes. Anything else was never on the sheet.
   const expected = status === 'APPLIED' || status === 'CONFIRMED';
@@ -155,9 +160,12 @@ function SheetCard({
             {result?.decidedAt && ` · ${formatDate(result.decidedAt)}`}
             {result?.note && ` — ${result.note}`}
           </p>
-        ) : !expected ? (
-          <p className="text-muted text-xs">{t.trials.notExpectedYet}</p>
-        ) : null
+        ) : (
+          /* Says where the player is even when this coach has nothing to press:
+             an applicant still waiting on the manager's invitation is not a
+             blank card. */
+          <p className="text-muted text-xs">{step}</p>
+        )
       }
       actions={
         !result && expected ? (

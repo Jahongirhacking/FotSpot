@@ -42,6 +42,7 @@ export const uz = {
     of: '/',
     previous: 'Oldingi',
     next: 'Keyingi',
+    pageOf: '{page}-sahifa, jami {pages}',
     seeAll: 'Hammasini ko‘rish',
     open: 'Ochish',
     language: 'Til',
@@ -1055,6 +1056,20 @@ export const uz = {
     sheetHint: 'Kim keldi va ular haqida nima dedingiz. Hukm — PASS yoki FAIL.',
     sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
     recordVerdict: 'Hukm yozish',
+    trialHasNoCoaches:
+      'Bu sinovda hali murabbiy yo‘q, shuning uchun arizalarga hukm yozadigan odam ham yo‘q. Quyidan kamida bittasini tanlang.',
+    /* Ariza bilan nima bo‘layotgani, har bir holat uchun — ApplicantCard. */
+    stepApplied: 'Sinovda murabbiy hukmini kutmoqda.',
+    stepScreening: 'Onlayn baholash uchun murabbiyda.',
+    stepShortlisted: 'Murabbiy ma’qulladi — menejer sinovga taklif qiladi.',
+    stepInvited: 'Taklif qilindi. Futbolchining javobi kutilmoqda.',
+    stepConfirmed: 'Sinovga keladi. Murabbiy hukmi kutilmoqda.',
+    stepPassed: 'Sinovdan o‘tdi — menejer tarkibdan joy taklif qilishi mumkin.',
+    stepFailed: 'Bu sinovdan o‘tmadi. Bu yerda boshqa amal yo‘q.',
+    stepRejected: 'Bu sinov uchun rad etildi.',
+    stepAccepted: 'Tarkibdan joy taklif qilindi — futbolchi javobi kutilmoqda.',
+    privateTrial: 'Yopiq sinov',
+    globalTrial: 'Ochiq sinov',
     /* Murabbiy ko‘zdan kechiradigan arizalar to‘ri — ApplicantGrid ga qarang. */
     ageYears: '{age} yosh',
     searchApplicants: 'Arizalardan qidirish',
@@ -1289,6 +1304,23 @@ export const uz = {
     manageScoutNetwork: 'Skautlar tarmog‘ini boshqarish',
     yourTrials: 'Sizning sinovlaringiz',
     noTrialsPosted: 'Hali sinov e’lon qilinmagan.',
+    /* Murabbiyning ikki ish navbati — dashboard/CoachQueues.tsx ga qarang. */
+    onlineReviewQueue: 'Onlayn baholashlar',
+    onlineReviewQueueHint: 'Akademiya profili bo‘yicha baholashingizni so‘ragan futbolchilar.',
+    noPendingReviews: 'Kutayotgan baholash yo‘q',
+    noPendingReviewsHint: 'Akademiya sizga futbolchi yuborganda u shu yerda ko‘rinadi.',
+    reviewQueueFailed: 'Baholashlaringizni yuklab bo‘lmadi.',
+    reviewPlayer: 'Futbolchini baholash',
+    trialQueue: 'Baholanadigan sinovlar',
+    trialQueueHint:
+      'Shaxsan sinab ko‘rishingiz kerak bo‘lgan va hali hukm yozilmagan futbolchilar.',
+    noPendingTrials: 'Hukm kutayotgan yo‘q',
+    noPendingTrialsHint:
+      'Siz ishlaydigan sinovlardagi futbolchilar hukm yozilgunicha shu yerda turadi.',
+    trialQueueFailed: 'Sinovlaringizni yuklab bo‘lmadi.',
+    openTrial: 'Sinovni ochish',
+    coachQueuesFootnote:
+      'Baholash — profil bo‘yicha “ha” yoki “yo‘q”; sinov — maydondagi hukm. Taklif qilish va tarkibga olish menejerning ishi.',
 
     /* Menejerning qaroriga bog‘liq ishlar — PendingTrialActions ga qarang. */
     pendingActions: 'Sizning qaroringizni kutmoqda',

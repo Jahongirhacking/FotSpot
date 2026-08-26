@@ -55,48 +55,51 @@ export function ApplicantCard({
   const age = player?.birthDate ? ageFrom(player.birthDate) : null;
 
   return (
-    <li className="border-border bg-surface-2 flex flex-col overflow-hidden rounded-xl border">
+    <li className="border-border flex flex-wrap items-center gap-x-4 gap-y-3 border-b p-3 last:border-b-0 sm:flex-nowrap">
       {/*
-        The face, at the top and large. A 4:3 block rather than a circle: a
-        squad-sheet photograph is what a coach recognises somebody by, and a
-        32px avatar in a row is not that. The Avatar primitive supplies the
-        initials fallback for the many players with no photo yet.
+        A row, not a card in a grid.
+        A coach works down a list of people deciding one thing about each, and a
+        grid of tall cards makes that four faces per screen with the buttons in
+        four different places. A row keeps the photograph — which is how they
+        recognise somebody — and puts every name, every status and every button
+        in the same column, so the eye travels straight down.
       */}
-      <div className="bg-surface-3 relative aspect-[4/3] w-full">
-        <Avatar
-          src={player?.avatarUrl}
-          fallback={initials(player?.firstName, player?.lastName)}
-          alt={name}
-          className="absolute inset-0 size-full rounded-none text-2xl"
-        />
-        <div className="absolute top-2 right-2">
-          <StatusBadge status={status} />
-        </div>
-      </div>
+      <Avatar
+        src={player?.avatarUrl}
+        fallback={initials(player?.firstName, player?.lastName)}
+        alt={name}
+        className="size-14 shrink-0 rounded-lg text-base sm:size-16"
+      />
 
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        <div className="min-w-0">
-          <p className="truncate font-semibold" title={name}>
-            {name}
-          </p>
-          <p className="text-muted truncate text-xs">{positions || '—'}</p>
-        </div>
-
-        <p className="text-muted text-xs">
+      <div className="min-w-0 flex-1 basis-48">
+        <p className="truncate font-semibold" title={name}>
+          {name}
+        </p>
+        <p className="text-muted truncate text-xs">
           {[
+            positions || null,
             age !== null ? f(t.trials.ageYears, { age }) : null,
             player?.dominantFoot ? footLabel(player.dominantFoot, t) : null,
           ]
             .filter(Boolean)
             .join(' · ') || '—'}
         </p>
-
         {detail}
-
-        {/* Pushed to the bottom so every card in a row ends with its buttons on
-            the same line, however long the names above them are. */}
-        {actions && <div className="mt-auto flex flex-wrap gap-2 pt-1">{actions}</div>}
       </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <StatusBadge status={status} />
+      </div>
+
+      {/*
+        Full width on a phone so the buttons are thumb-sized; a fixed column on
+        anything wider so they line up down the list.
+      */}
+      {actions && (
+        <div className="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:basis-56 sm:justify-end">
+          {actions}
+        </div>
+      )}
     </li>
   );
 }
@@ -105,6 +108,37 @@ function footLabel(foot: DominantFoot, t: ReturnType<typeof useI18n>['t']) {
   if (foot === 'LEFT') return t.player.footLeft;
   if (foot === 'RIGHT') return t.player.footRight;
   return t.player.footBoth;
+}
+
+/**
+ * What is happening to this applicant, in a sentence — for every status.
+ *
+ * A card shows an action when this viewer has one, and this when they do not.
+ * Exhaustive by type: `Record<TrialApplicationStatus, …>` means a new state
+ * cannot be added to the domain without the compiler asking what the card
+ * should say, which is how the blank rows happened — a status nobody had
+ * written a line for rendered nothing at all, and a reader could not tell
+ * "nothing to do" from "this failed to load".
+ *
+ * The sentences are written from the academy's side, because that is who reads
+ * them: a manager and the coaches working the session.
+ */
+export function useApplicationStep(status: TrialApplicationStatus): string {
+  const { t } = useI18n();
+
+  const step: Record<TrialApplicationStatus, string> = {
+    APPLIED: t.trials.stepApplied,
+    SCREENING: t.trials.stepScreening,
+    SHORTLISTED: t.trials.stepShortlisted,
+    INVITED: t.trials.stepInvited,
+    CONFIRMED: t.trials.stepConfirmed,
+    PASSED: t.trials.stepPassed,
+    FAILED: t.trials.stepFailed,
+    REJECTED: t.trials.stepRejected,
+    ACCEPTED: t.trials.stepAccepted,
+  };
+
+  return step[status] ?? '';
 }
 
 /**

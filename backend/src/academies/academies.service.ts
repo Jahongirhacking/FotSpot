@@ -20,17 +20,10 @@ import { academyMediaKey, academyMediaPrefix, assertKeyUnder } from '../storage/
 import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
 import { assertNotLocalTeam } from './academy-kind.util';
 import { SquadNotificationsService } from './squad-notifications.service';
-import {
-  isValidRegionDistrict,
-  normaliseDistrict,
-  normaliseRegion,
-} from '../common/uzbekistan';
+import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
 import { generatePassword, generateUsername } from './manager-credentials.util';
 import { normaliseKeywords } from '../common/seo-keywords.util';
-import {
-  normaliseAcademyUsername,
-  validateAcademyUsername,
-} from './academy-username.util';
+import { normaliseAcademyUsername, validateAcademyUsername } from './academy-username.util';
 
 /** One sentence per way a handle can be wrong, so the manager can fix it. */
 const ACADEMY_HANDLE_MESSAGE = {
@@ -453,14 +446,11 @@ export class AcademiesService {
    * away from serving them.
    */
   async listPublic(region?: string) {
-    const rows = await this.redis.wrap(
-      RedisKeys.academyList(region),
-      CacheTtl.academyList,
-      () =>
-        this.prisma.academyProfile.findMany({
-          where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
-          orderBy: { createdAt: 'desc' },
-        }),
+    const rows = await this.redis.wrap(RedisKeys.academyList(region), CacheTtl.academyList, () =>
+      this.prisma.academyProfile.findMany({
+        where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
+        orderBy: { createdAt: 'desc' },
+      }),
     );
 
     /*
@@ -903,13 +893,73 @@ export class AcademiesService {
       throw new BadRequestException('Change the manager from the academy settings');
     }
 
-    const updated = await this.prisma.academyMember.update({
-      where: { id: memberId },
-      data: {
-        ...(dto.role ? { role: dto.role } : {}),
-        ...(dto.status ? { status: dto.status, releasedAt: null } : {}),
-        ...(dto.coachType !== undefined ? { coachType: dto.coachType.trim() || null } : {}),
-      },
+    /*
+     * Being on the staff as a coach *is* the academy's endorsement.
+     *
+     * `createForAcademy` and accepting a staff invitation both write the
+     * membership, the coach profile and the endorsement together, because the
+     * three say one thing: this academy vouches for this person as a coach.
+     * This method did not — it changed the role and stopped — so a manager
+     * promoting a scout to coach produced somebody the squad list called a
+     * coach and every review path refused, with a message about the *academy*
+     * having no coaches.
+     *
+     * Moving somebody the other way withdraws it, for the reason `releaseMember`
+     * revokes on expulsion: a coach the academy has stood down must not keep the
+     * authority to judge players for it.
+     */
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.academyMember.update({
+        where: { id: memberId },
+        data: {
+          ...(dto.role ? { role: dto.role } : {}),
+          ...(dto.status ? { status: dto.status, releasedAt: null } : {}),
+          ...(dto.coachType !== undefined ? { coachType: dto.coachType.trim() || null } : {}),
+        },
+      });
+
+      const active = row.status === 'ACTIVE';
+      for (const role of ['COACH', 'SCOUT'] as const) {
+        const holds = row.role === role && active;
+
+        if (holds && role === 'COACH') {
+          // A scout being promoted has no coach profile yet, and every review
+          // path asks for one by name.
+          const coach = await tx.coachProfile.upsert({
+            where: { userId: row.userId },
+            update: {},
+            create: { userId: row.userId, status: 'VERIFIED' },
+          });
+          if (row.coachId !== coach.id) {
+            await tx.academyMember.update({
+              where: { id: row.id },
+              data: { coachId: coach.id },
+            });
+          }
+          await tx.userRole.createMany({
+            data: [{ userId: row.userId, roleId: await this.roleId(tx, 'coach') }],
+            skipDuplicates: true,
+          });
+        }
+
+        if (holds) {
+          await tx.academyEndorsement.upsert({
+            where: { academyId_userId_role: { academyId, userId: row.userId, role } },
+            update: { status: 'ACTIVE', revokedAt: null },
+            create: { academyId, userId: row.userId, role },
+          });
+        } else {
+          // `updateMany` rather than an upsert: there is nothing to revoke that
+          // was never granted, and this must not create a revoked row for every
+          // role somebody has never held.
+          await tx.academyEndorsement.updateMany({
+            where: { academyId, userId: row.userId, role, status: 'ACTIVE' },
+            data: { status: 'REVOKED', revokedAt: new Date() },
+          });
+        }
+      }
+
+      return row;
     });
     await this.invalidate(academyId);
     await this.audit.record(userId, AuditAction.ACADEMY_MEMBER_UPDATED, { memberId, ...dto });
@@ -1274,9 +1324,7 @@ export class AcademiesService {
     const limit = FEATURED_LIMITS[dto.role];
     const memberIds = [...new Set(dto.memberIds ?? [])];
     if (memberIds.length > limit) {
-      throw new BadRequestException(
-        `You can feature at most ${limit} ${dto.role.toLowerCase()}s`,
-      );
+      throw new BadRequestException(`You can feature at most ${limit} ${dto.role.toLowerCase()}s`);
     }
 
     // Everyone featured must actually be on these books, in that role. Without
@@ -1361,7 +1409,7 @@ export class AcademiesService {
   ): { seoKeywords?: string[] } {
     if (keywords === undefined) return {};
     if (!isSuperAdmin) {
-      throw new ForbiddenException('Only a super admin can set an academy\'s SEO keywords');
+      throw new ForbiddenException("Only a super admin can set an academy's SEO keywords");
     }
     return { seoKeywords: normaliseKeywords(keywords) };
   }

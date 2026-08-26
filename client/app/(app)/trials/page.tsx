@@ -78,7 +78,10 @@ export default async function TrialsPage({
     const opts = { token: session?.accessToken, cache: 'no-store' as const };
     const [coaching, pending] = await Promise.all([
       trials?.myCoaching(opts).catch(() => [] as CoachTrial[]),
-      recommendations?.myReviews('PENDING', opts).catch(() => [] as CoachReview[]),
+      recommendations
+        ?.myReviews('PENDING', { pageSize: 50 }, opts)
+        .then((page) => page.items)
+        .catch(() => [] as CoachReview[]),
     ]);
 
     return (

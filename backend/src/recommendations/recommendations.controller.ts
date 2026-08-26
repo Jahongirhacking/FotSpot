@@ -8,6 +8,7 @@ import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/re
 import {
   AssignReviewDto,
   CoachAcceptDto,
+  ReviewQueueDto,
   InvitePlayerDto,
   ReviewDecisionDto,
 } from './dto/review.dto';
@@ -115,8 +116,9 @@ export class RecommendationsController {
 
   /** A coach's own queue. Declared before `:id` — Nest matches in order. */
   @Get('reviews/mine')
-  listMyReviews(@CurrentUser() user: AuthUser, @Query('status') status?: 'PENDING' | 'DECIDED') {
-    return this.recommendationsService.listMyReviews(user.userId, status ?? 'PENDING');
+  listMyReviews(@CurrentUser() user: AuthUser, @Query() query: ReviewQueueDto) {
+    const { status, ...page } = query;
+    return this.recommendationsService.listMyReviews(user.userId, status ?? 'PENDING', page);
   }
 
   /** The coach's verdict, and the ratings that become the player's credible ones. */
