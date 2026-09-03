@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 
 import { TelegramLinkController } from './telegram-link.controller';
 import { TelegramLinkService } from './telegram-link.service';
+import { TelegramAdminAlertsService } from './telegram-admin-alerts.service';
 import { TelegramNotificationsService } from './telegram-notifications.service';
 import { TelegramProcessor } from './telegram.processor';
 import { TelegramService } from './telegram.service';
@@ -29,8 +30,12 @@ import { TELEGRAM_QUEUE } from './telegram.constants';
     TelegramService,
     TelegramLinkService,
     TelegramNotificationsService,
+    TelegramAdminAlertsService,
     TelegramProcessor,
   ],
-  exports: [TelegramNotificationsService],
+  // Two exports, one per audience: notifications for users who linked Telegram,
+  // alerts for the operator chat named in configuration. Neither exposes the
+  // token or the transport.
+  exports: [TelegramNotificationsService, TelegramAdminAlertsService],
 })
 export class TelegramModule {}

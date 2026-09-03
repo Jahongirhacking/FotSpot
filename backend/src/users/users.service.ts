@@ -6,6 +6,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, VerificationChannel } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -40,6 +41,7 @@ export class UsersService {
     private config: ConfigService,
     private email: EmailService,
     private redis: RedisService,
+    private adminAlerts: TelegramAdminAlertsService,
   ) {}
 
   async findMe(userId: string) {
@@ -213,7 +215,32 @@ export class UsersService {
    * (backend/CLAUDE.md §7).
    */
   async becomeScout(userId: string) {
+    /*
+     * Asked before the grant, because the grant is an upsert and answers the
+     * same whether it was new. The operator's Telegram alert is only for a
+     * *first* scout signup — "become a scout" is idempotent and re-pressable,
+     * and a repeat press must not ping anybody.
+     */
+    const already = await this.prisma.userRole.findFirst({
+      where: { userId, role: { name: 'scout' } },
+      select: { userId: true },
+    });
+
     await this.rbac.assignRole(userId, 'scout');
+
+    if (!already) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      });
+      // Not awaited for correctness: the role is granted, and an alert about it
+      // must not be able to fail the request that granted it.
+      void this.adminAlerts.announce({
+        kind: 'SCOUT_SIGNED_UP',
+        name: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Yangi foydalanuvchi',
+      });
+    }
+
     return this.rbac.getEffectiveAccess(userId);
   }
 

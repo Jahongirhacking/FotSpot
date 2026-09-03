@@ -22,6 +22,7 @@ import {
 } from '../storage/storage.keys';
 import { StorageService } from '../storage/storage.service';
 import { TariffsService } from '../tariffs/tariffs.service';
+import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import {
   ConfirmUploadDto,
   CreateMediaCommentDto,
@@ -253,6 +254,7 @@ export class MediaService {
     private tariffs: TariffsService,
     @InjectQueue(MEDIA_QUEUE) private queue: Queue<FinaliseClipJob>,
     private finaliser: MediaFinaliserService,
+    private adminAlerts: TelegramAdminAlertsService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -417,6 +419,25 @@ export class MediaService {
         // nothing on the upload path may set it. A clip cannot be born public.
       },
     });
+
+    /*
+     * The operator hears about every new video, on Telegram.
+     *
+     * At confirm time rather than after the worker verifies the object,
+     * because "somebody uploaded" is the pulse the operator asked to feel —
+     * moderation state is a different question with its own screen. Only
+     * videos: an IMAGE through this path is an avatar-adjacent still, not the
+     * content the platform runs on. Not awaited; a queued alert must not slow
+     * the upload confirmation it describes.
+     */
+    if (dto.type === 'VIDEO') {
+      void this.adminAlerts.announce({
+        kind: 'CLIP_UPLOADED',
+        name: `${profile.firstName} ${profile.lastName}`.trim(),
+        category: dto.category,
+        title: dto.title ?? null,
+      });
+    }
 
     /*
      * The job that decides whether this clip is real.
