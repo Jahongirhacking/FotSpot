@@ -6,6 +6,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { avatarKey } from '../storage/storage.keys';
 import type { RedisService } from '../redis/redis.service';
+import type { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { OWN_MEDIA_WHERE } from '../media/media-visibility.util';
 
 const USER_ID = '77588691-7f87-412a-a738-53a1138728aa';
@@ -67,6 +68,8 @@ function harness(options: { storedAvatarKey?: string | null; deleteRejects?: Err
     // no-op rather than absent so a future test that does change one fails on
     // the assertion instead of on a missing method.
     { del: jest.fn(async () => undefined) } as unknown as RedisService,
+    // Never reached here: the operator alert fires only from becomeScout.
+    { announce: jest.fn(async () => undefined) } as unknown as TelegramAdminAlertsService,
   );
 
   return { service, storage, prisma, deleted, findUnique };
@@ -197,11 +200,15 @@ function statsHarness(mediaCount: number) {
     prisma,
     // `findMe` attaches roles and permissions to the response; these tests are
     // about the clip count, so an empty grant is the least it can return.
-    { getEffectiveAccess: jest.fn(async () => ({ roles: [], permissions: [] })) } as unknown as RbacService,
+    {
+      getEffectiveAccess: jest.fn(async () => ({ roles: [], permissions: [] })),
+    } as unknown as RbacService,
     { publicUrlOrNull: () => null } as unknown as StorageService,
     { get: () => undefined } as unknown as ConfigService,
     {} as unknown as EmailService,
     { del: jest.fn(async () => undefined) } as unknown as RedisService,
+    // Never reached here: the operator alert fires only from becomeScout.
+    { announce: jest.fn(async () => undefined) } as unknown as TelegramAdminAlertsService,
   );
 
   return { service, playerFindUnique };
@@ -222,8 +229,9 @@ describe('the profile clip count', () => {
 
     await service.findMeWithStats(USER_ID);
 
-    const select = (playerFindUnique.mock.calls[0] as unknown as [{ select: Record<string, any> }])[0]
-      .select;
+    const select = (
+      playerFindUnique.mock.calls[0] as unknown as [{ select: Record<string, any> }]
+    )[0].select;
     expect(select._count.select.media).toEqual({ where: OWN_MEDIA_WHERE });
   });
 
@@ -233,8 +241,9 @@ describe('the profile clip count', () => {
 
     await service.findMeWithStats(USER_ID);
 
-    const select = (playerFindUnique.mock.calls[0] as unknown as [{ select: Record<string, any> }])[0]
-      .select;
+    const select = (
+      playerFindUnique.mock.calls[0] as unknown as [{ select: Record<string, any> }]
+    )[0].select;
     expect(select._count.select.media).not.toBe(true);
   });
 

@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Queue } from 'bullmq';
+import type { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
 import { MediaService, toMediaResponse } from './media.service';
 import type { MediaFinaliserService } from './media-finaliser.service';
@@ -110,6 +111,8 @@ function build(clip: Partial<typeof CLIP> = {}) {
     } as unknown as TariffsService,
     { add: jest.fn(async () => ({})) } as unknown as Queue,
     {} as unknown as MediaFinaliserService,
+    // Only reached from confirmUpload for a VIDEO; inert here.
+    { announce: jest.fn(async () => undefined) } as unknown as TelegramAdminAlertsService,
   );
 
   return { service, prisma, storage };

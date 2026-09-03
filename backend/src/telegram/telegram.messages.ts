@@ -34,7 +34,10 @@ export function escapeHtml(value: string): string {
  * payload does not carry would land on a 404. Only events whose payload reliably
  * carries what the destination needs get a specific path.
  */
-export function notificationPath(event: NotificationEvent, payload: Record<string, unknown>): string {
+export function notificationPath(
+  event: NotificationEvent,
+  payload: Record<string, unknown>,
+): string {
   const id = (key: string) => {
     const value = payload?.[key];
     return typeof value === 'string' && value.length > 0 ? value : null;
@@ -107,8 +110,59 @@ export function startMessage(linked: boolean, connectUrl: string): string {
   return [
     '🔔 <b>FotSpot</b>',
     '',
-    "Bu Telegram hisobi hali hech qanday FotSpot hisobiga ulanmagan.",
+    'Bu Telegram hisobi hali hech qanday FotSpot hisobiga ulanmagan.',
     '',
     `<a href="${escapeHtml(connectUrl)}">FotSpot'da Telegramni ulash</a>`,
   ].join('\n');
+}
+
+/* -------------------------------------------------------------------------- */
+/* Operator alerts                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** What the platform tells its operator about, and what each one says. */
+export type AdminAlert =
+  | { kind: 'PLAYER_SIGNED_UP'; name: string; region?: string | null; age?: number | null }
+  | { kind: 'SCOUT_SIGNED_UP'; name: string; region?: string | null }
+  | { kind: 'CLIP_UPLOADED'; name: string; category: string; title?: string | null };
+
+/**
+ * An operator alert, as one short Telegram message.
+ *
+ * ## Why these say what happened, unlike a user's notification
+ *
+ * A user's Telegram push is deliberately event-neutral — "you have a new
+ * notification" — because the app renders the event in their own language and a
+ * second server-side copy of that wording would drift. An operator alert is the
+ * opposite: there is one operator, one language, and no screen they are being
+ * sent to. The message *is* the product, so it says the thing.
+ *
+ * ## Everything interpolated is escaped
+ *
+ * All three carry a name somebody typed. `Ben & Co <the 10>` would otherwise
+ * make Telegram answer 400 and the alert would vanish — and a name is exactly
+ * the field a person can put anything in.
+ */
+export function adminAlertMessage(alert: AdminAlert): string {
+  const name = `<b>${escapeHtml(alert.name)}</b>`;
+
+  switch (alert.kind) {
+    case 'PLAYER_SIGNED_UP': {
+      const about = [
+        alert.age != null ? `${alert.age} yosh` : null,
+        alert.region ? escapeHtml(alert.region) : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return `🆕 Yangi futbolchi: ${name}${about ? `\n${about}` : ''}`;
+    }
+    case 'SCOUT_SIGNED_UP': {
+      const where = alert.region ? `\n${escapeHtml(alert.region)}` : '';
+      return `🔎 Yangi skaut: ${name}${where}`;
+    }
+    case 'CLIP_UPLOADED': {
+      const what = alert.title ? `\n${escapeHtml(alert.title)}` : '';
+      return `🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
+    }
+  }
 }

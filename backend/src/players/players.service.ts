@@ -13,6 +13,8 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RbacService } from '../rbac/rbac.service';
+import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
+import { ageAt } from '../common/age.util';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
@@ -56,6 +58,7 @@ export class PlayersService {
     private redis: RedisService,
     private storage: StorageService,
     private audit: AuditService,
+    private adminAlerts: TelegramAdminAlertsService,
   ) {}
 
   /**
@@ -178,16 +181,33 @@ export class PlayersService {
     // Player is an "additional role" per README 1.2, granted on profile creation.
     // Both halves commit together: a profile without the role leaves the user
     // unable to apply for trials, and a retry hits "profile already exists".
-    return this.prisma.$transaction(async (tx) => {
-      const profile = await tx.playerProfile.create({
+    const profile = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.playerProfile.create({
         data: { userId, ...dto, birthDate: new Date(dto.birthDate) },
       });
       if (Object.keys(adopt).length > 0) {
         await tx.user.update({ where: { id: userId }, data: adopt });
       }
       await this.rbac.assignRole(userId, 'player', tx);
-      return profile;
+      return created;
     });
+
+    /*
+     * The operator hears about every new player, on Telegram.
+     *
+     * After the transaction and not awaited: the signup is committed, and an
+     * alert about it must not be able to slow or fail it. `create` above throws
+     * on a duplicate profile, so reaching this line *is* the "genuinely new"
+     * check — no flag or dedupe needed.
+     */
+    void this.adminAlerts.announce({
+      kind: 'PLAYER_SIGNED_UP',
+      name: `${profile.firstName} ${profile.lastName}`.trim(),
+      region: profile.region,
+      age: ageAt(profile.birthDate, new Date()),
+    });
+
+    return profile;
   }
 
   async getOwnProfile(userId: string) {

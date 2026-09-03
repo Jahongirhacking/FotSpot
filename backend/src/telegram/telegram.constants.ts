@@ -23,6 +23,24 @@ export interface SendNotificationJob {
   payload: Record<string, unknown>;
 }
 
+export const SEND_ADMIN_ALERT_JOB = 'send-admin-alert';
+
+/**
+ * What an operator alert carries.
+ *
+ * The finished text and the chat to put it in, and nothing else. Unlike a
+ * notification job this has no user to look up and no event to render: an
+ * operator alert is about somebody *else's* action, so the worker has nothing to
+ * decide and the message is built where the thing happened.
+ */
+export interface SendAdminAlertJob {
+  chatId: string;
+  text: string;
+}
+
+/** Either kind of job this queue carries. */
+export type TelegramJob = SendNotificationJob | SendAdminAlertJob;
+
 /**
  * How hard the worker asks "anything for me yet?".
  *

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { TelegramModule } from '../telegram/telegram.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
@@ -15,6 +16,7 @@ import { TariffsModule } from '../tariffs/tariffs.module';
     // AcademiesModule for GroupsService — rating a clip is an attribute judgement,
     // so it carries the same squad-group gate as any other (TRIAL.md Rule 21).
     AcademiesModule,
+    TelegramModule,
     // TariffsModule for the per-window clip limit.
     TariffsModule,
     // The queue that finalises an upload the API never saw — see MediaProcessor.
