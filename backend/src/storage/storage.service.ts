@@ -1,8 +1,9 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -93,7 +94,7 @@ const MIN_TTL_FOR_SIGNING_WINDOW_SECONDS = 24 * 60 * 60;
  * video. Nothing here ever pretends an upload worked.
  */
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly client: S3Client | null;
   private readonly privateBucket: string;
@@ -172,6 +173,51 @@ export class StorageService {
           'R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_PRIVATE_BUCKET to enable them.',
       );
     }
+  }
+
+  onModuleInit() {
+    // Not awaited: a slow or absent R2 must not hold the API's boot.
+    void this.checkBucketAccess();
+  }
+
+  /**
+   * Asks R2 whether the configured buckets can be reached with the configured
+   * token, and says so in the log — once, at boot, by name.
+   *
+   * ## Why this exists
+   *
+   * A bucket name that is wrong for the token — a typo, or a fresh dev bucket
+   * the token was never granted — does not fail at boot. It fails on every
+   * signed URL, in the browser, as a 403 from a hostname nobody reads, and the
+   * page shows a player with no clips. That is precisely how "videos and
+   * covers no longer load" was reported after `R2_PRIVATE_BUCKET` was pointed
+   * at a bucket the token could not see. One HEAD per bucket at start-up turns
+   * that into a line that names the bucket and the fix.
+   *
+   * Never throws, and the outcome changes nothing: the API must still boot with
+   * a broken bucket so the ninety endpoints that do not need it keep working,
+   * and so the log line is actually reached.
+   */
+  async checkBucketAccess(): Promise<boolean> {
+    if (!this.client) return false;
+    const buckets = [...new Set([this.privateBucket, this.publicBucket])];
+    let ok = true;
+    for (const bucket of buckets) {
+      try {
+        await this.client.send(new HeadBucketCommand({ Bucket: bucket }));
+      } catch (error) {
+        ok = false;
+        this.logger.error(
+          `R2 refuses access to bucket "${bucket}" (${describeStorageError(error)}). ` +
+            'Every signed URL for objects in it will answer 403, so clips and covers ' +
+            'will not load and uploads will be refused. Check that the bucket exists ' +
+            'and that the R2 API token is scoped to it — R2_PRIVATE_BUCKET / ' +
+            'R2_PUBLIC_BUCKET name the buckets, R2_ACCESS_KEY_ID the token.',
+        );
+      }
+    }
+    if (ok) this.logger.log(`R2: reachable — ${buckets.map((b) => `"${b}"`).join(', ')}`);
+    return ok;
   }
 
   /** Lets callers warn *before* a player records a video that cannot be stored. */
@@ -416,4 +462,19 @@ export class StorageService {
     }
     return this.client;
   }
+}
+
+/**
+ * The status R2 answered, or — when the request never reached it — the reason.
+ *
+ * A bucket the token cannot see is not always an HTTP 403: under virtual-hosted
+ * addressing the bucket is a hostname, and a bucket that does not exist fails at
+ * DNS, which Node reports as an AggregateError with the real cause inside it.
+ */
+function describeStorageError(error: unknown): string {
+  const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+  if (status) return `HTTP ${status}`;
+  const inner = (error as { errors?: unknown[] }).errors?.[0];
+  const cause = inner instanceof Error ? inner : error instanceof Error ? error : null;
+  return cause ? `${cause.name}: ${cause.message}` : String(error);
 }
