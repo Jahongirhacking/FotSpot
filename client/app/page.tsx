@@ -15,6 +15,8 @@ import { academies, media, players, trials, type RecentClip } from '@/lib/api/re
 import type { PlayerProfile } from '@/lib/api/types';
 import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
+import { pageMetadata } from '@/lib/seo';
+import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
 import { ageBand, humanizeEnum, initials } from '@/lib/utils';
 import {
@@ -35,6 +37,15 @@ import Link from 'next/link';
  * Landing page. Signed-in users keep it — it's the marketing surface, and the
  * header adapts — but the primary CTA changes to match where they actually are.
  */
+/**
+ * The homepage's own canonical, now that the layout no longer imposes one on
+ * every page. Title and description are the site's, which is correct *here*.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return pageMetadata({ path: '/', title: t.seo.title, description: t.seo.description });
+}
+
 export default async function LandingPage() {
   const session = await getSession();
   const { t } = await getServerT();

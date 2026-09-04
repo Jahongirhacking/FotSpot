@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
@@ -18,13 +19,7 @@ import { formatDate } from '@/lib/utils';
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await getServerT();
   const policy = termsDocument(locale);
-  return {
-    title: policy.title,
-    description: policy.intro[0],
-    // Worth indexing: somebody deciding whether to trust the platform may well
-    // arrive here from a search rather than from the footer.
-    robots: { index: true, follow: true },
-  };
+  return pageMetadata({ path: '/terms', title: policy.title, description: policy.intro[0] });
 }
 
 export default async function TermsPage() {

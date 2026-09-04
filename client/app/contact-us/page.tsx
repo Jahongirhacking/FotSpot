@@ -14,6 +14,7 @@ import { SOCIAL_MARKS } from '@/lib/social-marks';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, Clock, Link2, Mail, MapPin, Phone } from 'lucide-react';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 
 /**
@@ -28,13 +29,7 @@ import Link from 'next/link';
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await getServerT();
   const copy = contactCopy(locale);
-  return {
-    title: copy.title,
-    description: copy.intro,
-    // Worth indexing: "how do I contact FotSpot" is a search somebody makes
-    // before they trust the platform with their child's name.
-    robots: { index: true, follow: true },
-  };
+  return pageMetadata({ path: '/contact-us', title: copy.title, description: copy.intro });
 }
 
 export default async function ContactUsPage() {

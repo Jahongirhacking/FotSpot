@@ -2,13 +2,14 @@ import { OAuthButtons } from '@/components/auth/OAuthButtons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { getServerT } from '@/lib/i18n/server';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { RegisterForm } from './RegisterForm';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerT();
-  return { title: t.auth.createAccountTitle };
+  return pageMetadata({ path: '/register', title: t.auth.createAccountTitle });
 }
 
 export default async function RegisterPage() {

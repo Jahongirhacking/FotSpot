@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { LoginForm } from './LoginForm';
 import { OAuthButtons } from '@/components/auth/OAuthButtons';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerT();
-  return { title: t.auth.signIn };
+  return pageMetadata({ path: '/login', title: t.auth.signIn });
 }
 
 /** NOTE (Next 16): `searchParams` is a Promise and must be awaited. */

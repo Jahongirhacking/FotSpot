@@ -23,6 +23,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/players'), changeFrequency: 'daily', priority: 0.8 },
     { url: absoluteUrl('/academies'), changeFrequency: 'weekly', priority: 0.7 },
     { url: absoluteUrl('/trials'), changeFrequency: 'daily', priority: 0.7 },
+    // The one page for every style; the `?showPlayingStyle=` views canonicalise
+    // to it, so this is the only playing-styles URL a crawler should be handed.
+    { url: absoluteUrl('/playing-styles'), changeFrequency: 'monthly', priority: 0.5 },
     { url: absoluteUrl('/login'), changeFrequency: 'yearly', priority: 0.3 },
     { url: absoluteUrl('/register'), changeFrequency: 'yearly', priority: 0.5 },
     // Linked only from the landing footer, so a crawler would otherwise reach it

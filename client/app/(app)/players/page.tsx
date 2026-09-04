@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { Users } from 'lucide-react';
 import { players } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
@@ -11,9 +12,22 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Pagination } from '@/components/shared/Pagination';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
+/**
+ * Described by what is in it, as the academies directory is: the count comes
+ * from the same search the page makes, so the description is a fact rather
+ * than a slogan. Cached, so a crawler costs one query every five minutes.
+ */
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getServerT();
-  return { title: t.nav.players };
+  const { t, f } = await getServerT();
+  const total = await players
+    .search({ pageSize: 1 }, { revalidate: 300 })
+    .then((page) => page.total)
+    .catch(() => 0);
+  return pageMetadata({
+    path: '/players',
+    title: t.nav.players,
+    description: f(t.player.searchSubtitle, { count: total }),
+  });
 }
 
 /**
