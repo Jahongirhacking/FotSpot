@@ -86,13 +86,20 @@ export default async function VideoModerationPage({
     activeRole: session.activeRole,
     cache: 'no-store' as const,
   };
-  const [counts, list] = await Promise.all([
+  // A list that could not be fetched is not an empty queue: with the API's
+  // database away, this page used to read "no pending clips", which is the
+  // one thing a moderator must never be told by mistake.
+  const [counts, listResult] = await Promise.all([
     admin.mediaCounts(opts).catch(() => null),
     (status
       ? admin.mediaByStatus({ status, page, pageSize: PAGE_SIZE }, opts)
       : admin.pendingMedia({ page, pageSize: PAGE_SIZE }, opts)
-    ).catch(() => ({ ...EMPTY, page })),
+    )
+      .then((data) => ({ data, unavailable: false }))
+      .catch(() => ({ data: { ...EMPTY, page }, unavailable: true })),
   ]);
+  const list = listResult.data;
+  const listUnavailable = listResult.unavailable;
   const isSuperAdmin = isSuperAdminActing(session.activeRole);
 
   return (
@@ -136,6 +143,8 @@ export default async function VideoModerationPage({
       <Alert tone="danger" title={t.dashboard.childSafetyFirst}>
         {t.dashboard.childSafetyBody}
       </Alert>
+
+      {listUnavailable && <Alert tone="danger">{t.admin.listUnavailable}</Alert>}
 
       {status ? (
         <>

@@ -1,11 +1,11 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { browserFetch } from '@/lib/api/browser';
-import type { AcademyKind } from '@/lib/api/types';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { Button } from '@/components/ui/Button';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyKind } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 import { Menu as MenuIcon, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -157,7 +157,7 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
         </Link>
 
         <nav aria-label="Main" className="hidden flex-1 items-center gap-0.5 lg:flex">
-          {nav.map((item) => (
+          {nav?.map((item) => (
             <NavLink
               key={item?.href}
               href={item?.href}

@@ -724,6 +724,8 @@ export const en: Dictionary = {
     tooLarge: 'That video is too large (120 MB max).',
     pickCategory: 'Pick an attribute first.',
     uploadFailed: 'The upload failed. Please try again.',
+    loadFailed:
+      'The clips could not be loaded right now. The server may be unavailable — refresh to try again.',
     cameraUnavailable: 'The camera is unavailable. You can choose a video file instead.',
     storageOffTitle: 'Video storage is not set up',
     storageOffHint:
@@ -1637,6 +1639,8 @@ export const en: Dictionary = {
     lastError: 'Last error',
     retryRestarted:
       'Processing has been queued again. The video stays in Processing until the worker answers.',
+    listUnavailable:
+      'The list could not be loaded. The server may be unavailable — this is not an empty queue. Refresh to try again.',
     blockedOn: 'Blocked',
     resolutionNote: 'Note',
     rolesPermissions: 'Roles & permissions',

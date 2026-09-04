@@ -6,6 +6,7 @@ import { RecommendationSummary } from '@/components/player/RecommendationSummary
 import { RelationBadge } from '@/components/shared/RelationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Feedback';
 import { ApiError } from '@/lib/api/client';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
@@ -144,15 +145,23 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   //
   // The first page is what the board draws: the bars are built from the newest
   // clip per category, and the six of those are always in the newest page.
-  const clips = await media
+  //
+  // A failure here is said, not swallowed. This list used to fall back to an
+  // empty array, and an API that could not reach its database rendered the
+  // same page as a player with no clips — which is how an outage came to be
+  // reported as "videos and covers no longer load". The rest of the profile
+  // still renders; only the board is told the truth.
+  const clipList = await media
     .listForPlayer(
       playerId,
       undefined,
       {},
       session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 60 },
     )
-    .then((page) => page.items)
-    .catch(() => [] as Media[]);
+    .then((page) => ({ items: page.items, unavailable: false }))
+    .catch(() => ({ items: [] as Media[], unavailable: true }));
+  const clips = clipList.items;
+  const clipsUnavailable = clipList.unavailable;
 
   /*
    * The player, named and no more — see `personLd` for why it carries no birth
@@ -203,7 +212,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               refuses to shrink below its content. The clip category strip inside
               scrolls horizontally, and without this the item grows to the strip's
               full width instead — taking the whole page sideways with it. */}
-          <div className="min-w-0 sm:col-span-2">
+          <div className="min-w-0 space-y-3 sm:col-span-2">
+            {clipsUnavailable && <Alert tone="danger">{t.clips.loadFailed}</Alert>}
             <AttributeBoard
               player={player}
               assessments={assessments}

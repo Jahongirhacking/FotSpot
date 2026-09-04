@@ -753,6 +753,8 @@ export const uz = {
     tooLarge: 'Video juda katta (120 MB gacha).',
     pickCategory: 'Avval ko‘rsatkichni tanlang.',
     uploadFailed: 'Yuklab bo‘lmadi. Qayta urinib ko‘ring.',
+    loadFailed:
+      'Videolarni hozir yuklab bo‘lmadi. Server ishlamayotgan bo‘lishi mumkin — qayta urinish uchun sahifani yangilang.',
     cameraUnavailable: 'Kameraga ruxsat berilmadi. Video faylni tanlashingiz mumkin.',
     storageOffTitle: 'Video saqlash sozlanmagan',
     storageOffHint:
@@ -1702,6 +1704,8 @@ export const uz = {
     lastError: 'Oxirgi xato',
     retryRestarted:
       'Ishlov berish qayta navbatga qo‘yildi. Ishlovchi javob bergunga qadar video «Ishlov berilmoqda» holatida qoladi.',
+    listUnavailable:
+      'Ro‘yxatni yuklab bo‘lmadi. Server ishlamayotgan bo‘lishi mumkin — bu bo‘sh navbat emas. Qayta urinish uchun sahifani yangilang.',
     blockedOn: 'Bloklangan',
     resolutionNote: 'Izoh',
     rolesPermissions: 'Rollar va ruxsatlar',

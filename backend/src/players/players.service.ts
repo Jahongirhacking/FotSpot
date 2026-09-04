@@ -19,6 +19,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
 import { computeCardStars } from './card-stars.util';
+import { dominantFootWhere } from './dominant-foot.util';
 import { searchOrderBy } from './search-order.util';
 import {
   CreatePlayerProfileDto,
@@ -518,7 +519,8 @@ export class PlayersService {
         : '\u0000';
     }
     if (dto.playingStyle) where.playingStyle = dto.playingStyle;
-    if (dto.dominantFoot) where.dominantFoot = dto.dominantFoot;
+    // BOTH is not a third foot: a two-footed player answers to LEFT and RIGHT.
+    if (dto.dominantFoot) where.dominantFoot = dominantFootWhere(dto.dominantFoot);
     if (dto.position) {
       where.OR = [{ primaryPosition: dto.position }, { secondaryPosition: dto.position }];
     }
