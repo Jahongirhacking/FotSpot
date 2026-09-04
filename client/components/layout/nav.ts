@@ -86,6 +86,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
      */
     case 'coach':
       return [
+        { href: '/dashboard', label: 'home', icon: Home },
         { href: '/academies/mine', label: 'myAcademy', icon: Building2 },
         { href: '/groups/mine', label: 'myGroup', icon: Users },
         { href: '/feed', label: 'feed', icon: Clapperboard },
