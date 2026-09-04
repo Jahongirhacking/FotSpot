@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { ModerationService } from './moderation.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
+import { CreateReportDto, ListMediaDto, ResolveReportDto } from './dto/moderation.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -48,6 +48,27 @@ export class ModerationController {
   }
 
   /**
+   * Every video by processing status — the list a stuck upload was missing from.
+   *
+   * The review queue above is filtered on what a moderator has decided; this is
+   * filtered on what the worker has established (`?status=PROCESSING`, `FAILED`,
+   * … or `ALL`). PROCESSING rows carry what the queue says about their job, so
+   * an admin can tell "still running" from "nothing is going to finish this".
+   */
+  @Roles('admin', 'super_admin')
+  @Get('media')
+  listMedia(@Query() dto: ListMediaDto) {
+    return this.moderationService.listMediaByStatus(dto);
+  }
+
+  /** How many videos are in each processing status, for the filter chips. */
+  @Roles('admin', 'super_admin')
+  @Get('media/counts')
+  countMedia() {
+    return this.moderationService.countMediaByStatus();
+  }
+
+  /**
    * Clips an admin has blocked — **super admin only**.
    *
    * Gated to the super admin because the only action on this list is the one
@@ -74,8 +95,9 @@ export class ModerationController {
   }
 
   /**
-   * Re-run finalisation on a failed upload. Not a status override — the clip is
-   * re-checked in the bucket and becomes ACTIVE only if it is really there.
+   * Re-run processing. Not a status override — a FAILED clip is re-checked in
+   * the bucket and becomes ACTIVE only if it is really there; a PROCESSING clip
+   * with no live job is queued again, exactly as the stale sweep would queue it.
    */
   @Roles('super_admin')
   @Patch('media/:id/retry')

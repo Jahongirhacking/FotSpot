@@ -106,7 +106,7 @@ export class MediaController {
     return this.mediaService.listForPlayer(playerId, dto, viewerUserId);
   }
 
-  /** The uploader corrects their own clip's title, description or rating. */
+  /** The uploader corrects their own clip's title, description, rating or category. */
   @Patch(':id')
   update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateMediaDto) {
     return this.mediaService.update(user.userId, id, dto);

@@ -5,6 +5,7 @@ import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { MediaFinaliserService } from './media-finaliser.service';
 import { MediaProcessor } from './media.processor';
+import { MediaRecoveryService } from './media-recovery.service';
 import { VideoTranscoderService } from './video-transcoder.service';
 import { MEDIA_QUEUE } from './media-processing.constants';
 import { AcademiesModule } from '../academies/academies.module';
@@ -23,9 +24,17 @@ import { TariffsModule } from '../tariffs/tariffs.module';
     BullModule.registerQueue({ name: MEDIA_QUEUE }),
   ],
   controllers: [MediaController],
-  providers: [MediaService, MediaProcessor, MediaFinaliserService, VideoTranscoderService],
+  providers: [
+    MediaService,
+    MediaProcessor,
+    MediaFinaliserService,
+    VideoTranscoderService,
+    MediaRecoveryService,
+  ],
   // The finaliser is exported for the super admin's retry: re-running the same
-  // checks is the only honest way to bring a FAILED upload back.
-  exports: [MediaService, MediaFinaliserService],
+  // checks is the only honest way to bring a FAILED upload back. Recovery is
+  // exported for the same screen: a clip stuck at PROCESSING is restarted the
+  // way the sweep would restart it, not promoted.
+  exports: [MediaService, MediaFinaliserService, MediaRecoveryService],
 })
 export class MediaModule {}

@@ -10,6 +10,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn, initials } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { patchFeedClip } from './feed-cache';
 
 /**
  * How long a slide must actually play before it counts as watched.
@@ -55,8 +56,12 @@ const reportedThisSession = new Set<string>();
  * decoders — this is the same rule as the stream behind it, and for the same
  * phone.
  *
- * The like is optimistic against the feed cache, because a heart that waits for a
- * round trip feels broken, and it is corrected by the refetch either way.
+ * The like is optimistic, and it is written into the feed cache in place — never
+ * by invalidating it. Invalidating refetched every page, and the server's ranking
+ * demotes a liked clip hard, so the slide the user had just pressed moved and
+ * the viewer, which addresses slides by position, showed them a different video
+ * at the same scroll offset. The order a session was dealt stays put; the new
+ * ranking is what the next session gets.
  */
 export function ShortViewer({
   clips,
@@ -213,19 +218,7 @@ function Slide({
      * the ground under the reader — and doing nothing would send them back to a
      * grid still showing the count they just changed.
      */
-    queryClient.setQueryData(
-      ['feed'],
-      (cached: { pages?: { items?: { id: string; views: number }[] }[] } | undefined) =>
-        cached && {
-          ...cached,
-          pages: cached.pages?.map((page) => ({
-            ...page,
-            items: page.items?.map((item) =>
-              item.id === clip?.id ? { ...item, views: item.views + 1 } : item,
-            ),
-          })),
-        },
-    );
+    patchFeedClip(queryClient, clip?.id, (item) => ({ ...item, views: item.views + 1 }));
 
     void browserFetch(`/media/${clip?.id}/view`, { method: 'POST' }).catch(() => {
       // Put the number back and allow a later attempt: an unsent view is not
@@ -243,14 +236,27 @@ function Slide({
     else video.pause();
   }, [active, paused, mounted]);
 
+  /*
+   * Like: this slide's heart, this clip's cached row, and a request in the
+   * background. Nothing about the feed's *order* is touched — see the note on
+   * ShortViewer. The cache is patched so the grid behind this viewer agrees
+   * with the heart when the viewer closes, not so anything reorders.
+   */
   const toggleLike = useMutation({
     mutationFn: (next: boolean) =>
       browserFetch(`/media/${clip?.id}/like`, { method: next ? 'POST' : 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed'] }),
-    onError: () => {
-      // Put the heart back where it was; the server said no.
-      setLiked(clip?.likedByMe);
-      setLikes(clip?.likes);
+    onError: (_error, next) => {
+      // Put the heart back where it was, on the slide and in the cache; the
+      // server said no. Undone from `next`, not from the `clip` prop: the
+      // optimistic cache patch has already rewritten that prop to the state
+      // being rolled back, so it is the one thing not to restore from.
+      setLiked(!next);
+      setLikes((current) => current + (next ? -1 : 1));
+      patchFeedClip(queryClient, clip?.id, (item) => ({
+        ...item,
+        likedByMe: !next,
+        likes: item.likes + (next ? -1 : 1),
+      }));
     },
   });
 
@@ -258,6 +264,11 @@ function Slide({
     const next = !liked;
     setLiked(next);
     setLikes((current) => current + (next ? 1 : -1));
+    patchFeedClip(queryClient, clip?.id, (item) => ({
+      ...item,
+      likedByMe: next,
+      likes: item.likes + (next ? 1 : -1),
+    }));
     toggleLike.mutate(next);
   }
 
@@ -284,7 +295,6 @@ function Slide({
             className="size-full object-contain"
           />
         ) : clip?.posterUrl ? (
-           
           <LoadingImage src={clip?.posterUrl} alt="" className="size-full object-contain" />
         ) : (
           <span className="grid size-full place-items-center text-white/70">

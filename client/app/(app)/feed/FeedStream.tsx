@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Eye, Heart, Play, TriangleAlert, Volume2, VolumeX } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { FeedClip, FeedPage } from '@/lib/api/types';
@@ -13,6 +13,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { ShortViewer } from './ShortViewer';
+import { FEED_QUERY_KEY, FEED_RANKING_TTL_MS, patchFeedClip } from './feed-cache';
 import { ageBand, cn, initials } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
@@ -47,7 +48,16 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
   const [muted, setMuted] = React.useState(true);
 
   const query = useInfiniteQuery({
-    queryKey: ['feed'],
+    queryKey: FEED_QUERY_KEY,
+    /*
+     * The order is a snapshot for the session — see FEED_RANKING_TTL_MS.
+     *
+     * Without this the query was stale at once, so switching tabs and back, or
+     * a reconnect, refetched every page and let the ranking reorder a feed the
+     * reader was in the middle of. Pagination is unaffected: `fetchNextPage`
+     * appends regardless of freshness.
+     */
+    staleTime: FEED_RANKING_TTL_MS,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       browserFetch<FeedPage>(`/media/feed?page=${pageParam}&pageSize=${PAGE_SIZE}`),
@@ -161,16 +171,24 @@ function FeedCard({
    * updates here; the new order is what they get on their next visit, which is
    * when "don't show me this again" is what they actually want.
    */
+  const queryClient = useQueryClient();
   const [liked, setLiked] = React.useState(clip?.likedByMe);
   const [likes, setLikes] = React.useState(clip?.likes);
 
   const like = useMutation({
     mutationFn: (next: boolean) =>
       browserFetch(`/media/${clip?.id}/like`, { method: next ? 'POST' : 'DELETE' }),
-    onError: () => {
-      // Put the heart back; the server said no.
-      setLiked(clip?.likedByMe);
-      setLikes(clip?.likes);
+    onError: (_error, next) => {
+      // Put the heart back, here and in the cached row; the server said no.
+      // Undone from `next`: the cache patch below has already changed what the
+      // `clip` prop says, so restoring from the prop would keep the like.
+      setLiked(!next);
+      setLikes((current) => current + (next ? -1 : 1));
+      patchFeedClip(queryClient, clip?.id, (item) => ({
+        ...item,
+        likedByMe: !next,
+        likes: item.likes + (next ? -1 : 1),
+      }));
     },
   });
 
@@ -178,6 +196,14 @@ function FeedCard({
     const next = !liked;
     setLiked(next);
     setLikes((current) => current + (next ? 1 : -1));
+    // The cached row too, so the full-screen viewer opened afterwards seeds its
+    // heart from what the reader just did rather than from the page as fetched.
+    // In place — the order is untouched.
+    patchFeedClip(queryClient, clip?.id, (item) => ({
+      ...item,
+      likedByMe: next,
+      likes: item.likes + (next ? 1 : -1),
+    }));
     like.mutate(next);
   }
   const label =

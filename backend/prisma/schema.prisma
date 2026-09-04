@@ -976,6 +976,17 @@ model Media {
   /// When the worker last answered about this clip, whichever way it went.
   processedAt DateTime?
 
+  /**
+   * How many times processing has been *restarted* for this clip — by the
+   * stale-processing sweep or by an admin — not how many attempts one job made
+   * (BullMQ counts those, and forgets them when the job is purged).
+   *
+   * Kept on the row because it is the bound on the sweep: a clip whose job has
+   * died can be re-queued only this many times before it is marked FAILED, and
+   * that count has to survive both a worker restart and Redis being flushed.
+   */
+  processingAttempts Int @default(0)
+
   title       String?
   description String?
 

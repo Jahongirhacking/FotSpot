@@ -1,20 +1,41 @@
+import type * as React from 'react';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { Video } from 'lucide-react';
 import { getSession } from '@/lib/session';
 import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { admin } from '@/lib/api/resources';
 import type { Page } from '@/lib/api/client';
-import type { PendingClip } from '@/lib/api/types';
+import type { MediaStatusFilter, PendingClip } from '@/lib/api/types';
 import { Alert } from '@/components/ui/Feedback';
+import { Badge } from '@/components/ui/Badge';
+import { Pagination } from '@/components/shared/Pagination';
+import { cn } from '@/lib/utils';
 import { ModerationTabs } from '../ModerationTabs';
+import { StatusVideoList } from './StatusVideoList';
 import { VideoReviewQueue } from './VideoReviewQueue';
 
 export const metadata: Metadata = { title: 'Video review' };
 
 const PAGE_SIZE = 20;
 const EMPTY: Page<PendingClip> = { items: [], total: 0, page: 1, pageSize: PAGE_SIZE };
+
+/** The worker's statuses, in the order the chips show them. */
+const STATUS_FILTERS: MediaStatusFilter[] = [
+  'ALL',
+  'PROCESSING',
+  'ACTIVE',
+  'FAILED',
+  'FLAGGED',
+  'REMOVED',
+];
+
+function statusFilter(raw: string | undefined): MediaStatusFilter | null {
+  const upper = raw?.toUpperCase();
+  return STATUS_FILTERS.find((status) => status === upper) ?? null;
+}
 
 /**
  * The admin moderation feed: every clip nobody has watched yet.
@@ -33,7 +54,7 @@ const EMPTY: Page<PendingClip> = { items: [], total: 0, page: 1, pageSize: PAGE_
 export default async function VideoModerationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; status?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect('/login?next=/admin/moderation/videos');
@@ -49,13 +70,30 @@ export default async function VideoModerationPage({
    * first clip a player uploaded existed and was reviewable by nobody, and
    * nothing on the screen said there was more.
    */
-  const page = Number((await searchParams)?.page ?? 1) || 1;
-  const pending = await admin
-    .pendingMedia(
-      { page, pageSize: PAGE_SIZE },
-      { token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' },
-    )
-    .catch(() => ({ ...EMPTY, page }));
+  const params = await searchParams;
+  const page = Number(params?.page ?? 1) || 1;
+  /*
+   * Two lists behind one screen. With no `status`, this is the review queue it
+   * has always been. With one, it is the same videos by the worker's status —
+   * which is where a clip stuck at PROCESSING, or one the worker gave up on,
+   * is found. The counts are fetched either way, so the chips can say that
+   * there *are* three videos processing while the admin is looking at the
+   * queue that, by definition, cannot show them.
+   */
+  const status = statusFilter(params?.status);
+  const opts = {
+    token: session.accessToken,
+    activeRole: session.activeRole,
+    cache: 'no-store' as const,
+  };
+  const [counts, list] = await Promise.all([
+    admin.mediaCounts(opts).catch(() => null),
+    (status
+      ? admin.mediaByStatus({ status, page, pageSize: PAGE_SIZE }, opts)
+      : admin.pendingMedia({ page, pageSize: PAGE_SIZE }, opts)
+    ).catch(() => ({ ...EMPTY, page })),
+  ]);
+  const isSuperAdmin = isSuperAdminActing(session.activeRole);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -64,7 +102,32 @@ export default async function VideoModerationPage({
           <Video className="text-primary size-5" aria-hidden /> {t.admin.videoReview}
         </h1>
         <p className="text-muted text-sm">{t.admin.videoReviewHint}</p>
-        <ModerationTabs canSeeBlocked={isSuperAdminActing(session.activeRole)} />
+        <ModerationTabs canSeeBlocked={isSuperAdmin} />
+
+        {/* The worker's axis. The first chip is the queue; the rest are statuses. */}
+        <nav className="flex flex-wrap gap-1.5" aria-label={t.admin.statusFilterLabel}>
+          <FilterChip href="/admin/moderation/videos" active={status === null}>
+            {t.admin.awaitingReview}
+          </FilterChip>
+          {STATUS_FILTERS.map((filter) => (
+            <FilterChip
+              key={filter}
+              href={`/admin/moderation/videos?status=${filter}`}
+              active={status === filter}
+            >
+              {t.admin.statusLabels[filter]}
+              {counts && counts[filter] > 0 && (
+                <Badge
+                  variant={filter === 'PROCESSING' || filter === 'FAILED' ? 'warning' : 'neutral'}
+                  className="ml-1"
+                >
+                  {counts[filter]}
+                </Badge>
+              )}
+            </FilterChip>
+          ))}
+        </nav>
+        {status === 'PROCESSING' && <p className="text-muted text-xs">{t.admin.stuckHint}</p>}
       </header>
 
       {/* README §11.5: anything involving a child jumps every other queue, and
@@ -74,14 +137,48 @@ export default async function VideoModerationPage({
         {t.dashboard.childSafetyBody}
       </Alert>
 
-      <VideoReviewQueue
-        initial={pending}
-        page={page}
-        pageSize={PAGE_SIZE}
-        // The API refuses a plain admin regardless (`@Roles('super_admin')`);
-        // this only decides whether to draw a button that would be refused.
-        canDelete={isSuperAdminActing(session.activeRole)}
-      />
+      {status ? (
+        <>
+          {/* Retry is the super admin's, like the failed-uploads section: the
+              API refuses a plain admin regardless (`@Roles('super_admin')`). */}
+          <StatusVideoList clips={list.items} canRetry={isSuperAdmin} />
+          <Pagination page={list.page} pageSize={list.pageSize} total={list.total} />
+        </>
+      ) : (
+        <VideoReviewQueue
+          initial={list}
+          page={page}
+          pageSize={PAGE_SIZE}
+          // The API refuses a plain admin regardless (`@Roles('super_admin')`);
+          // this only decides whether to draw a button that would be refused.
+          canDelete={isSuperAdmin}
+        />
+      )}
     </div>
+  );
+}
+
+function FilterChip({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors',
+        active
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border hover:border-primary/50',
+      )}
+    >
+      {children}
+    </Link>
   );
 }
