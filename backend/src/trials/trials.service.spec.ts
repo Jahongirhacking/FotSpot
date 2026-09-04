@@ -604,3 +604,100 @@ describe('TrialsService.recordVerdict — the SMS on a pass', () => {
     expect(sms.sendTrialPass).not.toHaveBeenCalled();
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* Who the trial is for                                                        */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Gender eligibility, enforced where the application is created rather than
+ * where the button is drawn. A refusal happens before the upsert, the backing
+ * snapshot and any notification — the row is simply never made.
+ */
+describe('TrialsService.apply — who the trial is for', () => {
+  function applying(playerGender: string, trialGender: string) {
+    const built = build();
+    built.prisma.playerProfile.findUnique.mockResolvedValue({
+      ...PLAYER,
+      gender: playerGender,
+    } as typeof PLAYER);
+    built.prisma.trial.findUnique.mockResolvedValue({ ...TRIAL, gender: trialGender });
+    return built;
+  }
+
+  it.each([
+    ['male', 'male'],
+    ['female', 'female'],
+    ['male', 'general'],
+    ['female', 'general'],
+  ])('lets a %s player apply to a %s trial', async (playerGender, trialGender) => {
+    const { service, prisma, processA } = applying(playerGender, trialGender);
+
+    await service.apply('player-user-1', 'trial-1');
+
+    expect(prisma.trialApplication.upsert).toHaveBeenCalledTimes(1);
+    expect(processA.snapshotBackings).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['female', 'male', 'This trial is for male players only.'],
+    ['male', 'female', 'This trial is for female players only.'],
+  ])(
+    'refuses a %s player on a %s trial, saying why',
+    async (playerGender, trialGender, message) => {
+      const { service } = applying(playerGender, trialGender);
+
+      await expect(service.apply('player-user-1', 'trial-1')).rejects.toThrow(BadRequestException);
+      await expect(service.apply('player-user-1', 'trial-1')).rejects.toThrow(message);
+    },
+  );
+
+  it('creates no application and causes no side effect when it refuses', async () => {
+    const { service, prisma, processA, notifications, invitations } = applying('male', 'female');
+
+    await service.apply('player-user-1', 'trial-1').catch(() => undefined);
+
+    expect(prisma.trialApplication.upsert).not.toHaveBeenCalled();
+    expect(prisma.trialApplication.update).not.toHaveBeenCalled();
+    expect(processA.snapshotBackings).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+    expect(invitations.invite).not.toHaveBeenCalled();
+  });
+
+  /* The existing gates still come first: a closed or private trial is refused
+     for that reason, whoever asks. */
+  it('keeps the trial’s own gates ahead of the gender rule', async () => {
+    const { service, prisma } = applying('male', 'female');
+    prisma.trial.findUnique.mockResolvedValue({ ...TRIAL, gender: 'female', status: 'ARCHIVED' });
+
+    await expect(service.apply('player-user-1', 'trial-1')).rejects.toThrow(
+      'closed to new applications',
+    );
+  });
+
+  it('still refuses on age after the gender rule has passed', async () => {
+    const { service, prisma } = applying('male', 'male');
+    prisma.trial.findUnique.mockResolvedValue({
+      ...TRIAL,
+      gender: 'male',
+      ageRangeMin: 5,
+      ageRangeMax: 6,
+    });
+
+    await expect(service.apply('player-user-1', 'trial-1')).rejects.toThrow(/age/);
+    expect(prisma.trialApplication.upsert).not.toHaveBeenCalled();
+  });
+
+  /* A trial created before the rule carries no gender in this fixture: open. */
+  it('treats a trial with no stated gender as open', async () => {
+    const { service, prisma } = build();
+    prisma.playerProfile.findUnique.mockResolvedValue({
+      ...PLAYER,
+      gender: 'female',
+    } as typeof PLAYER);
+
+    await service.apply('player-user-1', 'trial-1');
+
+    expect(prisma.trialApplication.upsert).toHaveBeenCalledTimes(1);
+  });
+});

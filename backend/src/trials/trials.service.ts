@@ -38,6 +38,7 @@ interface AcademySummaryRow {
   logoKey: string | null;
 }
 import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
+import { assertGenderEligible } from './trial-eligibility.util';
 import {
   compareNewest,
   compareRecommended,
@@ -1330,6 +1331,11 @@ export class TrialsService {
     if (trial.applyDeadline && trial.applyDeadline < new Date()) {
       throw new BadRequestException('Applications for this trial have closed');
     }
+
+    // Who the trial is for. Before the age check and before any write: a
+    // refusal here leaves no application, no snapshot and no notification.
+    // The same rule guards the manager's invitation — see trial-eligibility.util.
+    assertGenderEligible(trial, player);
 
     /*
      * Only a trial that states a range can turn somebody away on age. A private

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { EndorsementRole, RecommendationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertGenderEligible } from '../trials/trial-eligibility.util';
 import { StorageService } from '../storage/storage.service';
 import { EndorsementsService } from '../academies/endorsements.service';
 import { academyVisibleWeight, contributionOf } from './recommendation-weight.util';
@@ -1417,9 +1418,20 @@ export class RecommendationsService {
         firstName: true,
         lastName: true,
         primaryPosition: true,
+        gender: true,
       },
     });
     if (!player) throw new NotFoundException('Player not found');
+
+    /*
+     * The private trial is created for this one player, so it is for their
+     * gender — not the column's default, which would file every invited girl
+     * under a boys' trial. The same rule that refuses a mismatched applicant
+     * on the open board is asserted here, before anything is written, so an
+     * invitation can never be the way round it.
+     */
+    const trialGender = player.gender;
+    assertGenderEligible({ gender: trialGender }, player);
 
     const date = new Date(dto.date);
     if (Number.isNaN(date.getTime())) throw new BadRequestException('That is not a date');
@@ -1460,6 +1472,7 @@ export class RecommendationsService {
         data: {
           academyId,
           type: 'PRIVATE',
+          gender: trialGender,
           title: `Private trial — ${player.firstName} ${player.lastName}`,
           location: dto.location.trim(),
           date,
