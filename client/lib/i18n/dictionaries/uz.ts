@@ -123,6 +123,9 @@ export const uz = {
     emailCodeNotice: 'Bu manzilga tasdiqlash kodi yuboriladi.',
     emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
+    /* Kirish va ro‘yxatdan o‘tish formalari ostidagi yordam qismi. */
+    supportTitle: 'Yordam kerakmi?',
+    supportMessage: 'Iltimos, menga Fotspot profilimga kirishda yordam kerak',
     orContinueWith: 'yoki',
     signOut: 'Chiqish',
     welcomeBack: 'Xush kelibsiz',
