@@ -60,7 +60,7 @@ export interface SocialAccount {
 
 export const SOCIAL_ACCOUNTS: SocialAccount[] = [
   { network: 'telegram', handle: '@fotspot_uz', href: 'https://t.me/FotSpot_uz' },
-  // { network: 'instagram', handle: '@fotspot', href: 'https://instagram.com/fotspot' },
+  { network: 'instagram', handle: '@fotspot.uz', href: 'https://instagram.com/fotspot.uz' },
   // { network: 'facebook', handle: 'FotSpot', href: 'https://facebook.com/fotspot' },
   { network: 'youtube', handle: '@FotSpot_uz', href: 'https://www.youtube.com/@fotspot_uz' },
 ];
