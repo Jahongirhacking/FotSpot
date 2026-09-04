@@ -110,6 +110,9 @@ export const en: Dictionary = {
     emailCodeNotice: 'We will send a confirmation code to this address.',
     emailOrUsername: 'Email or username',
     signIn: 'Sign in',
+    /* The help footer under the sign-in and register forms. */
+    supportTitle: 'Need help?',
+    supportMessage: 'Please help me sign in to my FotSpot profile',
     orContinueWith: 'or',
     signOut: 'Sign out',
     welcomeBack: 'Welcome back',
@@ -711,6 +714,10 @@ export const en: Dictionary = {
       'This is your own claim. Until a coach confirms it the card shows it as self-reported.',
     clipTitle: 'Title',
     description: 'Description',
+    autoDate: 'Automatic date (today)',
+    autoDateHint: 'The clip is dated today. Untick to say when it was actually filmed.',
+    recordedOn: 'Recording date',
+    recordedInFuture: 'The recording date cannot be in the future.',
     publish: 'Upload',
     optimising: 'Preparing your video…',
     optimisingHint:

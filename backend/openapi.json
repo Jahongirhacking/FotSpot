@@ -7258,6 +7258,11 @@
             "minimum": 0,
             "maximum": 100
           },
+          "recordedAt": {
+            "type": "string",
+            "description": "When the footage was taken — a bare `YYYY-MM-DD`, or a full timestamp.\nOmitted means today. Anything after today in Asia/Tashkent is refused by\nthe service (see recorded-at.util), not only by the date picker.",
+            "example": "2026-05-10"
+          },
           "storageKey": {
             "type": "string"
           },

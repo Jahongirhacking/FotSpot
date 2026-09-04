@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { applyTheme, readTheme, subscribeToTheme, type ThemeChoice } from '@/lib/theme';
+import { readTheme, subscribeToTheme, type ThemeChoice } from '@/lib/theme';
+import { revealTheme } from '@/lib/theme-reveal';
 import { useI18n } from './I18nProvider';
 import { Menu, MenuContent, MenuLabel, MenuRadioItem, MenuTrigger } from '@/components/ui/Menu';
 
@@ -45,10 +46,22 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   };
 
   const Active = OPTIONS.find((option) => option?.value === choice)?.icon ?? Monitor;
+  // The reveal grows from this button, so the switch reads as coming from
+  // where it was asked for — see lib/theme-reveal.
+  const trigger = React.useRef<HTMLButtonElement | null>(null);
+
+  function choose(value: ThemeChoice) {
+    const rect = trigger.current?.getBoundingClientRect();
+    revealTheme(value, {
+      x: rect ? rect.left + rect.width / 2 : window.innerWidth,
+      y: rect ? rect.top + rect.height / 2 : 0,
+    });
+  }
 
   return (
     <Menu>
       <MenuTrigger
+        ref={trigger}
         className="hover:bg-surface-2 flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium"
         aria-label={`${t.common.theme}: ${label[choice]}`}
       >
@@ -59,11 +72,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
       <MenuContent>
         <MenuLabel>{t.common.theme}</MenuLabel>
         {OPTIONS.map(({ value, icon: Icon }) => (
-          <MenuRadioItem
-            key={value}
-            checked={value === choice}
-            onSelect={() => applyTheme(value)}
-          >
+          <MenuRadioItem key={value} checked={value === choice} onSelect={() => choose(value)}>
             <Icon className="size-4" aria-hidden />
             {label[value]}
           </MenuRadioItem>

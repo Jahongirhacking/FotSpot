@@ -434,6 +434,8 @@ export interface RecentClip extends Media {
     birthDate: string;
     primaryPosition: string | null;
     region: string | null;
+    /** The uploader's picture, or null for initials. */
+    avatarUrl: string | null;
   };
 }
 
@@ -1282,6 +1284,11 @@ export const media = {
       title?: string;
       description?: string;
       posterKey?: string;
+      /**
+       * When the footage was taken, as `YYYY-MM-DD`. Omitted means today. The
+       * API refuses anything after today in Asia/Tashkent.
+       */
+      recordedAt?: string;
       /**
        * True when the browser already produced the optimised MP4.
        *

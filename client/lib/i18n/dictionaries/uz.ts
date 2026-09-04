@@ -123,6 +123,9 @@ export const uz = {
     emailCodeNotice: 'Bu manzilga tasdiqlash kodi yuboriladi.',
     emailOrUsername: 'Email yoki login',
     signIn: 'Kirish',
+    /* Kirish va ro‘yxatdan o‘tish formalari ostidagi yordam qismi. */
+    supportTitle: 'Yordam kerakmi?',
+    supportMessage: 'Iltimos, menga Fotspot profilimga kirishda yordam kerak',
     orContinueWith: 'yoki',
     signOut: 'Chiqish',
     welcomeBack: 'Xush kelibsiz',
@@ -740,6 +743,11 @@ export const uz = {
       'Bu o‘z bahoyingiz. Murabbiy tasdiqlagunicha karta uni "o‘zi bergan baho" sifatida ko‘rsatadi.',
     clipTitle: 'Sarlavha',
     description: 'Tavsif',
+    autoDate: 'Avtomatik sana (bugun)',
+    autoDateHint:
+      'Video bugungi sana bilan belgilanadi. Aslida qachon suratga olinganini ko‘rsatish uchun belgini olib tashlang.',
+    recordedOn: 'Yozib olingan sana',
+    recordedInFuture: 'Yozib olingan sana kelajakda bo‘lishi mumkin emas.',
     publish: 'Yuklash',
     optimising: 'Video tayyorlanmoqda…',
     optimisingHint:

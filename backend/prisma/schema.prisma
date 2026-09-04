@@ -990,6 +990,18 @@ model Media {
   title       String?
   description String?
 
+  /**
+   * When the footage was taken, as the player says.
+   *
+   * Not `createdAt`: that is when the row was written, which is the upload —
+   * and a clip filmed in May and uploaded in September was still filmed in
+   * May. The player supplies it (the uploader defaults to today) and the API
+   * refuses anything after today in the product's time zone, so it can be
+   * late but never ahead of the upload. Existing rows were backfilled from
+   * `createdAt`, the only date they had.
+   */
+  recordedAt DateTime @default(now())
+
   /// The 0–100 rating for `category` that this clip evidences.
   ///
   /// Null for MATCH_HIGHLIGHTS, which evidences no single attribute. The newest

@@ -490,3 +490,64 @@
     will-change: auto !important;
   }
 }
+
+/*
+ * The landing page's black band — FotSpot's black with a hint of pitch green,
+ * the same in both themes (see components/landing/LandingSection.tsx).
+ */
+.landing-band-dark {
+  background-color: oklch(14% 0.022 165);
+  background-image:
+    radial-gradient(60% 80% at 100% 0%, oklch(52% 0.14 152 / 0.18), transparent 60%),
+    radial-gradient(50% 70% at 0% 100%, oklch(52% 0.14 152 / 0.12), transparent 60%);
+}
+
+/*
+ * The clips band — pitch green with white type, in both themes.
+ *
+ * Light: a deep green the theme's white cards sit on. Dark: the same hue,
+ * darker and greyer, so it still reads as a band against the near-black page
+ * rather than glowing. Chosen per theme the way the hero photograph is —
+ * `prefers-color-scheme` unless the toggle has said otherwise.
+ */
+.landing-band-primary {
+  background-color: oklch(40.292% 0.10776 151.276 / 0.774);
+  background-image:
+    radial-gradient(60% 80% at 100% 0%, oklch(64% 0.16 150 / 0.35), transparent 60%),
+    radial-gradient(50% 70% at 0% 100%, oklch(28% 0.08 160 / 0.55), transparent 60%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .landing-band-primary {
+    background-color: oklch(25% 0.065 158);
+    background-image:
+      radial-gradient(60% 80% at 100% 0%, oklch(52% 0.14 152 / 0.28), transparent 60%),
+      radial-gradient(50% 70% at 0% 100%, oklch(16% 0.03 165 / 0.7), transparent 60%);
+  }
+}
+:root[data-theme='dark'] .landing-band-primary {
+  background-color: oklch(25% 0.065 158);
+  background-image:
+    radial-gradient(60% 80% at 100% 0%, oklch(52% 0.14 152 / 0.28), transparent 60%),
+    radial-gradient(50% 70% at 0% 100%, oklch(16% 0.03 165 / 0.7), transparent 60%);
+}
+
+/*
+ * The theme switch as a circle growing from the toggle — lib/theme-reveal.ts.
+ *
+ * The browser's default cross-fade is switched off and the new snapshot is
+ * stacked above the old one, so the clip-path animation on the new view is
+ * the whole effect. Scoped to `.theme-reveal` on the root, which the switch
+ * adds for the duration and removes after, so no other view transition
+ * inherits these rules.
+ */
+:root.theme-reveal::view-transition-old(root),
+:root.theme-reveal::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.theme-reveal::view-transition-old(root) {
+  z-index: 1;
+}
+:root.theme-reveal::view-transition-new(root) {
+  z-index: 2;
+}

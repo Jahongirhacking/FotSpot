@@ -110,6 +110,9 @@ export const ru: Dictionary = {
     emailCodeNotice: 'На этот адрес придёт код подтверждения.',
     emailOrUsername: 'Email или логин',
     signIn: 'Войти',
+    /* Подвал помощи под формами входа и регистрации. */
+    supportTitle: 'Нужна помощь?',
+    supportMessage: 'Пожалуйста, помогите мне войти в мой профиль FotSpot',
     orContinueWith: 'или',
     signOut: 'Выйти',
     welcomeBack: 'С возвращением',
@@ -710,6 +713,11 @@ export const ru: Dictionary = {
       'Это ваша самооценка. Пока тренер её не подтвердит, карточка показывает её как самооценку.',
     clipTitle: 'Заголовок',
     description: 'Описание',
+    autoDate: 'Автоматическая дата (сегодня)',
+    autoDateHint:
+      'Видео датируется сегодняшним днём. Снимите галочку, чтобы указать, когда оно было снято.',
+    recordedOn: 'Дата съёмки',
+    recordedInFuture: 'Дата съёмки не может быть в будущем.',
     publish: 'Загрузить',
     optimising: 'Готовим видео…',
     optimisingHint:

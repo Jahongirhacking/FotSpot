@@ -1,3 +1,4 @@
+import { SupportFooter } from '@/components/auth/SupportFooter';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { FotSpotMark } from '@/components/shared/FotSpotMark';
@@ -21,9 +22,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <LanguageSwitcher />
         </div>
       </header>
-      <main className="flex flex-1 items-center justify-center p-4 pb-16">
+      <main className="flex flex-1 items-center justify-center p-4 pb-8">
         <div className="w-full max-w-md">{children}</div>
       </main>
+      {/* Who to ask when the form above is the problem — the same on every
+          screen in this group, so neither page repeats it. */}
+      <SupportFooter />
     </div>
   );
 }

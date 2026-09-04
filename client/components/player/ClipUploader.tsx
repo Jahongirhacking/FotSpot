@@ -12,6 +12,7 @@ import { uploadToStorage } from '@/lib/api/upload';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS } from '@/lib/player-card';
 import { capturePoster } from '@/lib/poster';
 import { cn, formatDate } from '@/lib/utils';
+import { isAfterToday, todayInputValue } from '@/lib/recorded-date';
 import { compressForFeed, MAX_DURATION_SECONDS, mustProcess } from '@/lib/video/compress';
 import type { CompressResult } from '@/lib/video/compress.types';
 import {
@@ -104,6 +105,13 @@ export function ClipUploader({
   const [rating, setRating] = React.useState(50);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
+  /*
+   * When the clip was filmed. On by default — most clips are uploaded the day
+   * they are shot, and a date nobody had to pick is a date nobody gets wrong.
+   * Off shows a date input capped at today; the API caps it again.
+   */
+  const [autoDate, setAutoDate] = React.useState(true);
+  const [recordedOn, setRecordedOn] = React.useState(() => todayInputValue());
   const [error, setError] = React.useState<string | null>(null);
   const [dragging, setDragging] = React.useState(false);
 
@@ -170,6 +178,7 @@ export function ClipUploader({
   const upload = useMutation({
     mutationFn: async () => {
       if (!file || !category) throw new Error(t.clips.pickCategory);
+      if (!autoDate && isAfterToday(recordedOn)) throw new Error(t.clips.recordedInFuture);
 
       /*
        * The optimised copy if there is one, the original otherwise.
@@ -260,6 +269,8 @@ export function ClipUploader({
           ...(category === 'MATCH_HIGHLIGHTS' ? {} : { rating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
+          // Omitted means today, server-side; a picked date goes as a bare day.
+          ...(autoDate || !recordedOn ? {} : { recordedAt: recordedOn }),
           ...(posterKey ? { posterKey } : {}),
         },
       });
@@ -470,6 +481,36 @@ export function ClipUploader({
                     onChange={(event) => setDescription(event.target.value)}
                   />
                 </Field>
+
+                {/* When it was filmed. Today unless the player says otherwise;
+                    the picker cannot reach tomorrow, and neither can the API. */}
+                <label className="border-border bg-surface-2 flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+                  <input
+                    type="checkbox"
+                    checked={autoDate}
+                    onChange={(event) => setAutoDate(event.target.checked)}
+                    className="accent-primary mt-0.5 size-4 shrink-0 cursor-pointer"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">{t.clips.autoDate}</span>
+                    <span className="text-muted block text-xs">{t.clips.autoDateHint}</span>
+                  </span>
+                </label>
+
+                {!autoDate && (
+                  <Field label={t.clips.recordedOn} htmlFor="clip-recorded-on">
+                    <Input
+                      id="clip-recorded-on"
+                      type="date"
+                      value={recordedOn}
+                      max={todayInputValue()}
+                      onChange={(event) => setRecordedOn(event.target.value)}
+                    />
+                    {isAfterToday(recordedOn) && (
+                      <p className="text-danger mt-1 text-xs">{t.clips.recordedInFuture}</p>
+                    )}
+                  </Field>
+                )}
 
                 {/* Step 5 */}
                 <Button

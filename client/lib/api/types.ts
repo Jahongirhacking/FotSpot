@@ -103,6 +103,11 @@ export interface Media {
   /** When the worker last answered, whichever way. Null while PROCESSING. */
   processedAt?: string | null;
   /**
+   * When the footage was taken, as the player said at upload — not the upload
+   * itself, which is `createdAt`. Optional so an older cached response parses.
+   */
+  recordedAt?: string;
+  /**
    * Whether an admin has watched this clip yet — the gate on public visibility.
    *
    * A second axis, not a replacement for `status`: `status` says whether the

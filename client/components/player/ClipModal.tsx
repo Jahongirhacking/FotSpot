@@ -144,7 +144,9 @@ export function ClipModal({
                 )}
               </>
             )}
-            <span className="text-muted ml-auto text-xs">{formatDate(clip?.createdAt)}</span>
+            <span className="text-muted ml-auto text-xs">
+              {formatDate(clip?.recordedAt ?? clip?.createdAt)}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
