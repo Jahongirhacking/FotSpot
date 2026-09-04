@@ -38,6 +38,7 @@
  * rating on a child is exactly that.
  */
 
+import { CONTACT_EMAIL, PHONES, SOCIAL_ACCOUNTS } from './contact';
 import { absoluteUrl } from './seo';
 
 /**
@@ -105,24 +106,66 @@ export function breadcrumbLd(trail: Crumb[]) {
   };
 }
 
+/** Stable identifiers, so the site's entities can point at one another. */
+const ORGANIZATION_ID = () => `${absoluteUrl('/')}#organization`;
+const WEBSITE_ID = () => `${absoluteUrl('/')}#website`;
+
 /**
  * FotSpot itself, for the knowledge panel.
  *
  * Emitted once, from the root layout, so every page carries it — a knowledge
  * panel is about the site rather than the page, and a crawler that only meets
  * this on the landing page has to reach the landing page first.
+ *
+ * ## Only facts the codebase already states
+ *
+ * `sameAs`, `email` and `telephone` are read from `lib/contact.ts`, which is
+ * the same file the contact page and the footer render from — so the markup
+ * cannot say something the site does not. No `foundingDate`, no address, no
+ * follower counts: nothing here records those, and structured data is not the
+ * place to start guessing.
  */
 export function organizationLd(description: string) {
   return {
     '@type': 'Organization',
+    '@id': ORGANIZATION_ID(),
     name: 'FotSpot',
     url: absoluteUrl('/'),
     logo: absoluteUrl('/fotspot.png'),
     description,
+    ...(SOCIAL_ACCOUNTS.length > 0 ? { sameAs: SOCIAL_ACCOUNTS.map((a) => a.href) } : {}),
+    email: CONTACT_EMAIL,
+    ...(PHONES[0] ? { telephone: PHONES[0].e164 } : {}),
     // Where the platform operates. Not an address: FotSpot is not a place a
     // person visits, and a postal address it does not have would be invented.
     areaServed: { '@type': 'Country', name: 'Uzbekistan' },
   };
+}
+
+/**
+ * The site as a thing, published by the organisation.
+ *
+ * No `potentialAction` / `SearchAction`. The sitelinks search box it used to
+ * power was retired by Google, and a schema whose only reader has stopped
+ * reading is noise. What remains is the plain fact — this website exists and
+ * FotSpot publishes it — which is how the Organization and the pages hang
+ * together in one graph.
+ */
+export function websiteLd(description: string) {
+  return {
+    '@type': 'WebSite',
+    '@id': WEBSITE_ID(),
+    name: 'FotSpot',
+    url: absoluteUrl('/'),
+    description,
+    inLanguage: ['uz', 'ru', 'en'],
+    publisher: { '@id': ORGANIZATION_ID() },
+  };
+}
+
+/** Both site-level entities, as one `@graph` in one script tag. */
+export function siteGraphLd(description: string) {
+  return { '@graph': [organizationLd(description), websiteLd(description)] };
 }
 
 /** The subset of a trial this markup is allowed to look at. */
