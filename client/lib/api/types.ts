@@ -96,6 +96,13 @@ export interface Media {
    */
   failureReason?: string | null;
   /**
+   * How many times processing was restarted — by the stale sweep or an admin —
+   * before the worker answered. Bounded server-side; three means it gave up.
+   */
+  processingAttempts?: number;
+  /** When the worker last answered, whichever way. Null while PROCESSING. */
+  processedAt?: string | null;
+  /**
    * Whether an admin has watched this clip yet — the gate on public visibility.
    *
    * A second axis, not a replacement for `status`: `status` says whether the
@@ -165,7 +172,28 @@ export interface FeedPage {
  * is a fourteen-year-old's PACE clip — and a queue that fetched the player per
  * card would be a request per decision on a screen that has to stay fast.
  */
+/** The worker's axis, and `ALL` for the admin list's filter. */
+export type MediaStatus = Media['status'];
+export type MediaStatusFilter = 'ALL' | MediaStatus;
+
+/**
+ * What the queue says about a clip still PROCESSING.
+ *
+ * `live` is the one bit that matters: whether anything is still going to
+ * write a verdict on the row. A job that is waiting, delayed or active will;
+ * one that is finished, failed or missing will not, and a row still
+ * PROCESSING behind it is stuck. The rest is detail for the admin card.
+ */
+export interface ProcessingJobInfo {
+  state: string;
+  live: boolean;
+  attemptsMade: number | null;
+  failedReason: string | null;
+}
+
 export interface PendingClip extends Omit<Media, 'playerId'> {
+  /** Present only on PROCESSING clips from the status list. */
+  processing?: ProcessingJobInfo;
   player: {
     id: string;
     userId: string;

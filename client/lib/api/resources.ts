@@ -30,6 +30,7 @@ import type {
   MediaCategory,
   MediaType,
   PendingClip,
+  MediaStatusFilter,
   PlayerProfile,
   PlayingStyle,
   RankedRecommendation,
@@ -724,13 +725,29 @@ export const admin = {
   blockedMedia: (params: PageParams = {}, opts: Opts = {}) =>
     apiFetch<Page<PendingClip>>(`/moderation/media/blocked${toQuery({ ...params })}`, opts),
 
+  /**
+   * Every video by processing status — the list where a PROCESSING or FAILED
+   * clip is found. `status` defaults to ALL. PROCESSING rows carry what the
+   * queue says about their job.
+   */
+  mediaByStatus: (
+    params: { status?: MediaStatusFilter; page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<PendingClip>>(`/moderation/media${toQuery({ ...params })}`, opts),
+
+  /** How many videos sit in each processing status, for the filter chips. */
+  mediaCounts: (opts: Opts = {}) =>
+    apiFetch<Record<MediaStatusFilter, number>>('/moderation/media/counts', opts),
+
   /** Uploads the worker could not confirm. Super admin only. */
   failedMedia: (params: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
     apiFetch<Page<PendingClip>>(`/moderation/media/failed${toQuery({ ...params })}`, opts),
 
   /**
-   * Re-run processing on a failed upload. Not a status override: the clip is
-   * re-checked in storage and becomes ACTIVE only if the file is really there.
+   * Re-run processing. Not a status override: a failed upload is re-checked in
+   * storage and becomes ACTIVE only if the file is really there; a clip stuck
+   * at PROCESSING with no live job is queued again and stays PROCESSING until
+   * the worker answers.
    */
   retryMedia: (mediaId: string, opts: Opts = {}) =>
     apiFetch<Media>(`/moderation/media/${mediaId}/retry`, { method: 'PATCH', ...opts }),

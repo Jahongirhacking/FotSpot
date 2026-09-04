@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ServiceUnavailableException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,6 +9,7 @@ import {
 import { Prisma, type MediaModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaFinaliserService } from '../media/media-finaliser.service';
+import { MediaRecoveryService } from '../media/media-recovery.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { RedisKeys } from '../redis/redis.keys';
@@ -21,7 +23,12 @@ import {
   MODERATION_QUEUE_WHERE,
   transitionRefusal,
 } from '../media/media-visibility.util';
-import { CreateReportDto, ResolveReportDto } from './dto/moderation.dto';
+import {
+  CreateReportDto,
+  ListMediaDto,
+  type MediaStatusFilter,
+  ResolveReportDto,
+} from './dto/moderation.dto';
 import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 
 /** What the moderation queue needs about the player behind a clip. */
@@ -46,6 +53,7 @@ export class ModerationService {
     private storage: StorageService,
     private redis: RedisService,
     private finaliser: MediaFinaliserService,
+    private recovery: MediaRecoveryService,
   ) {}
 
   async fileReport(reporterId: string, dto: CreateReportDto) {
@@ -180,6 +188,56 @@ export class ModerationService {
   }
 
   /**
+   * Every video in one processing status, or all of them — the list PROCESSING
+   * and FAILED clips were missing from.
+   *
+   * The review queue is filtered on `moderationStatus`; this is filtered on
+   * `status`, the worker's axis, and asks nothing about moderation. A clip still
+   * PROCESSING carries what the queue says about its job — whether anything is
+   * still going to finish it, how many attempts that job has made, and how many
+   * times processing has been restarted — because "stuck" and "slow" look the
+   * same on the row and are not the same problem.
+   */
+  async listMediaByStatus(dto: ListMediaDto = {}) {
+    const status = dto.status ?? 'ALL';
+    const where: Prisma.MediaWhereInput = {
+      type: 'VIDEO',
+      ...(status === 'ALL' ? {} : { status }),
+    };
+    const page = await this.listMediaFor(where, dto);
+    const items = await Promise.all(
+      page.items.map(async (item) =>
+        item.status === 'PROCESSING'
+          ? { ...item, processing: await this.recovery.jobStatus(item.id) }
+          : item,
+      ),
+    );
+    return { ...page, items };
+  }
+
+  /** How many videos are in each processing status. One grouped count. */
+  async countMediaByStatus(): Promise<Record<MediaStatusFilter, number>> {
+    const groups = await this.prisma.media.groupBy({
+      by: ['status'],
+      where: { type: 'VIDEO' },
+      _count: { _all: true },
+    });
+    const counts: Record<MediaStatusFilter, number> = {
+      ALL: 0,
+      PROCESSING: 0,
+      ACTIVE: 0,
+      FAILED: 0,
+      FLAGGED: 0,
+      REMOVED: 0,
+    };
+    for (const group of groups) {
+      counts[group.status] = group._count._all;
+      counts.ALL += group._count._all;
+    }
+    return counts;
+  }
+
+  /**
    * Uploads the worker gave up on — **super admin only** (see the controller).
    *
    * The third list, and the one that did not exist. A FAILED clip was visible to
@@ -221,9 +279,47 @@ export class ModerationService {
   async retryFailedMedia(actorId: string, mediaId: string) {
     const media = await this.prisma.media.findUnique({
       where: { id: mediaId },
-      select: { id: true, status: true, storageKey: true, posterKey: true, failureReason: true },
+      select: {
+        id: true,
+        playerId: true,
+        status: true,
+        storageKey: true,
+        posterKey: true,
+        failureReason: true,
+        processingAttempts: true,
+      },
     });
     if (!media) throw new NotFoundException('Media not found');
+
+    /*
+     * A clip still PROCESSING is a different question: not "was the file
+     * there" but "is anything still going to answer". If the queue has a live
+     * job, the admin is told to wait. If it does not, processing is queued
+     * again through the same bounded restart the sweep uses — the transcode
+     * job, so an unoptimised original is never promoted — and the row stays
+     * PROCESSING until that job writes its verdict. Never ACTIVE from here.
+     */
+    if (media.status === 'PROCESSING') {
+      const job = await this.recovery.jobStatus(mediaId);
+      if (job.live) {
+        throw new ConflictException(
+          `This clip is still being processed (job ${job.state}). Retry if it has not finished within the hour.`,
+        );
+      }
+      const outcome = await this.recovery.restart(media, `admin ${actorId}`);
+      if (outcome === 'UNAVAILABLE') {
+        throw new ServiceUnavailableException(
+          'The processing queue is unreachable right now. Try again shortly.',
+        );
+      }
+      await this.audit.record(actorId, AuditAction.MEDIA_RETRIED, {
+        mediaId,
+        previousReason: null,
+        outcome,
+      });
+      return this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+    }
+
     if (media.status !== 'FAILED') {
       throw new ConflictException(
         media.status === 'ACTIVE'

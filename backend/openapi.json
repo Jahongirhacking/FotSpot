@@ -5774,6 +5774,92 @@
         ]
       }
     },
+    "/api/v1/moderation/media": {
+      "get": {
+        "operationId": "moderation_listMedia",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ALL",
+              "enum": [
+                "ALL",
+                "PROCESSING",
+                "ACTIVE",
+                "FAILED",
+                "FLAGGED",
+                "REMOVED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every video by processing status — the list a stuck upload was missing from.\n\nThe review queue above is filtered on what a moderator has decided; this is\nfiltered on what the worker has established (`?status=PROCESSING`, `FAILED`,\n… or `ALL`). PROCESSING rows carry what the queue says about their job, so\nan admin can tell \"still running\" from \"nothing is going to finish this\".",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/counts": {
+      "get": {
+        "operationId": "moderation_countMedia",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How many videos are in each processing status, for the filter chips.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/moderation/media/blocked": {
       "get": {
         "operationId": "moderation_listBlockedMedia",
@@ -5881,7 +5967,7 @@
             "bearer": []
           }
         ],
-        "summary": "Re-run finalisation on a failed upload. Not a status override — the clip is\nre-checked in the bucket and becomes ACTIVE only if it is really there.",
+        "summary": "Re-run processing. Not a status override — a FAILED clip is re-checked in\nthe bucket and becomes ACTIVE only if it is really there; a PROCESSING clip\nwith no live job is queued again, exactly as the stale sweep would queue it.",
         "tags": [
           "moderation"
         ]

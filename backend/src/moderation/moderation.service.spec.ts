@@ -7,6 +7,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { StorageService } from '../storage/storage.service';
 import type { MediaFinaliserService } from '../media/media-finaliser.service';
+import type { MediaRecoveryService } from '../media/media-recovery.service';
 
 /**
  * The admin half of video moderation: what the queue offers, what the two
@@ -47,6 +48,7 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
       updateMany: jest.fn(async () => ({ count: 1 })),
       update: jest.fn(async (): Promise<unknown> => row),
       delete: jest.fn(async (): Promise<unknown> => row),
+      groupBy: jest.fn(async (): Promise<unknown[]> => []),
     },
     $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   };
@@ -66,15 +68,30 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
     fail: jest.fn(async () => undefined),
   };
 
+  // The queue's view of a PROCESSING clip, and the bounded restart. Nothing
+  // live by default: the interesting case is the row nothing is working on.
+  const recovery = {
+    jobStatus: jest.fn(
+      async (): Promise<{
+        state: string;
+        live: boolean;
+        attemptsMade: number | null;
+        failedReason: string | null;
+      }> => ({ state: 'none', live: false, attemptsMade: null, failedReason: null }),
+    ),
+    restart: jest.fn(async (): Promise<string> => 'RESTARTED'),
+  };
+
   const service = new ModerationService(
     prisma as unknown as PrismaService,
     audit as unknown as AuditService,
     storage as unknown as StorageService,
     redis as unknown as RedisService,
     finaliser as unknown as MediaFinaliserService,
+    recovery as unknown as MediaRecoveryService,
   );
 
-  return { service, prisma, audit, redis, storage, finaliser };
+  return { service, prisma, audit, redis, storage, finaliser, recovery };
 }
 
 describe('listUnverifiedMedia — what a moderator is shown', () => {
@@ -512,5 +529,141 @@ describe('retryFailedMedia — bringing an upload back honestly', () => {
       previousReason: FAILED.failureReason,
       outcome: 'ACTIVE',
     });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* The list by processing status                                                */
+/* -------------------------------------------------------------------------- */
+
+/** The player projection `listMediaFor` includes, as Prisma would return it. */
+const PLAYER = {
+  id: 'player-1',
+  firstName: 'Ali',
+  lastName: 'Valiyev',
+  birthDate: new Date('2012-01-01'),
+  primaryPosition: 'CM',
+  region: null,
+  district: null,
+  user: { id: 'user-1', username: 'ali', avatarKey: null },
+};
+
+describe('listMediaByStatus — the list a stuck upload was missing from', () => {
+  it('lists every video when no status is given, and says nothing about moderation', async () => {
+    const { service, prisma } = build();
+
+    await service.listMediaByStatus({});
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { type: 'VIDEO' } }),
+    );
+  });
+
+  it('filters on the worker’s status, not the moderator’s', async () => {
+    const { service, prisma } = build();
+
+    await service.listMediaByStatus({ status: 'PROCESSING' });
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { type: 'VIDEO', status: 'PROCESSING' } }),
+    );
+  });
+
+  /* Stuck and slow look the same on the row; the queue tells them apart. */
+  it('attaches what the queue says to each PROCESSING clip, and only to those', async () => {
+    const { service, prisma, recovery } = build();
+    prisma.media.findMany.mockResolvedValue([
+      { ...CLIP, id: 'p-1', status: 'PROCESSING', player: PLAYER },
+      { ...CLIP, id: 'a-1', status: 'ACTIVE', player: PLAYER },
+    ]);
+    recovery.jobStatus.mockResolvedValue({
+      state: 'failed',
+      live: false,
+      attemptsMade: 2,
+      failedReason: 'transcode timed out',
+    });
+
+    const page = await service.listMediaByStatus({ status: 'ALL' });
+
+    const [processing, active] = page.items as Array<{ processing?: unknown }>;
+    expect(processing.processing).toEqual({
+      state: 'failed',
+      live: false,
+      attemptsMade: 2,
+      failedReason: 'transcode timed out',
+    });
+    expect(active.processing).toBeUndefined();
+    expect(recovery.jobStatus).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('countMediaByStatus — the numbers on the filter chips', () => {
+  it('totals the grouped counts and fills in zero for the rest', async () => {
+    const { service, prisma } = build();
+    prisma.media.groupBy.mockResolvedValue([
+      { status: 'ACTIVE', _count: { _all: 40 } },
+      { status: 'PROCESSING', _count: { _all: 3 } },
+    ]);
+
+    await expect(service.countMediaByStatus()).resolves.toEqual({
+      ALL: 43,
+      PROCESSING: 3,
+      ACTIVE: 40,
+      FAILED: 0,
+      FLAGGED: 0,
+      REMOVED: 0,
+    });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Retrying a clip that is still PROCESSING                                     */
+/* -------------------------------------------------------------------------- */
+
+describe('retryFailedMedia — a clip stuck at PROCESSING', () => {
+  const STUCK = { status: 'PROCESSING' as MediaStatus, processingAttempts: 1 };
+
+  it('queues processing again, through the bounded restart, when nothing is working on it', async () => {
+    const { service, recovery, finaliser, audit } = build(STUCK);
+
+    await service.retryFailedMedia('super-1', 'clip-1');
+
+    expect(recovery.restart).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'clip-1', processingAttempts: 1 }),
+      'admin super-1',
+    );
+    // Not the inline finalise: that would promote an unoptimised original.
+    expect(finaliser.finalise).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith('super-1', AuditAction.MEDIA_RETRIED, {
+      mediaId: 'clip-1',
+      previousReason: null,
+      outcome: 'RESTARTED',
+    });
+  });
+
+  it('tells the admin to wait while the job is live', async () => {
+    const { service, recovery } = build(STUCK);
+    recovery.jobStatus.mockResolvedValue({
+      state: 'active',
+      live: true,
+      attemptsMade: 1,
+      failedReason: null,
+    });
+
+    await expect(service.retryFailedMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(recovery.restart).not.toHaveBeenCalled();
+  });
+
+  it('never writes ACTIVE for a stuck clip', async () => {
+    const { service, prisma } = build(STUCK);
+
+    await service.retryFailedMedia('super-1', 'clip-1');
+
+    const wroteActive = [...prisma.media.updateMany.mock.calls, ...prisma.media.update.mock.calls]
+      .map((call) => JSON.stringify(call))
+      .some((call) => call.includes('"ACTIVE"'));
+    expect(wroteActive).toBe(false);
   });
 });
