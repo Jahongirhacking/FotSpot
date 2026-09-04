@@ -740,6 +740,11 @@ export const uz = {
       'Bu o‘z bahoyingiz. Murabbiy tasdiqlagunicha karta uni "o‘zi bergan baho" sifatida ko‘rsatadi.',
     clipTitle: 'Sarlavha',
     description: 'Tavsif',
+    autoDate: 'Avtomatik sana (bugun)',
+    autoDateHint:
+      'Video bugungi sana bilan belgilanadi. Aslida qachon suratga olinganini ko‘rsatish uchun belgini olib tashlang.',
+    recordedOn: 'Yozib olingan sana',
+    recordedInFuture: 'Yozib olingan sana kelajakda bo‘lishi mumkin emas.',
     publish: 'Yuklash',
     optimising: 'Video tayyorlanmoqda…',
     optimisingHint:

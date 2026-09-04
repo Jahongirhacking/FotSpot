@@ -5,6 +5,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   IsBoolean,
   IsIn,
+  IsISO8601,
   IsInt,
   IsOptional,
   IsString,
@@ -73,6 +74,16 @@ export class ConfirmUploadDto {
 
   @IsOptional() @IsString() @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(1000) description?: string;
+
+  /**
+   * When the footage was taken — a bare `YYYY-MM-DD`, or a full timestamp.
+   * Omitted means today. Anything after today in Asia/Tashkent is refused by
+   * the service (see recorded-at.util), not only by the date picker.
+   */
+  @ApiPropertyOptional({ example: '2026-05-10' })
+  @IsOptional()
+  @IsISO8601()
+  recordedAt?: string;
 
   /** Key of the cover frame, from the same upload ticket. Optional: capture can
    *  fail, and a clip without a cover beats a refused upload. */

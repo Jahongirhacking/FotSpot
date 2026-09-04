@@ -10,6 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { GroupsService } from '../academies/groups.service';
 import { startOfUtcDay } from './view-day.util';
+import { parseRecordedAt } from './recorded-at.util';
 import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisKeys } from '../redis/redis.keys';
@@ -408,8 +409,10 @@ export class MediaService {
         category: dto.category,
         storageKey: dto.storageKey,
         posterKey: dto.posterKey ?? null,
-        // Server-side, always: a timestamp a player can set is a timestamp that
-        // proves nothing about when the clip was actually taken.
+        // When it was filmed, as the player says — bounded to not-after-today
+        // in the product's time zone, so it can be late but never ahead of the
+        // upload. `createdAt` stays the server's own fact about the upload.
+        recordedAt: parseRecordedAt(dto.recordedAt),
         rating: isAttribute ? dto.rating : null,
         title: dto.title ?? null,
         description: dto.description ?? null,
@@ -638,15 +641,18 @@ export class MediaService {
             birthDate: true,
             primaryPosition: true,
             region: true,
+            // The uploader's picture, in the same query as the clip — the
+            // landing page shows who the footage belongs to beside its cover.
+            user: { select: { avatarKey: true } },
           },
         },
       },
     });
 
     return Promise.all(
-      items.map(async ({ player, ...media }) => ({
+      items.map(async ({ player: { user, ...player }, ...media }) => ({
         ...(await toMediaResponse(media, this.storage)),
-        player,
+        player: { ...player, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
       })),
     );
   }
