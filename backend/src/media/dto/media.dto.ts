@@ -80,14 +80,27 @@ export class ConfirmUploadDto {
 }
 
 /**
- * Owner edits after the fact.
+ * What the uploader may correct on their own clip.
  *
- * The category is deliberately absent. A clip's category is the bar it argues
- * for, so re-pointing an old clip at a different attribute would rewrite a claim
- * history the chart has already drawn. Delete and re-upload instead — that leaves
- * an honest record.
+ * ## The category is editable, with one rule
+ *
+ * It used to be absent here, on the argument that a clip's category is the bar
+ * it argues for and a different bar is a different clip. In practice the
+ * mistake this blocked was the ordinary one: a player films shooting, taps
+ * "technique", and is stuck with a clip filed under the wrong skill that they
+ * can only delete and re-upload. The footage is right; the label is wrong.
+ *
+ * The rule that survives: an attribute clip carries a rating and a highlights
+ * clip does not. Moving onto an attribute needs a number — sent alongside, or
+ * already on the row; moving to MATCH_HIGHLIGHTS drops it. Enforced in the
+ * service, because it depends on the row's current state.
  */
 export class UpdateMediaDto {
+  @ApiPropertyOptional({ enum: MediaCategory, enumName: 'MediaCategory' })
+  @IsOptional()
+  @IsIn(CATEGORIES)
+  category?: (typeof CATEGORIES)[number];
+
   @IsOptional() @IsString() @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(1000) description?: string;
 

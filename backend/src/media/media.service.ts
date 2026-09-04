@@ -892,9 +892,11 @@ export class MediaService {
   /**
    * The uploader corrects their own clip.
    *
-   * Category is not editable — see UpdateMediaDto. The rating is, because a
-   * mistyped 8 for 80 otherwise strands the player with a claim they cannot fix,
-   * and the clip evidencing it has not changed.
+   * The rating is editable because a mistyped 8 for 80 otherwise strands the
+   * player with a claim they cannot fix, and the clip evidencing it has not
+   * changed. The category is editable for the same reason: a shooting clip
+   * filed under "technique" is a wrong label on the right footage — see
+   * UpdateMediaDto for the one rule that moves with it.
    */
   async update(userId: string, mediaId: string, dto: UpdateMediaDto) {
     const profile = await this.ownPlayerProfile(userId);
@@ -909,8 +911,22 @@ export class MediaService {
     if (media.moderationStatus === 'BLOCKED') {
       throw new ForbiddenException('This clip was blocked by a moderator and cannot be edited');
     }
-    if (dto.rating !== undefined && media.category === 'MATCH_HIGHLIGHTS') {
+    /*
+     * The category the clip will have after this edit, and what that means
+     * for the rating: an attribute clip carries one, a highlights clip does
+     * not. The rating rule is checked against the *next* category, so
+     * "highlights → finishing, rated 70" is one valid request rather than two
+     * that each fail.
+     */
+    const nextCategory = dto.category ?? media.category;
+    const categoryChanged = nextCategory !== media.category;
+    const nextIsAttribute = ATTRIBUTE_CATEGORIES.includes(nextCategory);
+    if (dto.rating !== undefined && !nextIsAttribute) {
       throw new BadRequestException('Highlights are not evidence for a single attribute');
+    }
+    const nextRating = nextIsAttribute ? (dto.rating ?? media.rating) : null;
+    if (nextIsAttribute && nextRating === null) {
+      throw new BadRequestException('Rate the attribute this clip is evidence for');
     }
 
     const updated = await this.prisma.media.update({
@@ -918,10 +934,15 @@ export class MediaService {
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
+        ...(categoryChanged ? { category: nextCategory } : {}),
         // A player editing their own clip is making a claim again, even if a
         // coach had corrected it — so the source goes back to SELF and the
         // coach's number is kept in the revision trail rather than silently lost.
-        ...(dto.rating !== undefined ? { rating: dto.rating, reportedBy: 'SELF' as const } : {}),
+        // A re-filed clip is a new claim for the same reason: the coach's number
+        // was about the attribute it used to argue for.
+        ...(categoryChanged || dto.rating !== undefined
+          ? { rating: nextRating, reportedBy: 'SELF' as const }
+          : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));

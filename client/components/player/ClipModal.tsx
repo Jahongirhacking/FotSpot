@@ -9,8 +9,8 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { browserFetch } from '@/lib/api/browser';
-import type { Media } from '@/lib/api/types';
-import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
+import type { Media, MediaCategory } from '@/lib/api/types';
+import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS, CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heart, Pause, Pencil, Play, Trash2, TriangleAlert, Trophy } from 'lucide-react';
@@ -317,7 +317,14 @@ function clock(seconds: number) {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-/** Title, description and rating. Category is not editable — see UpdateMediaDto. */
+/**
+ * Title, description, rating — and the category.
+ *
+ * A shooting clip uploaded as "technique" used to be fixable only by deleting
+ * it and uploading again. The chips re-file it; the rating slider follows the
+ * chosen category, because an attribute clip carries a rating and a highlights
+ * clip does not (the server holds the same rule — see UpdateMediaDto).
+ */
 function EditClipForm({
   clip,
   onCancel,
@@ -333,7 +340,8 @@ function EditClipForm({
   const [title, setTitle] = React.useState(clip?.title ?? '');
   const [description, setDescription] = React.useState(clip?.description ?? '');
   const [rating, setRating] = React.useState(clip?.rating ?? 50);
-  const isHighlight = clip?.category === 'MATCH_HIGHLIGHTS';
+  const [category, setCategory] = React.useState<MediaCategory>(clip?.category);
+  const isHighlight = category === 'MATCH_HIGHLIGHTS';
 
   const save = useMutation({
     mutationFn: () =>
@@ -342,6 +350,9 @@ function EditClipForm({
         body: {
           title: title.trim(),
           description: description.trim(),
+          // Only when it changed: an unchanged category with an unchanged
+          // rating must stay exactly the edit it has always been.
+          ...(category !== clip?.category ? { category } : {}),
           ...(isHighlight ? {} : { rating: rating }),
         },
       }),
@@ -365,6 +376,23 @@ function EditClipForm({
           maxLength={120}
           onChange={(event) => setTitle(event.target.value)}
         />
+      </Field>
+
+      <Field label={t.clips.changeCategory} htmlFor="edit-category">
+        <div id="edit-category" className="flex flex-wrap gap-1.5" role="group">
+          {ATTRIBUTE_KEYS.map((key) => (
+            <CategoryOption
+              key={key}
+              active={category === ATTRIBUTE_CATEGORY[key]}
+              onClick={() => setCategory(ATTRIBUTE_CATEGORY[key])}
+            >
+              {t.attributes[key]}
+            </CategoryOption>
+          ))}
+          <CategoryOption active={isHighlight} onClick={() => setCategory('MATCH_HIGHLIGHTS')}>
+            {t.attributes.highlights}
+          </CategoryOption>
+        </div>
       </Field>
 
       <Field label={t.clips.description} htmlFor="edit-desc">
@@ -404,6 +432,32 @@ function EditClipForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function CategoryOption({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors',
+        active
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border hover:border-primary/50',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

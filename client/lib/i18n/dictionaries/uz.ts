@@ -735,6 +735,7 @@ export const uz = {
     whatDoesItShow: 'Bu video nimani ko‘rsatadi?',
     categoryHint: 'Tanlangan ko‘rsatkich shu video bilan isbotlanadi.',
     yourRating: 'Sizning bahoyingiz',
+    changeCategory: 'Klip ko‘rsatadigan mahorat',
     ratingHint:
       'Bu o‘z bahoyingiz. Murabbiy tasdiqlagunicha karta uni "o‘zi bergan baho" sifatida ko‘rsatadi.',
     clipTitle: 'Sarlavha',

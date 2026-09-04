@@ -1369,7 +1369,7 @@
             "bearer": []
           }
         ],
-        "summary": "The uploader corrects their own clip's title, description or rating.",
+        "summary": "The uploader corrects their own clip's title, description, rating or category.",
         "tags": [
           "media"
         ]
@@ -7295,6 +7295,13 @@
       "UpdateMediaDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          },
           "rating": {
             "type": "number",
             "minimum": 0,

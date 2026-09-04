@@ -706,6 +706,7 @@ export const en: Dictionary = {
     whatDoesItShow: 'What does this clip show?',
     categoryHint: 'The attribute you pick is the bar this clip is evidence for.',
     yourRating: 'Your rating',
+    changeCategory: 'Skill this clip shows',
     ratingHint:
       'This is your own claim. Until a coach confirms it the card shows it as self-reported.',
     clipTitle: 'Title',
