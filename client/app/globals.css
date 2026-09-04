@@ -490,3 +490,14 @@
     will-change: auto !important;
   }
 }
+
+/*
+ * The landing page's black band — FotSpot's black with a hint of pitch green,
+ * the same in both themes (see components/landing/LandingSection.tsx).
+ */
+.landing-band-dark {
+  background-color: oklch(14% 0.022 165);
+  background-image:
+    radial-gradient(60% 80% at 100% 0%, oklch(52% 0.14 152 / 0.18), transparent 60%),
+    radial-gradient(50% 70% at 0% 100%, oklch(52% 0.14 152 / 0.12), transparent 60%);
+}

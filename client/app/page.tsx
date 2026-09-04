@@ -1,4 +1,6 @@
+import { LandingContainer, LandingSection } from '@/components/landing/LandingSection';
 import { PipelineCanvas } from '@/components/landing/PipelineCanvas';
+import { StatCard } from '@/components/landing/StatCard';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { FootballBall, PitchBackdrop } from '@/components/shared/FootballArt';
@@ -6,6 +8,7 @@ import { FotSpotMark } from '@/components/shared/FotSpotMark';
 import { HeroBanner } from '@/components/shared/HeroBanner';
 import { HeroVideo } from '@/components/shared/HeroVideo';
 import { Reveal } from '@/components/shared/Reveal';
+import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -16,9 +19,8 @@ import type { PlayerProfile } from '@/lib/api/types';
 import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
 import { pageMetadata } from '@/lib/seo';
-import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
-import { ageBand, humanizeEnum, initials } from '@/lib/utils';
+import { ageBand, cn, humanizeEnum, initials } from '@/lib/utils';
 import {
   ArrowRight,
   Building2,
@@ -31,6 +33,7 @@ import {
   Users,
   Video,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 /**
@@ -158,22 +161,226 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        {/* Live counts, straight under the hero — an empty marketplace is the
+            honest early state, so these only render once there is something to
+            show. Three links to three screens, as a list (see StatCard for why
+            each is a photograph). */}
+        {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
+          <Reveal>
+            <LandingSection tone="base" className="pt-2 sm:pt-4">
+              <LandingContainer>
+                <ul className="grid gap-4 sm:grid-cols-3">
+                  <li>
+                    <Link
+                      href="/players"
+                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <StatCard
+                        icon={Users}
+                        label={t.landing.statPlayers}
+                        value={recent.total}
+                        focus="18% 45%"
+                      />
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/academies"
+                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <StatCard
+                        icon={Building2}
+                        label={t.landing.statAcademies}
+                        value={academyList?.length}
+                        focus="88% 50%"
+                      />
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/trials"
+                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <StatCard
+                        icon={CalendarDays}
+                        label={t.landing.statTrials}
+                        value={trialList?.length}
+                        focus="63% 55%"
+                      />
+                    </Link>
+                  </li>
+                </ul>
+              </LandingContainer>
+            </LandingSection>
+          </Reveal>
+        )}
+
         {/* Who this is for, in their own terms. Three roles arrive on this page
             with three different questions, and one paragraph aimed at all of
             them answers none of them. */}
         <Reveal>
-          <section className="mx-auto max-w-6xl px-4 pb-14">
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold">{t.landing.valueTitle}</h2>
-              <p className="text-muted text-sm">{t.landing.valueBody}</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <RoleValue icon={Users} {...t.landing.value.players} />
-              <RoleValue icon={Search} {...t.landing.value.scouts} />
-              <RoleValue icon={Building2} {...t.landing.value.academies} />
-            </div>
-          </section>
+          <LandingSection tone="tint">
+            <LandingContainer>
+              <div className="mb-8">
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  {t.landing.valueTitle}
+                </h2>
+                <p className="text-muted mt-1 text-sm sm:text-base">{t.landing.valueBody}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <RoleValue icon={Users} {...t.landing.value.players} />
+                <RoleValue icon={Search} {...t.landing.value.scouts} />
+                <RoleValue icon={Building2} {...t.landing.value.academies} />
+              </div>
+            </LandingContainer>
+          </LandingSection>
         </Reveal>
+
+        {/* Real player media, not stock imagery. Poster-frame tiles only — playback
+            happens on the player's own page (§21.6). The one dark band on the
+            page: this is the featured content, and it is framed as such. */}
+        <Reveal>
+          <LandingSection tone="dark">
+            <PitchBackdrop className="text-primary/15 opacity-60" />
+            <LandingContainer>
+              <SectionHeading
+                icon={Video}
+                title={t.landing.latestClips}
+                body={t.landing.latestClipsBody}
+                actionHref="/players"
+                actionLabel={t.common.seeAll}
+                tone="dark"
+              />
+
+              {clips?.length === 0 ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/80">
+                  <FootballBall className="size-8" />
+                  {t.landing.noClipsYet}
+                </div>
+              ) : (
+                <ul className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                  {clips?.map((item) => (
+                    <li key={item?.id}>
+                      <Link
+                        href={`/players/${item?.player.id}`}
+                        className="group hover:border-primary/60 focus-visible:ring-ring block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-sm transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        <div className="relative aspect-video overflow-hidden bg-black/40">
+                          {/*
+                            The clip's own frame when it has one. `posterUrl` is
+                            already signed by the API alongside the video URL — one
+                            response, no second request — and the pitch stays as
+                            the fallback for a clip whose cover capture failed in
+                            the browser. `object-cover` keeps the 16:9 box honest
+                            whatever the phone recorded; a broken image simply
+                            shows the pitch behind it, via the same loader every
+                            other image on the site uses.
+                          */}
+                          {item?.posterUrl ? (
+                            <LoadingImage
+                              src={item.posterUrl}
+                              alt=""
+                              loading="lazy"
+                              spinner={false}
+                              className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                              fallback={<PitchBackdrop className="text-primary/30 opacity-70" />}
+                            />
+                          ) : (
+                            <PitchBackdrop className="text-primary/30 opacity-70" />
+                          )}
+                          {/* Keeps the play mark and the badge legible on a bright frame. */}
+                          <div
+                            aria-hidden
+                            className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/20"
+                          />
+                          <div className="absolute inset-0 grid place-items-center">
+                            <span className="bg-primary text-primary-foreground grid size-10 place-items-center rounded-full shadow-lg ring-4 ring-black/20 transition-transform duration-300 group-hover:scale-110 sm:size-11">
+                              <Video className="size-4" aria-hidden />
+                            </span>
+                          </div>
+                          <Badge
+                            variant="neutral"
+                            className="absolute top-2 left-2 bg-black/60 text-[10px] text-white backdrop-blur"
+                          >
+                            {humanizeEnum(item?.category)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2.5 p-3">
+                          <span
+                            className="bg-primary/20 text-primary-strong grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-bold ring-1 ring-white/10"
+                            aria-hidden
+                          >
+                            {initials(item?.player.firstName, item?.player.lastName)}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
+                            {item?.player.firstName} {item?.player.lastName}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-white/20 text-[10px] text-white/80"
+                          >
+                            {ageBand(item?.player.birthDate)}
+                          </Badge>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </LandingContainer>
+          </LandingSection>
+        </Reveal>
+
+        {recent?.items?.length > 0 && (
+          <Reveal>
+            <LandingSection tone="base">
+              <LandingContainer>
+                <SectionHeading
+                  icon={Sparkles}
+                  title={t.landing.recentlyJoined}
+                  body={t.landing.recentlyJoinedBody}
+                  actionHref="/players"
+                  actionLabel={t.common.seeAll}
+                />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {recent.items.slice(0, 3).map((player) => (
+                    <Card
+                      key={player?.id}
+                      className="group hover:border-primary/50 rounded-2xl transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      <Link href={`/players/${player?.id}`} aria-label={`${player?.firstName}`}>
+                        <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+                          {/* The player's own picture when they have one; initials
+                              in the card palette otherwise — the same fallback
+                              the rest of the site uses. */}
+                          <Avatar
+                            src={player?.avatarUrl}
+                            fallback={initials(player?.firstName, player?.lastName)}
+                            className="ring-primary/20 size-12 shrink-0 ring-2 sm:size-14"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-base font-semibold">
+                              {player?.firstName} {player?.lastName}
+                            </p>
+                            <p className="text-muted mt-0.5 truncate text-sm">
+                              {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
+                            </p>
+                          </div>
+                          <span
+                            aria-hidden
+                            className="bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground grid size-9 shrink-0 place-items-center rounded-full transition-colors duration-300"
+                          >
+                            <ArrowRight className="size-4" />
+                          </span>
+                        </CardContent>
+                      </Link>
+                    </Card>
+                  ))}
+                </div>
+              </LandingContainer>
+            </LandingSection>
+          </Reveal>
+        )}
 
         {/* The pipeline, drawn.
             The thing a first-time visitor cannot work out from any amount of
@@ -181,183 +388,18 @@ export default async function LandingPage() {
             coach reads the profile before anybody is invited, and that the only
             step reaching a squad is somebody standing on a pitch. */}
         <Reveal>
-          <section className="mx-auto max-w-6xl px-4 pb-14">
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold">{t.landing.pipelineTitle}</h2>
-              <p className="text-muted text-sm">{t.landing.pipelineBody}</p>
-            </div>
-            <PipelineCanvas />
-          </section>
-        </Reveal>
-
-        {/* Live counts — an empty marketplace is the honest early state, so these
-            only render once there is something to show. */}
-        {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
-          <Reveal>
-            <section className="mx-auto max-w-6xl px-4 pb-8">
-              {/*
-               * A list of links, not a description list.
-               *
-               * This was a `<dl>` whose direct children were anchors, which the
-               * HTML spec does not allow — `<dl>` takes `<dt>`, `<dd>` or
-               * `<div>` and nothing else — and the `<dd>` inside each tile came
-               * *before* its `<dt>`, so a screen reader read every value before
-               * the word telling you what it counted. Both went unnoticed
-               * because neither shows up visually.
-               *
-               * These are three links to three screens. `<ul>`/`<li>` says that,
-               * and the number and its label are then free to sit in whatever
-               * order reads best.
-               */}
-              <ul className="grid grid-cols-3 gap-3">
-                <li>
-                  <Link href="/players" className="block">
-                    <Stat icon={Users} label={t.landing.statPlayers} value={recent.total} />
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/academies" className="block">
-                    <Stat
-                      icon={Building2}
-                      label={t.landing.statAcademies}
-                      value={academyList?.length}
-                    />
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/trials" className="block">
-                    <Stat
-                      icon={CalendarDays}
-                      label={t.landing.statTrials}
-                      value={trialList?.length}
-                    />
-                  </Link>
-                </li>
-              </ul>
-            </section>
-          </Reveal>
-        )}
-
-        {/* Real player media, not stock imagery. Poster-frame tiles only — playback
-            happens on the player's own page (§21.6). */}
-        <Reveal>
-          <section className="mx-auto max-w-6xl px-4 pb-14">
-            <SectionHeading
-              icon={Video}
-              title={t.landing.latestClips}
-              body={t.landing.latestClipsBody}
-              actionHref="/players"
-              actionLabel={t.common.seeAll}
-            />
-
-            {clips?.length === 0 ? (
-              <Card>
-                <CardContent className="text-muted flex items-center gap-3 p-5 text-sm">
-                  <FootballBall className="size-8" />
-                  {t.landing.noClipsYet}
-                </CardContent>
-              </Card>
-            ) : (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {clips?.map((item) => (
-                  <li key={item?.id}>
-                    <Link
-                      href={`/players/${item?.player.id}`}
-                      className="group border-border bg-surface hover:border-primary/40 rounded-card block overflow-hidden border transition-colors"
-                    >
-                      <div className="bg-surface-2 relative aspect-video">
-                        {/*
-                          The clip's own frame when it has one. `posterUrl` is
-                          already signed by the API alongside the video URL — one
-                          response, no second request — and the pitch stays as
-                          the fallback for a clip whose cover capture failed in
-                          the browser. `object-cover` keeps the 16:9 box honest
-                          whatever the phone recorded; a broken image simply
-                          shows the pitch behind it, via the same loader every
-                          other image on the site uses.
-                        */}
-                        {item?.posterUrl ? (
-                          <LoadingImage
-                            src={item.posterUrl}
-                            alt=""
-                            loading="lazy"
-                            spinner={false}
-                            className="absolute inset-0 size-full object-cover"
-                          />
-                        ) : (
-                          <PitchBackdrop className="opacity-40" />
-                        )}
-                        <div className="absolute inset-0 grid place-items-center">
-                          <span className="bg-primary/90 text-primary-foreground grid size-9 place-items-center rounded-full">
-                            <Video className="size-4" aria-hidden />
-                          </span>
-                        </div>
-                        <Badge
-                          variant="neutral"
-                          className="bg-surface/85 absolute top-2 left-2 backdrop-blur"
-                        >
-                          {humanizeEnum(item?.category)}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 p-2.5">
-                        <span
-                          className="bg-primary/15 text-primary grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold"
-                          aria-hidden
-                        >
-                          {initials(item?.player.firstName, item?.player.lastName)}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                          {item?.player.firstName} {item?.player.lastName}
-                        </span>
-                        <Badge variant="outline" className="shrink-0 text-[10px]">
-                          {ageBand(item?.player.birthDate)}
-                        </Badge>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </Reveal>
-
-        {recent.items.length > 0 && (
-          <Reveal>
-            <section className="mx-auto max-w-6xl px-4 pb-14">
-              <SectionHeading
-                icon={Sparkles}
-                title={t.landing.recentlyJoined}
-                body={t.landing.recentlyJoinedBody}
-                actionHref="/players"
-                actionLabel={t.common.seeAll}
-              />
-              <div className="grid gap-3 sm:grid-cols-3">
-                {recent.items.slice(0, 3).map((player) => (
-                  <Card
-                    key={player?.id}
-                    className="hover:border-primary/40 transition-[transform,translate,border-color] duration-200 hover:-translate-y-1"
-                  >
-                    <Link href={`/players/${player?.id}`} aria-label={`${player?.firstName}`}>
-                      <CardContent className="flex items-center justify-between gap-3 p-4">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {player?.firstName} {player?.lastName}
-                          </p>
-                          <p className="text-muted text-xs">
-                            {player?.primaryPosition ?? '—'} · {player?.region ?? 'Uzbekistan'}
-                          </p>
-                        </div>
-                        <Button size="sm" variant="ghost" className="cursor-pointer">
-                          <ArrowRight aria-hidden className="size-4 !p-0" />
-                        </Button>
-                      </CardContent>
-                    </Link>
-                  </Card>
-                ))}
+          <LandingSection tone="tint">
+            <LandingContainer>
+              <div className="mb-8">
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  {t.landing.pipelineTitle}
+                </h2>
+                <p className="text-muted mt-1 text-sm sm:text-base">{t.landing.pipelineBody}</p>
               </div>
-            </section>
-          </Reveal>
-        )}
+              <PipelineCanvas />
+            </LandingContainer>
+          </LandingSection>
+        </Reveal>
 
         {/* ---------- Academies ----------
             Above local teams, and styled apart from them, because they are two
@@ -371,35 +413,39 @@ export default async function LandingPage() {
             plainly that a check is involved, because somebody who would fail one
             is better off knowing now. */}
         <Reveal>
-          <section className="mx-auto max-w-6xl px-4 pb-6">
-            <Card className="border-primary/30 from-primary/[0.10] to-accent/[0.06] hover:border-primary/50 overflow-hidden border-2 bg-gradient-to-br transition-colors duration-200">
-              <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-                <div className="max-w-2xl min-w-0">
-                  {/* The icon in a filled tile rather than inline: it gives the
+          <LandingSection tone="base" className="pb-4 sm:pb-6">
+            <LandingContainer>
+              <Card className="border-primary/30 from-primary/[0.10] to-accent/[0.06] hover:border-primary/50 overflow-hidden border-2 bg-gradient-to-br transition-colors duration-200">
+                <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+                  <div className="max-w-2xl min-w-0">
+                    {/* The icon in a filled tile rather than inline: it gives the
                       card a mark of its own, which is most of what separates the
                       thing being offered from the one mentioned below it. */}
-                  <span className="bg-primary text-primary-foreground mb-3 grid size-11 place-items-center rounded-xl shadow-sm">
-                    <Building2 className="size-6" aria-hidden />
-                  </span>
-                  <h2 className="text-xl font-bold sm:text-2xl">{t.landing.academyTitle}</h2>
-                  <p className="text-muted mt-2 text-sm leading-relaxed">{t.landing.academyBody}</p>
-                </div>
+                    <span className="bg-primary text-primary-foreground mb-3 grid size-11 place-items-center rounded-xl shadow-sm">
+                      <Building2 className="size-6" aria-hidden />
+                    </span>
+                    <h2 className="text-xl font-bold sm:text-2xl">{t.landing.academyTitle}</h2>
+                    <p className="text-muted mt-2 text-sm leading-relaxed">
+                      {t.landing.academyBody}
+                    </p>
+                  </div>
 
-                {/* Same bot, different sentence — one address, and the message
+                  {/* Same bot, different sentence — one address, and the message
                     says which of the two the writer is asking for so nobody has
                     to be asked back. */}
-                <Button asChild size="lg" className="shrink-0 cursor-pointer shadow-sm">
-                  <a
-                    href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Send aria-hidden /> {t.landing.academyCta}
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
+                  <Button asChild size="lg" className="shrink-0 cursor-pointer shadow-sm">
+                    <a
+                      href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.academyMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Send aria-hidden /> {t.landing.academyCta}
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </LandingContainer>
+          </LandingSection>
         </Reveal>
 
         {/* ---------- Local teams ----------
@@ -413,51 +459,53 @@ export default async function LandingPage() {
             a self-service form would only be a queue of duplicates and tests
             that somebody has to clear by hand anyway. */}
         <Reveal>
-          <section className="mx-auto max-w-6xl px-4 pb-14">
-            {/* Quieter on purpose. Both asks are real, but an academy is what
+          <LandingSection tone="base" className="pt-0 sm:pt-0">
+            <LandingContainer>
+              {/* Quieter on purpose. Both asks are real, but an academy is what
                 this platform is built around — and two cards at the same volume
                 make a reader decide which to read rather than which is theirs. */}
-            <Card className="hover:border-border/80 transition-colors duration-200">
-              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="max-w-2xl min-w-0">
-                  <h3 className="text-muted flex items-center gap-2 text-base font-semibold">
-                    <Users className="size-4 shrink-0" aria-hidden />
-                    {t.landing.localTeamTitle}
-                  </h3>
-                  <p className="text-muted mt-2 text-sm leading-relaxed">
-                    {t.landing.localTeamBody}
-                  </p>
-                </div>
+              <Card className="hover:border-border/80 transition-colors duration-200">
+                <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="max-w-2xl min-w-0">
+                    <h3 className="text-muted flex items-center gap-2 text-base font-semibold">
+                      <Users className="size-4 shrink-0" aria-hidden />
+                      {t.landing.localTeamTitle}
+                    </h3>
+                    <p className="text-muted mt-2 text-sm leading-relaxed">
+                      {t.landing.localTeamBody}
+                    </p>
+                  </div>
 
-                {/*
-                 * Straight into the bot with the sentence already written.
-                 *
-                 * `?text=` prefills the message box rather than sending anything,
-                 * so the reader still presses send — which is what keeps it a
-                 * request and not an accidental tap. It is localised because a
-                 * request arriving in a language the reader does not write is one
-                 * they have to translate before they can send it.
-                 *
-                 * `SUPPORT_BOT` rather than the handle inline: the contact page
-                 * links to the same bot, and two copies of an address is one that
-                 * gets changed in one place.
-                 */}
-                <Button asChild size="sm" variant="outline" className="shrink-0">
-                  <a
-                    href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.localTeamMessage)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Send aria-hidden /> {t.landing.localTeamCta}
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
+                  {/*
+                   * Straight into the bot with the sentence already written.
+                   *
+                   * `?text=` prefills the message box rather than sending anything,
+                   * so the reader still presses send — which is what keeps it a
+                   * request and not an accidental tap. It is localised because a
+                   * request arriving in a language the reader does not write is one
+                   * they have to translate before they can send it.
+                   *
+                   * `SUPPORT_BOT` rather than the handle inline: the contact page
+                   * links to the same bot, and two copies of an address is one that
+                   * gets changed in one place.
+                   */}
+                  <Button asChild size="sm" variant="outline" className="shrink-0">
+                    <a
+                      href={`${SUPPORT_BOT}?text=${encodeURIComponent(t.landing.localTeamMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Send aria-hidden /> {t.landing.localTeamCta}
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            </LandingContainer>
+          </LandingSection>
         </Reveal>
 
         <Reveal>
-          <section className="border-border border-t px-4 py-12">
+          <section className="border-border bg-surface-2 border-t px-4 py-12">
             <div className="text-muted mx-auto flex max-w-3xl items-start gap-3 text-sm">
               <ShieldCheck className="text-primary mt-0.5 size-5 shrink-0" aria-hidden />
               <p>
@@ -539,53 +587,52 @@ function SectionHeading({
   body,
   actionHref,
   actionLabel,
+  tone = 'light',
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   body?: string;
   actionHref?: string;
   actionLabel?: string;
+  /** On the black band the heading is white and the action is outlined in white. */
+  tone?: 'light' | 'dark';
 }) {
+  const dark = tone === 'dark';
   return (
-    <div className="mb-4 flex items-end justify-between gap-3">
+    <div className="mb-6 flex items-end justify-between gap-3 sm:mb-8">
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Icon className="text-primary size-5 shrink-0" aria-hidden />
+        <h2 className="flex items-center gap-2.5 text-xl font-bold tracking-tight sm:text-2xl">
+          <span
+            className={cn(
+              'grid size-9 shrink-0 place-items-center rounded-xl',
+              dark ? 'bg-primary text-primary-foreground' : 'bg-primary/12 text-primary',
+            )}
+          >
+            <Icon className="size-4.5" aria-hidden />
+          </span>
           {title}
         </h2>
-        {body && <p className="text-muted mt-0.5 text-sm">{body}</p>}
+        {body && (
+          <p className={cn('mt-1.5 text-sm sm:text-base', dark ? 'text-white/70' : 'text-muted')}>
+            {body}
+          </p>
+        )}
       </div>
       {actionHref && actionLabel && (
-        <Button asChild variant="ghost" size="sm" className="shrink-0 cursor-pointer">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'shrink-0 cursor-pointer',
+            // Ghost rather than outline on the black band: outline brings the
+            // page's white surface with it, and white text on it disappears.
+            dark && 'border border-white/25 text-white hover:bg-white/10 hover:text-white',
+          )}
+        >
           <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       )}
-    </div>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="border-border bg-surface rounded-card hover:border-primary/40 flex flex-col items-start gap-2 border p-3 transition-[transform,translate,border-color] duration-200 hover:-translate-y-0.5 sm:flex-row sm:items-center sm:gap-3">
-      <span className="bg-primary/12 text-primary grid size-9 shrink-0 place-items-center rounded-lg">
-        <Icon className="size-4" />
-      </span>
-      {/* Stacked on a phone, side by side from `sm`. Three tiles across a 360px
-          screen leaves about a hundred pixels beside a 36px icon, which was
-          truncating every label — the one thing on the tile that says what the
-          number is. */}
-      <div className="min-w-0">
-        <p className="text-lg leading-tight font-bold">{value}</p>
-        <p className="text-muted text-xs">{label}</p>
-      </div>
     </div>
   );
 }
@@ -609,9 +656,9 @@ function RoleValue({
   points: string[];
 }) {
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="bg-primary/10 text-primary mb-3 grid size-9 place-items-center rounded-lg">
+    <Card className="hover:border-primary/40 rounded-2xl transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg">
+      <CardContent className="p-5 sm:p-6">
+        <div className="bg-primary/10 text-primary mb-3 grid size-10 place-items-center rounded-xl">
           <Icon className="size-5" />
         </div>
         <h3 className="font-semibold">{title}</h3>
