@@ -13,7 +13,8 @@ import { VideoReviewQueue } from './VideoReviewQueue';
 
 export const metadata: Metadata = { title: 'Video review' };
 
-const EMPTY: Page<PendingClip> = { items: [], total: 0, page: 1, pageSize: 20 };
+const PAGE_SIZE = 20;
+const EMPTY: Page<PendingClip> = { items: [], total: 0, page: 1, pageSize: PAGE_SIZE };
 
 /**
  * The admin moderation feed: every clip nobody has watched yet.
@@ -29,7 +30,11 @@ const EMPTY: Page<PendingClip> = { items: [], total: 0, page: 1, pageSize: 20 };
  * clips two admins have already decided, and every one of those is a wasted
  * decision that ends in a 409.
  */
-export default async function VideoModerationPage() {
+export default async function VideoModerationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect('/login?next=/admin/moderation/videos');
 
@@ -38,12 +43,19 @@ export default async function VideoModerationPage() {
     return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
   }
 
+  /*
+   * The page is in the URL, like the blocked list beside it. The queue used to
+   * fetch with no page at all, which was the API's first twenty — the twenty-
+   * first clip a player uploaded existed and was reviewable by nobody, and
+   * nothing on the screen said there was more.
+   */
+  const page = Number((await searchParams)?.page ?? 1) || 1;
   const pending = await admin
     .pendingMedia(
-      {},
+      { page, pageSize: PAGE_SIZE },
       { token: session.accessToken, activeRole: session.activeRole, cache: 'no-store' },
     )
-    .catch(() => EMPTY);
+    .catch(() => ({ ...EMPTY, page }));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -64,6 +76,8 @@ export default async function VideoModerationPage() {
 
       <VideoReviewQueue
         initial={pending}
+        page={page}
+        pageSize={PAGE_SIZE}
         // The API refuses a plain admin regardless (`@Roles('super_admin')`);
         // this only decides whether to draw a button that would be refused.
         canDelete={isSuperAdminActing(session.activeRole)}

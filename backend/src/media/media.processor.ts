@@ -85,18 +85,19 @@ export class MediaProcessor extends WorkerHost {
      *
      * The clip is already in the bucket as the player's original, and it stays
      * PROCESSING — and therefore invisible to everyone but its uploader — until
-     * this has replaced it with the optimised version. A failure marks it FAILED
-     * rather than letting the original through: an unoptimised clip is not
-     * merely large, it is not the file this feed serves.
+     * this has run. A file ffmpeg cannot read is marked FAILED; a host with no
+     * ffmpeg at all keeps the original, which the finaliser still bounds by size.
      */
     if (job.name === TRANSCODE_CLIP_JOB) {
-      const optimised = await this.transcoder.transcodeInPlace(
-        job.data.mediaId,
-        job.data.storageKey,
-      );
-      // `transcodeInPlace` has already written FAILED with a reason the uploader
-      // can read, so this only decides whether to finalise.
-      if (!optimised) return;
+      const outcome = await this.transcoder.transcodeInPlace(job.data.mediaId, job.data.storageKey);
+      /*
+       * Only a verdict about the file stops here — `transcodeInPlace` has
+       * already written FAILED with a reason the uploader can read. A host that
+       * cannot transcode is not that: the clip is kept as uploaded and goes on to
+       * be finalised and moderated like any other, so a missing binary shows up
+       * in the logs and never on a player's card.
+       */
+      if (outcome === 'FAILED') return;
     }
 
     if (job.name !== FINALISE_CLIP_JOB && job.name !== TRANSCODE_CLIP_JOB) return;

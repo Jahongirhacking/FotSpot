@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/Dialog';
 import { Field, Input } from '@/components/ui/Field';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { Pagination } from '@/components/shared/Pagination';
 import { ageBand, formatDate, initials } from '@/lib/utils';
 
 /**
@@ -54,9 +55,14 @@ import { ageBand, formatDate, initials } from '@/lib/utils';
  */
 export function VideoReviewQueue({
   initial,
+  page,
+  pageSize,
   canDelete,
 }: {
   initial: Page<PendingClip>;
+  /** Which page the URL asked for — the server fetched `initial` for it. */
+  page: number;
+  pageSize: number;
   /** The viewer is acting as a super admin. The API refuses regardless. */
   canDelete: boolean;
 }) {
@@ -67,8 +73,13 @@ export function VideoReviewQueue({
   const [deleting, setDeleting] = React.useState<PendingClip | null>(null);
 
   const { data } = useQuery({
-    queryKey: ['pending-clips'],
-    queryFn: () => browserFetch<Page<PendingClip>>('/moderation/media/pending'),
+    // The page is part of the key: a decision refetches *this* page, and moving
+    // to another page is another query rather than a filter over this one.
+    queryKey: ['pending-clips', page, pageSize],
+    queryFn: () =>
+      browserFetch<Page<PendingClip>>(
+        `/moderation/media/pending?page=${page}&pageSize=${pageSize}`,
+      ),
     initialData: initial,
   });
 
@@ -98,6 +109,7 @@ export function VideoReviewQueue({
   });
 
   const clips = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-3">
@@ -122,6 +134,8 @@ export function VideoReviewQueue({
           />
         ))
       )}
+
+      <Pagination page={page} pageSize={pageSize} total={total} />
 
       {/* Block: one deliberate confirmation, stating what blocking does. */}
       <Dialog open={Boolean(blocking)} onOpenChange={(next) => !next && setBlocking(null)}>

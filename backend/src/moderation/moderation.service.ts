@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, type MediaModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaFinaliserService } from '../media/media-finaliser.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { RedisKeys } from '../redis/redis.keys';
@@ -15,6 +16,7 @@ import { StorageService } from '../storage/storage.service';
 import { toMediaResponse } from '../media/media.service';
 import {
   BLOCKED_MEDIA_WHERE,
+  FAILED_UPLOADS_WHERE,
   canTransition,
   MODERATION_QUEUE_WHERE,
   transitionRefusal,
@@ -43,6 +45,7 @@ export class ModerationService {
     private audit: AuditService,
     private storage: StorageService,
     private redis: RedisService,
+    private finaliser: MediaFinaliserService,
   ) {}
 
   async fileReport(reporterId: string, dto: CreateReportDto) {
@@ -174,6 +177,94 @@ export class ModerationService {
    */
   async listBlockedMedia(dto: PaginationDto = {}) {
     return this.listMediaFor(BLOCKED_MEDIA_WHERE, dto);
+  }
+
+  /**
+   * Uploads the worker gave up on — **super admin only** (see the controller).
+   *
+   * The third list, and the one that did not exist. A FAILED clip was visible to
+   * its uploader and to nobody else: not the review queue (wants ACTIVE), not
+   * the blocked list (wants BLOCKED). When the failure was the platform's own —
+   * ffmpeg missing from the host, which is how a batch of dribbling and
+   * finishing clips came to read "Video processing is unavailable on the
+   * server" — the operator had no screen on which to discover it.
+   *
+   * Newest first, like the review queue: the uploader waiting is the one who
+   * just pressed upload.
+   */
+  async listFailedMedia(dto: PaginationDto = {}) {
+    return this.listMediaFor(FAILED_UPLOADS_WHERE, dto);
+  }
+
+  /**
+   * Super admin: bring a FAILED upload back by asking the same questions again.
+   *
+   * ## Not "set it to ACTIVE"
+   *
+   * ACTIVE means the worker looked in the bucket and found a real video under
+   * the size limit — it is a fact the platform established, and the whole
+   * reason PROCESSING exists is that nobody's word alone may establish it, an
+   * admin's included. So this does not write ACTIVE. It puts the clip back to
+   * PROCESSING and runs `MediaFinaliserService.finalise` on it, which is the
+   * exact code the worker runs: if the object is there and sound, the clip
+   * becomes ACTIVE (and UNVERIFIED, so it then goes through review like any
+   * other); if it is not, it is FAILED again with a reason that is true now.
+   *
+   * That is what makes this safe to offer for the ffmpeg case and every other:
+   * the retry cannot publish a row with nothing behind it, because it is the
+   * same check that refused to the first time.
+   *
+   * Inline rather than queued, so the admin who pressed the button gets the
+   * answer on the same request — `finalise` was split out of the worker for
+   * precisely this kind of caller.
+   */
+  async retryFailedMedia(actorId: string, mediaId: string) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { id: true, status: true, storageKey: true, posterKey: true, failureReason: true },
+    });
+    if (!media) throw new NotFoundException('Media not found');
+    if (media.status !== 'FAILED') {
+      throw new ConflictException(
+        media.status === 'ACTIVE'
+          ? 'This clip has already been processed successfully.'
+          : 'Only a failed upload can be retried.',
+      );
+    }
+
+    /*
+     * Back to PROCESSING, conditionally — the same shape `decide` uses. Two
+     * admins pressing retry on the same row must produce one retry, not two
+     * finalisations racing to write the same verdict.
+     */
+    const { count } = await this.prisma.media.updateMany({
+      where: { id: mediaId, status: 'FAILED' },
+      data: { status: 'PROCESSING', failureReason: null, processedAt: null },
+    });
+    if (count === 0) {
+      throw new ConflictException('This upload is already being retried.');
+    }
+
+    const outcome = await this.finaliser.finalise({
+      mediaId,
+      storageKey: media.storageKey,
+      posterKey: media.posterKey,
+    });
+
+    if (outcome === 'NOT_ARRIVED') {
+      // The worker would retry for two minutes; an admin's click gets one look.
+      // Leaving the row at PROCESSING would strand it for good, so it is failed
+      // again with the reason that is true now rather than the one from before.
+      await this.finaliser.fail(mediaId, 'The uploaded file is not in storage.');
+    }
+
+    await this.audit.record(actorId, AuditAction.MEDIA_RETRIED, {
+      mediaId,
+      previousReason: media.failureReason,
+      outcome,
+    });
+
+    return this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
   }
 
   /**

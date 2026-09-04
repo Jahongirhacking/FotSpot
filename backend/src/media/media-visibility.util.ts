@@ -68,6 +68,32 @@ export const BLOCKED_MEDIA_WHERE = {
 } as const satisfies Prisma.MediaWhereInput;
 
 /**
+ * Uploads the worker gave up on, for the super admin's review list.
+ *
+ * ## Why this list exists
+ *
+ * `FAILED` is the worker's verdict that a clip could not be confirmed — not
+ * there after every retry, empty, oversized, not a video, or unreadable by
+ * ffmpeg. It is kept rather than deleted so the *uploader* is told. But it was
+ * kept nowhere an admin could see: the review queue wants ACTIVE and the blocked
+ * list wants BLOCKED, so a failed upload was a row that existed for exactly one
+ * person. When the failure is the platform's own — a missing binary on the
+ * host — that is a child's video vanishing with no operator ever knowing.
+ *
+ * ## `status` alone, on purpose
+ *
+ * No `moderationStatus` clause. A failed upload was never moderated and this is
+ * not a moderation list; a clip here is UNVERIFIED because nobody could have
+ * watched it, and filtering on that would hide the whole set. Videos only: an
+ * IMAGE through this path is an avatar-adjacent still, not the platform's
+ * content, and the retry it offers is a video retry.
+ */
+export const FAILED_UPLOADS_WHERE = {
+  type: 'VIDEO',
+  status: 'FAILED',
+} as const satisfies Prisma.MediaWhereInput;
+
+/**
  * What the owner sees on their own profile.
  *
  * Every moderation state, including BLOCKED. A player whose clip was taken down

@@ -724,6 +724,17 @@ export const admin = {
   blockedMedia: (params: PageParams = {}, opts: Opts = {}) =>
     apiFetch<Page<PendingClip>>(`/moderation/media/blocked${toQuery({ ...params })}`, opts),
 
+  /** Uploads the worker could not confirm. Super admin only. */
+  failedMedia: (params: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
+    apiFetch<Page<PendingClip>>(`/moderation/media/failed${toQuery({ ...params })}`, opts),
+
+  /**
+   * Re-run processing on a failed upload. Not a status override: the clip is
+   * re-checked in storage and becomes ACTIVE only if the file is really there.
+   */
+  retryMedia: (mediaId: string, opts: Opts = {}) =>
+    apiFetch<Media>(`/moderation/media/${mediaId}/retry`, { method: 'PATCH', ...opts }),
+
   /** Approve: the clip becomes publicly visible and leaves the queue. */
   verifyMedia: (mediaId: string, opts: Opts = {}) =>
     apiFetch<Media>(`/moderation/media/${mediaId}/verify`, { method: 'PATCH', ...opts }),

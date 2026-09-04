@@ -5,14 +5,21 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useI18n } from '@/components/layout/I18nProvider';
 
+/**
+ * `param` is the query key this pager writes. Defaults to `page`, and only
+ * changes when two independent lists share one URL — each needs its own key,
+ * or turning the page on one turns it on both.
+ */
 export function Pagination({
   page,
   pageSize,
   total,
+  param = 'page',
 }: {
   page: number;
   pageSize: number;
   total: number;
+  param?: string;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -23,7 +30,7 @@ export function Pagination({
 
   function goTo(nextPage: number) {
     const params = new URLSearchParams(searchParams.toString());
-    params?.set('page', String(nextPage));
+    params?.set(param, String(nextPage));
     router.push(`?${params?.toString()}`);
   }
 

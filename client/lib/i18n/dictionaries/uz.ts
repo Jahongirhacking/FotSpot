@@ -1652,6 +1652,17 @@ export const uz = {
       'Administratorlar bloklagan videolar. Ular hech kimga ko‘rinmaydi, lekin moderatsiya tarixi uchun saqlanadi. Faqat super administrator ularni butunlay o‘chira oladi.',
     noBlockedVideos: 'Bloklangan video yo‘q.',
     noBlockedVideosHint: 'Administrator videoni bloklaganda u shu yerda paydo bo‘ladi.',
+    /* Muvaffaqiyatsiz yuklashlar — ishlov beruvchining hisoboti, moderator bloklashidan alohida. */
+    failedUploads: 'Muvaffaqiyatsiz yuklashlar',
+    failedUploadsHint:
+      'Server ishlov bera olmagan videolar. Sababi har bir kartada; qayta urinish faylni saqlashda qayta tekshiradi va u bo‘lsa, klipni ko‘rikka yuboradi.',
+    noFailedUploads: 'Muvaffaqiyatsiz yuklashlar yo‘q.',
+    noFailedUploadsHint: 'Ishlov berish yuklashni tasdiqlay olmasa, u shu yerda ko‘rinadi.',
+    failureReason: 'Sabab',
+    failedBadge: 'Xato',
+    retryProcessing: 'Qayta ishlov berish',
+    retryNowInQueue: 'Fayl topildi. Klip endi ko‘rik navbatida.',
+    retryStillFailed: 'Bu yuklashga hali ham ishlov berib bo‘lmadi.',
     blockedOn: 'Bloklangan',
     resolutionNote: 'Izoh',
     rolesPermissions: 'Rollar va ruxsatlar',
