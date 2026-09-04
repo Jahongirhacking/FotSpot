@@ -453,6 +453,7 @@ export class MediaService {
       mediaId: media.id,
       storageKey: media.storageKey,
       posterKey: media.posterKey,
+      playerId: profile.id,
     };
 
     /*
@@ -498,14 +499,16 @@ export class MediaService {
        * CPU and it does not belong in a web process — but more importantly,
        * finalising it would promote the *original* to ACTIVE and put a 40 MB
        * file in the feed, which is the exact outcome this whole path exists to
-       * prevent. It stays PROCESSING, visible only to its uploader, until a
-       * worker with a queue picks it up.
+       * prevent. It stays PROCESSING, visible only to its uploader, until the
+       * stale-processing sweep (MediaRecoveryService) finds it with no job
+       * behind it and queues one.
        */
       this.logger.warn(`Media queue unavailable for ${media.id}: ${(error as Error).message}`);
       if (needsTranscode) {
         this.logger.error(
           `Clip ${media.id} needs transcoding and the queue is unreachable — it stays ` +
-            'PROCESSING rather than publishing the unoptimised original.',
+            'PROCESSING rather than publishing the unoptimised original; the sweep ' +
+            'will queue it once Redis is back.',
         );
       } else {
         void this.finaliseInline(job);

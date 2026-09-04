@@ -26,7 +26,65 @@ export interface FinaliseClipJob {
   /** Denormalised so the worker's first act is not a database read. */
   storageKey: string;
   posterKey?: string | null;
+  /**
+   * For the failure log, which has to name the player without a read that may
+   * itself be the thing failing. Optional: jobs queued before this field existed
+   * are still in flight somewhere.
+   */
+  playerId?: string;
 }
+
+/**
+ * The sweep that finds clips PROCESSING with nothing behind them.
+ *
+ * ## Why a queue job and not a timer
+ *
+ * A `setInterval` in the API runs once per instance, and every instance would
+ * sweep the same rows. A BullMQ job scheduler is one entry in Redis however many
+ * processes are up, it uses the worker this queue already has, and it costs a
+ * handful of commands every ten minutes against a budget that was worried about
+ * a hundred a minute.
+ */
+export const SWEEP_STALE_JOB = 'sweep-stale-processing';
+export const SWEEP_SCHEDULER_ID = 'media-stale-sweep';
+export const STALE_SWEEP_EVERY_MS = 10 * 60 * 1000;
+
+/**
+ * How long a clip may sit at PROCESSING before the sweep asks whether anything
+ * is still working on it. Overridable with MEDIA_PROCESSING_STALE_MINUTES.
+ *
+ * Longer than the slowest honest run: a transcode is bounded at ten minutes
+ * (below) and a file that never arrives is given up on after about two. A row
+ * older than this whose job is still queued or active is left alone; one with
+ * no live job is restarted.
+ */
+export const DEFAULT_STALE_AFTER_MINUTES = 30;
+
+/**
+ * How many times the sweep (or an admin) may restart processing before the
+ * clip is marked FAILED. Persisted as `Media.processingAttempts`, because the
+ * whole point is a bound that survives the job — and the process — being gone.
+ */
+export const MAX_PROCESSING_RESTARTS = 3;
+
+/** What the uploader reads once the restarts are spent. */
+export const PROCESSING_GAVE_UP_REASON =
+  'Processing did not complete after several attempts. Please try uploading it again.';
+
+/**
+ * Ceilings on one attempt's steps, so a hung call fails the attempt instead of
+ * holding a job active for ever.
+ *
+ * The S3 client has no request timeout of its own, so a download that stops
+ * receiving bytes never ends; BullMQ keeps renewing the lock on a job whose
+ * worker is alive, so nothing outside notices. The transcode bound sits above
+ * ffmpeg's own four-minute kill plus a download and an upload of a 120 MB file.
+ */
+export const TRANSCODE_STEP_TIMEOUT_MS = 10 * 60 * 1000;
+export const FINALISE_STEP_TIMEOUT_MS = 60 * 1000;
+
+/** Thrown by the worker to schedule the next look for a file still in flight. */
+export const NOT_ARRIVED_ERROR = 'The uploaded file has not arrived in storage yet';
 
 /**
  * How long a transcode may hold a queue slot, and how often it is retried.

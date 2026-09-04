@@ -2,12 +2,23 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { MediaFinaliserService } from './media-finaliser.service';
+import { MediaRecoveryService } from './media-recovery.service';
 import {
   FINALISE_CLIP_JOB,
+  FINALISE_STEP_TIMEOUT_MS,
   MEDIA_QUEUE,
+  NOT_ARRIVED_ERROR,
+  SWEEP_STALE_JOB,
   TRANSCODE_CLIP_JOB,
+  TRANSCODE_STEP_TIMEOUT_MS,
   type FinaliseClipJob,
 } from './media-processing.constants';
+import {
+  isStalledError,
+  isTimeoutError,
+  processingFailureLine,
+  withTimeout,
+} from './processing-failure.util';
 import { VideoTranscoderService } from './video-transcoder.service';
 
 /**
@@ -36,9 +47,17 @@ import { VideoTranscoderService } from './video-transcoder.service';
  * network call belongs off the request path: R2 being slow should not make
  * uploading feel broken, it should make one clip take a little longer to appear.
  *
- * Retries and backoff are BullMQ's (see FINALISE_ATTEMPTS). Failing the job by
- * throwing is what schedules the next attempt; only the final attempt writes
- * FAILED, which is what `onFailed` below is for.
+ * ## PROCESSING always ends
+ *
+ * Retries and backoff are BullMQ's (see FINALISE_ATTEMPTS / TRANSCODE_ATTEMPTS).
+ * Failing the job by throwing is what schedules the next attempt; `onFailed`
+ * below is what writes FAILED once the attempts are spent — and it is the part
+ * that went missing in a refactor, which is how clips came to sit at
+ * PROCESSING for a day. Each step is also bounded in time, so a hung download
+ * fails the attempt rather than holding the job active, and a job whose worker
+ * died is restarted (bounded) rather than dropped. What no attempt can reach,
+ * the sweep does: `MediaRecoveryService` reconciles the table with the queue
+ * every ten minutes.
  */
 /**
  * How hard the worker is allowed to ask "anything for me yet?".
@@ -68,6 +87,11 @@ const IDLE_TUNING = {
   stalledInterval: 300_000,
 } as const;
 
+/** What the uploader reads, by what went wrong. */
+const NOT_FOUND_REASON = 'We could not find your uploaded file. Please try uploading it again.';
+const TIMED_OUT_REASON = 'Processing this video took too long. Please try uploading it again.';
+const GENERIC_REASON = 'We could not process this video. Please try uploading it again.';
+
 @Processor(MEDIA_QUEUE, IDLE_TUNING)
 export class MediaProcessor extends WorkerHost {
   private readonly logger = new Logger(MediaProcessor.name);
@@ -75,11 +99,17 @@ export class MediaProcessor extends WorkerHost {
   constructor(
     private finaliser: MediaFinaliserService,
     private transcoder: VideoTranscoderService,
+    private recovery: MediaRecoveryService,
   ) {
     super();
   }
 
   async process(job: Job<FinaliseClipJob>): Promise<void> {
+    if (job.name === SWEEP_STALE_JOB) {
+      await this.recovery.sweep();
+      return;
+    }
+
     /*
      * Transcoding, for a clip the browser could not compress.
      *
@@ -89,7 +119,11 @@ export class MediaProcessor extends WorkerHost {
      * ffmpeg at all keeps the original, which the finaliser still bounds by size.
      */
     if (job.name === TRANSCODE_CLIP_JOB) {
-      const outcome = await this.transcoder.transcodeInPlace(job.data.mediaId, job.data.storageKey);
+      const outcome = await withTimeout(
+        this.transcoder.transcodeInPlace(job.data.mediaId, job.data.storageKey),
+        TRANSCODE_STEP_TIMEOUT_MS,
+        'transcode',
+      );
       /*
        * Only a verdict about the file stops here — `transcodeInPlace` has
        * already written FAILED with a reason the uploader can read. A host that
@@ -104,17 +138,69 @@ export class MediaProcessor extends WorkerHost {
 
     // The decision lives in MediaFinaliserService so that a clip can still be
     // finalised when there is no queue to run this — see that class's note.
-    const outcome = await this.finaliser.finalise(job.data);
+    const outcome = await withTimeout(
+      this.finaliser.finalise(job.data),
+      FINALISE_STEP_TIMEOUT_MS,
+      'finalise',
+    );
 
     if (outcome === 'NOT_ARRIVED') {
       // Thrown, not written: this schedules the next attempt, and the upload may
       // simply still be in flight. `onFailed` writes FAILED once the attempts
       // are spent.
-      throw new Error('The uploaded file has not arrived in storage yet');
+      throw new Error(NOT_ARRIVED_ERROR);
     }
   }
 
-  private async fail(mediaId: string, reason: string) {
-    await this.finaliser.fail(mediaId, reason);
+  /**
+   * Every failed attempt is logged; the last one is written to the row.
+   *
+   * A stalled job is the exception — its worker died rather than its clip being
+   * wrong — so it is restarted through the recovery service, which bounds how
+   * many times that may happen before the clip is failed after all.
+   */
+  @OnWorkerEvent('failed')
+  async onFailed(job: Job<FinaliseClipJob> | undefined, error: Error) {
+    if (!job) return;
+    if (job.name === SWEEP_STALE_JOB) {
+      this.logger.warn(`The stale-processing sweep failed: ${error.message}`);
+      return;
+    }
+
+    const attempts = job.opts.attempts ?? 1;
+    const stalled = isStalledError(error);
+    const final = stalled || job.attemptsMade >= attempts;
+
+    this.logger.error(
+      processingFailureLine({
+        mediaId: job.data.mediaId,
+        playerId: job.data.playerId,
+        step: job.name,
+        error: error.message,
+        attempt: job.attemptsMade,
+        attempts,
+        final,
+      }),
+    );
+    if (!final) return;
+
+    try {
+      if (stalled) {
+        await this.recovery.restartById(job.data.mediaId, 'stalled');
+        return;
+      }
+      await this.finaliser.fail(job.data.mediaId, reasonFor(error));
+    } catch (writeError) {
+      // The one failure this cannot recover from itself; the sweep will.
+      this.logger.error(
+        `Could not mark ${job.data.mediaId} after its last attempt: ${(writeError as Error).message}`,
+      );
+    }
   }
+}
+
+function reasonFor(error: Error): string {
+  if (error.message === NOT_ARRIVED_ERROR) return NOT_FOUND_REASON;
+  if (isTimeoutError(error)) return TIMED_OUT_REASON;
+  return GENERIC_REASON;
 }
