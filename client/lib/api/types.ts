@@ -91,6 +91,11 @@ export interface Media {
    */
   status: 'PROCESSING' | 'ACTIVE' | 'FAILED' | 'FLAGGED' | 'REMOVED';
   /**
+   * Why the worker gave up, in the uploader's words. Set only with `FAILED`;
+   * the API spreads the whole row, so it was always sent and never declared.
+   */
+  failureReason?: string | null;
+  /**
    * Whether an admin has watched this clip yet — the gate on public visibility.
    *
    * A second axis, not a replacement for `status`: `status` says whether the

@@ -5816,6 +5816,77 @@
         ]
       }
     },
+    "/api/v1/moderation/media/failed": {
+      "get": {
+        "operationId": "moderation_listFailedMedia",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Uploads the worker could not confirm — **super admin only**.\n\nThe same gate as the blocked list, for the same reason: the one action on\nit, retrying the platform's own processing, is an operator's decision.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/retry": {
+      "patch": {
+        "operationId": "moderation_retryFailedMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Re-run finalisation on a failed upload. Not a status override — the clip is\nre-checked in the bucket and becomes ACTIVE only if it is really there.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/moderation/media/{id}/verify": {
       "patch": {
         "operationId": "moderation_verifyMedia",

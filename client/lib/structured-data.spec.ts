@@ -23,10 +23,13 @@ import test from 'node:test';
 type Json = Record<string, any>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+import { CONTACT_EMAIL, PHONES, SOCIAL_ACCOUNTS } from './contact';
 import {
   breadcrumbLd,
   itemListLd,
   organizationLd,
+  siteGraphLd,
+  websiteLd,
   personLd,
   trialDateTime,
   trialEventLd,
@@ -238,4 +241,44 @@ test('describes the site itself for the knowledge panel', () => {
   assert.equal(org['@type'], 'Organization');
   assert.equal(org.name, 'FotSpot');
   assert.match(org.logo as string, /^https?:\/\/.+\/fotspot\.png$/);
+});
+
+/*
+ * The organisation's outward links are the contact file's, verbatim — the same
+ * source the contact page renders. A social profile that is not there is not
+ * claimed here either.
+ */
+test('states only the contacts the site itself publishes', () => {
+  const org = organizationLd('x') as Record<string, unknown>;
+
+  // Derived from the contact file rather than restated here, because the rule
+  // under test is "these agree" — a link added or dropped there must move here.
+  assert.deepEqual(
+    org.sameAs,
+    SOCIAL_ACCOUNTS.map((a) => a.href),
+  );
+  assert.ok((org.sameAs as string[]).length >= 1, 'at least one published profile');
+  assert.equal(org.email, CONTACT_EMAIL);
+  assert.equal(org.telephone, PHONES[0]?.e164);
+  // Facts nothing in the codebase records are not invented.
+  assert.equal(org.foundingDate, undefined);
+  assert.equal(org.address, undefined);
+});
+
+test('links the website to its publisher by id, with no search action', () => {
+  const site = websiteLd('x') as Record<string, unknown>;
+  const org = organizationLd('x') as Record<string, unknown>;
+
+  assert.equal(site['@type'], 'WebSite');
+  assert.deepEqual(site.publisher, { '@id': org['@id'] });
+  // The sitelinks search box is gone from Google; a SearchAction would be noise.
+  assert.equal(site.potentialAction, undefined);
+});
+
+test('emits both site entities as one graph', () => {
+  const graph = siteGraphLd('x') as { '@graph': Record<string, unknown>[] };
+  assert.deepEqual(
+    graph['@graph'].map((n) => n['@type']),
+    ['Organization', 'WebSite'],
+  );
 });

@@ -24,6 +24,8 @@ import { TariffsModule } from '../tariffs/tariffs.module';
   ],
   controllers: [MediaController],
   providers: [MediaService, MediaProcessor, MediaFinaliserService, VideoTranscoderService],
-  exports: [MediaService],
+  // The finaliser is exported for the super admin's retry: re-running the same
+  // checks is the only honest way to bring a FAILED upload back.
+  exports: [MediaService, MediaFinaliserService],
 })
 export class MediaModule {}

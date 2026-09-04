@@ -6,6 +6,7 @@ import type { AuditService } from '../audit/audit.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { StorageService } from '../storage/storage.service';
+import type { MediaFinaliserService } from '../media/media-finaliser.service';
 
 /**
  * The admin half of video moderation: what the queue offers, what the two
@@ -58,14 +59,22 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
     deleteObject: jest.fn(async () => undefined),
   };
 
+  // The worker's own finalisation, which retry reuses. ACTIVE by default: the
+  // object is there. Individual tests re-resolve it for the other outcomes.
+  const finaliser = {
+    finalise: jest.fn(async (): Promise<'ACTIVE' | 'FAILED' | 'NOT_ARRIVED' | 'GONE'> => 'ACTIVE'),
+    fail: jest.fn(async () => undefined),
+  };
+
   const service = new ModerationService(
     prisma as unknown as PrismaService,
     audit as unknown as AuditService,
     storage as unknown as StorageService,
     redis as unknown as RedisService,
+    finaliser as unknown as MediaFinaliserService,
   );
 
-  return { service, prisma, audit, redis, storage };
+  return { service, prisma, audit, redis, storage, finaliser };
 }
 
 describe('listUnverifiedMedia — what a moderator is shown', () => {
@@ -392,5 +401,116 @@ describe('deleteMedia — the super admin destroys a clip', () => {
     await expect(service.deleteMedia('super-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.media.delete).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Failed uploads — the list that did not exist, and the retry                */
+/* -------------------------------------------------------------------------- */
+
+describe('listFailedMedia — what the super admin is shown', () => {
+  it('asks for failed video uploads by status alone', async () => {
+    const { service, prisma } = build();
+
+    await service.listFailedMedia({});
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { type: 'VIDEO', status: 'FAILED' } }),
+    );
+  });
+
+  /*
+   * A failed upload was never moderated, so it is UNVERIFIED — and a clause on
+   * moderationStatus would hide every one of them. That absence is the point.
+   */
+  it('does not hide a failed upload for being unreviewed', async () => {
+    const { service, prisma } = build();
+
+    await service.listFailedMedia({});
+
+    const [args] = prisma.media.findMany.mock.calls[0] as unknown as [
+      { where: Record<string, unknown> },
+    ];
+    expect(args.where.moderationStatus).toBeUndefined();
+  });
+
+  it('is newest first and paged in the database', async () => {
+    const { service, prisma } = build();
+
+    await service.listFailedMedia({ page: 3, pageSize: 10 });
+
+    expect(prisma.media.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' }, skip: 20, take: 10 }),
+    );
+    expect(prisma.media.count).toHaveBeenCalledWith({ where: { type: 'VIDEO', status: 'FAILED' } });
+  });
+});
+
+describe('retryFailedMedia — bringing an upload back honestly', () => {
+  const FAILED = {
+    status: 'FAILED' as MediaStatus,
+    failureReason: 'Video processing is unavailable on the server.',
+  };
+
+  it('re-runs the worker’s own finalisation rather than writing ACTIVE', async () => {
+    const { service, prisma, finaliser } = build(FAILED);
+
+    await service.retryFailedMedia('super-1', 'clip-1');
+
+    // Back to PROCESSING first, conditionally on still being FAILED.
+    expect(prisma.media.updateMany).toHaveBeenCalledWith({
+      where: { id: 'clip-1', status: 'FAILED' },
+      data: { status: 'PROCESSING', failureReason: null, processedAt: null },
+    });
+    // Then the same checks the worker makes — never a direct ACTIVE write.
+    expect(finaliser.finalise).toHaveBeenCalledWith({
+      mediaId: 'clip-1',
+      storageKey: CLIP.storageKey,
+      posterKey: CLIP.posterKey,
+    });
+    const directActive = (
+      prisma.media.updateMany.mock.calls as unknown as [{ data: { status?: string } }][]
+    ).some(([args]) => args.data.status === 'ACTIVE');
+    expect(directActive).toBe(false);
+  });
+
+  it('fails it again, with a reason that is true now, when the file is not there', async () => {
+    const { service, finaliser } = build(FAILED);
+    finaliser.finalise.mockResolvedValue('NOT_ARRIVED');
+
+    await service.retryFailedMedia('super-1', 'clip-1');
+
+    expect(finaliser.fail).toHaveBeenCalledWith('clip-1', 'The uploaded file is not in storage.');
+  });
+
+  it('refuses a clip that is not failed', async () => {
+    const { service, finaliser } = build({ status: 'ACTIVE' });
+
+    await expect(service.retryFailedMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(finaliser.finalise).not.toHaveBeenCalled();
+  });
+
+  it('refuses a second retry racing the first', async () => {
+    const { service, prisma, finaliser } = build(FAILED);
+    prisma.media.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.retryFailedMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(finaliser.finalise).not.toHaveBeenCalled();
+  });
+
+  it('records who retried, what it had said, and what happened', async () => {
+    const { service, audit } = build(FAILED);
+
+    await service.retryFailedMedia('super-1', 'clip-1');
+
+    expect(audit.record).toHaveBeenCalledWith('super-1', AuditAction.MEDIA_RETRIED, {
+      mediaId: 'clip-1',
+      previousReason: FAILED.failureReason,
+      outcome: 'ACTIVE',
+    });
   });
 });

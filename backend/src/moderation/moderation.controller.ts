@@ -62,6 +62,28 @@ export class ModerationController {
   }
 
   /**
+   * Uploads the worker could not confirm — **super admin only**.
+   *
+   * The same gate as the blocked list, for the same reason: the one action on
+   * it, retrying the platform's own processing, is an operator's decision.
+   */
+  @Roles('super_admin')
+  @Get('media/failed')
+  listFailedMedia(@Query() dto: PaginationDto) {
+    return this.moderationService.listFailedMedia(dto);
+  }
+
+  /**
+   * Re-run finalisation on a failed upload. Not a status override — the clip is
+   * re-checked in the bucket and becomes ACTIVE only if it is really there.
+   */
+  @Roles('super_admin')
+  @Patch('media/:id/retry')
+  retryFailedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.retryFailedMedia(user.userId, id);
+  }
+
+  /**
    * Approve a clip: it becomes publicly visible and leaves this queue.
    *
    * No confirmation on the client either — verifying is the ordinary outcome and

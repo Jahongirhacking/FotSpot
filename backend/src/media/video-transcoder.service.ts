@@ -17,6 +17,19 @@ import { parseProbe, probeArgs, transcodeArgs, type SourceInfo } from './ffmpeg.
  */
 const TRANSCODE_TIMEOUT_MS = 4 * 60 * 1000;
 
+/**
+ * What became of a clip handed to the transcoder.
+ *
+ * Three answers rather than a boolean, because the old `false` meant two
+ * different things and the worker could only act on one of them. `FAILED` is a
+ * verdict about *this file* — it could not be read, or ffmpeg gave up on it —
+ * and the row has been marked so the uploader is told. `ORIGINAL_KEPT` is not a
+ * verdict about the file at all: the host cannot transcode, or the re-encode
+ * came back no smaller, and the original is what the feed will serve. Both of
+ * the last two mean "carry on and finalise"; only the first means stop.
+ */
+export type TranscodeOutcome = 'OPTIMISED' | 'ORIGINAL_KEPT' | 'FAILED';
+
 /** Whether the binaries exist, resolved once and reused. */
 let ffmpegAvailable: boolean | null = null;
 
@@ -93,14 +106,29 @@ export class VideoTranscoderService {
   /**
    * Downloads, transcodes, and writes the result back over the same key.
    *
-   * Returns whether the clip is now optimised. `false` means the caller must not
-   * promote it — see `MediaFinaliserService`, which refuses to make a clip ACTIVE
-   * while it is still the original.
+   * Returns what happened — see `TranscodeOutcome`. Only `FAILED` means the
+   * caller must stop; the row is already marked. The other two mean "finalise".
    */
-  async transcodeInPlace(mediaId: string, storageKey: string): Promise<boolean> {
+  async transcodeInPlace(mediaId: string, storageKey: string): Promise<TranscodeOutcome> {
     if (!(await this.isAvailable())) {
-      await this.fail(mediaId, 'Video processing is unavailable on the server.');
-      return false;
+      /*
+       * No ffmpeg on this host is a fact about the deployment, not about the
+       * clip — and it used to be written onto the clip. Every upload from a
+       * browser that could not compress landed here and became
+       * `FAILED: "Video processing is unavailable on the server."`, a row that
+       * no admin screen lists and no moderator ever sees. A twelve-year-old's
+       * dribbling clip was being declared broken because a package was missing
+       * from a Docker image.
+       *
+       * The original is playable and its size is still bounded by the finaliser
+       * (`MAX_CLIP_BYTES`), so it goes on to be checked and moderated like any
+       * other. `isAvailable` has already logged the operator-facing error once;
+       * this is the per-clip trace of the same condition.
+       */
+      this.logger.warn(
+        `[TRANSCODE] ${mediaId}: ffmpeg unavailable, keeping the original as uploaded.`,
+      );
+      return 'ORIGINAL_KEPT';
     }
 
     const directory = await mkdtemp(join(tmpdir(), 'fotspot-clip-'));
@@ -130,18 +158,20 @@ export class VideoTranscoderService {
           `[TRANSCODE] ${mediaId}: re-encode was no smaller ` +
             `(${bytes(original.length)} → ${bytes(optimised.length)}), keeping the original.`,
         );
-        return true;
+        return 'ORIGINAL_KEPT';
       }
 
       await this.storage.putObject(storageKey, optimised, 'video/mp4');
       this.logger.log(
         `[TRANSCODE] ${mediaId}: ${bytes(original.length)} → ${bytes(optimised.length)}`,
       );
-      return true;
+      return 'OPTIMISED';
     } catch (error) {
       this.logger.error(`[TRANSCODE] ${mediaId} failed: ${(error as Error).message}`);
+      // A verdict about this file, unlike the branch at the top: ffmpeg was here
+      // and could not make sense of what was uploaded.
       await this.fail(mediaId, 'We could not process this video. Please try uploading it again.');
-      return false;
+      return 'FAILED';
     } finally {
       // The source of a minute of 1080p is not something to leave on a worker's
       // disk, whichever way the run went.

@@ -13,7 +13,9 @@ import { Alert } from '@/components/ui/Feedback';
 import { ScoutSquadActions } from './ScoutSquadActions';
 import { formatDate, initials } from '@/lib/utils';
 
-export const metadata: Metadata = { title: 'Scout' };
+// Behind sign-in (the page redirects a guest to /login), so it is not a page
+// for results — and without this it inherited `index, follow`.
+export const metadata: Metadata = { title: 'Scout', robots: { index: false, follow: false } };
 
 /**
  * One scout's reputation — README §1.5.
@@ -123,10 +125,7 @@ export default async function ScoutProfilePage({ params }: { params: Promise<{ i
             <Stat label={t.scouts.sent} value={scout?.stats.totalRecommendations} />
             <Stat label={t.scouts.accepted} value={scout?.stats.acceptedRecommendations} />
             <Stat label={t.scouts.pending} value={scout?.stats.pendingRecommendations} />
-            <Stat
-              label={t.scouts.successRate}
-              value={`${Math.round(scout?.stats.successRate)}%`}
-            />
+            <Stat label={t.scouts.successRate} value={`${Math.round(scout?.stats.successRate)}%`} />
           </dl>
         </CardContent>
       </Card>

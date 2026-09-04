@@ -3,7 +3,7 @@ import { PlayingStyleModalController } from '@/components/player/PlayingStyleMod
 import type { Locale } from '@/lib/i18n/config';
 import { getLocale, getServerT } from '@/lib/i18n/server';
 import { jsonLd, siteUrl } from '@/lib/seo';
-import { organizationLd } from '@/lib/structured-data';
+import { siteGraphLd } from '@/lib/structured-data';
 import { getSession } from '@/lib/session';
 import { THEME_SCRIPT } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -57,14 +57,24 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t.seo.description,
     applicationName: 'FotSpot',
     keywords: t.seo.keywords,
-    alternates: { canonical: '/' },
+    /*
+     * No `alternates` and no `openGraph.url` here — deliberately.
+     *
+     * Next merges metadata shallowly, so a layout-level canonical of `/` was
+     * inherited by every page that did not set its own, and those pages told
+     * Google they were duplicates of the homepage. Each page now declares its
+     * canonical through `pageMetadata` (lib/seo.ts); the layout supplies only
+     * what is genuinely site-wide.
+     */
+    // A plain path: `app/favicon.ico` would emit `/favicon.ico?favicon.<hash>`,
+    // a URL variant Search Console then reports as a discovered page.
+    icons: { icon: '/favicon.ico' },
     openGraph: {
       type: 'website',
       siteName: 'FotSpot',
       title: t.seo.title,
       description: t.seo.description,
       locale: OG_LOCALE[locale],
-      url: '/',
       images: [
         {
           url: '/fotspot.png',
@@ -159,7 +169,7 @@ export default async function RootLayout({
         */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={jsonLd(organizationLd(t.seo.description))}
+          dangerouslySetInnerHTML={jsonLd(siteGraphLd(t.seo.description))}
         />
       </head>
       <body className="flex min-h-full flex-col">

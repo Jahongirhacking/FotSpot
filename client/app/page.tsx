@@ -9,11 +9,14 @@ import { Reveal } from '@/components/shared/Reveal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { LoadingImage } from '@/components/ui/LoadingImage';
 import { ApiError } from '@/lib/api/client';
 import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
 import type { PlayerProfile } from '@/lib/api/types';
 import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
+import { pageMetadata } from '@/lib/seo';
+import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
 import { ageBand, humanizeEnum, initials } from '@/lib/utils';
 import {
@@ -34,6 +37,15 @@ import Link from 'next/link';
  * Landing page. Signed-in users keep it — it's the marketing surface, and the
  * header adapts — but the primary CTA changes to match where they actually are.
  */
+/**
+ * The homepage's own canonical, now that the layout no longer imposes one on
+ * every page. Title and description are the site's, which is correct *here*.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return pageMetadata({ path: '/', title: t.seo.title, description: t.seo.description });
+}
+
 export default async function LandingPage() {
   const session = await getSession();
   const { t } = await getServerT();
@@ -254,7 +266,27 @@ export default async function LandingPage() {
                       className="group border-border bg-surface hover:border-primary/40 rounded-card block overflow-hidden border transition-colors"
                     >
                       <div className="bg-surface-2 relative aspect-video">
-                        <PitchBackdrop className="opacity-40" />
+                        {/*
+                          The clip's own frame when it has one. `posterUrl` is
+                          already signed by the API alongside the video URL — one
+                          response, no second request — and the pitch stays as
+                          the fallback for a clip whose cover capture failed in
+                          the browser. `object-cover` keeps the 16:9 box honest
+                          whatever the phone recorded; a broken image simply
+                          shows the pitch behind it, via the same loader every
+                          other image on the site uses.
+                        */}
+                        {item?.posterUrl ? (
+                          <LoadingImage
+                            src={item.posterUrl}
+                            alt=""
+                            loading="lazy"
+                            spinner={false}
+                            className="absolute inset-0 size-full object-cover"
+                          />
+                        ) : (
+                          <PitchBackdrop className="opacity-40" />
+                        )}
                         <div className="absolute inset-0 grid place-items-center">
                           <span className="bg-primary/90 text-primary-foreground grid size-9 place-items-center rounded-full">
                             <Video className="size-4" aria-hidden />

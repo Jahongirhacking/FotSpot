@@ -59,6 +59,8 @@ export const AuditAction = {
   MEDIA_VERIFIED: 'media.verified',
   MEDIA_BLOCKED: 'media.blocked',
   MEDIA_DELETED: 'media.deleted',
+  /** A super admin re-ran finalisation on an upload the worker had given up on. */
+  MEDIA_RETRIED: 'media.retried',
 } as const;
 
 export type AuditActionKey = (typeof AuditAction)[keyof typeof AuditAction];

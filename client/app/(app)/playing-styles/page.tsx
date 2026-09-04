@@ -1,12 +1,28 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { Sparkles } from 'lucide-react';
 import { PLAYING_STYLE_INFO } from '@/lib/playing-styles';
 import { PlayingStyleCard } from '@/components/player/PlayingStyleCard';
 import { getServerT } from '@/lib/i18n/server';
 
+/**
+ * One canonical, `/playing-styles`, for the page and every `?showPlayingStyle=`
+ * view of it.
+ *
+ * The parameter opens a modal over this same grid — it is UI state that
+ * survives a refresh and a share, not a second page. Each style is one line
+ * of description and a footballer's name, which is not the material for
+ * fourteen landing pages; it is one good page. So the variants are not given
+ * routes of their own, and their canonical resolves here rather than, as
+ * before, to the homepage the layout used to impose.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerT();
-  return { title: t.playingStyleModal?.title };
+  return pageMetadata({
+    path: '/playing-styles',
+    title: t.playingStyleModal?.title,
+    description: t.playingStyleModal?.subtitle,
+  });
 }
 
 /**

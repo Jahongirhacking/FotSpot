@@ -16,6 +16,65 @@ export function absoluteUrl(path: string): string {
 }
 
 /**
+ * The metadata every indexable page shares, from one place.
+ *
+ * ## Why a helper and not the layout
+ *
+ * The root layout used to declare `alternates.canonical: '/'` and
+ * `openGraph.url: '/'` as defaults. Next merges metadata **shallowly** by top-
+ * level key, so a page that set only a title inherited the layout's whole
+ * `alternates` object — and every such page shipped
+ * `<link rel="canonical" href="https://www.fotspot.uz">`. `/players`, `/trials`
+ * and `/playing-styles` were all telling Google they were copies of the
+ * homepage, and Google agreed: Search Console listed them as "alternate page
+ * with proper canonical tag" and left them out of the index.
+ *
+ * So the layout no longer carries a canonical or an OG url at all, and a page
+ * asks for its own here. A page that forgets gets *no* canonical, which is
+ * merely a missed opportunity; the old default was an instruction to deindex.
+ *
+ * `path` is the canonical path — no query, no hash. The one place a query is
+ * legitimately part of the page's identity is nowhere on this site: `?page=`,
+ * `?showPlayingStyle=`, `?region=` are views of the page, and the canonical
+ * says so by omitting them.
+ */
+export function pageMetadata({
+  path,
+  title,
+  description,
+  index = true,
+  image = '/fotspot.png',
+}: {
+  path: string;
+  title: string;
+  description?: string;
+  /** False for a page that exists but must not be in results. */
+  index?: boolean;
+  image?: string;
+}) {
+  const url = absoluteUrl(path);
+  return {
+    title,
+    ...(description ? { description } : {}),
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website' as const,
+      url,
+      title,
+      ...(description ? { description } : {}),
+      images: [{ url: image, width: 600, height: 600, alt: 'FotSpot' }],
+    },
+    twitter: {
+      card: 'summary' as const,
+      title,
+      ...(description ? { description } : {}),
+      images: [image],
+    },
+    robots: { index, follow: true },
+  };
+}
+
+/**
  * JSON-LD, rendered as a script tag.
  *
  * Structured data is what turns a result into a rich one — a player card in

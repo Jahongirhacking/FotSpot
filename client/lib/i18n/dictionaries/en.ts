@@ -1591,6 +1591,17 @@ export const en: Dictionary = {
       'Videos an admin has blocked. They are visible to nobody, but the record is kept for moderation history. Only a super admin can delete them permanently.',
     noBlockedVideos: 'No blocked videos.',
     noBlockedVideosHint: 'A video appears here once an admin blocks it.',
+    /* Failed uploads — the worker's report, kept apart from a moderator's block. */
+    failedUploads: 'Failed uploads',
+    failedUploadsHint:
+      'Videos the server could not process. The reason is on each card; retrying re-checks the file in storage and, if it is there, sends the clip to review.',
+    noFailedUploads: 'No failed uploads.',
+    noFailedUploadsHint: 'When processing cannot confirm an upload, it appears here.',
+    failureReason: 'Reason',
+    failedBadge: 'Failed',
+    retryProcessing: 'Retry processing',
+    retryNowInQueue: 'The file was found. The clip is now in the review queue.',
+    retryStillFailed: 'Still could not process this upload.',
     blockedOn: 'Blocked',
     resolutionNote: 'Note',
     rolesPermissions: 'Roles & permissions',
