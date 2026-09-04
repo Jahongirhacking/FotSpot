@@ -1,5 +1,5 @@
-import type * as React from 'react';
 import { cn } from '@/lib/utils';
+import type * as React from 'react';
 
 /**
  * One band of the landing page.
@@ -19,12 +19,13 @@ import { cn } from '@/lib/utils';
  * light theme and is still darker than the page in the dark one; the hairline
  * borders keep its edges visible either way.
  */
-type Tone = 'base' | 'tint' | 'dark';
+type Tone = 'base' | 'tint' | 'dark' | 'green';
 
 const TONES: Record<Tone, string> = {
   base: 'bg-background',
   tint: 'bg-surface-2 border-border border-y',
   dark: 'landing-band-dark border-y border-white/10 text-white',
+  green: 'landing-band-primary border-y border-white/10 text-white',
 };
 
 export function LandingSection({

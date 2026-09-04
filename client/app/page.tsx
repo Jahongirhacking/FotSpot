@@ -161,60 +161,6 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* Live counts, straight under the hero — an empty marketplace is the
-            honest early state, so these only render once there is something to
-            show. Three links to three screens, as a list (see StatCard for why
-            each is a photograph). */}
-        {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
-          <Reveal>
-            <LandingSection tone="base" className="pt-2 sm:pt-4">
-              <LandingContainer>
-                <ul className="grid gap-4 sm:grid-cols-3">
-                  <li>
-                    <Link
-                      href="/players"
-                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                      <StatCard
-                        icon={Users}
-                        label={t.landing.statPlayers}
-                        value={recent.total}
-                        focus="18% 45%"
-                      />
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/academies"
-                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                      <StatCard
-                        icon={Building2}
-                        label={t.landing.statAcademies}
-                        value={academyList?.length}
-                        focus="88% 50%"
-                      />
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/trials"
-                      className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                      <StatCard
-                        icon={CalendarDays}
-                        label={t.landing.statTrials}
-                        value={trialList?.length}
-                        focus="63% 55%"
-                      />
-                    </Link>
-                  </li>
-                </ul>
-              </LandingContainer>
-            </LandingSection>
-          </Reveal>
-        )}
-
         {/* Who this is for, in their own terms. Three roles arrive on this page
             with three different questions, and one paragraph aimed at all of
             them answers none of them. */}
@@ -240,20 +186,20 @@ export default async function LandingPage() {
             happens on the player's own page (§21.6). The one dark band on the
             page: this is the featured content, and it is framed as such. */}
         <Reveal>
-          <LandingSection tone="dark">
-            <PitchBackdrop className="text-primary/15 opacity-60" />
+          <LandingSection tone="green">
+            <PitchBackdrop className="text-white/10 opacity-80" />
             <LandingContainer>
               <SectionHeading
                 icon={Video}
                 title={t.landing.latestClips}
                 body={t.landing.latestClipsBody}
-                actionHref="/players"
+                actionHref="/login?next=/feed"
                 actionLabel={t.common.seeAll}
                 tone="dark"
               />
 
               {clips?.length === 0 ? (
-                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/80">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-5 text-sm text-white">
                   <FootballBall className="size-8" />
                   {t.landing.noClipsYet}
                 </div>
@@ -263,9 +209,9 @@ export default async function LandingPage() {
                     <li key={item?.id}>
                       <Link
                         href={`/players/${item?.player.id}`}
-                        className="group hover:border-primary/60 focus-visible:ring-ring block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-sm transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:outline-none"
+                        className="group bg-surface border-border text-foreground hover:border-primary focus-visible:ring-ring block overflow-hidden rounded-2xl border shadow-md transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:outline-none"
                       >
-                        <div className="relative aspect-video overflow-hidden bg-black/40">
+                        <div className="relative aspect-video overflow-hidden bg-black/85">
                           {/*
                             The clip's own frame when it has one. `posterUrl` is
                             already signed by the API alongside the video URL — one
@@ -306,19 +252,18 @@ export default async function LandingPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2.5 p-3">
-                          <span
-                            className="bg-primary/20 text-primary-strong grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-bold ring-1 ring-white/10"
-                            aria-hidden
-                          >
-                            {initials(item?.player.firstName, item?.player.lastName)}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
+                          {/* Who the footage belongs to — their own picture when
+                              they have one, initials otherwise. Separate from the
+                              cover above, which is the clip. */}
+                          <Avatar
+                            src={item?.player.avatarUrl}
+                            fallback={initials(item?.player.firstName, item?.player.lastName)}
+                            className="ring-primary/20 size-8 shrink-0 ring-1"
+                          />
+                          <span className="text-foreground min-w-0 flex-1 truncate text-sm font-semibold">
                             {item?.player.firstName} {item?.player.lastName}
                           </span>
-                          <Badge
-                            variant="outline"
-                            className="shrink-0 border-white/20 text-[10px] text-white/80"
-                          >
+                          <Badge variant="outline" className="shrink-0 text-[10px]">
                             {ageBand(item?.player.birthDate)}
                           </Badge>
                         </div>
@@ -339,7 +284,7 @@ export default async function LandingPage() {
                   icon={Sparkles}
                   title={t.landing.recentlyJoined}
                   body={t.landing.recentlyJoinedBody}
-                  actionHref="/players"
+                  actionHref="/players?sort=newest"
                   actionLabel={t.common.seeAll}
                 />
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -415,6 +360,63 @@ export default async function LandingPage() {
         <Reveal>
           <LandingSection tone="base" className="pb-4 sm:pb-6">
             <LandingContainer>
+              {/* Live counts, straight under the hero — an empty marketplace is the
+            honest early state, so these only render once there is something to
+            show. Three links to three screens, as a list (see StatCard for why
+            each is a photograph). */}
+              {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
+                <Reveal>
+                  <LandingSection tone="base" className="pt-2 sm:pt-4">
+                    <LandingContainer>
+                      <ul className="grid gap-4 sm:grid-cols-3">
+                        <li>
+                          <Link
+                            href="/players"
+                            className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                          >
+                            <StatCard
+                              icon={Users}
+                              label={t.landing.statPlayers}
+                              value={recent.total}
+                              focus="18% 45%"
+                              bgImg="/images/stats/players.png"
+                            />
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            href="/academies"
+                            className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                          >
+                            <StatCard
+                              icon={Building2}
+                              label={t.landing.statAcademies}
+                              value={academyList?.length}
+                              focus="88% 50%"
+                              bgImg="/images/stats/academies.png"
+                            />
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            href="/trials"
+                            className="focus-visible:ring-ring block rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                          >
+                            <StatCard
+                              icon={CalendarDays}
+                              label={t.landing.statTrials}
+                              value={trialList?.length}
+                              focus="63% 55%"
+                              bgImg="/images/stats/trials.png"
+                            />
+                          </Link>
+                        </li>
+                      </ul>
+                    </LandingContainer>
+                  </LandingSection>
+                </Reveal>
+              )}
+
               <Card className="border-primary/30 from-primary/[0.10] to-accent/[0.06] hover:border-primary/50 overflow-hidden border-2 bg-gradient-to-br transition-colors duration-200">
                 <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
                   <div className="max-w-2xl min-w-0">
@@ -605,7 +607,7 @@ function SectionHeading({
           <span
             className={cn(
               'grid size-9 shrink-0 place-items-center rounded-xl',
-              dark ? 'bg-primary text-primary-foreground' : 'bg-primary/12 text-primary',
+              dark ? 'bg-white text-green-900' : 'bg-primary/12 text-primary',
             )}
           >
             <Icon className="size-4.5" aria-hidden />
@@ -621,13 +623,14 @@ function SectionHeading({
       {actionHref && actionLabel && (
         <Button
           asChild
-          variant="ghost"
+          variant={dark ? 'outline' : 'ghost'}
           size="sm"
           className={cn(
             'shrink-0 cursor-pointer',
             // Ghost rather than outline on the black band: outline brings the
             // page's white surface with it, and white text on it disappears.
-            dark && 'border border-white/25 text-white hover:bg-white/10 hover:text-white',
+            dark &&
+              'border border-white/25 bg-white text-green-900 hover:bg-white/10 hover:text-white dark:border-gray-800/25',
           )}
         >
           <Link href={actionHref}>{actionLabel}</Link>
