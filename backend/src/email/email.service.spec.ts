@@ -46,7 +46,9 @@ describe('EmailService', () => {
   it('answers sent:false when Resend refuses, rather than throwing', async () => {
     // An unverified domain and a bad key both land here. The caller decides
     // whether that is fatal — registration refuses, password reset must not.
-    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('domain not verified', { status: 403 }));
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('domain not verified', { status: 403 }));
     const service = serviceWith({ RESEND_API_KEY: 'test-key' });
 
     await expect(service.sendCode('a@b.co', '123456', 'registration')).resolves.toEqual({
@@ -68,5 +70,39 @@ describe('EmailService', () => {
     expect(maskEmail('javohir@gmail.com')).toBe('j*****r@gmail.com');
     expect(maskEmail('ab@x.uz')).toBe('a*b@x.uz');
     expect(maskEmail('not-an-address')).toBe('***');
+  });
+});
+
+describe('the logo', () => {
+  it('is served from APP_PUBLIC_URL, next to the rest of the site', async () => {
+    const fetchMock = jest.fn(async () => new Response('{}', { status: 200 }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const service = serviceWith({
+      RESEND_API_KEY: 'key',
+      APP_PUBLIC_URL: 'https://www.example.uz/',
+    });
+
+    await service.sendCode('someone@example.com', '123456', 'registration');
+
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body,
+    );
+    expect(body.html).toContain('<img src="https://www.example.uz/fotspot.png"');
+    expect(body.html).toContain('alt="FotSpot"');
+  });
+
+  /* An `<img>` at localhost is a broken box in every inbox it reaches. */
+  it('is left out, not broken, when the site address is not configured', async () => {
+    const fetchMock = jest.fn(async () => new Response('{}', { status: 200 }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const service = serviceWith({ RESEND_API_KEY: 'key' });
+
+    await service.sendCode('someone@example.com', '123456', 'registration');
+
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body,
+    );
+    expect(body.html).not.toContain('<img');
+    expect(body.html).toContain('123456');
   });
 });

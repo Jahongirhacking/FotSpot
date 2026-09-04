@@ -62,7 +62,23 @@ export class EmailService {
    * person replies to.
    */
   private get from(): string {
-    return (this.config.get<string>('EMAIL_FROM') ?? '').trim() || 'FotSpot <noreply@email.fotspot.uz>';
+    return (
+      (this.config.get<string>('EMAIL_FROM') ?? '').trim() || 'FotSpot <noreply@email.fotspot.uz>'
+    );
+  }
+
+  /**
+   * The FotSpot logo, as an address a mail client can fetch.
+   *
+   * Served from the web app's `public/` directory at `APP_PUBLIC_URL` — the same
+   * origin every SMS and Telegram link is built on, so there is one place the
+   * site's address lives. Null when that is unset (local development), and then
+   * the email simply carries no picture: an `<img>` pointed at localhost would
+   * render as a broken box in every inbox it reached.
+   */
+  private get logoUrl(): string | null {
+    const base = (this.config.get<string>('APP_PUBLIC_URL') ?? '').trim().replace(/\/+$/, '');
+    return base ? `${base}/fotspot.png` : null;
   }
 
   /**
@@ -95,7 +111,7 @@ export class EmailService {
           from: this.from,
           to: [to],
           subject,
-          html: html(heading, body, code),
+          html: html(heading, body, code, this.logoUrl),
           // A plain-text part is not decoration: some clients show it instead,
           // and a code nobody can read is the same as a code nobody received.
           text: `${heading}\n\n${code}\n\n${body}`,
@@ -169,14 +185,20 @@ function copyFor(purpose: EmailPurpose): { subject: string; heading: string; bod
 
 /**
  * Inline styles and a table-free layout, because that is what mail clients
- * actually render. No images and no external CSS: a code that needs a network
- * fetch to be legible is a code half the recipients cannot read.
+ * actually render. No external CSS, and nothing legible depends on an image: a
+ * code that needs a network fetch to be read is a code half the recipients
+ * cannot read. The logo is the one picture, and it is decoration — its alt text
+ * is the brand name, and the line under it says the same thing in type — so a
+ * client that blocks remote images loses a logo, not the code.
  */
-function html(heading: string, body: string, code: string): string {
+function html(heading: string, body: string, code: string, logoUrl: string | null): string {
+  const logo = logoUrl
+    ? `<img src="${logoUrl}" alt="FotSpot" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:12px;margin:0 0 12px" />\n    `
+    : '';
   return `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f5f6f7;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
-    <p style="margin:0 0 4px;font-size:18px;font-weight:700">FotSpot</p>
+    ${logo}<p style="margin:0 0 4px;font-size:18px;font-weight:700">FotSpot</p>
     <p style="margin:0 0 20px;font-size:15px">${heading}</p>
     <p style="margin:0 0 20px;font-size:32px;font-weight:700;letter-spacing:6px;text-align:center;padding:14px;background:#f0fdf4;border-radius:10px">${code}</p>
     <p style="margin:0;font-size:13px;color:#555;line-height:1.5">${body}</p>
