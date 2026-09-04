@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { PLAYER_SORTS } from '@/lib/api/resources';
+import { NEWEST_SORT, resolvePlayerSort } from './player-sort';
 import { PLAYING_STYLES, POSITIONS, UZBEK_REGIONS } from '@/lib/schemas/player';
-import { districtsOf } from '@/lib/uzbekistan';
 import { cn, humanizeEnum } from '@/lib/utils';
+import { districtsOf } from '@/lib/uzbekistan';
 import {
   ArrowDownNarrowWide,
   ArrowUpDown,
@@ -109,6 +110,12 @@ export function PlayerFilters() {
 
   const [query, setQuery] = React.useState(searchParams.get('query') ?? '');
   const selectedRegion = searchParams.get('region') ?? '';
+  // Read the same way the page reads it, so the selects show the ordering the
+  // list actually has — including the stars-first default when the URL is bare.
+  const sorting = resolvePlayerSort({
+    sort: searchParams.get('sort'),
+    order: searchParams.get('order'),
+  });
   const [open, setOpen] = React.useState(false);
 
   function apply(next: Record<string, string>) {
@@ -316,12 +323,14 @@ export function PlayerFilters() {
             <FilterSelect
               icon={ArrowUpDown}
               aria-label={t.player.sortBy}
-              value={searchParams.get('sort') ?? ''}
+              value={sorting.choice}
               onChange={(event) => apply({ sort: event.target.value })}
               className="min-w-0 flex-1 basis-[calc(60%-0.25rem)] sm:basis-48"
             >
-              <option value="">{t.player.sortNewest}</option>
-              {PLAYER_SORTS.map((sort) => (
+              {/* Newest is a named choice now: with nothing in the URL meaning
+                  stars, the API's own default needs a value to be picked by. */}
+              <option value={NEWEST_SORT}>{t.player.sortNewest}</option>
+              {PLAYER_SORTS?.map((sort) => (
                 <option key={sort} value={sort}>
                   {sort === 'name'
                     ? t.player.sortName
@@ -335,10 +344,10 @@ export function PlayerFilters() {
             </FilterSelect>
 
             <FilterSelect
-              icon={searchParams.get('order') === 'desc' ? ArrowDownNarrowWide : ArrowUpNarrowWide}
+              icon={sorting.order === 'desc' ? ArrowDownNarrowWide : ArrowUpNarrowWide}
               aria-label={t.player.sortDirection}
-              disabled={!searchParams.get('sort')}
-              value={searchParams.get('order') ?? 'asc'}
+              disabled={sorting.choice === NEWEST_SORT}
+              value={sorting.order}
               onChange={(event) => apply({ order: event.target.value })}
               className="min-w-0 flex-1 basis-[calc(40%-0.25rem)] sm:basis-40"
             >

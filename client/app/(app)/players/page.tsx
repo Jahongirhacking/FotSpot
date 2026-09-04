@@ -1,15 +1,16 @@
-import type { Metadata } from 'next';
-import { pageMetadata } from '@/lib/seo';
-import { Users } from 'lucide-react';
-import { players } from '@/lib/api/resources';
-import { getServerT } from '@/lib/i18n/server';
-import { getSession } from '@/lib/session';
-import type { PlayingStyle } from '@/lib/api/types';
-import type { DominantFoot, PlayerSort } from '@/lib/api/resources';
-import { PlayerFilters } from './PlayerFilters';
-import { PlayerResultCard } from './PlayerResultCard';
-import { EmptyState } from '@/components/ui/Feedback';
 import { Pagination } from '@/components/shared/Pagination';
+import { EmptyState } from '@/components/ui/Feedback';
+import type { DominantFoot } from '@/lib/api/resources';
+import { players } from '@/lib/api/resources';
+import type { PlayingStyle } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { pageMetadata } from '@/lib/seo';
+import { getSession } from '@/lib/session';
+import { Users } from 'lucide-react';
+import type { Metadata } from 'next';
+import { PlayerFilters } from './PlayerFilters';
+import { resolvePlayerSort } from './player-sort';
+import { PlayerResultCard } from './PlayerResultCard';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
 /**
@@ -57,6 +58,9 @@ export default async function PlayersPage({
   const { t, f } = await getServerT();
   const session = await getSession();
   const page = Number(params?.page ?? 1) || 1;
+  // Stars first when the URL says nothing; "newest" when it asks for that. An
+  // unknown sort is still passed through, so the API refuses it loudly.
+  const sorting = resolvePlayerSort({ sort: params?.sort, order: params?.order });
 
   const result = await players
     .search(
@@ -69,11 +73,8 @@ export default async function PlayersPage({
         minAge: params?.minAge ? Number(params?.minAge) : undefined,
         maxAge: params?.maxAge ? Number(params?.maxAge) : undefined,
         dominantFoot: params?.dominantFoot as DominantFoot | undefined,
-        // Passed through as typed: the API validates the pair and answers 400 on
-        // anything it does not offer, so a hand-edited URL fails loudly rather
-        // than silently falling back to an ordering nobody asked for.
-        sort: params?.sort as PlayerSort | undefined,
-        order: params?.order === 'desc' ? 'desc' : params?.order === 'asc' ? 'asc' : undefined,
+        sort: sorting.api.sort,
+        order: sorting.api.order,
         page,
         pageSize: 12,
       },
