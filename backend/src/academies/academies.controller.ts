@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
@@ -427,11 +417,7 @@ export class AcademiesController {
 
   /** Replaces one role's list outright — see `setFeatured` for why wholesale. */
   @Put(':id/featured')
-  setFeatured(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: SetFeaturedDto,
-  ) {
+  setFeatured(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetFeaturedDto) {
     return this.academiesService.setFeatured(user.userId, id, dto);
   }
 

@@ -3,7 +3,7 @@ import { generatePassword, generateUsername, slugify } from './manager-credentia
 describe('slugify', () => {
   it('strips spaces, punctuation and case', () => {
     expect(slugify('FC Bunyodkor')).toBe('fcbunyodkor');
-    expect(slugify("Yoshlik-2010 (Toshkent)")).toBe('yoshliktoshkent');
+    expect(slugify('Yoshlik-2010 (Toshkent)')).toBe('yoshliktoshkent');
   });
 
   it('transliterates Cyrillic rather than dropping it', () => {

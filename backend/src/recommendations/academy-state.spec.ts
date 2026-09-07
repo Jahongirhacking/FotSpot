@@ -39,7 +39,6 @@ function build(
       findUnique: jest.fn(async (): Promise<unknown> => ({ userId: PLAYER_USER })),
     },
     recommendationTarget: { findFirst: jest.fn(async (): Promise<unknown> => null) },
-    recommendationReview: { findUnique: jest.fn(async (): Promise<unknown> => null) },
     trialApplication: { findFirst: jest.fn(async (): Promise<unknown> => null) },
     academyEndorsement: { count: jest.fn(async () => 2) },
   };
@@ -79,7 +78,6 @@ describe('academyStateFor — a local team manager', () => {
 
     await service.academyStateFor('manager-1', PLAYER_ID);
 
-    expect(prisma.recommendationReview.findUnique).not.toHaveBeenCalled();
     expect(prisma.trialApplication.findFirst).not.toHaveBeenCalled();
     expect(prisma.academyEndorsement.count).not.toHaveBeenCalled();
   });
@@ -142,12 +140,11 @@ describe('academyStateFor — a local team manager', () => {
 });
 
 describe('academyStateFor — a verified academy is unchanged (LOCAL_TEAM.md §24)', () => {
-  it('still looks up the review, the trial invitation and the coaches', async () => {
+  it('still looks up the trial invitation and the coaches', async () => {
     const { service, prisma } = build('ACADEMY');
 
     const state = await service.academyStateFor('manager-1', PLAYER_ID);
 
-    expect(prisma.recommendationReview.findUnique).toHaveBeenCalled();
     expect(prisma.trialApplication.findFirst).toHaveBeenCalled();
     expect(state?.hasCoaches).toBe(true);
   });
@@ -161,7 +158,6 @@ describe('academyStateFor — a verified academy is unchanged (LOCAL_TEAM.md §2
       expect.objectContaining({
         academy: expect.objectContaining({ id: ACADEMY_ID, name: 'Yoshlik' }),
         recommendation: null,
-        review: null,
         invitation: null,
         hasCoaches: true,
       }),

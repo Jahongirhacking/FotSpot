@@ -34,9 +34,9 @@ describe('normaliseSocialUrl', () => {
   it('is not fooled by a lookalike host', () => {
     // `instagram.com.evil.example` ends with neither `instagram.com` nor
     // `.instagram.com`, and a naive `includes` would have let it through.
-    expect(() => normaliseSocialUrl('instagramUrl', 'https://instagram.com.evil.example/x')).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      normaliseSocialUrl('instagramUrl', 'https://instagram.com.evil.example/x'),
+    ).toThrow(BadRequestException);
     expect(() => normaliseSocialUrl('facebookUrl', 'https://notfacebook.com/x')).toThrow(
       BadRequestException,
     );

@@ -12,12 +12,11 @@ import {
   ListTrialsQueryDto,
   AssignCoachesDto,
   CreateTrialDto,
-  InviteToTrialDto,
   RecordTrialVerdictDto,
   UpdateTrialApplicationStatusDto,
   UpdateTrialDto,
 } from './dto/trial.dto';
-import { ProcessAService } from '../recommendations/process-a.service';
+import { TrialBackingsService } from '../recommendations/trial-backings.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
 import { InvitationsService } from '../academies/invitations.service';
 import { RedisService } from '../redis/redis.service';
@@ -38,7 +37,7 @@ interface AcademySummaryRow {
   logoKey: string | null;
 }
 import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
-import { assertGenderEligible } from './trial-eligibility.util';
+import { assertGenderEligible, genderFilterFor } from './trial-eligibility.util';
 import {
   compareNewest,
   compareRecommended,
@@ -57,7 +56,7 @@ export class TrialsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
-    private processA: ProcessAService,
+    private backings: TrialBackingsService,
     private invitations: InvitationsService,
     private recommendations: RecommendationsService,
     private redis: RedisService,
@@ -130,28 +129,28 @@ export class TrialsService {
     await this.announceToMatchingPlayers(trial, userId);
 
     /*
-     * The academy's coaches work it unless the manager says otherwise.
-     *
-     * A trial with no staff is a trial nobody can answer: `recordVerdict` only
-     * accepts a coach assigned to the session, so applications pile up against
-     * a verdict that cannot be written, and nothing on any screen says why. That
-     * is what happened — a published open day with four applicants and an empty
-     * `TrialCoach`, and a coach whose dashboard was correctly empty because
-     * nobody had given them the work.
-     *
-     * So creation attaches everybody the academy has endorsed as a coach, which
-     * is the same reading `ProcessAService.pickCoaches` already takes of "no
-     * named staff": send it to whoever is free. `assignCoaches` remains the way
-     * to narrow it to the two who are actually running this session, and any
-     * assigned coach may answer — the first verdict settles it.
+     * Who runs it — TRIAL.md §1.1.
+     * The manager names the coaches, and only coaches the academy has endorsed
+     * count: endorsement is what an academy's trust in a coach *is*. With none
+     * named, everybody endorsed is attached, so a published open day is never a
+     * session nobody can see the applicants of. `assignCoaches` remains the
+     * way to change the staff later. The verdict on a general trial is the
+     * manager's (§4), so the staff here is who sees the sheet and runs the day.
      */
-    const coaches = await this.prisma.academyEndorsement.findMany({
+    const endorsed = await this.prisma.academyEndorsement.findMany({
       where: { academyId, role: 'COACH', status: 'ACTIVE' },
       select: { userId: true },
     });
-    if (coaches.length > 0) {
+    const endorsedIds = new Set(endorsed.map((row) => row.userId));
+    const named = dto.coachUserIds ?? [];
+    const unknown = named.filter((id) => !endorsedIds.has(id));
+    if (unknown.length > 0) {
+      throw new BadRequestException('Every assigned coach must be a coach of this academy');
+    }
+    const staff = named.length > 0 ? named : [...endorsedIds];
+    if (staff.length > 0) {
       await this.prisma.trialCoach.createMany({
-        data: coaches.map(({ userId: coachUserId }) => ({ trialId: trial.id, coachUserId })),
+        data: staff.map((coachUserId) => ({ trialId: trial.id, coachUserId })),
         skipDuplicates: true,
       });
     }
@@ -164,11 +163,13 @@ export class TrialsService {
    * ## Matched, not broadcast
    *
    * A notification that does not apply to you is how somebody learns to ignore
-   * the ones that do. So this reaches only players whose **primary or secondary
-   * position** is one the academy asked for and whose **age on the day of the
-   * trial** falls inside the stated range — the same two fields the manager
-   * filled in, which makes the message true by construction rather than by a
-   * ranking anybody has to trust.
+   * the ones that do. So this reaches only players who **follow the academy**,
+   * whose **primary or secondary position** is one the academy asked for, whose
+   * **gender** the trial is for, and whose **age on the day of the trial**
+   * falls inside the stated range — the same fields the manager filled in,
+   * which makes the message true by construction rather than by a ranking
+   * anybody has to trust. Telegram gets a copy for every player who connected
+   * it; that is `NotificationsService.notify`'s doing, not this method's.
    *
    * Age is computed against the trial date rather than today, because that is
    * the rule `apply` enforces: a boy who turns 14 the week before a U14 morning
@@ -189,12 +190,13 @@ export class TrialsService {
       date: Date | null;
       type: string;
       positions: string[];
+      gender: string;
       ageRangeMin: number | null;
       ageRangeMax: number | null;
     },
     actorUserId: string,
   ) {
-    if (trial.type !== 'GENERAL' || trial.positions.length === 0) return;
+    if (trial.type !== 'GENERAL') return;
 
     /*
      * Age is filtered as a birth-date window, in the query.
@@ -231,10 +233,20 @@ export class TrialsService {
 
     const matches = await this.prisma.playerProfile.findMany({
       where: {
-        OR: [
-          { primaryPosition: { in: trial.positions } },
-          { secondaryPosition: { in: trial.positions } },
-        ],
+        // A trial that names positions reaches players in one of them; one that
+        // names none is for every position.
+        ...(trial.positions.length > 0
+          ? {
+              OR: [
+                { primaryPosition: { in: trial.positions } },
+                { secondaryPosition: { in: trial.positions } },
+              ],
+            }
+          : {}),
+        // And the trial's gender, unless it is open to everybody. The profile's
+        // gender is a free string, compared the way the application rule
+        // compares it (trial-eligibility.util).
+        ...(genderFilterFor(trial.gender) ?? {}),
         ...(bounds.gt || bounds.lte ? { birthDate: bounds } : {}),
         user: {
           // A private account has asked not to be found; an unannounced trial is
@@ -347,15 +359,6 @@ export class TrialsService {
   }
 
   /**
-   * The academy's live trials — the two lists a manager works from.
-   *
-   * Archived ones are deliberately not here: a trial is archived when every
-   * applicant has a verdict, so it is finished work rather than a thing to do,
-   * and leaving it in the working lists meant they only ever grew. It moves to
-   * `listArchivedForAcademy`, which is paginated because that list never stops
-   * growing either.
-   */
-  /**
    * An academy's trials, as the person asking is allowed to see them.
    *
    * ## Why this is not simply "the academy's trials"
@@ -423,22 +426,6 @@ export class TrialsService {
   }
 
   /**
-   * The trials this coach is working, each with the size of the job.
-   *
-   * A coach's whole relationship with a trial runs through being assigned to it:
-   * it is what lets them read a private one, see the sheet, and record a verdict.
-   * So it is also the right list to open — "every trial my academy is running"
-   * would put them in front of sessions they have no part in, including private
-   * ones about children they were never asked to look at.
-   *
-   * The two counts are what turns a list of dates into a work queue.
-   * `awaitingVerdict` is the number the screen sorts and badges on: a trial with
-   * nobody left to answer for is finished, however recent it is, and one with
-   * eleven outstanding is today's work even if the date has passed. Counted here
-   * rather than per row on the client, which would be a request per trial on the
-   * first screen a coach opens.
-   */
-  /**
    * The players this coach still owes a verdict, newest session first.
    *
    * ## What "still owes" means, exactly
@@ -468,9 +455,11 @@ export class TrialsService {
    * card, so a page of twenty costs one query and not forty-one.
    */
   async listPendingForCoach(userId: string, { page = 1, pageSize = 12 } = {}) {
+    // Private trials only: on a general trial the verdict is the manager's
+    // (TRIAL.md §4), so nothing there is waiting on the coach.
     const where: Prisma.TrialApplicationWhereInput = {
       status: { in: ['APPLIED', 'CONFIRMED'] },
-      trial: { coaches: { some: { coachUserId: userId } } },
+      trial: { type: 'PRIVATE', coaches: { some: { coachUserId: userId } } },
     };
 
     const [items, total] = await Promise.all([
@@ -550,7 +539,12 @@ export class TrialsService {
       // of these" and "still waiting on me" are the same set.
       this.prisma.trialApplication.groupBy({
         by: ['trialId'],
-        where: { trialId: { in: trialIds }, status: { in: ['APPLIED', 'CONFIRMED'] } },
+        where: {
+          trialId: { in: trialIds },
+          status: { in: ['APPLIED', 'CONFIRMED'] },
+          // Only where the coach is the one to answer (§10).
+          trial: { type: 'PRIVATE' },
+        },
         _count: { _all: true },
       }),
     ]);
@@ -744,47 +738,6 @@ export class TrialsService {
   }
 
   /**
-   * The invitation to a private trial, once a coach has approved the profile.
-   *
-   * Only after Process A returned TRUE: inviting on a manager's hunch is the
-   * shortcut this flow exists to remove. The note is required because "you are
-   * invited" with no word about where or when is not something a family can act
-   * on.
-   */
-  async invite(userId: string, applicationId: string, dto: InviteToTrialDto) {
-    const application = await this.prisma.trialApplication.findUnique({
-      where: { id: applicationId },
-      include: { trial: true, player: { select: { userId: true } } },
-    });
-    if (!application) throw new NotFoundException('Trial application not found');
-    await this.assertAcademyManager(userId, application.trial.academyId);
-
-    if (application.status !== 'SHORTLISTED') {
-      throw new BadRequestException('A coach has to approve this player first');
-    }
-
-    const updated = await this.prisma.trialApplication.update({
-      where: { id: applicationId },
-      data: { status: 'INVITED', inviteNote: dto.note.trim() },
-    });
-
-    await this.notifications.notify(
-      application.player.userId,
-      'TRIAL_INVITATION',
-      {
-        applicationId,
-        trialId: application.trialId,
-        trialTitle: application.trial.title,
-        status: 'INVITED',
-        note: dto.note.trim(),
-      },
-      { userId, role: 'academy_manager' },
-    );
-
-    return updated;
-  }
-
-  /**
    * The player's answer — the only step nobody else can take for them.
    *
    * A yes is what puts them on the sheet for the day; a no closes the
@@ -809,15 +762,7 @@ export class TrialsService {
       data: { status: accept ? 'CONFIRMED' : 'REJECTED' },
     });
 
-    /*
-     * A yes ends the online half of this entirely.
-     *
-     * It used to re-run Process A here, which reopened the same review row to
-     * PENDING so a coach could "decide" it a second time — the profile screening
-     * and the verdict on the day were one record, overwriting each other.
-     * TRIAL.md Rule 19 forbids exactly that. What follows a confirmation is not
-     * another review; it is the trial, and its verdict is `recordVerdict`.
-     */
+    // What follows a yes is the trial itself; its verdict is `recordVerdict`.
 
     const manager = await this.prisma.academyMember.findFirst({
       where: { academyId: application.trial.academyId, role: 'MANAGER' },
@@ -880,24 +825,33 @@ export class TrialsService {
     if (!application) throw new NotFoundException('Trial application not found');
 
     /*
-     * Only a coach working this trial.
+     * Who answers depends on the kind of trial — TRIAL.md §4 and §10.
      *
-     * Not "any coach the academy endorses": a club runs its U14 morning and its
-     * goalkeeper session with different staff, and a verdict is a statement that
-     * the person writing it was there. The manager cannot write one at all —
-     * Rule 16 is that the academy does not evaluate the football.
+     * A **general** trial's verdict is the academy manager's: they run the open
+     * day and the applicant list, and the coaches they assigned see the sheet
+     * but do not decide it. A **private** trial's verdict is the assigned
+     * coach's, whoever arranged it: the coach was on the pitch with that one
+     * player, and the manager is not.
      */
-    const assigned = await this.prisma.trialCoach.findUnique({
-      where: { trialId_coachUserId: { trialId: application.trialId, coachUserId: userId } },
-    });
-    if (!assigned) {
-      throw new ForbiddenException('Only a coach working this trial can record a verdict');
+    let coachProfileId: string | null = null;
+    if (application.trial.type === 'GENERAL') {
+      await this.assertAcademyManager(userId, application.trial.academyId);
+    } else {
+      const assigned = await this.prisma.trialCoach.findUnique({
+        where: { trialId_coachUserId: { trialId: application.trialId, coachUserId: userId } },
+      });
+      if (!assigned) {
+        throw new ForbiddenException(
+          'Only the coach assigned to this trial can record its verdict',
+        );
+      }
+      const coachProfile = await this.prisma.coachProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
+      coachProfileId = coachProfile.id;
     }
-    const coachProfile = await this.prisma.coachProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
 
     // A trial answers once. A second look is a second trial, with its own
     // application and its own verdict.
@@ -909,8 +863,7 @@ export class TrialsService {
      * Only somebody who was expected on the day.
      *
      * `APPLIED` is the general route — the player put themselves forward and
-     * turned up. `CONFIRMED` is the private one — screened, invited, and they
-     * said yes. Anything else means the player was never on the sheet: an
+     * turned up. `CONFIRMED` is the private one — invited, and they said yes. Anything else means the player was never on the sheet: an
      * invitation nobody answered, or an application already closed.
      */
     if (application.status !== 'APPLIED' && application.status !== 'CONFIRMED') {
@@ -928,12 +881,14 @@ export class TrialsService {
      * later, once the manager places the player in a group and somebody becomes
      * responsible for coaching them (Rule 21, README §1.9).
      */
+    const deciderRole = application.trial.type === 'GENERAL' ? 'academy_manager' : 'coach';
+
     const result = await this.prisma.$transaction(async (tx) => {
       const written = await tx.trialResult.create({
         data: {
           applicationId,
           coachUserId: userId,
-          coachProfileId: coachProfile.id,
+          coachProfileId,
           verdict: dto.verdict,
           note: dto.note ?? null,
         },
@@ -955,7 +910,7 @@ export class TrialsService {
      * that way, and a reader checking this against §28 should find it in the same
      * sequence rather than having to work out that it does not matter.
      */
-    const backings = await this.processA.backingsOf(applicationId, application.recommendationId);
+    const backings = await this.backings.backingsOf(applicationId, application.recommendationId);
 
     if (dto.verdict === 'PASS') {
       await this.recommendations.clearPlayerRecommendations(application.playerId);
@@ -964,7 +919,7 @@ export class TrialsService {
       recommendationIds: backings,
       academyId: application.trial.academyId,
       status: dto.verdict === 'PASS' ? 'ACCEPTED' : 'REJECTED',
-      actor: { userId, role: 'coach' },
+      actor: { userId, role: deciderRole },
     });
 
     await this.notifications.notify(
@@ -978,7 +933,7 @@ export class TrialsService {
         verdict: dto.verdict,
         note: dto.note ?? null,
       },
-      { userId, role: 'coach' },
+      { userId, role: deciderRole },
     );
 
     /*
@@ -992,7 +947,7 @@ export class TrialsService {
      *
      * The whole sheet is still on the trial's own screen either way.
      */
-    if (dto.verdict === 'PASS') {
+    if (dto.verdict === 'PASS' && application.trial.type === 'PRIVATE') {
       const manager = await this.prisma.academyMember.findFirst({
         where: { academyId: application.trial.academyId, role: 'MANAGER' },
         select: { userId: true },
@@ -1010,7 +965,7 @@ export class TrialsService {
             status: 'PASSED',
             verdict: 'PASS',
           },
-          { userId, role: 'coach' },
+          { userId, role: deciderRole },
         );
       }
     }
@@ -1053,50 +1008,10 @@ export class TrialsService {
         });
     }
 
-    await this.archiveIfSettled(application.trialId);
-
     // The player's cached profile now has a new assessment on it.
     await this.redis.del(RedisKeys.playerProfile(application.playerId));
 
     return result;
-  }
-
-  /**
-   * Close a trial once nobody is left to answer for.
-   *
-   * A trial's work is finished when every applicant has a verdict, and at that
-   * point leaving it OPEN means it sits in the manager's working lists for ever
-   * and stays on the public board collecting applications for a session that has
-   * already happened. Archiving moves it to the history, where the applications
-   * — decisions somebody made about a child — are kept rather than deleted.
-   *
-   * Outstanding is every state a player can still be tested from — including
-   * the ones on the way there, so a private trial whose invitation was never
-   * answered stays open rather than closing itself behind the family. A
-   * REJECTED application is settled even though it has no verdict: nobody is
-   * going to test that player, and waiting for one would hold the trial open
-   * for ever.
-   *
-   * A trial nobody applied to is left alone. "Zero outstanding" is true of an
-   * empty trial from the moment it is published, and archiving on that would
-   * close trials that never opened.
-   */
-  private async archiveIfSettled(trialId: string) {
-    const [outstanding, total] = await Promise.all([
-      this.prisma.trialApplication.count({
-        where: {
-          trialId,
-          status: { in: ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INVITED', 'CONFIRMED'] },
-        },
-      }),
-      this.prisma.trialApplication.count({ where: { trialId } }),
-    ]);
-    if (outstanding > 0 || total === 0) return;
-
-    await this.prisma.trial.updateMany({
-      where: { id: trialId, status: 'OPEN' },
-      data: { status: 'ARCHIVED' },
-    });
   }
 
   /**
@@ -1265,7 +1180,7 @@ export class TrialsService {
     const applications = await this.prisma.trialApplication.findMany({
       where: {
         trialId: trial.id,
-        status: { in: ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INVITED', 'CONFIRMED'] },
+        status: { in: ['APPLIED', 'INVITED', 'CONFIRMED'] },
       },
       select: { id: true, player: { select: { userId: true } } },
     });
@@ -1300,7 +1215,7 @@ export class TrialsService {
   /**
    * A player applies to a general trial, and that is the whole of it.
    *
-   * No online coach review — TRIAL.md Rule 5. A general trial is the open day:
+   * No screening of any kind — TRIAL.md §3. A general trial is the open day:
    * the academy announced it, the player put themselves forward, and the next
    * thing that happens is a coach watching them play. Screening the profile first
    * would make the open day something a player could be turned away from without
@@ -1358,7 +1273,7 @@ export class TrialsService {
       create: { trialId, playerId: player.id },
     });
 
-    await this.processA.snapshotBackings(application.id, player.id, trial.academyId);
+    await this.backings.snapshotBackings(application.id, player.id, trial.academyId);
 
     return application;
   }
@@ -1378,13 +1293,8 @@ export class TrialsService {
    *
    * Readable by the manager *and* by the coaches working the trial — a coach who
    * cannot list the applicants has no way to reach the one they just watched.
-   * That used to arrive through their review queue, which is gone from the
-   * general route now that it is not screened online (Rule 5).
-   *
-   * Both the online review and the verdict come back on the row, because they
-   * are different facts: "a coach screened the profile and said yes" and "a coach
-   * tested them and passed them" are the two halves this flow spent a release
-   * conflating.
+   * The verdict comes back on the row with the applicant, so the sheet reads
+   * as one thing: who came, and what was decided.
    */
   async listApplicationsForTrial(userId: string, trialId: string) {
     const trial = await this.getById(trialId);
@@ -1414,15 +1324,6 @@ export class TrialsService {
       where: { trialId },
       include: {
         player: { include: { user: { select: { avatarKey: true } } } },
-        review: {
-          select: {
-            id: true,
-            status: true,
-            note: true,
-            decidedAt: true,
-            coachUser: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
         result: {
           select: {
             id: true,
@@ -1481,13 +1382,6 @@ export class TrialsService {
     return updated;
   }
 
-  /**
-   * Turns a window problem into the sentence a manager should read.
-   *
-   * The rules live in `trial-window.util.ts` and the wording lives here, so the
-   * checks can be tested without a Nest container and the copy can change
-   * without touching them.
-   */
   /**
    * Attaches the cover's public URL, the same way the academy gallery does.
    *

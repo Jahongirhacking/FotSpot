@@ -75,10 +75,11 @@ describe('which applications reach a coach’s queue', () => {
     expect(where.trial.status).toBeUndefined();
   });
 
-  /* Both kinds: the queue is a list of jobs, and the job is the same. */
-  it('does not filter on the trial’s type', async () => {
+  /* Private trials only: on a general trial the verdict is the manager's
+     (TRIAL.md §4), so nothing there is a coach's job. */
+  it('lists private trials only', async () => {
     const { where } = await queryFor();
-    expect(where.trial.type).toBeUndefined();
+    expect(where.trial.type).toBe('PRIVATE');
   });
 });
 
@@ -169,6 +170,6 @@ describe('a new trial gets the academy’s coaches', () => {
   /* An academy with no coaches yet still gets its trial — it just has no staff
      on it, which the trial page now says out loud. */
   it('still creates the trial when the academy has no coaches', () => {
-    expect(TrialsService.prototype.create.toString()).toMatch(/coaches\.length > 0/);
+    expect(TrialsService.prototype.create.toString()).toMatch(/staff\.length > 0/);
   });
 });

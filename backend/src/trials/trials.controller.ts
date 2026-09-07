@@ -18,7 +18,6 @@ import {
   ListTrialsQueryDto,
   AssignCoachesDto,
   CreateTrialDto,
-  InviteToTrialDto,
   RecordTrialVerdictDto,
   RespondToInvitationDto,
   TrialHistoryQueryDto,
@@ -180,16 +179,6 @@ export class TrialsController {
   @Get(':id/applications')
   listApplicationsForTrial(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.trialsService.listApplicationsForTrial(user.userId, id);
-  }
-
-  /** Invite a screened player to a private trial, with the note they will read. */
-  @Post('applications/:applicationId/invite')
-  invite(
-    @CurrentUser() user: AuthUser,
-    @Param('applicationId') applicationId: string,
-    @Body() dto: InviteToTrialDto,
-  ) {
-    return this.trialsService.invite(user.userId, applicationId, dto);
   }
 
   /** The player's yes or no — the one step nobody can take for them. */

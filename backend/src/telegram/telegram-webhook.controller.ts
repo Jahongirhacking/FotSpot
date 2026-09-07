@@ -1,4 +1,12 @@
-import { Body, Controller, ForbiddenException, Headers, HttpCode, Logger, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Headers,
+  HttpCode,
+  Logger,
+  Post,
+} from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import * as crypto from 'crypto';
 
@@ -108,7 +116,10 @@ export class TelegramWebhookController {
       throw new ForbiddenException();
     }
 
-    const a = crypto.createHash('sha256').update(given ?? '').digest();
+    const a = crypto
+      .createHash('sha256')
+      .update(given ?? '')
+      .digest();
     const b = crypto.createHash('sha256').update(expected).digest();
     if (!crypto.timingSafeEqual(a, b)) throw new ForbiddenException();
   }

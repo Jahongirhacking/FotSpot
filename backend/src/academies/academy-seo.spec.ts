@@ -17,7 +17,10 @@ import { normaliseKeywords } from '../common/seo-keywords.util';
  * for testing would widen the service's surface for no other reader.
  */
 
-type KeywordsFor = (keywords: string[] | undefined, isSuperAdmin: boolean) => { seoKeywords?: string[] };
+type KeywordsFor = (
+  keywords: string[] | undefined,
+  isSuperAdmin: boolean,
+) => { seoKeywords?: string[] };
 
 const keywordsFor = (AcademiesService.prototype as unknown as { keywordsFor: KeywordsFor })
   .keywordsFor;

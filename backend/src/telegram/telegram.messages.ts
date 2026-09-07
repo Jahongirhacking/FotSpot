@@ -52,9 +52,6 @@ export function notificationPath(
     case NotificationEvent.RECOMMENDATION_ACCEPTED:
     case NotificationEvent.RECOMMENDATION_REJECTED:
       return '/recommendations';
-    case NotificationEvent.REVIEW_ASSIGNED:
-    case NotificationEvent.REVIEW_DECIDED:
-      return '/recommendations/review';
     default:
       return '/notifications';
   }

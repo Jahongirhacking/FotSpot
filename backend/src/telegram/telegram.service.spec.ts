@@ -166,7 +166,7 @@ describe('the bot token', () => {
 
   /* The literal redaction must hold for a real-shaped token too, not only for
      the odd one this file uses. */
-  it('is scrubbed for a token in Telegram\'s real format', async () => {
+  it("is scrubbed for a token in Telegram's real format", async () => {
     const real = '123456789:AAHrealLookingSecret';
     const config = { get: () => real } as unknown as ConfigService;
     const service = new TelegramService(config);

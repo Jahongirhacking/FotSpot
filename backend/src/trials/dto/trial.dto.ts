@@ -74,10 +74,12 @@ export class CreateTrialDto {
    * instant, and parsing it into one would need a day to attach it to. See the
    * schema comment on `Trial.startTime`.
    */
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
   startTime?: string;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string;
 
   /**
@@ -119,6 +121,12 @@ export class CreateTrialDto {
    * client sanitises too, but anybody can post here without loading the client.
    */
   @IsOptional() @IsString() @MaxLength(20_000) note?: string;
+
+  /**
+   * The coaches who will run the day — TRIAL.md §1.1. Each must be a coach the
+   * academy has endorsed. Omitted, every endorsed coach is attached.
+   */
+  @IsOptional() @IsArray() @IsUUID('4', { each: true }) coachUserIds?: string[];
 }
 
 /**
@@ -171,10 +179,12 @@ export class UpdateTrialDto {
   /** The other end of the window. See `CreateTrialDto`. */
   @IsOptional() @IsDateString() endDate?: string | null;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
   startTime?: string | null;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string | null;
 
   @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
@@ -236,11 +246,6 @@ export class TrialHistoryQueryDto {
 /** Who works this trial. Replaces the whole list, so it is also how one is removed. */
 export class AssignCoachesDto {
   @IsArray() @IsUUID('4', { each: true }) coachUserIds: string[];
-}
-
-/** The invitation the player reads, so the note is not optional. */
-export class InviteToTrialDto {
-  @IsString() @MinLength(1) @MaxLength(500) note: string;
 }
 
 export class RespondToInvitationDto {

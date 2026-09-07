@@ -54,3 +54,17 @@ export function assertGenderEligible(
     throw new BadRequestException(genderIneligibilityMessage(trial.gender ?? ''));
   }
 }
+
+/**
+ * The `where` fragment that finds players a trial is for, or nothing for a
+ * trial open to everybody — the same reading `isGenderEligible` takes, as a
+ * query rather than a check, so an announcement reaches exactly the players
+ * who could apply.
+ */
+export function genderFilterFor(
+  trialGender: string | null | undefined,
+): { gender: { equals: string; mode: 'insensitive' } } | null {
+  const trial = normalise(trialGender);
+  if (trial !== 'male' && trial !== 'female') return null;
+  return { gender: { equals: trial, mode: 'insensitive' } };
+}

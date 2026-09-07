@@ -4218,9 +4218,9 @@
         ]
       }
     },
-    "/api/v1/recommendations/inbox/awaiting-review-count": {
+    "/api/v1/recommendations/inbox/count": {
       "get": {
-        "operationId": "recommendations_inboxAwaitingReviewCount",
+        "operationId": "recommendations_inboxCount",
         "parameters": [],
         "responses": {
           "200": {
@@ -4239,7 +4239,7 @@
             "bearer": []
           }
         ],
-        "summary": "Players in this manager's inbox that no coach has been asked about yet.\n\nDeclared before `academy/:academyId`, since Nest matches in declaration\norder and would otherwise read \"inbox\" as an academy id.",
+        "summary": "Players in this manager's inbox still waiting for their move.\n\nDeclared before `academy/:academyId`, since Nest matches in declaration\norder and would otherwise read \"inbox\" as an academy id.",
         "tags": [
           "recommendations"
         ]
@@ -4403,249 +4403,6 @@
         ]
       }
     },
-    "/api/v1/recommendations/players/{playerId}/review": {
-      "post": {
-        "operationId": "recommendations_assignReview",
-        "parameters": [
-          {
-            "name": "playerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssignReviewDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
-    "/api/v1/recommendations/player/{playerId}/my-review": {
-      "get": {
-        "operationId": "recommendations_myReviewFor",
-        "parameters": [
-          {
-            "name": "playerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "This coach's review of one player, or null if nobody gave them that player.\n\nLets a coach answer from the profile they are reading rather than hunting\nthe same person down in their queue. Null is the rule, not an empty state:\na coach may only judge players an academy assigned to them.",
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
-    "/api/v1/recommendations/reviews/mine": {
-      "get": {
-        "operationId": "recommendations_listMyReviews",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20,
-              "type": "number"
-            }
-          },
-          {
-            "name": "status",
-            "required": false,
-            "in": "query",
-            "description": "Waiting on this coach, or already answered. Defaults to what is owed.",
-            "schema": {
-              "enum": [
-                "PENDING",
-                "DECIDED"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "A coach's own queue. Declared before `:id` — Nest matches in order.",
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
-    "/api/v1/recommendations/reviews/{reviewId}/decision": {
-      "post": {
-        "operationId": "recommendations_decideReview",
-        "parameters": [
-          {
-            "name": "reviewId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReviewDecisionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The coach's verdict, and the ratings that become the player's credible ones.",
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
-    "/api/v1/recommendations/players/{playerId}/coach-state": {
-      "get": {
-        "operationId": "recommendations_coachDiscoveryState",
-        "parameters": [
-          {
-            "name": "playerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Whether this coach could accept this player, and why not if they could not.\n\nRead-only, and answers for any caller — the profile page asks before it\ndraws the coach's button, so a control never appears that the POST would\nrefuse.",
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
-    "/api/v1/recommendations/players/{playerId}/coach-accept": {
-      "post": {
-        "operationId": "recommendations_acceptFromProfile",
-        "parameters": [
-          {
-            "name": "playerId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CoachAcceptDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "A coach approves a player they found themselves — an online review ACCEPT.\n\nDeliberately **not** an invitation. The coach's authority ends at \"this\nplayer deserves a look\" (TRIAL.md §11); creating the private trial and\ninviting the player is `players/:playerId/invite` below, which only a\nmanager can reach. The two are separate routes because they are separate\ndecisions by separate people.",
-        "tags": [
-          "recommendations"
-        ]
-      }
-    },
     "/api/v1/recommendations/manager/pending-actions": {
       "get": {
         "operationId": "recommendations_pendingManagerActions",
@@ -4660,7 +4417,6 @@
             "bearer": []
           }
         ],
-        "summary": "Everything waiting on the manager, derived from state rather than from\nunread notifications — see `pendingManagerActions`.",
         "tags": [
           "recommendations"
         ]
@@ -4706,7 +4462,7 @@
             "bearer": []
           }
         ],
-        "summary": "The manager invites an approved player, with a note they will read.",
+        "summary": "Invite a player to a private trial — an academy manager naming the coach\nwho will run it, or an academy coach who will run it themselves. The\nservice decides which the caller is; the trial is created here.",
         "tags": [
           "recommendations"
         ]
@@ -5407,45 +5163,6 @@
             "bearer": []
           }
         ],
-        "tags": [
-          "trials"
-        ]
-      }
-    },
-    "/api/v1/trials/applications/{applicationId}/invite": {
-      "post": {
-        "operationId": "trials_invite",
-        "parameters": [
-          {
-            "name": "applicationId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InviteToTrialDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Invite a screened player to a private trial, with the note they will read.",
         "tags": [
           "trials"
         ]
@@ -8070,49 +7787,18 @@
           "playerId"
         ]
       },
-      "AssignReviewDto": {
-        "type": "object",
-        "properties": {
-          "coachUserId": {
-            "type": "string"
-          }
-        }
-      },
-      "ReviewDecisionDto": {
-        "type": "object",
-        "properties": {
-          "decision": {
-            "type": "string",
-            "enum": [
-              "APPROVED",
-              "REJECTED"
-            ]
-          },
-          "note": {
-            "type": "string",
-            "maxLength": 1000
-          }
-        },
-        "required": [
-          "decision"
-        ]
-      },
-      "CoachAcceptDto": {
-        "type": "object",
-        "properties": {
-          "note": {
-            "type": "string",
-            "description": "Why, for the manager who has to decide whether to invite. Optional.",
-            "maxLength": 2000
-          }
-        }
-      },
       "InvitePlayerDto": {
         "type": "object",
         "properties": {
+          "startTime": {
+            "type": "string",
+            "description": "Kick-off, `HH:MM`, when the family should know one.",
+            "pattern": "/^([01]\\d|2[0-3]):[0-5]\\d$/",
+            "example": "10:30"
+          },
           "date": {
             "type": "string",
-            "description": "When to come. The trial is created for this moment."
+            "description": "When to come — the day of the trial."
           },
           "location": {
             "type": "string",
@@ -8123,14 +7809,25 @@
           "note": {
             "type": "string",
             "description": "What to bring, and anything else the family needs — the invitation itself.",
-            "minLength": 1,
             "maxLength": 1000
+          },
+          "requirements": {
+            "type": "string",
+            "description": "Requirements the player must meet or bring on the day.",
+            "maxLength": 2000
+          },
+          "coachUserId": {
+            "type": "string",
+            "description": "The coach who will run the trial and record its verdict. Managers only."
+          },
+          "recommendationId": {
+            "type": "string",
+            "description": "The recommendation this invitation answers, when it answers one."
           }
         },
         "required": [
           "date",
-          "location",
-          "note"
+          "location"
         ]
       },
       "UpdateRecommendationStatusDto": {
@@ -8139,7 +7836,6 @@
           "status": {
             "type": "string",
             "enum": [
-              "REVIEWING",
               "ACCEPTED",
               "REJECTED"
             ]
@@ -8241,6 +7937,13 @@
             "type": "string",
             "description": "What the player reads, as HTML from the note editor.\n\nSanitised server-side before it is stored (`sanitizeRichText`) — the\nclient sanitises too, but anybody can post here without loading the client.",
             "maxLength": 20000
+          },
+          "coachUserIds": {
+            "description": "The coaches who will run the day — TRIAL.md §1.1. Each must be a coach the\nacademy has endorsed. Omitted, every endorsed coach is attached.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -8356,19 +8059,6 @@
             "maxLength": 20000
           }
         }
-      },
-      "InviteToTrialDto": {
-        "type": "object",
-        "properties": {
-          "note": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "note"
-        ]
       },
       "RespondToInvitationDto": {
         "type": "object",

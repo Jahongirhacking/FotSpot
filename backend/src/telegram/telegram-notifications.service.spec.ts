@@ -31,7 +31,10 @@ function build(recipient: Recipient, options: { queueThrows?: boolean; dbThrows?
         // Mirror the query's own conditions, so a service that stopped asking
         // for them would start selecting ineligible users here too.
         if (!recipient) return null;
-        if (where.telegramNotificationsEnabled === true && !recipient.telegramNotificationsEnabled) {
+        if (
+          where.telegramNotificationsEnabled === true &&
+          !recipient.telegramNotificationsEnabled
+        ) {
           return null;
         }
         if (!recipient.telegramId) return null;
@@ -109,9 +112,12 @@ describe('who gets a Telegram copy', () => {
 
 describe('failures stay inside this service', () => {
   it('resolves when the queue cannot be reached', async () => {
-    const { service } = build({ telegramId: '123', telegramNotificationsEnabled: true }, {
-      queueThrows: true,
-    });
+    const { service } = build(
+      { telegramId: '123', telegramNotificationsEnabled: true },
+      {
+        queueThrows: true,
+      },
+    );
 
     await expect(service.enqueue('user-1', EVENT, {})).resolves.toBeUndefined();
   });
@@ -132,11 +138,7 @@ describe('failures stay inside this service', () => {
       },
     } as unknown as PrismaService;
     const config = { get: () => 'https://fotspot.uz' } as unknown as ConfigService;
-    const service = new TelegramNotificationsService(
-      prisma,
-      config,
-      { add: queueAdd } as never,
-    );
+    const service = new TelegramNotificationsService(prisma, config, { add: queueAdd } as never);
 
     await service.enqueue('user-1', EVENT, {});
 
@@ -205,8 +207,9 @@ describe('notificationPath', () => {
   });
 
   it('sends recommendation events to the recommendations screens', () => {
-    expect(notificationPath(NotificationEvent.RECOMMENDATION_ACCEPTED, {})).toBe('/recommendations');
-    expect(notificationPath(NotificationEvent.REVIEW_ASSIGNED, {})).toBe('/recommendations/review');
+    expect(notificationPath(NotificationEvent.RECOMMENDATION_ACCEPTED, {})).toBe(
+      '/recommendations',
+    );
   });
 
   it('falls back to the notification list for anything else', () => {

@@ -4,14 +4,11 @@ import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { CreateRecommendationDto, UpdateRecommendationStatusDto } from './dto/recommendation.dto';
 import {
-  AssignReviewDto,
-  CoachAcceptDto,
-  ReviewQueueDto,
+  CreateRecommendationDto,
   InvitePlayerDto,
-  ReviewDecisionDto,
-} from './dto/review.dto';
+  UpdateRecommendationStatusDto,
+} from './dto/recommendation.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('recommendations')
@@ -45,14 +42,14 @@ export class RecommendationsController {
   }
 
   /**
-   * Players in this manager's inbox that no coach has been asked about yet.
+   * Players in this manager's inbox still waiting for their move.
    *
    * Declared before `academy/:academyId`, since Nest matches in declaration
    * order and would otherwise read "inbox" as an academy id.
    */
-  @Get('inbox/awaiting-review-count')
-  inboxAwaitingReviewCount(@CurrentUser() user: AuthUser) {
-    return this.recommendationsService.inboxAwaitingReviewCount(user.userId);
+  @Get('inbox/count')
+  inboxCount(@CurrentUser() user: AuthUser) {
+    return this.recommendationsService.inboxCount(user.userId);
   }
 
   @Get('academy/:academyId')
@@ -87,81 +84,6 @@ export class RecommendationsController {
   // ---------- Coach review (§1.9) ----------
 
   /**
-   * Hand a player to an endorsed coach. Omit the coach and one is picked from the
-   * endorsed pool by who is carrying the fewest open reviews.
-   *
-   * Keyed on the player, not a recommendation: an academy may review anybody it
-   * has found, and a scout's recommendation only decides who appears in the inbox.
-   */
-  @Post('players/:playerId/review')
-  assignReview(
-    @CurrentUser() user: AuthUser,
-    @Param('playerId') playerId: string,
-    @Body() dto: AssignReviewDto,
-  ) {
-    return this.recommendationsService.assignReview(user.userId, playerId, dto);
-  }
-
-  /**
-   * This coach's review of one player, or null if nobody gave them that player.
-   *
-   * Lets a coach answer from the profile they are reading rather than hunting
-   * the same person down in their queue. Null is the rule, not an empty state:
-   * a coach may only judge players an academy assigned to them.
-   */
-  @Get('player/:playerId/my-review')
-  myReviewFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
-    return this.recommendationsService.myReviewFor(user.userId, playerId);
-  }
-
-  /** A coach's own queue. Declared before `:id` — Nest matches in order. */
-  @Get('reviews/mine')
-  listMyReviews(@CurrentUser() user: AuthUser, @Query() query: ReviewQueueDto) {
-    const { status, ...page } = query;
-    return this.recommendationsService.listMyReviews(user.userId, status ?? 'PENDING', page);
-  }
-
-  /** The coach's verdict, and the ratings that become the player's credible ones. */
-  @Post('reviews/:reviewId/decision')
-  decideReview(
-    @CurrentUser() user: AuthUser,
-    @Param('reviewId') reviewId: string,
-    @Body() dto: ReviewDecisionDto,
-  ) {
-    return this.recommendationsService.decideReview(user.userId, reviewId, dto);
-  }
-
-  /**
-   * Whether this coach could accept this player, and why not if they could not.
-   *
-   * Read-only, and answers for any caller — the profile page asks before it
-   * draws the coach's button, so a control never appears that the POST would
-   * refuse.
-   */
-  @Get('players/:playerId/coach-state')
-  coachDiscoveryState(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
-    return this.recommendationsService.coachDiscoveryState(user.userId, playerId);
-  }
-
-  /**
-   * A coach approves a player they found themselves — an online review ACCEPT.
-   *
-   * Deliberately **not** an invitation. The coach's authority ends at "this
-   * player deserves a look" (TRIAL.md §11); creating the private trial and
-   * inviting the player is `players/:playerId/invite` below, which only a
-   * manager can reach. The two are separate routes because they are separate
-   * decisions by separate people.
-   */
-  @Post('players/:playerId/coach-accept')
-  acceptFromProfile(
-    @CurrentUser() user: AuthUser,
-    @Param('playerId') playerId: string,
-    @Body() dto: CoachAcceptDto,
-  ) {
-    return this.recommendationsService.acceptFromProfile(user.userId, playerId, dto);
-  }
-
-  /**
    * Everything waiting on the manager, derived from state rather than from
    * unread notifications — see `pendingManagerActions`.
    */
@@ -170,7 +92,12 @@ export class RecommendationsController {
     return this.recommendationsService.pendingManagerActions(user.userId);
   }
 
-  /** The manager invites an approved player, with a note they will read. */
+  /**
+   * Invite a player to a private trial — an academy manager naming the coach
+   * who will run it, or an academy coach who will run it themselves. The
+   * service decides which the caller is; the trial is created here.
+   */
+  @Roles('academy_manager', 'coach')
   @Post('players/:playerId/invite')
   invitePlayer(
     @CurrentUser() user: AuthUser,

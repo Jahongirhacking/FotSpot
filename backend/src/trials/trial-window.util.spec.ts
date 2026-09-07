@@ -157,12 +157,9 @@ describe('TIME_PATTERN', () => {
     expect(TIME_PATTERN.test(value)).toBe(true);
   });
 
-  it.each(['24:00', '9:00', '09:60', '0900', '09:00:00', '', 'nine'])(
-    'rejects %s',
-    (value) => {
-      expect(TIME_PATTERN.test(value)).toBe(false);
-    },
-  );
+  it.each(['24:00', '9:00', '09:60', '0900', '09:00:00', '', 'nine'])('rejects %s', (value) => {
+    expect(TIME_PATTERN.test(value)).toBe(false);
+  });
 });
 
 /* -------------------------------------------------------------------------- */

@@ -26,10 +26,7 @@
  *
  * `now` is injected so a test can state the day rather than depend on the clock.
  */
-export function ageReferenceDate(
-  trial: { date: Date | null },
-  now: Date = new Date(),
-): Date {
+export function ageReferenceDate(trial: { date: Date | null }, now: Date = new Date()): Date {
   return trial.date ?? now;
 }
 

@@ -471,7 +471,7 @@ export class GroupsService {
    * Why this gate and not "is a verified coach": an attribute rating is the one
    * number on this platform a player cannot write about themselves (§12.4), and
    * it is worth that only if whoever wrote it has watched them train. Reading
-   * clips for an online review is enough to say *worth a look*; it is not enough
+   * clips is enough to say *worth a look*; it is not enough
    * to say *physical 62*. Rule 22 keeps it off the review and trial screens for
    * the same reason, and this is the check behind them.
    */
