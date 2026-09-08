@@ -5,10 +5,12 @@ import {
   MAX_PROCESSING_RESTARTS,
   PROCESSING_GAVE_UP_REASON,
   STALE_SWEEP_EVERY_MS,
+  SWEEP_LOCK_KEY,
+  SWEEP_LOCK_SECONDS,
   SWEEP_SCHEDULER_ID,
-  SWEEP_STALE_JOB,
   TRANSCODE_CLIP_JOB,
 } from './media-processing.constants';
+import type { RedisService } from '../redis/redis.service';
 import type { MediaFinaliserService } from './media-finaliser.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -66,8 +68,10 @@ function build(row: Partial<typeof ROW> = {}, job: FakeJob | null = null, staleM
       calls.push('add');
       return undefined;
     }),
-    upsertJobScheduler: jest.fn(async () => undefined),
+    removeJobScheduler: jest.fn(async () => true),
   };
+  // The sweep lock. Won by default; a test that loses it says so.
+  const redis = { claimOnce: jest.fn(async () => true) };
   if (job) {
     job.remove.mockImplementation(async () => {
       calls.push('remove');
@@ -79,9 +83,10 @@ function build(row: Partial<typeof ROW> = {}, job: FakeJob | null = null, staleM
     prisma as unknown as PrismaService,
     finaliser as unknown as MediaFinaliserService,
     queue as unknown as Queue,
+    redis as unknown as RedisService,
     config as unknown as ConfigService,
   );
-  return { service, prisma, finaliser, queue, calls, current };
+  return { service, prisma, finaliser, queue, redis, calls, current };
 }
 
 describe('sweep — reconciling the table with the queue', () => {
@@ -236,22 +241,91 @@ describe('restart — bounded, and honest about the old job', () => {
   });
 });
 
-describe('ensureScheduled — one sweep, however many instances', () => {
-  it('upserts a repeating sweep on the media queue', async () => {
+/**
+ * The sweep is a timer with a lock, not a queue scheduler — a scheduler keeps
+ * a delayed job in the queue, and a queue with a delayed job holds its worker
+ * to a ten-second wait however long `drainDelay` is. See SWEEP_STALE_JOB.
+ */
+describe('ensureScheduled — a timer, and the old scheduler taken out of Redis', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('removes the legacy job scheduler, so the worker can wait a full minute again', async () => {
     const { service, queue } = build();
 
     expect(await service.ensureScheduled()).toBe(true);
-    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
-      SWEEP_SCHEDULER_ID,
-      { every: STALE_SWEEP_EVERY_MS },
-      expect.objectContaining({ name: SWEEP_STALE_JOB }),
-    );
+    expect(queue.removeJobScheduler).toHaveBeenCalledWith(SWEEP_SCHEDULER_ID);
+    service.onModuleDestroy();
+  });
+
+  it('never puts a scheduler back', async () => {
+    const { service, queue } = build();
+
+    await service.ensureScheduled();
+
+    expect((queue as Record<string, unknown>).upsertJobScheduler).toBeUndefined();
+    service.onModuleDestroy();
+  });
+
+  it('sweeps on the interval, behind the lock', async () => {
+    const { service, redis, prisma } = build();
+    prisma.media.findMany.mockResolvedValue([]);
+
+    await service.ensureScheduled();
+    expect(redis.claimOnce).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(STALE_SWEEP_EVERY_MS);
+
+    expect(redis.claimOnce).toHaveBeenCalledWith(SWEEP_LOCK_KEY, SWEEP_LOCK_SECONDS);
+    expect(prisma.media.findMany).toHaveBeenCalledTimes(1);
+    service.onModuleDestroy();
   });
 
   it('survives Redis being away, rather than taking the boot down with it', async () => {
     const { service, queue } = build();
-    queue.upsertJobScheduler.mockRejectedValue(new Error('ECONNREFUSED'));
+    queue.removeJobScheduler.mockRejectedValue(new Error('ECONNREFUSED'));
 
     await expect(service.ensureScheduled()).resolves.toBe(false);
+    service.onModuleDestroy();
+  });
+
+  it('stops with the module', async () => {
+    const { service, redis } = build();
+    await service.ensureScheduled();
+
+    service.onModuleDestroy();
+    await jest.advanceTimersByTimeAsync(STALE_SWEEP_EVERY_MS * 2);
+
+    expect(redis.claimOnce).not.toHaveBeenCalled();
+  });
+});
+
+describe('sweepIfElected — one instance a round', () => {
+  it('skips the round when another instance holds the lock', async () => {
+    const { service, redis, prisma } = build();
+    redis.claimOnce.mockResolvedValue(false);
+
+    await expect(service.sweepIfElected()).resolves.toBeNull();
+    expect(prisma.media.findMany).not.toHaveBeenCalled();
+  });
+
+  /* Fails closed: with Redis away, `claimOnce` answers false and nobody sweeps. */
+  it('does not sweep at all when the lock cannot be taken', async () => {
+    const { service, redis, prisma } = build();
+    redis.claimOnce.mockResolvedValue(false);
+
+    await service.sweepIfElected();
+
+    expect(prisma.media.findMany).not.toHaveBeenCalled();
+  });
+
+  it('runs the sweep when it wins', async () => {
+    const { service, prisma } = build();
+    prisma.media.findMany.mockResolvedValue([]);
+
+    const summary = await service.sweepIfElected();
+
+    expect(summary).not.toBeNull();
+    expect(prisma.media.findMany).toHaveBeenCalledTimes(1);
   });
 });

@@ -37,17 +37,30 @@ export interface FinaliseClipJob {
 /**
  * The sweep that finds clips PROCESSING with nothing behind them.
  *
- * ## Why a queue job and not a timer
+ * ## Why a timer and a lock, not a queue job
  *
- * A `setInterval` in the API runs once per instance, and every instance would
- * sweep the same rows. A BullMQ job scheduler is one entry in Redis however many
- * processes are up, it uses the worker this queue already has, and it costs a
- * handful of commands every ten minutes against a budget that was worried about
- * a hundred a minute.
+ * It was a BullMQ job scheduler once — one entry in Redis however many
+ * instances are up, run by the worker this queue already has. That cost far
+ * more than it looked: a scheduler keeps a *delayed* job in the queue at all
+ * times, and BullMQ caps a worker's blocking wait at ten seconds whenever its
+ * queue holds a delayed job (`maximumBlockTimeout`, bullmq/issues/1658),
+ * whatever `drainDelay` says. The media worker therefore woke six times a
+ * minute instead of once — two commands a wake, ~17,000 a day, ~520,000 a
+ * month — on a per-command Redis plan, with nobody uploading anything.
+ *
+ * So the sweep is an in-process timer, and "once however many instances" is
+ * a `SET NX` lock in Redis instead: one command every ten minutes per
+ * instance, and the loser of the race simply skips this round. The processor
+ * still accepts a sweep job, for any that is already in flight in a Redis
+ * the old scheduler wrote to; the scheduler itself is removed at boot.
  */
 export const SWEEP_STALE_JOB = 'sweep-stale-processing';
 export const SWEEP_SCHEDULER_ID = 'media-stale-sweep';
 export const STALE_SWEEP_EVERY_MS = 10 * 60 * 1000;
+/** The lock one instance takes to run a round of the sweep. */
+export const SWEEP_LOCK_KEY = 'media:stale-sweep:lock';
+/** Shorter than the interval, so a crashed holder frees the next round. */
+export const SWEEP_LOCK_SECONDS = 8 * 60;
 
 /**
  * How long a clip may sit at PROCESSING before the sweep asks whether anything
