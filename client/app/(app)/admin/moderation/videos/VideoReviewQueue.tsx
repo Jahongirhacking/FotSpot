@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ShieldOff, Trash2, TriangleAlert, Video } from 'lucide-react';
+import { Check, Clock, ShieldOff, Trash2, TriangleAlert, Video } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Page } from '@/lib/api/client';
 import type { PendingClip } from '@/lib/api/types';
@@ -236,7 +236,20 @@ function ReviewCard({
           </Link>
           <Badge variant="primary">{label}</Badge>
           {clip.rating != null && <Badge variant="neutral">{clip.rating}</Badge>}
+          {/* Still being optimised: what plays here is the original the player
+              uploaded, and verifying publishes it as that. The optimised copy
+              replaces it under the same key when the worker is done — no
+              second review. */}
+          {clip.status === 'PROCESSING' && (
+            <Badge variant="info" title={t.admin.processingReviewHint}>
+              <Clock aria-hidden /> {t.admin.statusLabels.PROCESSING}
+            </Badge>
+          )}
         </header>
+
+        {clip.status === 'PROCESSING' && (
+          <p className="text-muted text-xs">{t.admin.processingReviewHint}</p>
+        )}
 
         {clip.url ? (
           <video

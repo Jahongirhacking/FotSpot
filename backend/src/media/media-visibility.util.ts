@@ -29,25 +29,51 @@ export type MediaVisibilityRow = {
 export type OwnedMediaRow = MediaVisibilityRow & { playerId: string };
 
 /**
+ * The lifecycle states a clip may be watched in: the worker has confirmed the
+ * bytes (ACTIVE), or is still working on them (PROCESSING).
+ *
+ * ## Why PROCESSING is watchable
+ *
+ * Processing is an optimisation of a file that is already in the bucket: the
+ * transcoder reads the object at `storageKey`, re-encodes it, and writes the
+ * result back over the *same key*. There is no second object and no "which
+ * version" column — whatever sits under the key is what plays. So a clip a
+ * moderator has watched and approved is playable now, as the original, and
+ * becomes the optimised copy the moment the worker overwrites it, with no
+ * re-upload and no second approval. The moderation decision and the worker's
+ * progress are two facts about one row, and neither waits for the other.
+ *
+ * What PROCESSING must not mean is "not there yet". Verifying a PROCESSING
+ * clip is therefore gated on the object existing (`ModerationService.decide`
+ * asks the bucket), so VERIFIED + PROCESSING is always a file that arrived.
+ */
+export const WATCHABLE_STATUSES = [
+  'ACTIVE',
+  'PROCESSING',
+] as const satisfies readonly MediaStatus[];
+
+/**
  * What a signed-out visitor, a scout, a coach, an academy manager and every
- * player other than the owner may see. Nothing else is ever public.
+ * player other than the owner may see. Nothing else is ever public: an
+ * UNVERIFIED clip is invisible whatever the worker says about it.
  */
 export const PUBLIC_MEDIA_WHERE = {
-  status: 'ACTIVE',
+  status: { in: [...WATCHABLE_STATUSES] },
   moderationStatus: 'VERIFIED',
 } as const satisfies Prisma.MediaWhereInput;
 
 /**
- * The admin moderation queue: clips whose bytes are really there and which
- * nobody has judged yet.
+ * The admin moderation queue: clips nobody has judged yet, whether the
+ * worker has finished with them or not.
  *
- * `status: ACTIVE` and not "anything not REMOVED", because a PROCESSING clip has
- * not been found in the bucket yet — there is nothing for a moderator to watch,
- * and it would sit in the queue as an unanswerable card. It arrives the moment
- * the worker promotes it.
+ * A clip still PROCESSING is on the card as the original the player uploaded
+ * — see `WATCHABLE_STATUSES` — so a moderator can review it before the
+ * optimised copy exists, and a verified clip goes live at once rather than
+ * waiting on a transcode. One that has not actually arrived cannot be
+ * verified; the decision checks the bucket first.
  */
 export const MODERATION_QUEUE_WHERE = {
-  status: 'ACTIVE',
+  status: { in: [...WATCHABLE_STATUSES] },
   moderationStatus: 'UNVERIFIED',
 } as const satisfies Prisma.MediaWhereInput;
 
@@ -109,7 +135,11 @@ export const OWN_MEDIA_WHERE = {
 
 /** The same conjunction as `PUBLIC_MEDIA_WHERE`, for a row already in hand. */
 export function isPubliclyVisible(media: MediaVisibilityRow | null | undefined): boolean {
-  return media?.status === 'ACTIVE' && media.moderationStatus === 'VERIFIED';
+  return (
+    !!media &&
+    (WATCHABLE_STATUSES as readonly MediaStatus[]).includes(media.status) &&
+    media.moderationStatus === 'VERIFIED'
+  );
 }
 
 /**

@@ -1606,6 +1606,8 @@ export const en: Dictionary = {
     noFailedUploadsHint: 'When processing cannot confirm an upload, it appears here.',
     failureReason: 'Reason',
     failedBadge: 'Failed',
+    processingReviewHint:
+      'Still being optimised. This is the original as uploaded; verifying publishes it now, and the optimised copy replaces it automatically when processing finishes.',
     retryProcessing: 'Retry processing',
     retryNowInQueue: 'The file was found. The clip is now in the review queue.',
     retryStillFailed: 'Still could not process this upload.',
