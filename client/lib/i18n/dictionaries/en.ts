@@ -1098,6 +1098,7 @@ export const en: Dictionary = {
     stageSquadInvited: 'Invited to squad',
     stageInvitationDeclined: 'Rejected invitation',
     stageSquadJoined: 'Added to squad',
+    openTrialPage: 'Open the trial page',
     noApplicantsAtStage: 'Nobody at this stage.',
     closeCandidacyTitle: 'Close this candidacy?',
     closeCandidacyBody:

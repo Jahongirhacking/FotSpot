@@ -1103,6 +1103,7 @@ export const ru: Dictionary = {
     stageSquadInvited: 'Приглашены в состав',
     stageInvitationDeclined: 'Отклонили приглашение',
     stageSquadJoined: 'Добавлены в состав',
+    openTrialPage: 'Открыть страницу просмотра',
     noApplicantsAtStage: 'На этом этапе никого нет.',
     closeCandidacyTitle: 'Закрыть эту кандидатуру?',
     closeCandidacyBody:

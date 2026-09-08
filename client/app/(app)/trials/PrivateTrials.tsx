@@ -114,7 +114,7 @@ function PrivateTrialRowItem({ row }: { row: PrivateTrialRow }) {
         : null;
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 p-3 sm:flex-nowrap">
+    <li className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3 p-3 sm:flex-nowrap">
       {/* The child, first and largest — see the note on ApplicantCard. */}
       {player ? (
         <Link href={`/players/${player?.id}`} className="shrink-0">
@@ -134,7 +134,7 @@ function PrivateTrialRowItem({ row }: { row: PrivateTrialRow }) {
           {player ? (
             <Link
               href={`/players/${player?.id}`}
-              className="truncate font-semibold hover:underline"
+              className="min-w-0 truncate font-semibold hover:underline"
               title={name}
             >
               {name}

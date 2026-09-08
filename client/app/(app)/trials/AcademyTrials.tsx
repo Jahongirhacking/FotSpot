@@ -18,6 +18,7 @@ import { CalendarDays, MapPin, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { ManagerTrialDrawer } from '@/components/trials/ManagerTrialDrawer';
 import { PrivateTrials } from './PrivateTrials';
 import { TrialHistory } from './TrialHistory';
 
@@ -160,47 +161,81 @@ export function AcademyTrials({
   );
 }
 
-/** One academy's trials, whichever list they belong to. */
+/**
+ * The academy's global trials, one row each.
+ *
+ * ## Built for a phone first
+ *
+ * A row is two lines on a narrow screen: the photograph, the title and the
+ * facts that fit — when, and the age band — then the status and the one
+ * button. The location joins the line from `sm` up, where there is room for
+ * it; on a phone it is one tap away in the drawer, and a line that wrapped
+ * the location under the date was what made the old row three times taller
+ * than its thumbnail. Nothing in the row can push past the edge: every text
+ * span truncates, and the thumbnail and the buttons are fixed.
+ *
+ * ## The button beside the link
+ *
+ * The title opens the trial's page; "Participants" opens the drawer with the
+ * same applicant list beside this one, for the manager working down the
+ * list who does not want to leave it (`ManagerTrialDrawer`).
+ */
 function TrialList({ trials }: { trials: Trial[] }) {
   const { t } = useI18n();
 
   return (
-    <ul className="divide-border space-y-2 divide-y">
-      {trials?.map((trial) => (
-        <li key={trial?.id} className="pb-2">
-          <Link
-            href={`/trials/${trial?.id}`}
-            className="hover:bg-surface-2 border-border flex flex-wrap items-center gap-3 rounded-lg border-1 border-dashed p-2"
+    <ul className="space-y-2">
+      {trials?.map((trial) => {
+        const upcoming = isTrialUpcoming(trial);
+        return (
+          <li
+            key={trial?.id}
+            className="border-border flex min-w-0 flex-col gap-2 rounded-lg border border-dashed p-2 sm:flex-row sm:items-center sm:gap-3"
           >
-            {/* The session's own photograph, so a manager scanning their trials
-                recognises one by sight rather than by reading every title. */}
-            <TrialThumb coverUrl={trial?.coverUrl} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium">{trial?.title}</span>
-                {trial?.status === 'ARCHIVED' && (
-                  <Badge variant="neutral">{t.trials.statusArchived}</Badge>
-                )}
+            <Link
+              href={`/trials/${trial?.id}`}
+              className="hover:bg-surface-2 -m-1 flex min-w-0 flex-1 items-center gap-3 rounded-md p-1"
+            >
+              {/* The session's own photograph, so a manager scanning their
+                  trials recognises one by sight rather than by reading every
+                  title. */}
+              <TrialThumb coverUrl={trial?.coverUrl} />
+              <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-medium">{trial?.title}</span>
+                  {trial?.status === 'ARCHIVED' && (
+                    <Badge variant="neutral" className="shrink-0">
+                      {t.trials.statusArchived}
+                    </Badge>
+                  )}
+                </span>
+                <span className="text-muted flex min-w-0 items-center gap-2 text-xs">
+                  <span className="flex min-w-0 items-center gap-1">
+                    <CalendarDays className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{formatTrialDates(trial, t.trials.openEnded)}</span>
+                  </span>
+                  <span className="hidden min-w-0 items-center gap-1 sm:flex">
+                    <MapPin className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{trial?.location}</span>
+                  </span>
+                  {trial?.ageRangeMax != null && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      <Users className="size-3" aria-hidden /> U{trial?.ageRangeMax}
+                    </span>
+                  )}
+                </span>
               </span>
-              <span className="text-muted flex flex-wrap items-center gap-2 text-xs">
-                <span className="flex items-center gap-1">
-                  <CalendarDays className="size-3" aria-hidden />{' '}
-                  {formatTrialDates(trial, t.trials.openEnded)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3" aria-hidden /> {trial?.location}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Users className="size-3" aria-hidden /> U{trial?.ageRangeMax}
-                </span>
-              </span>
-            </span>
-            <Badge variant={isTrialUpcoming(trial) ? 'primary' : 'danger'} className="shrink-0">
-              {isTrialUpcoming(trial) ? t.trials.open : t.trials.closed}
-            </Badge>
-          </Link>
-        </li>
-      ))}
+            </Link>
+
+            <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+              <Badge variant={upcoming ? 'primary' : 'danger'} className="shrink-0">
+                {upcoming ? t.trials.open : t.trials.closed}
+              </Badge>
+              <ManagerTrialDrawer trial={trial} />
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

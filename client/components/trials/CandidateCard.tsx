@@ -64,8 +64,8 @@ export function CandidateCard({
   const gender = genderLabel(player?.gender, t);
 
   return (
-    <li className="border-border bg-surface-2 flex flex-col gap-3 rounded-xl border p-4">
-      <div className="flex items-start gap-3">
+    <li className="border-border bg-surface-2 flex min-w-0 flex-col gap-3 rounded-xl border p-4">
+      <div className="flex min-w-0 items-start gap-3">
         <Avatar
           src={player?.avatarUrl ?? null}
           fallback={initials(player?.firstName, player?.lastName)}
@@ -84,21 +84,24 @@ export function CandidateCard({
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {/* The exact date and where they live: the manager's to know. */}
+          {/* The exact date and where they live: the manager's to know. The
+              address joins from `sm` up — on a phone the card keeps to what
+              decides the invitation, and the profile is one tap away. */}
           <p className="text-muted truncate text-xs">
-            {[
-              player?.birthDate ? formatDate(player.birthDate) : null,
-              [player?.district, player?.region].filter(Boolean).join(', ') || null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
+            {player?.birthDate ? formatDate(player.birthDate) : null}
+            {player?.birthDate && (player?.district || player?.region) && (
+              <span className="hidden sm:inline"> · </span>
+            )}
+            <span className="hidden sm:inline">
+              {[player?.district, player?.region].filter(Boolean).join(', ')}
+            </span>
           </p>
         </div>
       </div>
 
-      <p className="text-success flex items-center gap-1.5 text-xs font-medium">
+      <p className="text-success flex min-w-0 items-center gap-1.5 text-xs font-medium">
         <Check className="size-3.5 shrink-0" aria-hidden />
-        <Link href={`/trials/${item?.trial?.id}`} className="truncate hover:underline">
+        <Link href={`/trials/${item?.trial?.id}`} className="min-w-0 truncate hover:underline">
           {t.dashboard.passedTrial} · {item?.trial?.title}
         </Link>
       </p>

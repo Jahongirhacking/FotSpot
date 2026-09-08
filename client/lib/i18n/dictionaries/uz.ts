@@ -1139,6 +1139,7 @@ export const uz = {
     stageSquadInvited: 'Tarkibga taklif qilingan',
     stageInvitationDeclined: 'Taklifni rad etgan',
     stageSquadJoined: 'Tarkibga qo‘shilgan',
+    openTrialPage: 'Sinov sahifasini ochish',
     noApplicantsAtStage: 'Bu bosqichda hech kim yo‘q.',
     closeCandidacyTitle: 'Bu nomzodlik yopilsinmi?',
     closeCandidacyBody:

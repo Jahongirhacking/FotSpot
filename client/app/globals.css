@@ -299,6 +299,14 @@
 }
 
 @layer base {
+  /* The page never scrolls sideways. A row that overflows on a phone is a
+     bug to fix in the row, not a second axis for the reader to discover; and
+     iOS ignores this on body alone, so it is on both. */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);
