@@ -596,8 +596,11 @@ Rules that hold this apart from anything online:
 - **The squad invitation is the player's to answer** (§1.10, TRIAL.md §25). Accepting is one
   press, undoable for 30 seconds, after which the membership is written into the reserve and the
   manager is told; declining asks first and carries an optional note the manager reads.
-- **Only an academy's manager sees a player's contacts** (Rule 28): email, phone and a Telegram
-  link, sent beside the profile and never inside its shared cache.
+- **Only an academy's manager sees a player's exact facts** (Rule 28): date of birth, exact age,
+  address, and contacts (email, phone, a Telegram link), sent beside the profile and never inside
+  its shared cache. Everybody else reads the age band and no address.
+- **Announcing a trial alerts the operator.** The Telegram chat named in `TELEGRAM_ADMIN_CHAT_ID`
+  gets one line per trial created: the academy, the title, the day, the place.
 
 Only a trial PASS makes a player eligible for a squad, and only the academy manager performs
 the placement (Rules 8–9). Every passed player appears on the manager's dashboard as a squad
@@ -618,7 +621,7 @@ are read very differently.
 | `TRIAL_RESCHEDULED`                                                                              | everyone holding an application, when the exam date moves          |
 | `TRIAL_RESULT`                                                                                   | **the player only** — in-site, and by Telegram when connected. The manager reads passed players off their dashboard instead |
 | `ACADEMY_JOIN_INVITATION`                                                                        | the player invited to the squad — with a Telegram link straight to the page where it is answered |
-| `ACADEMY_JOIN_ANSWER`                                                                            | the manager: joined the reserve, or turned it down — with the player's note, if they left one |
+| `ACADEMY_JOIN_ANSWER`                                                                            | the manager, when the invitation is **turned down** — with the player's note, if they left one. A yes arrives once, as `SQUAD_JOINED` |
 | `ACADEMY_INVITATION` · `VERIFICATION_RESULT`                                                     | as named                                                           |
 
 The asymmetries are deliberate: a manager is told what asks something of them, not given a

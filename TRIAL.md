@@ -455,6 +455,8 @@ Publishing a Global Trial notifies **only** the Players who:
 
 The notification is delivered in-site, and by Telegram when the Player has connected it. It is never sent to everybody.
 
+Publishing also alerts the platform operator: one line in the Telegram chat named by `TELEGRAM_ADMIN_CHAT_ID` — the Academy, the title, the day, the place.
+
 ### Applicants
 
 The applicant list is visible to the Academy Manager and to the Coaches assigned to the Trial. Each row shows the Player's avatar, name, age, position and gender. The assigned Coaches record PASS / FAIL inline from the list (§10); the Manager reads it.
@@ -947,7 +949,7 @@ The Academy Manager is responsible for the invitation; the Player's yes is what 
 
 ### The Player's answer
 
-- **Accept** is one press. It is recorded at once and acted on after a short undo window (30 seconds), during which the Player may take it back and nothing has happened. After the window the membership is written into the Reserve — no Group, no manual placement step — and the Manager is notified (in-site and Telegram).
+- **Accept** is one press. It is recorded at once and acted on after a short undo window (30 seconds), during which the Player may take it back and nothing has happened. After the window the membership is written into the Reserve — no Group, no manual placement step — and the Manager is notified once, as "a player joined your squad" (in-site and Telegram).
 - **Decline** asks first, in a dialog with an optional note. The invitation is closed, the Player leaves the Manager's candidate list, and the Manager is notified with the note.
 
 ### Contacts
@@ -1338,7 +1340,7 @@ is therefore assessable by nobody.**
 
 ### Rule 26
 
-**A trial verdict is told to the Player, and to nobody else. The Manager learns who passed from their dashboard, invites them to the Squad with one press, and is told how the Player answered — with the Player's note if they declined.**
+**A trial verdict is told to the Player, and to nobody else. The Manager learns who passed from their dashboard, invites them to the Squad with one press, and is told once how the Player answered — "a player joined your squad" on a yes, or the refusal with the Player's note.**
 
 ### Rule 27
 
@@ -1346,7 +1348,7 @@ is therefore assessable by nobody.**
 
 ### Rule 28
 
-**Only an Academy Manager sees a Player's contact details (email, phone, Telegram), and only on the Player's profile.**
+**Only an Academy Manager sees a Player's exact facts — date of birth, exact age, address — and contact details (email, phone, Telegram), and only on the Player's profile. Everybody else is shown the age band and no address.**
 
 ---
 
