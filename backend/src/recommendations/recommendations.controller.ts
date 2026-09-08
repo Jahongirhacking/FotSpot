@@ -75,13 +75,16 @@ export class RecommendationsController {
     return this.recommendationsService.myRecommendationFor(user.userId, playerId);
   }
 
-  /** Where a player stands with the academy this manager runs. */
+  /**
+   * Where a player stands with the academy this viewer works for — a manager
+   * or an endorsed coach. Null for anybody who stands with none.
+   */
   @Get('player/:playerId/academy-state')
   academyStateFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
     return this.recommendationsService.academyStateFor(user.userId, playerId);
   }
 
-  // ---------- Coach review (§1.9) ----------
+  // ---------- The manager's desk ----------
 
   /**
    * Everything waiting on the manager, derived from state rather than from

@@ -59,25 +59,6 @@ const PENDING_PLAYER_CARD = {
   region: true,
 } as const;
 
-/**
- * Why a coach may not open a review on a player they have found.
- *
- * A code rather than a sentence, because the same four checks answer two
- * different questions: the POST turns them into a 409 the coach reads, and the
- * GET behind the button turns them into an explanation shown *before* they
- * press it. One list, so the button and the endpoint can never disagree about
- * what is allowed.
- */
-export type CoachAcceptBlocker =
-  | 'NOT_A_COACH'
-  | 'LOCAL_TEAM'
-  | 'ALREADY_MEMBER'
-  | 'ALREADY_APPROVED'
-  | 'ALREADY_PENDING'
-  | 'OPEN_TRIAL'
-  /** Already in one of this academy's open days — Rule 5. */
-  | 'GENERAL_TRIAL';
-
 @Injectable()
 export class RecommendationsService {
   constructor(
@@ -361,9 +342,9 @@ export class RecommendationsService {
         ? 'REJECTED'
         : recommendation.status === 'ACCEPTED'
           ? 'ACCEPTED'
-          : // A coach turned it down. The academy may have reopened its own
-            // review since — that is their business — but for the scout this
-            // recommendation was answered, and answered no.
+          : // The academy turned it down, or a trial failed. The academy may
+            // have invited them again since — that is their business — but for
+            // the scout this recommendation was answered, and answered no.
             recommendation.rejectedAt
             ? 'REJECTED'
             : 'PENDING';
@@ -387,23 +368,20 @@ export class RecommendationsService {
   }
 
   /**
-   * Where a player stands with the academy this manager runs.
+   * Where a player stands with the academy this viewer works for.
    *
-   * The player's own profile is where a manager decides about them, so it needs
-   * the same three states the inbox has — nobody has looked yet, a coach has it,
-   * a coach has answered — resolved for *their* academy without asking them which
-   * one they mean.
+   * The player's own profile is where an academy decides about them, so the
+   * panel there needs the answer resolved for *their* academy without asking
+   * which one they mean: whether the player is already invited to a private
+   * trial, already in the squad, and whether there is anybody to run a trial.
    *
-   * Null when nobody has recommended this player to that academy: there is no
-   * recommendation to send for review, and offering the button anyway would be a
-   * button that always fails.
+   * Answered for a manager and for an endorsed coach alike — both may invite a
+   * player to a private trial (§11) — and `role` says which the viewer is, so
+   * the panel knows whether to ask them to name a coach. Null for everybody
+   * else: there is no academy to stand with.
    */
   async academyStateFor(userId: string, playerId: string) {
-    const membership = await this.prisma.academyMember.findFirst({
-      where: { userId, role: 'MANAGER' },
-      // `kind` decides which half of this answer even exists — see below.
-      select: { academyId: true, academy: { select: { id: true, name: true, kind: true } } },
-    });
+    const membership = await this.viewerAcademy(userId);
     if (!membership) return null;
 
     const target = await this.prisma.recommendationTarget.findFirst({
@@ -435,14 +413,15 @@ export class RecommendationsService {
      * Coaches and trials do not exist for one (LOCAL_TEAM.md
      * §6–§8) — every endpoint behind them already refuses with 403. Looking them
      * up anyway would be three queries whose only possible answer is "none", and
-     * returning `hasCoaches: false` beside a null review is precisely the shape
-     * that made the manager's panel offer "Send for review" and then fail on
-     * press. What a local team's manager can do about a player is invite them,
-     * so that is what this returns.
+     * returning `hasCoaches: false` beside a null invitation is precisely the
+     * shape that made the manager's panel offer a trial invitation and then
+     * fail on press. What a local team's manager can do about a player is
+     * invite them to the squad, so that is what this returns.
      */
     if (isLocalTeam(membership.academy.kind)) {
       return {
         academy: membership.academy,
+        role: membership.role,
         recommendation: target
           ? {
               id: target.recommendationId,
@@ -451,7 +430,6 @@ export class RecommendationsService {
               scout: target.recommendation.scout,
             }
           : null,
-        review: null,
         invitation: null,
         hasCoaches: false,
         squad,
@@ -477,6 +455,7 @@ export class RecommendationsService {
 
     return {
       academy: membership.academy,
+      role: membership.role,
       recommendation: target
         ? {
             id: target.recommendationId,
@@ -497,14 +476,46 @@ export class RecommendationsService {
       /**
        * Whether anybody could run a private trial if one were arranged. The
        * invitation refuses without a coach to name, which is a true sentence
-       * arriving at the worst possible moment; the screen can know first.
+       * arriving at the worst possible moment; the screen can know first. A
+       * coach asking is that somebody, so for them it is simply true.
        */
       hasCoaches:
+        membership.role === 'COACH' ||
         (await this.prisma.academyEndorsement.count({
           where: { academyId: membership.academyId, role: 'COACH', status: 'ACTIVE' },
         })) > 0,
       squad,
     };
+  }
+
+  /**
+   * The academy this viewer speaks for on a player's profile, and as what.
+   *
+   * The same two answers `inviterFor` gives — a manager's membership, or a
+   * coach's membership backed by an endorsement — without the refusal, because
+   * a profile is read by plenty of people who stand with no academy at all.
+   */
+  private async viewerAcademy(userId: string) {
+    const select = {
+      academyId: true,
+      academy: { select: { id: true, name: true, kind: true } },
+    } as const;
+    const manager = await this.prisma.academyMember.findFirst({
+      where: { userId, role: 'MANAGER', status: 'ACTIVE' },
+      select,
+    });
+    if (manager) return { ...manager, role: 'MANAGER' as const };
+
+    const coach = await this.prisma.academyMember.findFirst({
+      where: {
+        userId,
+        role: 'COACH',
+        status: 'ACTIVE',
+        academy: { endorsements: { some: { userId, role: 'COACH', status: 'ACTIVE' } } },
+      },
+      select,
+    });
+    return coach ? { ...coach, role: 'COACH' as const } : null;
   }
 
   /**
@@ -546,7 +557,7 @@ export class RecommendationsService {
     };
   }
 
-  // ---------- Coach review (§1.9) ----------
+  // ---------- The manager's desk ----------
 
   /**
    * Every player whose next move belongs to the manager.
@@ -605,16 +616,15 @@ export class RecommendationsService {
   }
 
   /**
-   * A private trial for one player — TRIAL.md §6–§9.
+   * A private trial for one player — TRIAL.md §11.
    *
    * ## Who may, and who runs it
    *
    * An academy manager or an academy coach, from the player's profile or the
    * inbox. The trial is created here, for this player alone, with the one coach
    * who will run it: the coach who invites is that coach, and a manager names
-   * one. No online review comes before it — the review is gone — and no
-   * recommendation is needed: an academy does not need a scout's permission to
-   * look at a player. When the invitation does answer a recommendation (the
+   * one. Nothing comes before it (TRIAL.md §1.2), and no recommendation is
+   * needed: an academy does not need a scout's permission to look at a player. When the invitation does answer a recommendation (the
    * inbox), its id rides along so the scout behind it is settled by the verdict.
    *
    * ## What it writes
@@ -1223,7 +1233,7 @@ export class RecommendationsService {
   }
 
   /**
-   * Settle every scout riding on a trial — TRIAL.md Rules 10-12.
+   * Settle every scout riding on a trial — TRIAL.md Rules 12–15.
    *
    * A player rarely arrives on one scout's word, and the trial answers all of
    * them at once: PASS is every backing scout being right, FAIL is every one of
@@ -1439,14 +1449,14 @@ export class RecommendationsService {
    *
    * ## Not visible to coaches
    *
-   * A coach's job is to answer "is this player worth a look" from the player's
-   * clips and nothing else (§1.9, TRIAL.md Rule 22). Letting them open the
-   * profile of the scout who filed the recommendation puts a Legendary badge
-   * beside the request, and a coach who knows a Level 6 scout is asking is no
-   * longer answering the same question — the review starts measuring the scout's
-   * reputation instead of the player's football. That is exactly the pressure
-   * this refusal removes, and it is why the rule is a refusal rather than a
-   * hidden link: a coach who reaches the URL directly must be told no too.
+   * A coach's job is to judge the player's football on the pitch and nothing
+   * else (§1.9, TRIAL.md Rule 2). Letting them open the profile of the scout
+   * who filed the recommendation puts a Legendary badge beside the player, and
+   * a coach who knows a Level 6 scout is vouching is no longer answering the
+   * same question — the verdict starts measuring the scout's reputation instead
+   * of the player's football. That is exactly the pressure this refusal
+   * removes, and it is why the rule is a refusal rather than a hidden link: a
+   * coach who reaches the URL directly must be told no too.
    *
    * Players and academies are the audiences it exists for. A player wants to
    * know who put them forward; an academy weighs the recommendation by the record
@@ -1578,7 +1588,7 @@ export class RecommendationsService {
     const acting = viewer.roles;
     if (acting.includes('coach') && !acting.some((role) => ALLOWED_SCOUT_VIEWERS.includes(role))) {
       throw new ForbiddenException(
-        'A coach reviews the player, not the scout who put them forward. Scout profiles are not shown here.',
+        'A coach judges the player, not the scout who put them forward. Scout profiles are not shown here.',
       );
     }
     if (!acting.some((role) => ALLOWED_SCOUT_VIEWERS.includes(role))) {
@@ -1631,9 +1641,9 @@ export class RecommendationsService {
    * Recomputes success_rate, level and weight per README 1.5 formula/tiers.
    *
    * Counted from the target rows rather than nudged by a delta, because TRIAL.md
-   * §28 asks for a *recalculation* after each finalized outcome and there are now
-   * five places one can happen — the inbox, an online REJECT, a trial PASS, a
-   * trial FAIL, and filing a new recommendation. Five deltas that must each be
+   * §23 asks for a *recalculation* after each finalized outcome and there are
+   * four places one can happen — the inbox turning a player down, a trial PASS,
+   * a trial FAIL, and filing a new recommendation. Four deltas that must each be
    * applied exactly once is a drift the platform cannot detect; a recomputation
    * is idempotent, so a retry, a double-fire or a backfill all land on the same
    * number.
@@ -1673,7 +1683,7 @@ export class RecommendationsService {
     });
   }
 
-  /** Refuses the coach-review pipeline to a local team. See academy-kind.util. */
+  /** Refuses the trial pipeline to a local team. See academy-kind.util. */
   private async assertIsAcademy(academyId: string, action: string) {
     const academy = await this.prisma.academyProfile.findUnique({
       where: { id: academyId },

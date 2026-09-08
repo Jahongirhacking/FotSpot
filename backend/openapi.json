@@ -4397,7 +4397,7 @@
             "bearer": []
           }
         ],
-        "summary": "Where a player stands with the academy this manager runs.",
+        "summary": "Where a player stands with the academy this viewer works for — a manager\nor an endorsed coach. Null for anybody who stands with none.",
         "tags": [
           "recommendations"
         ]
