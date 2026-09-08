@@ -7,16 +7,13 @@ import {
   type ApplicantPlayer,
 } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
-import { Button } from '@/components/ui/Button';
+import { VerdictControls, VerdictResult } from '@/components/trials/VerdictControls';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
-import { Field, Textarea } from '@/components/ui/Field';
 import { browserFetch } from '@/lib/api/browser';
 import type { Trial, TrialApplication, TrialVerdict } from '@/lib/api/types';
-import { formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ClipboardList, TriangleAlert, X } from 'lucide-react';
-import * as React from 'react';
+import { ClipboardList } from 'lucide-react';
 
 interface Applicant extends TrialApplication {
   player: ApplicantPlayer;
@@ -28,32 +25,22 @@ interface Applicant extends TrialApplication {
  * ## Only PASS and FAIL live here
  *
  * This is the real-life examination (TRIAL.md Rule 7), so the words are PASS and
- * FAIL — never accept/reject, which belong to the online screening of a profile.
- * Nothing on this screen places a player anywhere either: a pass makes them
- * *eligible* for a squad, and the manager decides whether to take them (Rule 9).
+ * FAIL. Nothing on this screen places a player anywhere either: a pass makes
+ * them *eligible* for a squad, and the manager decides whether to take them
+ * (Rule 9).
+ *
+ * ## Whose verdict it is
+ *
+ * A coach assigned to the trial, and nobody else — on a global trial and on a
+ * private one alike (§10). The manager reads the applicant list above and
+ * presses nothing; the API refuses them whatever is drawn.
  *
  * ## Cards, and the verdict written on the card
  *
  * A coach holding a phone at the side of a pitch is matching a face to a name
  * and answering one question about them. So each applicant is a card with their
  * photograph on it, and PASS and FAIL are on that card — the verdict is recorded
- * where the player is, on this page, with no navigation anywhere. The list this
- * replaced put a name and a line of grey text in a row and made the coach open
- * something else to answer.
- *
- * ## Two buttons, and nothing else to fill in
- *
- * A coach answers one question: did they pass. There are no attribute sliders
- * here — eight numbers between a coach and that answer is how verdicts stop
- * being recorded on the day, and get written from memory a week later or not at
- * all. The note is optional and stays folded away until it is wanted.
- *
- * ## Why a verdict asks twice
- *
- * It cannot be taken back — a trial answers once, and the row it writes is what
- * settles every scout who put this player forward. So each button opens a
- * warning that says what is about to happen in plain words, and the coach
- * confirms from there rather than from a press that could have been a mis-tap.
+ * where the player is, on this page, with no navigation anywhere.
  */
 export function CoachSheet({ trial }: { trial: Trial }) {
   const { t } = useI18n();
@@ -65,7 +52,7 @@ export function CoachSheet({ trial }: { trial: Trial }) {
   });
 
   const verdict = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+    mutationFn: ({ id, body }: { id: string; body: { verdict: TrialVerdict; note?: string } }) =>
       browserFetch(`/trials/applications/${id}/verdict`, { method: 'POST', body }),
     /*
      * Refetch rather than navigate. The card the coach just answered rerenders
@@ -74,6 +61,8 @@ export function CoachSheet({ trial }: { trial: Trial }) {
      */
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
+      void queryClient.invalidateQueries({ queryKey: ['coach-trial-queue'] });
+      void queryClient.invalidateQueries({ queryKey: ['trials', 'coaching'] });
       void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
     },
     meta: { success: t.trials.verdictRecorded },
@@ -128,24 +117,13 @@ function SheetCard({
 }: {
   application: Applicant;
   pending: boolean;
-  onRecord: (body: Record<string, unknown>) => void;
+  onRecord: (body: { verdict: TrialVerdict; note?: string }) => void;
 }) {
-  const { t } = useI18n();
-  const [noting, setNoting] = React.useState(false);
-  const [note, setNote] = React.useState('');
-  const [confirming, setConfirming] = React.useState<TrialVerdict | null>(null);
-
   const { status, result } = application;
   const step = useApplicationStep(status);
   // Whoever was expected on the day: a general trial's applicant, or a private
   // trial's invitee who said yes. Anything else was never on the sheet.
   const expected = status === 'APPLIED' || status === 'CONFIRMED';
-
-  function submit(chosen: TrialVerdict) {
-    onRecord({ verdict: chosen, note: note.trim() || undefined });
-    setConfirming(null);
-    setNoting(false);
-  }
 
   return (
     <ApplicantCard
@@ -153,96 +131,16 @@ function SheetCard({
       status={status}
       detail={
         result ? (
-          <p className="bg-surface-3 rounded-lg p-2 text-xs">
-            <span className={result?.verdict === 'PASS' ? 'text-success' : 'text-danger'}>
-              {result?.verdict === 'PASS' ? t.trials.verdictPassed : t.trials.verdictFailed}
-            </span>
-            {result?.decidedAt && ` · ${formatDate(result.decidedAt)}`}
-            {result?.note && ` — ${result.note}`}
-          </p>
+          <VerdictResult result={result} />
         ) : (
           /* Says where the player is even when this coach has nothing to press:
-             an applicant still waiting on the manager's invitation is not a
-             blank card. */
+             an invitee still deciding is not a blank card. */
           <p className="text-muted text-xs">{step}</p>
         )
       }
       actions={
         !result && expected ? (
-          confirming ? (
-            /* The warning takes the whole card: it is the only thing being
-               asked, and a two-line question beside two other buttons is how a
-               confirmation gets clicked through without being read. */
-            <Alert tone="warning" className="w-full">
-              <span className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span className="space-y-2">
-                  <span className="block text-sm font-medium">
-                    {confirming === 'PASS' ? t.trials.confirmPass : t.trials.confirmFail}
-                  </span>
-                  <span className="block text-xs">
-                    {confirming === 'PASS' ? t.trials.confirmPassBody : t.trials.confirmFailBody}
-                  </span>
-                  <span className="flex flex-wrap justify-end gap-2 pt-1">
-                    <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
-                      {t.common.cancel}
-                    </Button>
-                    <Button size="sm" loading={pending} onClick={() => submit(confirming)}>
-                      {confirming === 'PASS' ? t.trials.pass : t.trials.fail}
-                    </Button>
-                  </span>
-                </span>
-              </span>
-            </Alert>
-          ) : (
-            <>
-              {noting ? (
-                <Field
-                  label={t.recommendations.coachNote}
-                  htmlFor={`${application?.id}-note`}
-                  className="w-full"
-                >
-                  <Textarea
-                    id={`${application?.id}-note`}
-                    value={note}
-                    rows={2}
-                    maxLength={1000}
-                    onChange={(event) => setNote(event.target.value)}
-                    placeholder={t.placeholders.note}
-                  />
-                </Field>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-muted w-full justify-start px-1 text-xs"
-                  onClick={() => setNoting(true)}
-                >
-                  + {t.recommendations.coachNote}
-                </Button>
-              )}
-
-              <div className="flex w-full gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-danger flex-1"
-                  disabled={pending}
-                  onClick={() => setConfirming('FAIL')}
-                >
-                  <X aria-hidden /> {t.trials.fail}
-                </Button>
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  disabled={pending}
-                  onClick={() => setConfirming('PASS')}
-                >
-                  <Check aria-hidden /> {t.trials.pass}
-                </Button>
-              </div>
-            </>
-          )
+          <VerdictControls applicationId={application?.id} pending={pending} onRecord={onRecord} />
         ) : null
       }
     />

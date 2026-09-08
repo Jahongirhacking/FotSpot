@@ -24,9 +24,9 @@ export const metadata: Metadata = { title: 'Scout', robots: { index: false, foll
  *
  * Players, so they can see who put them forward, and academies, so they can
  * weigh a recommendation by the record of whoever made it. Coaches are refused:
- * a coach answers "is this player worth a look" from the clips, and knowing a
- * Legendary Scout is asking turns that into a judgement about the scout (§1.9,
- * TRIAL.md Rule 22).
+ * a coach judges the player's football on the pitch, and knowing a Legendary
+ * Scout is vouching turns that into a judgement about the scout (§1.9,
+ * TRIAL.md Rule 2).
  *
  * The refusal below is a courtesy that renders a sentence instead of an error —
  * the backend refuses the request itself, so a coach who types the URL is turned

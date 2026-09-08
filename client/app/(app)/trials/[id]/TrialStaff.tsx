@@ -20,23 +20,20 @@ const coachName = (coach: Coach) =>
   [coach?.firstName, coach?.lastName].filter(Boolean).join(' ') || coach?.id.slice(0, 8);
 
 /**
- * The staff working a trial, and — on a private one — who is being looked at.
+ * The staff working a trial.
  *
  * ## Why coaches are assigned per trial
  *
  * A club runs its U14 morning and its goalkeeper session with different people.
- * Assignment also decides who a general trial's applications go to: Process A
- * routes to the least-loaded coach *on this trial* before falling back to the
- * academy's staff, so the person who will be on the pitch is the one who read
- * the profile.
+ * The assigned coaches are the only people who may record a verdict, on a
+ * global and a private trial alike (TRIAL.md §10) — so changing the staff here
+ * is changing who decides.
  *
- * ## A private trial has no staff to pick and no player to add
+ * ## A private trial has no player to add
  *
- * It is created by an invitation, for exactly one named child, with the coach
- * who accepted them already on it. There is no "nominate" here any more: that
- * control was the one way a second player could be put into a session that is
- * for one, and the flow it belonged to — pick a player, then screen them —
- * now starts from the player's own profile and ends with the invitation.
+ * It is created by an invitation, for exactly one named child. There is no
+ * "nominate" here: that would be the one way a second player could be put
+ * into a session that is for one.
  */
 export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: string }) {
   const { t } = useI18n();
@@ -118,9 +115,9 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
            * untouched meant nobody could record a verdict. Applications then
            * arrived against a session no one could answer, and the coach's
            * dashboard was correctly empty because they had never been given the
-           * work. New trials attach the academy's coaches on creation; this is
-           * for the ones that already exist, and for a session whose staff were
-           * all released.
+           * work. New trials attach their coaches on creation; this is for the
+           * ones that already exist, and for a session whose staff were all
+           * released.
            */
           <>
             <Alert tone="warning">{t.trials.trialHasNoCoaches}</Alert>

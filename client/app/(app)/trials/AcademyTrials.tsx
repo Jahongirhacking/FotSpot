@@ -28,17 +28,17 @@ import { TrialHistory } from './TrialHistory';
  *
  * They are different kinds of object, not two flavours of one. A global trial is
  * an announcement: the academy publishes it, anybody eligible applies, and the
- * work is running the day. A private trial is a session for one named child whom
- * a coach has already screened and accepted — it is the *end* of a pipeline that
- * started in the inbox. Mixing them into one list asked the manager to read the
- * type badge on every row to know which of two jobs they were looking at.
+ * work is running the day. A private trial is a session for one named child the
+ * academy chose to invite — from the inbox or from their profile. Mixing them
+ * into one list asked the manager to read the type badge on every row to know
+ * which of two jobs they were looking at.
  *
  * ## Why only a global one can be created here
  *
- * A private trial is not something a manager announces; it is what an accepted
- * online review earns. Offering "create private trial" beside "create global
- * trial" presented them as equal choices and let a manager mint one before any
- * coach had looked at anybody — the shortcut Rule 6 exists to close.
+ * A private trial is not something a manager announces; it is an invitation to
+ * one player, and sending that invitation is what creates it (TRIAL.md §11).
+ * Offering "create private trial" beside "create global trial" would present a
+ * session with nobody invited to it as a thing that can exist.
  */
 
 export function AcademyTrials({

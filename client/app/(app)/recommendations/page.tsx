@@ -118,6 +118,5 @@ export default async function MyRecommendationsPage() {
 function tone(status: MyRecommendation['status']) {
   if (status === 'ACCEPTED') return 'success' as const;
   if (status === 'REJECTED') return 'danger' as const;
-  if (status === 'REVIEWING') return 'info' as const;
   return 'neutral' as const;
 }

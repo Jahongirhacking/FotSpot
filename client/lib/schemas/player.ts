@@ -119,8 +119,7 @@ export type RecommendationValues = z.infer<typeof recommendationSchema>;
  *
  * 0–100, the scale every consumer reads (card stars, the §21.2 bars, a clip's
  * coach rating). Accepted only from a coach who shares the player's squad group
- * (TRIAL.md Rule 21); the online review and the trial verdict take no ratings at
- * all (Rule 22).
+ * (TRIAL.md Rule 21); a trial verdict takes no ratings at all (Rule 22).
  */
 export const assessmentSchema = z.object({
   speed: z.coerce.number().int().min(0).max(100),

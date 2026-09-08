@@ -363,9 +363,11 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         silently dropped the sheet, so the one person who was going to be on the
         pitch had no way to record a verdict.
 
-        Each half now renders on its own condition. A manager gets the trial's
-        administration; a coach working the session gets the sheet and the
-        PASS/FAIL. Somebody who is both gets both, which is what they are.
+        Each half renders on its own condition. A manager gets the trial's
+        administration and the applicant list; a coach working the session gets
+        the sheet and the PASS/FAIL, which is theirs alone on either kind of
+        trial (TRIAL.md §10). Somebody who is both gets both, which is what
+        they are.
       */}
       {hosts && (
         <>

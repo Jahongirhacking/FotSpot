@@ -352,8 +352,8 @@ export default async function LandingPage() {
             work out which one is theirs.
 
             The distinction is real, not decorative: an academy is vetted before
-            it exists (§1.10) and gets coaches, trials and online review; a local
-            team is none of that. So this one is bordered and accented rather
+            it exists (§1.10) and gets coaches and trials; a local team is none
+            of that. So this one is bordered and accented rather
             than tinted, which reads as the heavier of the two — and it says
             plainly that a check is involved, because somebody who would fail one
             is better off knowing now. */}

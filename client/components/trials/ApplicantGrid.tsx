@@ -9,8 +9,6 @@ import * as React from 'react';
 /** What the filter bar can narrow to. Only states the domain actually has. */
 const FILTERABLE = [
   'APPLIED',
-  'SCREENING',
-  'SHORTLISTED',
   'INVITED',
   'CONFIRMED',
   'PASSED',
@@ -136,8 +134,6 @@ export function ApplicantGrid<T extends Filterable>({
 /** Status value to its dictionary key, so the dropdown reads in the viewer's language. */
 const STATUS_KEY: Record<TrialApplicationStatus, string> = {
   APPLIED: 'statusApplied',
-  SCREENING: 'statusScreening',
-  SHORTLISTED: 'statusShortlisted',
   INVITED: 'statusInvited',
   CONFIRMED: 'statusConfirmed',
   PASSED: 'statusPassed',

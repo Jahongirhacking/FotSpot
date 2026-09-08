@@ -16,7 +16,6 @@ import {
   Building2,
   CalendarCheck,
   CheckCheck,
-  ClipboardCheck,
   PartyPopper,
   ShieldCheck,
   ThumbsDown,
@@ -96,30 +95,6 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       icon: Building2,
       title: t.notifications.academyInvitation,
       tone: 'text-primary',
-    },
-    /*
-     * Straight to the player, not to the queue.
-     *
-     * A coach told "you have a player to look at" wants the player — the clips,
-     * the numbers, the profile they are being asked to judge. The queue is a
-     * list they would then have to find the same person in. The decision screen
-     * is reachable from their Trials menu either way.
-     */
-    REVIEW_ASSIGNED: {
-      icon: ClipboardCheck,
-      title: t.notifications.reviewAssigned,
-      tone: 'text-primary',
-      href: '/players',
-      idKey: 'playerId',
-    },
-    // The manager's half: a coach accepted somebody, and the invitation is
-    // theirs to send. Only acceptances are sent — see RecommendationsService.
-    REVIEW_DECIDED: {
-      icon: ThumbsUp,
-      title: t.notifications.reviewAccepted,
-      tone: 'text-success',
-      href: '/players',
-      idKey: 'playerId',
     },
     RECOMMENDATION_ACCEPTED: {
       icon: ThumbsUp,

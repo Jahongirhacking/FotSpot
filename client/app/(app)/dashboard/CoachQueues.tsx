@@ -1,56 +1,42 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
-import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
+import { ApplicantCard } from '@/components/trials/ApplicantCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
-import type { CoachReview, Paged, PendingTrialApplicant } from '@/lib/api/types';
+import type { Paged, PendingTrialApplicant } from '@/lib/api/types';
 import { formatTrialDates, formatTrialTimes } from '@/lib/trial-window';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { CalendarCheck, ChevronLeft, ChevronRight, ClipboardCheck, Eye } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
 const PAGE_SIZE = 12;
 
 /**
- * The coach's two work queues — what they are being asked to answer.
+ * The coach's work queue — the players they are being asked to answer for.
  *
- * ## Why two sections and not one list
+ * ## Why the queue mixes private and general
  *
- * They are different jobs with different answers. An online review is a coach
- * reading a profile and saying whether the player is worth a look: ACCEPT or
- * REJECT. A trial is a coach standing on a pitch having watched them: PASS or
- * FAIL (TRIAL.md §13). One combined list would need a per-row explanation of
- * which question was being asked, which is the merge this product has been
- * careful to avoid everywhere else.
+ * Because it is a queue, not a catalogue. A coach records one kind of verdict —
+ * PASS or FAIL after watching the player on the pitch — and they record it on
+ * every trial they are assigned to, global or private (TRIAL.md §10). So the
+ * work is in one place, and each card says which kind of session it is.
  *
- * The same player can be in both over time — approved online, invited, and then
- * turning up to be tested — and that is not a duplicate. It is two jobs.
+ * ## Its own states
  *
- * ## Why the trial queue mixes private and general
- *
- * Because it is a queue, not a catalogue. Elsewhere the two kinds of trial are
- * kept in separate lists, since somebody browsing needs to know what they are
- * looking at. Here the coach's job is identical either way, so the work is in
- * one place and each card says which kind it is.
- *
- * ## Independent everything
- *
- * Two queries, two pages, two loading states, two empty states, two errors.
- * A failing review queue leaves the trial queue on screen and working — the
- * dashboard is where a coach finds out what they owe, and half an answer beats
- * an error page.
+ * Its own query, page, loading, empty and error states, so a failure here is
+ * one card saying so rather than a dashboard that will not open — the
+ * dashboard is where a coach finds out what they owe.
  */
 export function CoachQueues() {
   const { t } = useI18n();
 
   return (
     <div className="space-y-6">
-      <ReviewQueueSection />
       <TrialQueueSection />
       <p className="text-muted text-xs">{t.dashboard.coachQueuesFootnote}</p>
     </div>
@@ -58,59 +44,6 @@ export function CoachQueues() {
 }
 
 /* -------------------------------------------------------------------------- */
-
-function ReviewQueueSection() {
-  const { t } = useI18n();
-  const [page, setPage] = React.useState(1);
-
-  const queue = useQuery({
-    queryKey: ['coach-review-queue', page],
-    queryFn: () =>
-      browserFetch<Paged<CoachReview>>(
-        `/recommendations/reviews/mine?status=PENDING&page=${page}&pageSize=${PAGE_SIZE}`,
-      ),
-    // Keeps the previous page on screen while the next one loads, so paging does
-    // not blank the section under the reader's thumb.
-    placeholderData: keepPreviousData,
-  });
-
-  return (
-    <QueueCard
-      icon={ClipboardCheck}
-      title={t.dashboard.onlineReviewQueue}
-      hint={t.dashboard.onlineReviewQueueHint}
-      state={queue}
-      page={page}
-      onPage={setPage}
-      emptyTitle={t.dashboard.noPendingReviews}
-      emptyHint={t.dashboard.noPendingReviewsHint}
-      errorText={t.dashboard.reviewQueueFailed}
-    >
-      {(review: CoachReview) => (
-        <ApplicantCard
-          key={review?.id}
-          player={review?.player as ApplicantPlayer}
-          status="SCREENING"
-          detail={<p className="text-muted truncate text-xs">{review?.academy?.name}</p>}
-          actions={
-            /*
-             * Straight to the existing review screen, anchored at this review.
-             * The decision writes eight things — the scouts, the reputations,
-             * the manager's notice — and none of that belongs in a dashboard
-             * card. The queue says *what is owed*; the review page is where it
-             * is answered.
-             */
-            <Button asChild size="sm" className="w-full">
-              <Link href={`/recommendations/review#${review?.id}`}>
-                <Eye aria-hidden /> {t.dashboard.reviewPlayer}
-              </Link>
-            </Button>
-          }
-        />
-      )}
-    </QueueCard>
-  );
-}
 
 function TrialQueueSection() {
   const { t } = useI18n();
@@ -181,8 +114,8 @@ function TrialQueueSection() {
 /**
  * One queue: its own header, count, states and pager.
  *
- * Shared by both sections so the two behave identically — a reader should not
- * have to learn two paginators on one screen — while each keeps its own state.
+ * The same rows as the applicant list on a trial's own page, so a coach reads
+ * one layout in both places.
  */
 function QueueCard<T>({
   icon: Icon,
@@ -226,8 +159,7 @@ function QueueCard<T>({
         {state.isLoading ? (
           <Skeleton className="h-48 w-full rounded-lg" />
         ) : state.isError ? (
-          /* This section only. The other queue is a separate request and stays
-             on screen — a coach with one broken list still has work to do. */
+          /* This card only — the rest of the dashboard stays on screen. */
           <Alert tone="danger">{errorText}</Alert>
         ) : items.length === 0 ? (
           <EmptyState icon={Icon} title={emptyTitle} description={emptyHint} />

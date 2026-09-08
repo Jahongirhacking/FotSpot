@@ -47,11 +47,9 @@ import type {
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
-  CoachReview,
   Paged,
   PendingTrialApplicant,
   CoachTrial,
-  MyCoachReview,
   SuggestedPlayer,
   TransferListing,
 } from './types';
@@ -985,32 +983,11 @@ export const recommendations = {
   listForAcademy: (academyId: string, opts: Opts = {}) =>
     apiFetch<Recommendation[]>(`/recommendations/academy/${academyId}`, opts),
 
-  /** Credibility-ranked inbox — README §1.5.1/§1.5.2. */
-  /**
-   * Coach: my own review of one player, or null if nobody assigned them to me.
-   *
-   * Null is the rule rather than an empty state — a coach may only judge players
-   * an academy put in front of them.
-   */
-  myReviewFor: (playerId: string, opts: Opts = {}) =>
-    apiFetch<MyCoachReview | null>(`/recommendations/player/${playerId}/my-review`, opts),
-
-  /** Coach: players an academy has asked me to judge. */
-  /** A coach's own queue, one page at a time. Scoped to the caller by the API. */
-  myReviews: (
-    status: 'PENDING' | 'DECIDED' = 'PENDING',
-    page: { page?: number; pageSize?: number } = {},
-    opts: Opts = {},
-  ) =>
-    apiFetch<Paged<CoachReview>>(
-      `/recommendations/reviews/mine${toQuery({ status, ...page })}`,
-      opts,
-    ),
-
   /** Settled: invited or turned down. */
   listHistory: (academyId: string, opts: Opts = {}) =>
     apiFetch<AcademyHistoryRow[]>(`/recommendations/academy/${academyId}/history`, opts),
 
+  /** Credibility-ranked inbox — README §1.5.1/§1.5.2. */
   listRanked: (academyId: string, opts: Opts = {}) =>
     apiFetch<{ items: RankedRecommendation[]; total: number }>(
       `/recommendations/academy/${academyId}/ranked`,
@@ -1023,6 +1000,19 @@ export const recommendations = {
       body: { status },
       ...opts,
     }),
+
+  /**
+   * Invite a player to a private trial. Sending it is what creates the trial —
+   * one session, for this player, run by the coach named here (or by the
+   * calling coach, who is assigned to it whether or not `coachUserId` is sent).
+   * A manager must name one; the API refuses otherwise.
+   */
+  invitePlayer: (playerId: string, body: InvitePlayerBody, opts: Opts = {}) =>
+    apiFetch(`/recommendations/players/${playerId}/invite`, { method: 'POST', body, ...opts }),
+
+  /** Manager: how many players the inbox is still waiting on. Drives the badge. */
+  inboxCount: (opts: Opts = {}) =>
+    apiFetch<{ count: number; academyId: string | null }>('/recommendations/inbox/count', opts),
 
   getPlayerSummary: (playerId: string, opts: Opts = {}) =>
     apiFetch<PlayerRecommendationSummary>(`/recommendations/player/${playerId}`, opts),
@@ -1041,40 +1031,6 @@ export const recommendations = {
 };
 
 // ---------- Trials ----------
-
-export const reviews = {
-  /** Manager: hand a player to an endorsed coach. Omit the coach to auto-assign. */
-  assign: (recommendationId: string, coachUserId: string | undefined, opts: Opts = {}) =>
-    apiFetch(`/recommendations/${recommendationId}/review`, {
-      method: 'POST',
-      body: coachUserId ? { coachUserId } : {},
-      ...opts,
-    }),
-
-  /** Coach: my queue. `DECIDED` returns what I have already answered. */
-  mine: (status: 'PENDING' | 'DECIDED' = 'PENDING', opts: Opts = {}) =>
-    apiFetch<CoachReview[]>(`/recommendations/reviews/mine${toQuery({ status })}`, opts),
-
-  /**
-   * Coach: ACCEPT or REJECT, and why.
-   *
-   * No ratings, deliberately — TRIAL.md Rule 22. A review asks one question, and
-   * scoring a player is squad work that needs a shared group (Rule 21).
-   */
-  decide: (
-    reviewId: string,
-    body: { decision: 'APPROVED' | 'REJECTED'; note?: string },
-    opts: Opts = {},
-  ) => apiFetch(`/recommendations/reviews/${reviewId}/decision`, { method: 'POST', body, ...opts }),
-
-  /** Manager: invite an approved player, with a note they will read. */
-  invite: (recommendationId: string, note: string, opts: Opts = {}) =>
-    apiFetch<{ invited: boolean }>(`/recommendations/${recommendationId}/invite`, {
-      method: 'POST',
-      body: { note },
-      ...opts,
-    }),
-};
 
 export const trials = {
   /**
@@ -1139,14 +1095,6 @@ export const trials = {
   assignCoaches: (trialId: string, coachUserIds: string[], opts: Opts = {}) =>
     apiFetch(`/trials/${trialId}/coaches`, { method: 'POST', body: { coachUserIds }, ...opts }),
 
-  /** Invite a screened player to a private trial, with the note they will read. */
-  invite: (applicationId: string, note: string, opts: Opts = {}) =>
-    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/invite`, {
-      method: 'POST',
-      body: { note },
-      ...opts,
-    }),
-
   /** The player's yes or no to a private trial invitation. */
   respond: (applicationId: string, accept: boolean, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/applications/${applicationId}/respond`, {
@@ -1158,9 +1106,10 @@ export const trials = {
   /**
    * The coach's PASS or FAIL, after testing the player in person.
    *
-   * Assigned coaches only, and only one per application. No ratings — one
-   * morning is not a season, so attributes wait until the player is in a squad
-   * group somebody coaches (TRIAL.md Rules 21–22).
+   * Coaches assigned to the trial only, on either kind (TRIAL.md §10), and only
+   * one per application. No ratings — one morning is not a season, so
+   * attributes wait until the player is in a squad group somebody coaches
+   * (TRIAL.md Rules 21–22).
    */
   recordVerdict: (
     applicationId: string,
@@ -1219,6 +1168,28 @@ export interface CreateTrialBody {
   requirements?: string;
   /** Sanitised HTML from the note editor. The server sanitises it again. */
   note?: string;
+  /**
+   * The academy's coaches who will work the session. Omitted means every
+   * coach the academy currently endorses; named ones must be among them.
+   */
+  coachUserIds?: string[];
+}
+
+/** POST /recommendations/players/:playerId/invite — see `recommendations.invitePlayer`. */
+export interface InvitePlayerBody {
+  /** The day of the trial, as an ISO date. */
+  date: string;
+  /** `HH:MM`, when the session states one. */
+  startTime?: string;
+  location: string;
+  /** Sanitised HTML from the note editor — what the player reads. */
+  note?: string;
+  /** What to bring, plain text. */
+  requirements?: string;
+  /** The coach who will run it. Required from a manager; ignored from a coach. */
+  coachUserId?: string;
+  /** The recommendation this answers, when the invitation came from the inbox. */
+  recommendationId?: string;
 }
 
 // ---------- Media ----------
