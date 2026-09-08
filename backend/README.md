@@ -238,26 +238,29 @@ does not appear.
   `recommendations/scout-level.util.ts` implement the exact formula and the
   six level tiers (Observer → Legendary Scout) with their thresholds and
   weights; recalculated on every recommendation creation/acceptance.
-- **Recommendation status flow** (1.8): PENDING → REVIEWING →
-  ACCEPTED/REJECTED, academy-manager-only transitions, reputation bump +
-  notifications fired on ACCEPTED/REJECTED.
+- **Recommendation status flow** (1.8): PENDING → ACCEPTED/REJECTED. The
+  manager may turn a recommendation down from the inbox; ACCEPTED and the
+  trial's REJECTED come from the verdict (`settleTrialBackings`). Reputation is
+  recomputed and notifications fired on either.
 - **Attribute assessment gating** (1.9, TRIAL.md Rules 21–23): two conditions,
   both checked on every write. The `CoachProfile` must be `VERIFIED`, **and** the
   coach must share an `AcademyGroup` with the player — see
   `GroupsService.assertCoachesPlayer`, which also guards a coach's rating of a
-  clip. The reserve (`AcademyMember.groupId = null`) qualifies nobody. Neither
-  the online review nor a trial verdict accepts ratings at all (Rule 22): each
-  takes a decision and a note, and nothing else. Verifying a coach grants the
-  `coach` RBAC role.
+  clip. The reserve (`AcademyMember.groupId = null`) qualifies nobody. A trial
+  verdict accepts no ratings at all (Rule 22): it takes PASS or FAIL and a note,
+  and nothing else. Verifying a coach grants the `coach` RBAC role.
 - **Academy creation** (1.10, revised): **admin/super_admin only** — there are
   roughly 50 academies in Uzbekistan, so they are onboarded by the platform team
   rather than self-registered. An optional `managerUserId` names the account that
   will run it and is granted `academy_manager`; the creating admin does not become
   the manager. Admin-created academies start `VERIFIED` (a human already vetted
   them) and the creation is audit-logged.
-- **Trial application flow** (1.11): Applied → Shortlisted → Invited →
-  Rejected/Accepted, with an age-range check against the player's
-  `birthDate` and the trial `date`.
+- **Trial application flow** (1.11, TRIAL.md): a global trial's
+  `APPLIED`, or a private trial's `INVITED → CONFIRMED`, then `PASSED`/`FAILED`
+  by an assigned coach's verdict on either kind (`TrialsService.recordVerdict`)
+  — and `ACCEPTED` on squad
+  placement. Age, gender and deadline are checked on application
+  (`trial-eligibility.util.ts`). Trials are archived by hand only.
 - **Notifications** (1.12): persisted `Notification` rows + realtime push
   over the `notifications` Socket.IO namespace, fired for recommendation
   outcomes, trial invitations/results, and verification results.
