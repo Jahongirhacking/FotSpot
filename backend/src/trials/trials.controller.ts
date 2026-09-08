@@ -94,6 +94,15 @@ export class TrialsController {
   }
 
   /**
+   * The manager's private trials, open and archived, each with the one player
+   * it was created for and where that player stands (`stage`). Manager only.
+   */
+  @Get('academy/:academyId/private')
+  listPrivateForAcademy(@CurrentUser() user: AuthUser, @Param('academyId') academyId: string) {
+    return this.trialsService.listPrivateForAcademy(user.userId, academyId);
+  }
+
+  /**
    * An academy's open trials. Public, but the private ones are staff-only —
    * a private trial names the child it was created for. See the service.
    */

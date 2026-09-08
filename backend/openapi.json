@@ -4981,6 +4981,35 @@
         ]
       }
     },
+    "/api/v1/trials/academy/{academyId}/private": {
+      "get": {
+        "operationId": "trials_listPrivateForAcademy",
+        "parameters": [
+          {
+            "name": "academyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The manager's private trials, open and archived, each with the one player\nit was created for and where that player stands (`stage`). Manager only.",
+        "tags": [
+          "trials"
+        ]
+      }
+    },
     "/api/v1/trials/{id}": {
       "get": {
         "operationId": "trials_getById",

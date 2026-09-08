@@ -29,20 +29,39 @@ const row = (status: string, extra: Record<string, unknown> = {}) => ({
   playerId: 'player-1',
   status,
   inviteNote: '<p>Ask for Bobur at the gate</p>',
-  player: { id: 'player-1', firstName: 'A', lastName: 'Player', user: { avatarKey: null } },
+  player: {
+    id: 'player-1',
+    userId: 'player-user-1',
+    firstName: 'A',
+    lastName: 'Player',
+    user: { avatarKey: null },
+  },
   result: null,
   ...extra,
 });
 
-function build(viewer: 'MANAGER' | 'COACH' | 'NOBODY', applications: unknown[] = []) {
+function build(
+  viewer: 'MANAGER' | 'COACH' | 'NOBODY',
+  applications: unknown[] = [],
+  squad: { invitation?: { status: string }; member?: boolean } = {},
+) {
   const prisma = {
     trial: { findUnique: jest.fn(async () => TRIAL) },
+    // The stage after a PASS is read from the squad invitation and the membership.
+    academyInvitation: {
+      findMany: jest.fn(async (): Promise<unknown[]> =>
+        squad.invitation ? [{ userId: 'player-user-1', status: squad.invitation.status }] : [],
+      ),
+    },
     academyMember: {
       findUnique: jest.fn(async (): Promise<unknown> =>
         viewer === 'MANAGER' ? { role: 'MANAGER' } : null,
       ),
       findFirst: jest.fn(async (): Promise<unknown> =>
         viewer === 'MANAGER' ? { id: 'member-1' } : null,
+      ),
+      findMany: jest.fn(async (): Promise<unknown[]> =>
+        squad.member ? [{ userId: 'player-user-1' }] : [],
       ),
     },
     trialCoach: {
@@ -156,5 +175,59 @@ describe('getVisibleById — the note on a private trial', () => {
     expect(trial.note).toBeNull();
     expect(trial.title).toBe(TRIAL.title);
     expect(trial.requirements).toBe('Boots');
+  });
+});
+
+/**
+ * Every row says where the applicant stands in the seven words the academy
+ * reads (`applicationStage`), so the screens can group by them without
+ * re-deriving the rule from four tables.
+ */
+describe('listApplicationsForTrial — the stage on every row', () => {
+  it('reads the verdict and the pass', async () => {
+    const rows = [
+      row('APPLIED'),
+      row('FAILED', { result: { verdict: 'FAIL' } }),
+      row('PASSED', { result: { verdict: 'PASS' } }),
+      row('REJECTED', { result: { verdict: 'PASS' } }),
+    ];
+    const { service } = build('MANAGER', rows);
+
+    const { items } = await service.listApplicationsForTrial('manager-1', 'trial-1');
+
+    expect(items.map((item) => item.stage)).toEqual([
+      'PENDING',
+      'FAILED',
+      'PASSED',
+      'CANDIDACY_CLOSED',
+    ]);
+  });
+
+  it('follows the squad invitation after a pass', async () => {
+    const offered = [row('ACCEPTED', { result: { verdict: 'PASS' } })];
+
+    const waiting = await build('MANAGER', offered, {
+      invitation: { status: 'PENDING' },
+    }).service.listApplicationsForTrial('manager-1', 'trial-1');
+    const declined = await build('MANAGER', offered, {
+      invitation: { status: 'REJECTED' },
+    }).service.listApplicationsForTrial('manager-1', 'trial-1');
+    const joined = await build('MANAGER', offered, {
+      invitation: { status: 'ACCEPTED' },
+      member: true,
+    }).service.listApplicationsForTrial('manager-1', 'trial-1');
+
+    expect(waiting.items[0].stage).toBe('SQUAD_INVITED');
+    expect(declined.items[0].stage).toBe('INVITATION_DECLINED');
+    expect(joined.items[0].stage).toBe('SQUAD_JOINED');
+  });
+
+  it('asks the squad tables only for the players who were offered a place', async () => {
+    const { service, prisma } = build('MANAGER', [row('APPLIED'), row('PASSED')]);
+
+    await service.listApplicationsForTrial('manager-1', 'trial-1');
+
+    expect(prisma.academyInvitation.findMany).not.toHaveBeenCalled();
+    expect(prisma.academyMember.findMany).not.toHaveBeenCalled();
   });
 });

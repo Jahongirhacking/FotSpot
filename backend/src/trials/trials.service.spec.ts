@@ -809,6 +809,38 @@ describe('TrialsService.addToSquad — the gate is a trial PASS (Rule 8)', () =>
 });
 
 /**
+ * The player's answer to a private-trial invitation. Theirs alone — and the
+ * academy is not sent a "trial result" about it: a result is the player's
+ * news, never the manager's or a coach's. The manager reads where the
+ * invitation stands from the private-trial list, by stage.
+ */
+describe('TrialsService.respondToInvitation — nobody at the academy is notified', () => {
+  it.each([true, false])(
+    'answering with %s writes the status and sends no notice',
+    async (accept) => {
+      const { service, prisma, notifications } = build();
+      prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('INVITED'));
+
+      await service.respondToInvitation(PLAYER.userId, 'app-1', accept);
+
+      expect(prisma.trialApplication.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: accept ? 'CONFIRMED' : 'REJECTED' } }),
+      );
+      expect(notifications.notify).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses an answer from anybody but the invited player', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('INVITED'));
+
+    await expect(service.respondToInvitation('somebody-else', 'app-1', true)).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+});
+
+/**
  * The manager closing a passed player's candidacy — the "x" beside the
  * squad invitation on the dashboard. A pass can be an accident; this is the
  * manager saying so, and it is the third of the three events that answer the
@@ -861,9 +893,10 @@ describe('TrialsService.updateApplicationStatus — closing a candidacy', () => 
     );
   });
 
-  it('tells the player, and only the player', async () => {
+  it('tells the player, and only the player, with the note and what it was', async () => {
     const { service, prisma, notifications } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('PASSED'));
+    prisma.trialApplication.update.mockResolvedValue({ cancelNote: closing.note });
 
     await service.updateApplicationStatus('manager-1', 'app-1', closing);
 
@@ -871,7 +904,12 @@ describe('TrialsService.updateApplicationStatus — closing a candidacy', () => 
     expect(notifications.notify).toHaveBeenCalledWith(
       PLAYER.userId,
       'TRIAL_RESULT',
-      expect.objectContaining({ status: 'REJECTED' }),
+      expect.objectContaining({
+        status: 'REJECTED',
+        candidacyClosed: true,
+        note: closing.note,
+        trialTitle: TRIAL.title,
+      }),
       { userId: 'manager-1', role: 'academy_manager' },
     );
   });

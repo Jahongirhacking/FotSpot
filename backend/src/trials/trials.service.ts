@@ -54,6 +54,7 @@ import { SmsService } from '../sms/sms.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
+import { applicationStage, type ApplicationStage } from './application-stage.util';
 import {
   SETTLE_ATTEMPTS,
   SETTLE_BACKOFF_MS,
@@ -858,24 +859,9 @@ export class TrialsService {
     });
 
     // What follows a yes is the trial itself; its verdict is `recordVerdict`.
-
-    const manager = await this.prisma.academyMember.findFirst({
-      where: { academyId: application.trial.academyId, role: 'MANAGER' },
-      select: { userId: true },
-    });
-    if (manager) {
-      await this.notifications.notify(
-        manager.userId,
-        'TRIAL_RESULT',
-        {
-          applicationId,
-          trialId: application.trialId,
-          trialTitle: application.trial.title,
-          status: updated.status,
-        },
-        { userId, role: 'player' },
-      );
-    }
+    // The manager is not sent a notice: a "trial result" is the player's news
+    // and never the academy's (TRIAL.md §12). Where the answer stands is read
+    // from the private-trial list, by stage.
 
     return updated;
   }
@@ -1550,17 +1536,151 @@ export class TrialsService {
       this.prisma.trialApplication.count({ where: { trialId, status: 'INVITED' } }),
     ]);
 
+    const stages = await this.stagesFor(
+      trial.academyId,
+      applications.map((application) => ({
+        id: application.id,
+        status: application.status,
+        trialType: trial.type,
+        verdict: application.result?.verdict ?? null,
+        playerUserId: application.player.userId,
+      })),
+    );
+
     return {
       items: applications.map(({ player, inviteNote, ...application }) => {
         const { user, ...profile } = player;
         return {
           ...application,
           ...(manages ? { inviteNote } : {}),
+          stage: stages.get(application.id) ?? 'PENDING',
           player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
         };
       }),
       pending,
     };
+  }
+
+  /**
+   * The manager's private trials, each with the one player it is for — open
+   * and archived alike, because the list is read by stage (pending, passed,
+   * joined…) and a session that ended is exactly what most of those are.
+   *
+   * No action on these rows: the verdict is the assigned coach's (TRIAL.md
+   * §10), and the squad decision lives on the dashboard with the candidate.
+   * The manager reads where each child stands.
+   */
+  async listPrivateForAcademy(userId: string, academyId: string) {
+    await this.assertAcademyManager(userId, academyId);
+
+    const trials = await this.prisma.trial.findMany({
+      where: { academyId, type: 'PRIVATE' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        academy: { select: TrialsService.ACADEMY_SUMMARY },
+        applications: {
+          include: {
+            player: { include: { user: { select: { avatarKey: true } } } },
+            result: {
+              select: {
+                id: true,
+                verdict: true,
+                note: true,
+                decidedAt: true,
+                settledAt: true,
+                coachUser: { select: { id: true, firstName: true, lastName: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    const stages = await this.stagesFor(
+      academyId,
+      trials.flatMap((trial) =>
+        trial.applications.map((application) => ({
+          id: application.id,
+          status: application.status,
+          trialType: trial.type,
+          verdict: application.result?.verdict ?? null,
+          playerUserId: application.player.userId,
+        })),
+      ),
+    );
+
+    return trials.map(({ applications, ...trial }) => {
+      const application = applications[0];
+      let applicant: Record<string, unknown> | null = null;
+      if (application) {
+        const { player, ...rest } = application;
+        const { user, ...profile } = player;
+        applicant = {
+          ...rest,
+          stage: stages.get(application.id) ?? 'PENDING',
+          player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
+        };
+      }
+      return { ...this.withCoverUrl(trial), applicant };
+    });
+  }
+
+  /**
+   * Where each applicant stands (`applicationStage`), for a batch: the squad
+   * invitation and the membership that decide the stages after a PASS live in
+   * other tables, so they are read once for the whole list rather than once
+   * per row.
+   */
+  private async stagesFor(
+    academyId: string,
+    rows: {
+      id: string;
+      status: Prisma.TrialApplicationGetPayload<object>['status'];
+      trialType: TrialType;
+      verdict: 'PASS' | 'FAIL' | null;
+      playerUserId: string;
+    }[],
+  ): Promise<Map<string, ApplicationStage>> {
+    const offered = rows.filter((row) => row.status === 'ACCEPTED');
+    const userIds = [...new Set(offered.map((row) => row.playerUserId))];
+
+    const [invitations, members] =
+      userIds.length === 0
+        ? [[], []]
+        : await Promise.all([
+            this.prisma.academyInvitation.findMany({
+              where: { academyId, role: 'PLAYER', userId: { in: userIds } },
+              orderBy: { createdAt: 'desc' },
+              select: { userId: true, status: true },
+            }),
+            this.prisma.academyMember.findMany({
+              where: { academyId, role: 'PLAYER', status: 'ACTIVE', userId: { in: userIds } },
+              select: { userId: true },
+            }),
+          ]);
+
+    // Newest first, so the first row seen per player is their latest invitation.
+    const latestInvitation = new Map<string, { status: (typeof invitations)[number]['status'] }>();
+    for (const invitation of invitations) {
+      if (!latestInvitation.has(invitation.userId))
+        latestInvitation.set(invitation.userId, invitation);
+    }
+    const memberIds = new Set(members.map((member) => member.userId));
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        applicationStage({
+          status: row.status,
+          trialType: row.trialType,
+          verdict: row.verdict,
+          squadInvitation: latestInvitation.get(row.playerUserId) ?? null,
+          member: memberIds.has(row.playerUserId),
+        }),
+      ]),
+    );
   }
 
   /**
@@ -1615,7 +1735,16 @@ export class TrialsService {
     await this.notifications.notify(
       application.player.userId,
       'TRIAL_RESULT',
-      { applicationId, trialId: application.trialId, status: dto.status },
+      {
+        applicationId,
+        trialId: application.trialId,
+        trialTitle: application.trial.title,
+        status: dto.status,
+        // Read by the list: a closed candidacy is a different sentence from a
+        // withdrawn interest, and the note is the manager's words to the child.
+        candidacyClosed: closingCandidacy,
+        note: updated.cancelNote,
+      },
       { userId, role: 'academy_manager' },
     );
 
