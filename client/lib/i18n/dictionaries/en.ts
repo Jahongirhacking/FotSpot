@@ -680,6 +680,8 @@ export const en: Dictionary = {
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
+    fullscreen: 'Full screen',
+    exitFullscreen: 'Exit full screen',
     views: 'Views',
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',

@@ -13,7 +13,17 @@ import type { Media, MediaCategory } from '@/lib/api/types';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS, CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart, Pause, Pencil, Play, Trash2, TriangleAlert, Trophy } from 'lucide-react';
+import {
+  Heart,
+  Maximize,
+  Minimize,
+  Pause,
+  Pencil,
+  Play,
+  Trash2,
+  TriangleAlert,
+  Trophy,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -235,19 +245,32 @@ export function ClipModal({
 }
 
 /**
- * Video with a scrubber and nothing else.
+ * Video with a scrubber, a full-screen button, and nothing else.
  *
  * `timeupdate` fires about four times a second, which is enough for a progress
  * bar and far cheaper than a rAF loop on a phone. While the user is dragging, the
  * bar follows the pointer rather than the video, so it does not fight them.
+ *
+ * ## Full screen
+ *
+ * The *frame* goes full screen, not the video element, so the same scrubber and
+ * play button stay on screen instead of being swapped for the browser's. iOS
+ * Safari has no element-level Fullscreen API, only the video's own
+ * `webkitEnterFullscreen`, which shows the native player — used there as the
+ * fallback, because a clip that cannot go full screen on the phone most players
+ * hold is worse than one that briefly wears the wrong controls. Exiting is the
+ * same button, or the browser's own Escape/back gesture; `fullscreenchange`
+ * keeps the icon honest either way.
  */
 function ClipPlayer({ src }: { src: string }) {
   const { t } = useI18n();
+  const frameRef = React.useRef<HTMLDivElement | null>(null);
   const ref = React.useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = React.useState(false);
   const [time, setTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
   const [scrubbing, setScrubbing] = React.useState(false);
+  const [fullscreen, setFullscreen] = React.useState(false);
 
   const toggle = () => {
     const video = ref.current;
@@ -256,8 +279,39 @@ function ClipPlayer({ src }: { src: string }) {
     else video.pause();
   };
 
+  React.useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === frameRef.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+
+  const toggleFullscreen = () => {
+    const frame = frameRef.current;
+    const video = ref.current;
+    if (!frame || !video) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    if (typeof frame.requestFullscreen === 'function') {
+      void frame.requestFullscreen().catch(() => undefined);
+      return;
+    }
+    // iOS Safari: only the video itself can go full screen, with native controls.
+    const native = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    native.webkitEnterFullscreen?.();
+  };
+
   return (
-    <div className="relative overflow-hidden rounded-lg bg-black">
+    <div
+      ref={frameRef}
+      className={cn(
+        'relative overflow-hidden rounded-lg bg-black',
+        // Full screen: the frame is the whole display, so the video takes every
+        // pixel above the bar instead of the lightbox's 60dvh ceiling.
+        fullscreen && 'flex h-full w-full flex-col justify-center rounded-none',
+      )}
+    >
       <video
         ref={ref}
         src={src}
@@ -270,7 +324,10 @@ function ClipPlayer({ src }: { src: string }) {
         onTimeUpdate={(event) => {
           if (!scrubbing) setTime(event.currentTarget.currentTime);
         }}
-        className="max-h-[60dvh] w-full cursor-pointer"
+        className={cn(
+          'w-full cursor-pointer',
+          fullscreen ? 'min-h-0 flex-1 object-contain' : 'max-h-[60dvh]',
+        )}
       />
 
       <div className="flex items-center gap-2 bg-black/70 px-2 py-1.5">
@@ -308,6 +365,20 @@ function ClipPlayer({ src }: { src: string }) {
         <span className="shrink-0 font-mono text-[11px] text-white/80 tabular-nums">
           {clock(time)} / {clock(duration)}
         </span>
+
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="grid size-7 shrink-0 place-items-center rounded-full text-white"
+          aria-label={fullscreen ? t.clips.exitFullscreen : t.clips.fullscreen}
+          title={fullscreen ? t.clips.exitFullscreen : t.clips.fullscreen}
+        >
+          {fullscreen ? (
+            <Minimize className="size-4" aria-hidden />
+          ) : (
+            <Maximize className="size-4" aria-hidden />
+          )}
+        </button>
       </div>
     </div>
   );
