@@ -517,6 +517,13 @@ export const uz = {
     applicantsHint:
       'Har bir nomzodning kartasi va yoshi. Qarorni bu sinovning murabbiylari yozadi; o‘tsa, tarkibdan joy taklif qila olasiz.',
     noApplicants: 'Hozircha ariza yo‘q',
+    /* The page behind the dashboard's "See all" — see academies/mine/candidates. */
+    candidates: 'Tarkibga nomzodlar',
+    candidatesHint:
+      'Sinovlaringizdan o‘tgan va javobingizni kutayotgan o‘yinchilar: ularni tarkibga taklif qiling yoki nomzodlikni yoping.',
+    noWaitingCandidates: 'Hech kim kutmayapti',
+    noWaitingCandidatesHint:
+      'Sinovdan o‘tgan o‘yinchilar siz taklif qilguningizcha yoki nomzodlikni yopguningizcha shu yerda turadi.',
     hostedBy: 'Tashkilotchi',
     memberActive: 'Faol',
     memberInactive: 'Nofaol',
@@ -839,6 +846,9 @@ export const uz = {
       'Mahalliy jamoalar taklif orqali to‘ldiriladi: o‘yinchi roziligini bergach tarkibga qo‘shiladi.',
     squadInviteSent: 'Taklif yuborildi — javob kutilmoqda.',
     declinedInvitation: 'Oxirgi taklifni rad etishgan.',
+    /* Why a scout sees no "Recommend" button — see PlayerActions. */
+    cannotRecommendInAcademy: 'Bu o‘yinchi allaqachon akademiyada, uni tavsiya qilib bo‘lmaydi.',
+    cannotRecommendInTrial: 'Bu o‘yinchi sinov jarayonida, u tugamaguncha tavsiya qilib bo‘lmaydi.',
     alreadyInSquad: 'Bu o‘yinchi allaqachon tarkibingizda.',
     searchSubtitle:
       'FotSpot’da {count} nafar futbolchini nafaqat pozitsiyasi, balki o‘yin uslubi bo‘yicha ham qidiring.',
@@ -1115,6 +1125,13 @@ export const uz = {
       '{name} o‘tmagan deb belgilanadi. Qisqa sabab qo‘shishingiz mumkin — bu ixtiyoriy.',
     verdictPassed: 'Sinovdan o‘tdi',
     verdictFailed: 'Sinovdan o‘tmadi',
+    /* The manager's "x" beside the squad invitation — see CandidateCard. */
+    closeCandidacy: 'Nomzodlikni yopish',
+    closeCandidacyTitle: 'Bu nomzodlik yopilsinmi?',
+    closeCandidacyBody:
+      '{name} sinovdan o‘tgan, lekin tarkibga taklif qilinmaydi. Uni tavsiya qilgan skautlar rad etilgan deb belgilanadi va o‘yinchiga xabar beriladi.',
+    closeCandidacyPlaceholder: 'O‘yinchi uchun ixtiyoriy sabab qo‘shing…',
+    candidacyClosed: 'Nomzodlik yopildi.',
     notExpectedYet: 'Bu futbolchi hali kunga kutilmayapti.',
     awaitingVerdict: 'Sinovda murabbiyning qarorini kutmoqda',
     title: 'Sarlavha',
@@ -1300,6 +1317,7 @@ export const uz = {
     pendingActionsHint:
       'O‘yinchi sinovdan o‘tdi. Siz qaror qilmaguningizcha hech narsa o‘zgarmaydi.',
     passedTrial: 'Sinovdan o‘tdi',
+    seeAllCandidates: 'Hammasini ko‘rish ({count})',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     noAcademyLinkedBody:
       'Akademiyangizni ro‘yxatdan o‘tkazing, administrator uni ko‘rib chiqadi. Tasdiqlangach sinov e’lon qilib, tavsiyalar qabul qila olasiz.',

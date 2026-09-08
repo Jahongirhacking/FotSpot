@@ -487,6 +487,13 @@ export const ru: Dictionary = {
     applicantsHint:
       'Карточка и возраст каждого кандидата. Решение записывают тренеры этого просмотра; после «прошёл» вы можете предложить место в составе.',
     noApplicants: 'Заявок пока нет',
+    /* The page behind the dashboard's "See all" — see academies/mine/candidates. */
+    candidates: 'Кандидаты в состав',
+    candidatesHint:
+      'Игроки, прошедшие ваш просмотр и ожидающие ответа: пригласите их в состав или закройте кандидатуру.',
+    noWaitingCandidates: 'Никто не ждёт',
+    noWaitingCandidatesHint:
+      'Игроки, прошедшие просмотр, остаются здесь, пока вы их не пригласите или не закроете кандидатуру.',
     hostedBy: 'Организатор',
     memberActive: 'Активен',
     memberInactive: 'Неактивен',
@@ -806,6 +813,10 @@ export const ru: Dictionary = {
       'Местные команды набирают по приглашению: игрок попадёт в состав, когда согласится.',
     squadInviteSent: 'Приглашение отправлено — ждём ответа.',
     declinedInvitation: 'Последнее приглашение они отклонили.',
+    /* Why a scout sees no "Recommend" button — see PlayerActions. */
+    cannotRecommendInAcademy: 'Этот игрок уже в академии, его нельзя рекомендовать.',
+    cannotRecommendInTrial:
+      'Этот игрок проходит просмотр, его нельзя рекомендовать, пока он не завершится.',
     alreadyInSquad: 'Этот игрок уже в вашем составе.',
     searchSubtitle: '{count} игроков на FotSpot. Ищите по роли, а не только по позиции.',
     cleanSheets: 'Сухие матчи',
@@ -1078,6 +1089,13 @@ export const ru: Dictionary = {
       '{name} будет отмечен как не прошедший. Можно добавить короткую причину — это необязательно.',
     verdictPassed: 'Прошёл просмотр',
     verdictFailed: 'Не прошёл просмотр',
+    /* The manager's "x" beside the squad invitation — see CandidateCard. */
+    closeCandidacy: 'Закрыть кандидатуру',
+    closeCandidacyTitle: 'Закрыть эту кандидатуру?',
+    closeCandidacyBody:
+      '{name} прошёл просмотр, но в состав приглашён не будет. Скауты, которые его рекомендовали, будут отмечены как отклонённые, а игрок получит уведомление.',
+    closeCandidacyPlaceholder: 'Добавьте необязательную причину для игрока…',
+    candidacyClosed: 'Кандидатура закрыта.',
     notExpectedYet: 'Этот игрок пока не ожидается на просмотре.',
     awaitingVerdict: 'Ожидает решения тренера на просмотре',
     title: 'Название',
@@ -1258,6 +1276,7 @@ export const ru: Dictionary = {
     pendingActions: 'Ждут вашего решения',
     pendingActionsHint: 'Игрок прошёл просмотр. Ничего не сдвинется, пока вы не решите.',
     passedTrial: 'Прошёл просмотр',
+    seeAllCandidates: 'Показать всех ({count})',
     noAcademyLinked: 'К аккаунту не привязана академия',
     noAcademyLinkedBody:
       'Зарегистрируйте академию, и администратор её проверит. После одобрения сможете объявлять просмотры и получать рекомендации.',

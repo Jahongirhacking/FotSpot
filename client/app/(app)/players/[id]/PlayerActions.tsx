@@ -19,7 +19,12 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyKind, Follow, TrialApplicationStatus } from '@/lib/api/types';
+import type {
+  AcademyKind,
+  Follow,
+  RecommendEligibility,
+  TrialApplicationStatus,
+} from '@/lib/api/types';
 import { formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Heart, Mail, Send, UserPlus } from 'lucide-react';
@@ -109,6 +114,16 @@ export function PlayerActions({
     queryKey: ['my-recommendation', playerId],
     queryFn: () =>
       browserFetch<MyRecommendation | null>(`/recommendations/player/${playerId}/mine`),
+    enabled: isAuthenticated && activeRole === 'scout',
+  });
+
+  // Whether there is anybody to recommend this player to. A player an academy
+  // already has, or is already trying on a pitch, cannot be put forward, and
+  // the panel says why instead of drawing a button the API would refuse.
+  const { data: eligibility } = useQuery({
+    queryKey: ['recommend-eligibility', playerId],
+    queryFn: () =>
+      browserFetch<RecommendEligibility>(`/recommendations/player/${playerId}/eligibility`),
     enabled: isAuthenticated && activeRole === 'scout',
   });
 
@@ -205,6 +220,12 @@ export function PlayerActions({
             !isOwnProfile &&
             (mine ? (
               <RecommendationResult mine={mine} />
+            ) : eligibility?.reason ? (
+              <p className="text-muted text-sm">
+                {eligibility.reason === 'IN_ACADEMY'
+                  ? t.player.cannotRecommendInAcademy
+                  : t.player.cannotRecommendInTrial}
+              </p>
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}

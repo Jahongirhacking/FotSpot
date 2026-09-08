@@ -489,6 +489,13 @@ export const en: Dictionary = {
     applicantsHint:
       'Each candidate’s card and age. The coaches on this trial record the verdict; a pass lets you offer a squad place.',
     noApplicants: 'No applications yet',
+    /* The page behind the dashboard's "See all" — see academies/mine/candidates. */
+    candidates: 'Squad candidates',
+    candidatesHint:
+      'Players who passed one of your trials and are waiting for your answer: invite them to the squad, or close the candidacy.',
+    noWaitingCandidates: 'Nobody is waiting',
+    noWaitingCandidatesHint:
+      'Players who pass a trial appear here until you invite them or close the candidacy.',
     hostedBy: 'Hosted by',
     memberActive: 'Active',
     memberInactive: 'Inactive',
@@ -807,6 +814,10 @@ export const en: Dictionary = {
       'Local teams recruit by invitation: the player joins the squad once they accept.',
     squadInviteSent: 'Invitation sent — waiting on their answer.',
     declinedInvitation: 'They declined the last invitation.',
+    /* Why a scout sees no "Recommend" button — see PlayerActions. */
+    cannotRecommendInAcademy: 'This player is already at an academy and cannot be recommended.',
+    cannotRecommendInTrial:
+      'This player is in a trial process and cannot be recommended until it ends.',
     alreadyInSquad: 'This player is already in your squad.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',
@@ -1073,6 +1084,13 @@ export const en: Dictionary = {
       '{name} will be marked as not passed. You can add a short reason — it is optional.',
     verdictPassed: 'Passed the trial',
     verdictFailed: 'Did not pass the trial',
+    /* The manager's "x" beside the squad invitation — see CandidateCard. */
+    closeCandidacy: 'Close candidacy',
+    closeCandidacyTitle: 'Close this candidacy?',
+    closeCandidacyBody:
+      '{name} passed the trial but will not be invited to the squad. The scouts who recommended them are marked as turned down, and the player is told.',
+    closeCandidacyPlaceholder: 'Add an optional reason for the player…',
+    candidacyClosed: 'Candidacy closed.',
     notExpectedYet: 'This player is not expected on the day yet.',
     awaitingVerdict: 'Waiting on the coach’s verdict at the trial',
     title: 'Title',
@@ -1254,6 +1272,7 @@ export const en: Dictionary = {
     pendingActions: 'Waiting on you',
     pendingActionsHint: 'A player has passed a trial. Nothing moves until you decide.',
     passedTrial: 'Passed the trial',
+    seeAllCandidates: 'See all ({count})',
     noAcademyLinked: 'No academy linked to your account yet',
     noAcademyLinkedBody:
       'Register your academy and an admin will review it. Once approved you can post trials and receive recommendations.',

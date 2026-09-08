@@ -889,6 +889,8 @@ export interface TrialApplication {
   status: TrialApplicationStatus;
   /** What the academy wrote when inviting — private trials only. */
   inviteNote?: string | null;
+  /** Why the manager closed a passed player's candidacy, when they said. */
+  cancelNote?: string | null;
   /** The assigned coach's verdict after testing them in person (TRIAL.md §10). */
   result?: {
     id: string;
@@ -905,6 +907,45 @@ export interface TrialApplication {
   /** Joined on the player's own list so they can read what they were invited to. */
   trial?: Trial;
   createdAt: string;
+}
+
+/** The player card the manager's desk sends with each waiting candidate. */
+export interface CandidatePlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  gender: string | null;
+  primaryPosition: string | null;
+  region: string | null;
+  district: string | null;
+  avatarUrl: string | null;
+}
+
+/**
+ * The one thing that can be waiting on a manager: a player who passed a trial
+ * and is not yet offered a squad place. It acts on the **application** that
+ * recorded the pass. Failed players never appear — a FAIL owes the manager
+ * nothing (TRIAL.md §12).
+ */
+export interface PendingAction {
+  type: 'ADD_TO_SQUAD';
+  applicationId: string;
+  playerId: string;
+  player: CandidatePlayer;
+  trial: { id: string; title: string; type: TrialType; date: string | null };
+  passedAt: string;
+}
+
+/**
+ * Why a scout may not put this player forward right now: they are on an
+ * academy's books, or an academy is already looking at them on a pitch.
+ */
+export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL';
+
+export interface RecommendEligibility {
+  canRecommend: boolean;
+  reason: RecommendBlocker | null;
 }
 
 export interface CoachAssessment {

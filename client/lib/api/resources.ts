@@ -52,6 +52,8 @@ import type {
   CoachTrial,
   SuggestedPlayer,
   TransferListing,
+  PendingAction,
+  RecommendEligibility,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -1010,6 +1012,24 @@ export const recommendations = {
   invitePlayer: (playerId: string, body: InvitePlayerBody, opts: Opts = {}) =>
     apiFetch(`/recommendations/players/${playerId}/invite`, { method: 'POST', body, ...opts }),
 
+  /**
+   * Manager: the passed players waiting for a squad decision, newest pass first.
+   * The dashboard reads the top few; the candidates page turns the pages.
+   */
+  pendingActions: (params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<Page<PendingAction>>(
+      `/recommendations/manager/pending-actions${toQuery({ ...params })}`,
+      opts,
+    ),
+
+  /**
+   * Whether a scout may recommend this player, and if not, why. Asked before
+   * the button is drawn, so the profile shows the reason instead of a button
+   * the API would refuse.
+   */
+  eligibility: (playerId: string, opts: Opts = {}) =>
+    apiFetch<RecommendEligibility>(`/recommendations/player/${playerId}/eligibility`, opts),
+
   /** Manager: how many players the inbox is still waiting on. Drives the badge. */
   inboxCount: (opts: Opts = {}) =>
     apiFetch<{ count: number; academyId: string | null }>('/recommendations/inbox/count', opts),
@@ -1172,14 +1192,20 @@ export const trials = {
   listApplications: (trialId: string, opts: Opts = {}) =>
     apiFetch<TrialApplicationsPage>(`/trials/${trialId}/applications`, opts),
 
+  /**
+   * The academy withdrawing its interest. On a passed player this closes the
+   * candidacy — the "x" beside the squad invitation — and the note, optional,
+   * is the manager's record of why.
+   */
   updateApplicationStatus: (
     applicationId: string,
     status: TrialApplicationStatus,
+    note?: string,
     opts: Opts = {},
   ) =>
     apiFetch<TrialApplication>(`/trials/applications/${applicationId}/status`, {
       method: 'PATCH',
-      body: { status },
+      body: { status, ...(note ? { note } : {}) },
       ...opts,
     }),
 };

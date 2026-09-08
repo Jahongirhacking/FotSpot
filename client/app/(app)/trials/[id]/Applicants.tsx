@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, UserCheck, UserPlus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ClipboardList, UserCheck } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Trial, TrialApplication, TrialApplicationsPage } from '@/lib/api/types';
 import {
@@ -11,12 +11,12 @@ import {
   type ApplicantPlayer,
 } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
+import { CandidateActions, useCandidateActions } from '@/components/trials/CandidateCard';
 import { VerdictResult } from '@/components/trials/VerdictControls';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { EmptyState, Skeleton } from '@/components/ui/Feedback';
+import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { formatDate } from '@/lib/utils';
 
 interface Applicant extends TrialApplication {
@@ -40,7 +40,7 @@ interface Applicant extends TrialApplication {
  *
  * - applied, or confirmed for a private trial → waiting on the assigned coach's verdict
  * - invited to a private trial → waiting on the player
- * - passed → **Add to squad**
+ * - passed → **Invite to squad**, or close the candidacy (the "x")
  * - failed → nothing; the answer is final
  *
  * ## The verdict is never the manager's
@@ -53,25 +53,12 @@ interface Applicant extends TrialApplication {
  */
 export function Applicants({ trial }: { trial: Trial }) {
   const { t } = useI18n();
-  const queryClient = useQueryClient();
+  // The same two answers as the dashboard, on the same endpoints.
+  const actions = useCandidateActions();
 
   const applicants = useQuery({
     queryKey: ['trial-applications', trial?.id],
     queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trial?.id}/applications`),
-  });
-
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
-
-  const addToSquad = useMutation({
-    mutationFn: (id: string) =>
-      browserFetch(`/trials/applications/${id}/squad`, { method: 'POST' }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['roster'] });
-      void queryClient.invalidateQueries({ queryKey: ['manager-pending-actions'] });
-      void refresh();
-    },
-    meta: { success: t.trials.addedToSquadDone },
   });
 
   // Every row, invitations included: the manager sent them, and can see where
@@ -88,7 +75,10 @@ export function Applicants({ trial }: { trial: Trial }) {
         <p className="text-muted text-sm">{t.academy.applicantsHint}</p>
       </CardHeader>
 
-      <CardContent className="p-3">
+      <CardContent className="space-y-3 p-3">
+        {actions.error && (
+          <Alert tone="danger">{actions.error.message ?? t.common.somethingWrong}</Alert>
+        )}
         {applicants.isLoading ? (
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : rows?.length === 0 ? (
@@ -103,8 +93,10 @@ export function Applicants({ trial }: { trial: Trial }) {
               <ApplicantEntry
                 key={application?.id}
                 application={application}
-                pending={addToSquad.isPending && addToSquad.variables === application?.id}
-                onAddToSquad={() => addToSquad.mutate(application?.id)}
+                inviting={actions.inviting(application?.id)}
+                cancelling={actions.cancelling(application?.id)}
+                onInvite={() => actions.invite.mutate(application?.id)}
+                onCancel={(note) => actions.cancel.mutate({ applicationId: application?.id, note })}
               />
             )}
           </ApplicantGrid>
@@ -116,12 +108,16 @@ export function Applicants({ trial }: { trial: Trial }) {
 
 function ApplicantEntry({
   application,
-  pending,
-  onAddToSquad,
+  inviting,
+  cancelling,
+  onInvite,
+  onCancel,
 }: {
   application: Applicant;
-  pending: boolean;
-  onAddToSquad: () => void;
+  inviting: boolean;
+  cancelling: boolean;
+  onInvite: () => void;
+  onCancel: (note?: string) => void;
 }) {
   const { t } = useI18n();
 
@@ -166,14 +162,13 @@ function ApplicantEntry({
       }
       actions={
         canAdd ? (
-          <div className="w-full space-y-1.5">
-            {/* Nobody is placed by pressing this — TRIAL.md's action sends an
-                invitation the player still has to accept. */}
-            <p className="text-muted text-xs">{t.academy.addWarning}</p>
-            <Button size="sm" className="w-full" loading={pending} onClick={onAddToSquad}>
-              <UserPlus aria-hidden /> {t.trials.addToSquad}
-            </Button>
-          </div>
+          <CandidateActions
+            playerName={`${application?.player?.firstName ?? ''} ${application?.player?.lastName ?? ''}`.trim()}
+            inviting={inviting}
+            cancelling={cancelling}
+            onInvite={onInvite}
+            onCancel={onCancel}
+          />
         ) : null
       }
     />
