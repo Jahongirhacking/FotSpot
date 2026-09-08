@@ -1,146 +1,139 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
-import {
-  ApplicantCard,
-  useApplicationStep,
-  type ApplicantPlayer,
-} from '@/components/trials/ApplicantCard';
+import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
-import { VerdictControls, VerdictResult } from '@/components/trials/VerdictControls';
+import { useVerdict } from '@/components/trials/useVerdict';
+import { VerdictActions, VerdictResult } from '@/components/trials/VerdictControls';
+import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplication, TrialVerdict } from '@/lib/api/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList } from 'lucide-react';
+import type { Trial, TrialApplication, TrialApplicationsPage } from '@/lib/api/types';
+import { useQuery } from '@tanstack/react-query';
+import { Hourglass, Users } from 'lucide-react';
 
-interface Applicant extends TrialApplication {
+interface Participant extends TrialApplication {
   player: ApplicantPlayer;
 }
 
 /**
- * The sheet a coach works from on the day, and where the verdict is written.
+ * The participants of a trial, as its coach sees them, and where the verdict
+ * is written.
+ *
+ * ## Only players who are on the pitch
+ *
+ * The API hands a coach the participants and nothing else: a global trial's
+ * applicants, a private trial's invitee once they have accepted. An unanswered
+ * invitation is not on this sheet — the player has not agreed to come, so
+ * there is nobody to judge (TRIAL.md §11) — and is only counted, so the sheet
+ * can say "1 invitation pending" without naming anyone. The manager's note to
+ * the family never reaches this screen either.
  *
  * ## Only PASS and FAIL live here
  *
  * This is the real-life examination (TRIAL.md Rule 7), so the words are PASS and
- * FAIL. Nothing on this screen places a player anywhere either: a pass makes
+ * FAIL, and they belong to a coach assigned to the trial — on a global and a
+ * private one alike (§10). Nothing here places a player anywhere: a pass makes
  * them *eligible* for a squad, and the manager decides whether to take them
  * (Rule 9).
  *
- * ## Whose verdict it is
- *
- * A coach assigned to the trial, and nobody else — on a global trial and on a
- * private one alike (§10). The manager reads the applicant list above and
- * presses nothing; the API refuses them whatever is drawn.
- *
- * ## Cards, and the verdict written on the card
+ * ## The verdict written on the card
  *
  * A coach holding a phone at the side of a pitch is matching a face to a name
- * and answering one question about them. So each applicant is a card with their
- * photograph on it, and PASS and FAIL are on that card — the verdict is recorded
- * where the player is, on this page, with no navigation anywhere.
+ * and answering one question about them. A pass is one press, undoable from
+ * the toast for a short window; a fail asks first. The card turns into the
+ * verdict in place, and the next player stays where it was. See `useVerdict`.
  */
 export function CoachSheet({ trial }: { trial: Trial }) {
-  const { t } = useI18n();
-  const queryClient = useQueryClient();
+  const { t, f } = useI18n();
+  const verdict = useVerdict();
 
-  const applicants = useQuery({
+  const sheet = useQuery({
     queryKey: ['trial-applications', trial?.id],
-    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial?.id}/applications`),
+    queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trial?.id}/applications`),
   });
 
-  const verdict = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { verdict: TrialVerdict; note?: string } }) =>
-      browserFetch(`/trials/applications/${id}/verdict`, { method: 'POST', body }),
-    /*
-     * Refetch rather than navigate. The card the coach just answered rerenders
-     * in place showing the verdict, which is the whole point of recording it
-     * here: nothing moves under them, and the next player is where it was.
-     */
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['trial-applications', trial?.id] });
-      void queryClient.invalidateQueries({ queryKey: ['coach-trial-queue'] });
-      void queryClient.invalidateQueries({ queryKey: ['trials', 'coaching'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
-    },
-    meta: { success: t.trials.verdictRecorded },
-  });
-
-  const rows = applicants.data ?? [];
+  const rows = (sheet.data?.items ?? []) as Participant[];
+  const pending = sheet.data?.pending ?? 0;
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <ClipboardList className="text-primary size-4" aria-hidden /> {t.trials.sheet}
-          {rows?.length > 0 && (
-            <span className="text-muted text-sm font-normal">({rows?.length})</span>
-          )}
+          <Users className="text-primary size-4" aria-hidden /> {t.trials.participants}
+          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
         </CardTitle>
         <p className="text-muted text-sm">{t.trials.sheetHint}</p>
       </CardHeader>
 
-      <CardContent className="p-3">
-        {applicants.isLoading ? (
+      <CardContent className="space-y-3 p-3">
+        {sheet.isLoading ? (
           <Skeleton className="h-48 w-full rounded-lg" />
-        ) : applicants.isError ? (
+        ) : sheet.isError ? (
           <Alert tone="danger">{t.trials.sheetForbidden}</Alert>
-        ) : rows?.length === 0 ? (
+        ) : rows.length === 0 ? (
           <EmptyState
-            icon={ClipboardList}
-            title={t.academy.noApplicants}
-            description={t.admin.noApplicantsHint}
+            icon={Users}
+            title={t.trials.noParticipantsYet}
+            description={
+              trial?.type === 'PRIVATE' ? t.trials.noParticipantsYetHint : t.admin.noApplicantsHint
+            }
           />
         ) : (
           <ApplicantGrid applicants={rows}>
             {(application) => (
-              <SheetCard
+              <ParticipantRow
                 key={application?.id}
                 application={application}
-                pending={verdict?.isPending && verdict?.variables?.id === application?.id}
-                onRecord={(body) => verdict?.mutate({ id: application?.id, body })}
+                pending={
+                  verdict.pendingId === application?.id || verdict.undoingId === application?.id
+                }
+                onPass={() => verdict.record(application?.id, 'PASS')}
+                onFail={(note) => verdict.record(application?.id, 'FAIL', note)}
               />
             )}
           </ApplicantGrid>
+        )}
+
+        {pending > 0 && (
+          <p className="text-muted flex items-center gap-1.5 text-xs">
+            <Hourglass className="size-3.5 shrink-0" aria-hidden />
+            {f(t.trials.pendingInvitations, { count: pending })}
+          </p>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function SheetCard({
+function ParticipantRow({
   application,
   pending,
-  onRecord,
+  onPass,
+  onFail,
 }: {
-  application: Applicant;
+  application: Participant;
   pending: boolean;
-  onRecord: (body: { verdict: TrialVerdict; note?: string }) => void;
+  onPass: () => void;
+  onFail: (note?: string) => void;
 }) {
   const { status, result } = application;
-  const step = useApplicationStep(status);
-  // Whoever was expected on the day: a general trial's applicant, or a private
-  // trial's invitee who said yes. Anything else was never on the sheet.
-  const expected = status === 'APPLIED' || status === 'CONFIRMED';
+  const name =
+    `${application?.player?.firstName ?? ''} ${application?.player?.lastName ?? ''}`.trim();
+  // Whoever is on the pitch and not yet answered for. `ACCEPTED` already
+  // carries a verdict; anything else the API does not send a coach.
+  const awaiting = !result && (status === 'APPLIED' || status === 'CONFIRMED');
 
   return (
     <ApplicantCard
       player={application?.player}
       status={status}
-      detail={
-        result ? (
-          <VerdictResult result={result} />
-        ) : (
-          /* Says where the player is even when this coach has nothing to press:
-             an invitee still deciding is not a blank card. */
-          <p className="text-muted text-xs">{step}</p>
-        )
-      }
       actions={
-        !result && expected ? (
-          <VerdictControls applicationId={application?.id} pending={pending} onRecord={onRecord} />
+        result ? (
+          <VerdictResult result={result} compact />
+        ) : awaiting ? (
+          <VerdictActions playerName={name} pending={pending} onPass={onPass} onFail={onFail} />
         ) : null
       }
     />

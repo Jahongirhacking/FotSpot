@@ -691,9 +691,10 @@ export interface Paged<T> {
 /**
  * A player a coach still owes a verdict, with the session they owe it on.
  *
- * Carries the trial because the coach's queue mixes both kinds deliberately —
- * it is a list of jobs, not a catalogue — and the card has to say which flow
- * each one is.
+ * Carries the trial because the coach's queue can mix both kinds — it is a
+ * list of jobs, not a catalogue — and the card has to say which flow each one
+ * is. Never an unanswered invitation: the player has to have agreed to come
+ * before there is anybody to judge (TRIAL.md §11).
  */
 export interface PendingTrialApplicant {
   id: string;
@@ -710,6 +711,27 @@ export interface PendingTrialApplicant {
     location: string;
   };
   player: PlayerProfile & { avatarUrl?: string | null };
+  /** Set once a verdict is written and patched onto the row in place. */
+  result?: TrialApplication['result'];
+}
+
+/**
+ * The coach's queue, one page at a time. `pendingInvitations` counts the
+ * private-trial invitations still unanswered on the coach's sessions — enough
+ * to say "2 invitations pending" without naming anybody.
+ */
+export interface CoachQueuePage extends Paged<PendingTrialApplicant> {
+  pendingInvitations: number;
+}
+
+/**
+ * GET /trials/:id/applications. The manager gets every row; a coach gets the
+ * participants only, and `pending` says how many invitations are still
+ * unanswered.
+ */
+export interface TrialApplicationsPage {
+  items: TrialApplication[];
+  pending: number;
 }
 
 export type TrialStatus = 'OPEN' | 'ARCHIVED';
@@ -829,6 +851,11 @@ export interface TrialApplication {
     verdict: TrialVerdict;
     note: string | null;
     decidedAt: string;
+    /**
+     * When its consequences went out. Null while the coach may still undo it —
+     * see `trials.undoVerdict`.
+     */
+    settledAt?: string | null;
     coachUser: { id: string; firstName: string | null; lastName: string | null };
   } | null;
   /** Joined on the player's own list so they can read what they were invited to. */

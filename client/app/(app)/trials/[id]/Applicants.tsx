@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, UserCheck, UserPlus } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplication } from '@/lib/api/types';
+import type { Trial, TrialApplication, TrialApplicationsPage } from '@/lib/api/types';
 import {
   ApplicantCard,
   useApplicationStep,
@@ -57,7 +57,7 @@ export function Applicants({ trial }: { trial: Trial }) {
 
   const applicants = useQuery({
     queryKey: ['trial-applications', trial?.id],
-    queryFn: () => browserFetch<Applicant[]>(`/trials/${trial?.id}/applications`),
+    queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trial?.id}/applications`),
   });
 
   const refresh = () =>
@@ -74,7 +74,9 @@ export function Applicants({ trial }: { trial: Trial }) {
     meta: { success: t.trials.addedToSquadDone },
   });
 
-  const rows = applicants.data ?? [];
+  // Every row, invitations included: the manager sent them, and can see where
+  // each one stands. A coach is handed the participants only — see CoachSheet.
+  const rows = (applicants.data?.items ?? []) as Applicant[];
 
   return (
     <Card>

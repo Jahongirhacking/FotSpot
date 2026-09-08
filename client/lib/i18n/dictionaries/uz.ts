@@ -25,6 +25,7 @@ export const uz = {
     tagline: 'Mahalladan akademiyagacha',
     save: 'Saqlash',
     cancel: 'Bekor qilish',
+    undo: 'Bekor qilish',
     back: 'Orqaga',
     continue: 'Davom etish',
     search: 'Qidirish',
@@ -956,7 +957,9 @@ export const uz = {
     addedToSquad: 'Jamoaga qo‘shildi',
     aboutThisTrial: 'Sinov haqida',
     addedToSquadDone: 'Futbolchi jamoaga qo‘shildi',
-    verdictRecorded: 'Hukm yozildi',
+    passedToast: 'O‘yinchi sinovdan o‘tdi.',
+    failedToast: 'O‘yinchi o‘tmagan deb belgilandi.',
+    verdictUndone: 'Qaror qaytarib olindi.',
     trialCreated: 'Sinov yaratildi',
     coachesUpdated: 'Murabbiylar ro‘yxati yangilandi',
     answerSent: 'Javobingiz yuborildi',
@@ -1052,11 +1055,19 @@ export const uz = {
     datePassed: 'sana o‘tdi',
     allAnswered: 'Yakunlangan',
     applicantCount: '{count} ta ariza',
+    playerCount: '{count} o‘yinchi',
     awaitingCount: '{count} ta kutmoqda',
     // Kun varaqasi va hukm
     sheet: 'Kun varaqasi',
     sheetHint:
-      'Kim keladi va siz ular haqida nima dedingiz. Qaror — o‘tdi yoki o‘tmadi, va bu sinovda u sizniki.',
+      'Kim maydonda va siz ular haqida nima dedingiz. O‘tdi — bitta bosish, uni bir necha soniya ichida bekor qilish mumkin; O‘tmadi avval so‘raydi.',
+    participants: 'Ishtirokchilar',
+    noParticipantsYet: 'Hali sinovga tayyor o‘yinchilar yo‘q.',
+    noParticipantsYetHint: 'O‘yinchilar taklifni qabul qilgandan keyin shu yerda ko‘rinadi.',
+    pendingInvitations: '{count} ta taklif javob kutmoqda',
+    privateQueueHint:
+      'Har birida bitta o‘yinchi. O‘tdi yoki o‘tmadi deb shu yerda belgilang — hech narsani ochish shart emas.',
+    globalQueueHint: 'Siz ishlayotgan sinovlar. O‘yinchilarni birga baholash uchun birini oching.',
     sheetForbidden: 'Bu sinovni faqat unga biriktirilgan murabbiylar ko‘ra oladi.',
     recordVerdict: 'Hukm yozish',
     trialHasNoCoaches:
@@ -1079,13 +1090,12 @@ export const uz = {
     noApplicantsMatch: 'Bunga mos ariza yo‘q.',
     pass: 'O‘tkazish',
     fail: 'O‘tkazmaslik',
-    verdictNote: 'Qarorga izoh',
-    confirmPass: 'Bu futbolchini o‘tkazasizmi?',
-    confirmPassBody:
-      'Buni orqaga qaytarib bo‘lmaydi. Futbolchi jamoaga qabul qilinishi mumkin bo‘ladi (qarorni menejer qabul qiladi), profilidagi tavsiyalar tozalanadi va uni tavsiya qilgan skautlarning reytingi qayta hisoblanadi.',
+    failPlayer: 'O‘tmadi deb belgilash',
+    verdictNoteOptional: 'Izoh (ixtiyoriy)',
+    verdictNotePlaceholder: 'Sabab yoki izoh qo‘shing (ixtiyoriy)…',
     confirmFail: 'Bu futbolchini o‘tkazmaysizmi?',
-    confirmFailBody:
-      'Buni orqaga qaytarib bo‘lmaydi. Futbolchi jamoaga qo‘shilmaydi va uni tavsiya qilgan skautlarning reytingi qayta hisoblanadi. Tavsiyalar tozalanmaydi.',
+    failDialogBody:
+      '{name} o‘tmagan deb belgilanadi. Qisqa sabab qo‘shishingiz mumkin — bu ixtiyoriy.',
     verdictPassed: 'Sinovdan o‘tdi',
     verdictFailed: 'Sinovdan o‘tmadi',
     notExpectedYet: 'Bu futbolchi hali kunga kutilmayapti.',

@@ -47,8 +47,8 @@ import type {
   ProfileSummary,
   RatingRevision,
   AcademyHistoryRow,
-  Paged,
-  PendingTrialApplicant,
+  CoachQueuePage,
+  TrialApplicationsPage,
   CoachTrial,
   SuggestedPlayer,
   TransferListing,
@@ -1032,6 +1032,15 @@ export const recommendations = {
 
 // ---------- Trials ----------
 
+/** What `recordVerdict` answers: the row, and until when it can be taken back. */
+export interface RecordedVerdict {
+  id: string;
+  verdict: TrialVerdict;
+  note: string | null;
+  decidedAt: string;
+  undoUntil: string;
+}
+
 export const trials = {
   /**
    * How many trials have appeared since this account last opened the list.
@@ -1115,11 +1124,32 @@ export const trials = {
     applicationId: string,
     body: { verdict: TrialVerdict; note?: string },
     opts: Opts = {},
-  ) => apiFetch(`/trials/applications/${applicationId}/verdict`, { method: 'POST', body, ...opts }),
+  ) =>
+    apiFetch<RecordedVerdict>(`/trials/applications/${applicationId}/verdict`, {
+      method: 'POST',
+      body,
+      ...opts,
+    }),
 
-  /** The players this coach still owes a verdict. Server-paginated. */
-  coachPending: (page: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
-    apiFetch<Paged<PendingTrialApplicant>>(`/trials/coaching/pending${toQuery(page)}`, opts),
+  /**
+   * Takes a verdict back, inside the undo window — before its consequences
+   * have gone out. The API answers 409 once they have, or once the manager has
+   * acted on a pass.
+   */
+  undoVerdict: (applicationId: string, opts: Opts = {}) =>
+    apiFetch<TrialApplication>(`/trials/applications/${applicationId}/verdict`, {
+      method: 'DELETE',
+      ...opts,
+    }),
+
+  /**
+   * The players this coach still owes a verdict. Server-paginated, and
+   * narrowed to one kind of trial when the screen shows them apart.
+   */
+  coachPending: (
+    page: { page?: number; pageSize?: number; type?: TrialType } = {},
+    opts: Opts = {},
+  ) => apiFetch<CoachQueuePage>(`/trials/coaching/pending${toQuery(page)}`, opts),
 
   /** Take the player on — sends them an invitation to join the academy. */
   addToSquad: (applicationId: string, opts: Opts = {}) =>
@@ -1138,8 +1168,9 @@ export const trials = {
   myApplications: (opts: Opts = {}) =>
     apiFetch<TrialApplication[]>('/trials/applications/mine', opts),
 
+  /** Who is on the sheet — every row for the manager, the participants for a coach. */
   listApplications: (trialId: string, opts: Opts = {}) =>
-    apiFetch<TrialApplication[]>(`/trials/${trialId}/applications`, opts),
+    apiFetch<TrialApplicationsPage>(`/trials/${trialId}/applications`, opts),
 
   updateApplicationStatus: (
     applicationId: string,
