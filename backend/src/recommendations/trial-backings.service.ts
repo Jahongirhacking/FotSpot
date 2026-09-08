@@ -6,9 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
  *
  * The seam between recommendations and trials: both sides create applications
  * — the inbox by inviting, the trial by being applied to — and every one of
- * them carries the recommendations the verdict will answer. This used to be
- * "Process A", the online coach review, and the review is gone (TRIAL.md);
- * what remains is the part the verdict still needs.
+ * them carries the recommendations the verdict will answer (TRIAL.md §22).
+ * Nothing is decided here; this only remembers who is riding on the outcome.
  */
 @Injectable()
 export class TrialBackingsService {

@@ -1343,7 +1343,7 @@ model Recommendation {
 
   /**
    * When a trial PASS retired this from the player's live recommendations.
-   * TRIAL.md §27 says a pass empties `Player.recommendations`. It cannot mean
+   * TRIAL.md §22 says a pass empties `Player.recommendations`. It cannot mean
    * *delete*, because the very next step in §8 is recalculating the success rate
    * of the scouts who filed them — a number computed from these rows. What is
    * cleared is the player's live backing: they have been placed, so nobody is
@@ -1392,9 +1392,8 @@ model RecommendationTarget {
  * qualifies nobody.
  * This is the one number a player cannot write about themselves (§12.4), and it
  * is worth that only if whoever wrote it has watched them train. So it is
- * deliberately unreachable from the two screens where a coach judges a stranger:
- * a trial answers PASS/FAIL and nothing else does, and
- * neither writes a row here (Rule 22).
+ * deliberately unreachable from the screen where a coach judges a stranger:
+ * a trial answers PASS/FAIL and nothing else, and writes no row here (Rule 22).
  */
 model CoachAssessment {
   id             String @id @default(uuid())
@@ -1545,8 +1544,8 @@ model Trial {
   type   TrialType   @default(GENERAL)
 
   applications TrialApplication[]
-  /// The coaches who screen and assess for this trial. A private trial is
-  /// visible to them; a general one hands them its applicants automatically.
+  /// The coaches who work this trial, and the only people who may record its
+  /// verdict (TRIAL.md §10).
   coaches      TrialCoach[]
 
   createdAt DateTime @default(now())
@@ -1567,11 +1566,11 @@ enum TrialStatus {
 
 /**
  * Who a trial is for.
- * GENERAL is the open day: any player may find it and apply, and screening
- * happens after they do. PRIVATE is the opposite motion — the academy (or a
- * scout, through a recommendation) picks somebody, has a coach screen them, and
- * only then invites them. It is never listed publicly, because a session for one
- * named child is not an announcement.
+ * GENERAL is the open day: any player may find it and apply, and the manager
+ * decides on the day. PRIVATE is the opposite motion — the academy (a manager
+ * or a coach, often prompted by a scout's recommendation) picks somebody and
+ * invites them to a session of their own, run by one coach. It is never listed
+ * publicly, because a session for one named child is not an announcement.
  */
 enum TrialType {
   GENERAL
@@ -1599,22 +1598,20 @@ model TrialCoach {
 
 /**
  * Where an application stands, in the order it moves.
- * Two routes end at the same place, and only one of them is screened online
- * (TRIAL.md Rule 5):
- * general  APPLIED ─────────────────────────────→ PASSED / FAILED
- * private  SCREENING → SHORTLISTED → INVITED → CONFIRMED → PASSED / FAILED
+ * Two routes end at the same place, and nothing is decided before the day:
+ * general  APPLIED ───────────────────→ PASSED / FAILED
+ * private  INVITED → CONFIRMED ───────→ PASSED / FAILED
  * `APPLIED`      a player put themselves forward (general trials only)
  * `INVITED`      a private trial's invitation is out, awaiting the player
  * `CONFIRMED`    the player accepted and is expected on the day
- * `PASSED`       a coach tested them in person and passed them (see TrialResult)
- * `FAILED`       a coach tested them in person and failed them
+ * `PASSED`       tested in person and passed (see TrialResult)
+ * `FAILED`       tested in person and failed
  * `ACCEPTED`     the academy took them on — squad placement, after a PASS
- * `REJECTED`     the academy said no, or the
- * player declined the invitation
- * `PASSED`/`FAILED` are the *coach's* verdict and `ACCEPTED` is the *academy's*
- * administrative act on top of it. They are deliberately different words: §36
- * forbids reading a trial verdict as an accept/reject, and conflating the two is
- * what let an online approval unlock a squad place.
+ * `REJECTED`     the academy said no, or the player declined the invitation
+ * `PASSED`/`FAILED` are the trial's verdict and `ACCEPTED` is the *academy's*
+ * administrative act on top of it. They are deliberately different words: a
+ * trial verdict is never read as an accept/reject of a recommendation, and only
+ * a PASS reaches a squad.
  */
 enum TrialApplicationStatus {
   APPLIED
@@ -1646,12 +1643,7 @@ model TrialApplication {
 
   /// Every scout whose call this trial will settle. See TrialApplicationBacking.
   backings TrialApplicationBacking[]
-  /**
-   * The *online* coach review that screened this application, if one ran.
-   * Private trials only. A general trial is not screened online at all
-   * (TRIAL.md Rule 5) — the player applies and is tested on the day.
-   */
-  /// What the coach said after testing them in person. See TrialResult.
+  /// The verdict after testing them in person. See TrialResult.
   result   TrialResult?
 
   trial  Trial         @relation(fields: [trialId], references: [id], onDelete: Cascade)
@@ -1675,12 +1667,10 @@ enum TrialVerdict {
 }
 
 /**
- * A coach's verdict after physically testing a player at a trial.
- * Its own row rather than a flag on the application, which is
- * what this used to be. Rule 19 forbids merging the two, and the merged version
- * had a concrete cost: reopening the review reset the online screening to
- * PENDING, so "what did the coach say about this player's profile" and "did they
- * pass the day" overwrote each other, and there was no way to hold both.
+ * The verdict after physically testing a player at a trial.
+ * Its own row rather than a flag on the application: the application says
+ * where the player is in the process, this says what was decided about them
+ * and by whom, and the two are not to be overwritten by each other.
  * One per application. A trial answers once — a second look is a second trial,
  * with its own application and its own row.
  */
@@ -1689,16 +1679,11 @@ model TrialResult {
   applicationId String           @unique
   application   TrialApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
-  /// The coach who ran the test. Must be working this trial — see TrialCoach.
-  /**
-   * /**
-   * Who recorded the verdict: the assigned coach on a private trial, the
-   * academy manager on a general one — TRIAL.md §7 and §10. The profile is
-   * only there for a coach, so it is optional.
-   */
+  /// The assigned coach who recorded the verdict — TRIAL.md §10. Must be
+  /// working this trial; see TrialCoach.
   coachUserId    String
-  coachProfileId String?
-  coachUser      User    @relation("TrialVerdicts", fields: [coachUserId], references: [id], onDelete: Cascade)
+  coachProfileId String
+  coachUser      User   @relation("TrialVerdicts", fields: [coachUserId], references: [id], onDelete: Cascade)
 
   verdict TrialVerdict
   note    String?
@@ -1711,14 +1696,6 @@ model TrialResult {
 // ---------- NOTIFICATIONS (1.12) ----------
 
 enum NotificationEvent {
-  /// A coach has been handed a player to review.
-  /**
-   * /**
-   * A player has been invited to a private trial, and their answer is next.
-   * Only an ACCEPT is sent. A rejection asks nothing of the manager — the coach
-   * has answered and the line is closed — whereas an acceptance leaves a player
-   * waiting on an invitation only they can send.
-   */
   /// An academy is inviting the player, with the manager's note.
   ACADEMY_INVITATION
   /// An academy is asking somebody to join it — awaiting their yes or no.
@@ -1727,6 +1704,7 @@ enum NotificationEvent {
   ACADEMY_JOIN_ANSWER
   RECOMMENDATION_ACCEPTED
   RECOMMENDATION_REJECTED
+  /// A player has been invited to a private trial, and their answer is next.
   TRIAL_INVITATION
   /**
    * A new open trial matches this player's position and age.

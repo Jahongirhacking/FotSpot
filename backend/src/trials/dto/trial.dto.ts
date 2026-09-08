@@ -206,12 +206,11 @@ export class UpdateTrialDto {
  * The academy withdrawing its own interest — the only status a manager may write
  * by hand.
  *
- * It used to accept SHORTLISTED, INVITED and ACCEPTED as well, which made every
- * gate in this flow optional: SHORTLISTED is what unlocks a private trial's
- * invitation, so a manager could invite a player no coach had screened, and
- * ACCEPTED is squad placement, so they could sign one no coach had tested. Both
- * are decisions TRIAL.md reserves for a coach (Rules 6, 8, 16). Saying "no
- * thanks" is not — an academy may always decline.
+ * Every other status is the outcome of something else: INVITED of an
+ * invitation, PASSED and FAILED of a verdict, ACCEPTED of a squad placement
+ * after a PASS (TRIAL.md Rules 6 and 8). Writing one directly would skip the
+ * thing it records. Saying "no thanks" skips nothing — an academy may always
+ * decline.
  */
 const APPLICATION_STATUSES = ['REJECTED'] as const;
 

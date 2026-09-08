@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from '@nes
 import { RecommendationsService } from './recommendations.service';
 
 /**
- * A private trial invitation — TRIAL.md §6–§10.
+ * A private trial invitation — TRIAL.md §11.
  *
  * Who may send one, who ends up running it, and what it writes. The fake
  * Prisma answers "manager of academy-1" or "coach of academy-1" per test; the

@@ -21,7 +21,7 @@ import {
  *
  * `TrialsService` sends its PASS SMS with a floating promise, and that is right
  * *there*: a trial verdict is rare and deliberate. Notifications are neither —
- * they fire on recommendations, reviews, invitations, trial publications, squad
+ * they fire on recommendations, invitations, trial publications, squad
  * changes, and one action can produce many at once. A floating `fetch` per
  * notification means an unbounded number of in-flight sockets held by a process
  * whose request has already returned, no retry when Telegram rate-limits (which

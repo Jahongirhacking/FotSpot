@@ -12,14 +12,13 @@ import type { StorageService } from '../storage/storage.service';
 /**
  * The rules under test are TRIAL.md's, not this file's inventions:
  *
- *   Rule 5   a general trial is not screened online
- *   Rule 7   a coach tests the player in person
+ *   Rule 3   a general trial takes applications directly
+ *   Rule 7   the player is tested in person
  *   Rule 8   only a trial PASS reaches a squad
- *   Rule 11  a FAIL settles the backing scouts
+ *   Rule 10  only a coach assigned to the trial decides it
+ *   Rule 12  a FAIL settles the backing scouts too
  *   Rule 13  only a PASS clears the player's recommendations
- *   Rule 16  the academy does not evaluate the football
- *
- * Each one had a counterexample in this service before the split.
+ *   Rule 19  nothing archives itself
  */
 
 const TRIAL = {
@@ -174,13 +173,13 @@ function pendingApplication(status: string) {
   };
 }
 
-describe('TrialsService — the general trial route (Rule 5)', () => {
+describe('TrialsService — the general trial route (Rule 3)', () => {
   it('does not screen an applicant online, and leaves them at APPLIED', async () => {
     const { service, prisma } = build();
 
     const application = await service.apply('player-user-1', 'trial-1');
 
-    // No online review: the application is the whole of it (TRIAL.md §3).
+    // No online review: the application is the whole of it (TRIAL.md §1.2).
     expect(prisma.trialApplication.upsert).toHaveBeenCalledTimes(1);
     expect(application.status).toBe('APPLIED');
   });
@@ -194,34 +193,35 @@ describe('TrialsService — the general trial route (Rule 5)', () => {
   });
 });
 
-/** An application on a private trial: the assigned coach's to decide. */
+/** An application on a private trial — the same rule, the other kind of session. */
 function privateApplication(status: string) {
   return { ...pendingApplication(status), trial: { ...TRIAL, type: 'PRIVATE' } };
 }
 
 /*
- * Who answers depends on the kind of trial — TRIAL.md §4 and §10. The fake
- * member lookup answers MANAGER for anybody, so a coach is made by answering
- * COACH; the fake coach assignment answers "assigned" unless told otherwise.
+ * Only a coach assigned to the trial answers, whatever kind it is — TRIAL.md
+ * §10, Rule 10. The fake coach assignment answers "assigned" unless told
+ * otherwise, and the fake profile lookup finds a coach profile for anybody.
  */
-describe('TrialsService.recordVerdict — who may decide (§4, §10)', () => {
-  it('a general trial: the academy manager decides', async () => {
+describe('TrialsService.recordVerdict — who may decide (§10)', () => {
+  it('a general trial: the assigned coach decides', async () => {
     const { service, prisma } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
 
-    await expect(service.recordVerdict('manager-1', 'app-1', { verdict: 'PASS' })).resolves.toEqual(
+    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).resolves.toEqual(
       expect.objectContaining({ verdict: 'PASS' }),
     );
   });
 
-  it('a general trial: a coach cannot, even one assigned to it', async () => {
-    const { service, prisma } = build();
+  it('a general trial: the manager cannot, unless they are an assigned coach', async () => {
+    const { service, prisma, tx } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
-    prisma.academyMember.findUnique.mockResolvedValue({ role: 'COACH' });
+    prisma.trialCoach.findUnique.mockResolvedValue(null);
 
-    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
+    await expect(service.recordVerdict('manager-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
       ForbiddenException,
     );
+    expect(tx.trialResult.create).not.toHaveBeenCalled();
   });
 
   it('a private trial: the assigned coach decides', async () => {
@@ -250,6 +250,23 @@ describe('TrialsService.recordVerdict — who may decide (§4, §10)', () => {
 
     await expect(service.recordVerdict('manager-1', 'app-1', { verdict: 'PASS' })).rejects.toThrow(
       ForbiddenException,
+    );
+  });
+
+  /* The verdict is signed by the coach, on either kind of trial. */
+  it('records the coach and their profile as the decider', async () => {
+    const { service, prisma, tx } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'FAIL' });
+
+    expect(tx.trialResult.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          coachUserId: 'coach-1',
+          coachProfileId: 'coach-profile-1',
+        }),
+      }),
     );
   });
 
@@ -566,6 +583,67 @@ describe('TrialsService.create — local teams', () => {
 
     await expect(service.create('manager-1', 'academy-1', validTrial)).resolves.toBeDefined();
     expect(prisma.trial.create).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Who runs a new trial — TRIAL.md §1.1, Rule 5.
+ *
+ * `coachUserIds` is a relation the manager names, not a column: it must reach
+ * `TrialCoach` and never the trial row itself, which Prisma refuses with a
+ * validation error the client reads as a 500. Found live, guarded here.
+ */
+describe('TrialsService.create — the coaches on it', () => {
+  const validTrial = {
+    title: 'U16 open day',
+    location: 'Tashkent',
+    ageRangeMin: 10,
+    ageRangeMax: 20,
+    positions: [],
+  };
+
+  it('keeps the named coaches off the trial row and puts them on the staff', async () => {
+    const { service, prisma } = build();
+    prisma.academyEndorsement.findMany.mockResolvedValue([
+      { userId: 'coach-1' },
+      { userId: 'coach-2' },
+    ]);
+
+    await service.create('manager-1', 'academy-1', { ...validTrial, coachUserIds: ['coach-2'] });
+
+    const [{ data }] = prisma.trial.create.mock.calls[0] as unknown as [
+      { data: Record<string, unknown> },
+    ];
+    expect(data).not.toHaveProperty('coachUserIds');
+    expect(prisma.trialCoach.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: [{ trialId: 'trial-1', coachUserId: 'coach-2' }] }),
+    );
+  });
+
+  it('attaches every endorsed coach when none is named', async () => {
+    const { service, prisma } = build();
+    prisma.academyEndorsement.findMany.mockResolvedValue([
+      { userId: 'coach-1' },
+      { userId: 'coach-2' },
+    ]);
+
+    await service.create('manager-1', 'academy-1', validTrial);
+
+    const [{ data }] = prisma.trialCoach.createMany.mock.calls[0] as unknown as [
+      { data: { coachUserId: string }[] },
+    ];
+    expect(data.map((row) => row.coachUserId).sort()).toEqual(['coach-1', 'coach-2']);
+  });
+
+  /* A refused coach must not leave an announced trial behind with nobody on it. */
+  it('refuses a coach the academy has not endorsed, before writing anything', async () => {
+    const { service, prisma } = build();
+    prisma.academyEndorsement.findMany.mockResolvedValue([{ userId: 'coach-1' }]);
+
+    await expect(
+      service.create('manager-1', 'academy-1', { ...validTrial, coachUserIds: ['stranger'] }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.trial.create).not.toHaveBeenCalled();
   });
 });
 

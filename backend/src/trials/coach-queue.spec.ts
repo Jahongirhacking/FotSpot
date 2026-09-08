@@ -75,11 +75,12 @@ describe('which applications reach a coach’s queue', () => {
     expect(where.trial.status).toBeUndefined();
   });
 
-  /* Private trials only: on a general trial the verdict is the manager's
-     (TRIAL.md §4), so nothing there is a coach's job. */
-  it('lists private trials only', async () => {
+  /* Both kinds: the assigned coach decides a global trial's applicants and a
+     private trial's invitee alike (TRIAL.md §10). Filtering on the kind would
+     hide half the work. */
+  it('does not filter on the trial’s kind', async () => {
     const { where } = await queryFor();
-    expect(where.trial.type).toBe('PRIVATE');
+    expect(where.trial.type).toBeUndefined();
   });
 });
 

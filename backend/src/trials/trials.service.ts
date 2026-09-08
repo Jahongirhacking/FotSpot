@@ -105,13 +105,39 @@ export class TrialsService {
 
     const coverKey = dto.coverKey ? this.assertOwnCoverKey(academyId, dto.coverKey) : null;
 
+    /*
+     * Who runs it — TRIAL.md §1.1.
+     * The manager names the coaches, and only coaches the academy has endorsed
+     * count: endorsement is what an academy's trust in a coach *is*. With none
+     * named, everybody endorsed is attached, so a published open day is never a
+     * session nobody can see the applicants of. `assignCoaches` remains the
+     * way to change the staff later. The staff is who records the verdict
+     * (§10), so a trial with nobody on it is one nobody can answer.
+     *
+     * Checked before anything is written: a refused coach must not leave a
+     * trial behind, announced to every follower, with nobody on it. And taken
+     * *off* the row's fields — it is a relation, not a column.
+     */
+    const { coachUserIds, ...fields } = dto;
+    const endorsed = await this.prisma.academyEndorsement.findMany({
+      where: { academyId, role: 'COACH', status: 'ACTIVE' },
+      select: { userId: true },
+    });
+    const endorsedIds = new Set(endorsed.map((row) => row.userId));
+    const named = coachUserIds ?? [];
+    const unknown = named.filter((id) => !endorsedIds.has(id));
+    if (unknown.length > 0) {
+      throw new BadRequestException('Every assigned coach must be a coach of this academy');
+    }
+    const staff = named.length > 0 ? named : [...endorsedIds];
+
     const trial = await this.prisma.trial.create({
       // Sanitised here rather than trusted from the client: the editor cleans as
       // a convenience for the person typing, but this endpoint is reachable
       // without it.
       data: {
         academyId,
-        ...dto,
+        ...fields,
         date,
         endDate,
         startTime: dto.startTime ?? null,
@@ -126,34 +152,15 @@ export class TrialsService {
       },
     });
 
-    await this.announceToMatchingPlayers(trial, userId);
-
-    /*
-     * Who runs it — TRIAL.md §1.1.
-     * The manager names the coaches, and only coaches the academy has endorsed
-     * count: endorsement is what an academy's trust in a coach *is*. With none
-     * named, everybody endorsed is attached, so a published open day is never a
-     * session nobody can see the applicants of. `assignCoaches` remains the
-     * way to change the staff later. The verdict on a general trial is the
-     * manager's (§4), so the staff here is who sees the sheet and runs the day.
-     */
-    const endorsed = await this.prisma.academyEndorsement.findMany({
-      where: { academyId, role: 'COACH', status: 'ACTIVE' },
-      select: { userId: true },
-    });
-    const endorsedIds = new Set(endorsed.map((row) => row.userId));
-    const named = dto.coachUserIds ?? [];
-    const unknown = named.filter((id) => !endorsedIds.has(id));
-    if (unknown.length > 0) {
-      throw new BadRequestException('Every assigned coach must be a coach of this academy');
-    }
-    const staff = named.length > 0 ? named : [...endorsedIds];
     if (staff.length > 0) {
       await this.prisma.trialCoach.createMany({
         data: staff.map((coachUserId) => ({ trialId: trial.id, coachUserId })),
         skipDuplicates: true,
       });
     }
+    // Announced last, once the staff is on it: the message names a session
+    // somebody can already open and see the applicants of.
+    await this.announceToMatchingPlayers(trial, userId);
     return this.withCoverUrl(trial);
   }
 
@@ -178,7 +185,7 @@ export class TrialsService {
    *
    * ## Private trials say nothing
    *
-   * A private trial is a session for one named child (TRIAL.md §18) and carries
+   * A private trial is a session for one named child (TRIAL.md §11) and carries
    * no positions or age range at all. Announcing one would tell a stranger that
    * child is being looked at.
    */
@@ -455,11 +462,11 @@ export class TrialsService {
    * card, so a page of twenty costs one query and not forty-one.
    */
   async listPendingForCoach(userId: string, { page = 1, pageSize = 12 } = {}) {
-    // Private trials only: on a general trial the verdict is the manager's
-    // (TRIAL.md §4), so nothing there is waiting on the coach.
+    // Both kinds: the assigned coach decides a global trial's applicants and a
+    // private trial's invitee alike (TRIAL.md §10).
     const where: Prisma.TrialApplicationWhereInput = {
       status: { in: ['APPLIED', 'CONFIRMED'] },
-      trial: { type: 'PRIVATE', coaches: { some: { coachUserId: userId } } },
+      trial: { coaches: { some: { coachUserId: userId } } },
     };
 
     const [items, total] = await Promise.all([
@@ -542,8 +549,6 @@ export class TrialsService {
         where: {
           trialId: { in: trialIds },
           status: { in: ['APPLIED', 'CONFIRMED'] },
-          // Only where the coach is the one to answer (§10).
-          trial: { type: 'PRIVATE' },
         },
         _count: { _all: true },
       }),
@@ -789,9 +794,8 @@ export class TrialsService {
    * The coach's verdict, after testing the player in person — TRIAL.md Rules 4, 7.
    *
    * The one place PASS and FAIL are written, and the only thing that can reach a
-   * squad (Rule 8). It is deliberately not a second decision on the online
-   * review: that answered "is this player worth looking at", this answers "did
-   * they pass the football examination", and §36 requires the two to stay apart.
+   * squad (Rule 8). It answers one question — did they pass the football
+   * examination — and nothing else on the platform answers it (§1.2).
    *
    * ## What a verdict settles
    *
@@ -825,33 +829,25 @@ export class TrialsService {
     if (!application) throw new NotFoundException('Trial application not found');
 
     /*
-     * Who answers depends on the kind of trial — TRIAL.md §4 and §10.
+     * Only a coach assigned to this trial answers — TRIAL.md §10, Rule 10.
      *
-     * A **general** trial's verdict is the academy manager's: they run the open
-     * day and the applicant list, and the coaches they assigned see the sheet
-     * but do not decide it. A **private** trial's verdict is the assigned
-     * coach's, whoever arranged it: the coach was on the pitch with that one
-     * player, and the manager is not.
+     * Global or private, the same rule: the coach was on the pitch with the
+     * player, and the manager was not. A manager who is also an assigned coach
+     * decides as that coach; a manager who is not decides nothing, and their
+     * part begins when a PASS lands on their dashboard (§12).
      */
-    let coachProfileId: string | null = null;
-    if (application.trial.type === 'GENERAL') {
-      await this.assertAcademyManager(userId, application.trial.academyId);
-    } else {
-      const assigned = await this.prisma.trialCoach.findUnique({
-        where: { trialId_coachUserId: { trialId: application.trialId, coachUserId: userId } },
-      });
-      if (!assigned) {
-        throw new ForbiddenException(
-          'Only the coach assigned to this trial can record its verdict',
-        );
-      }
-      const coachProfile = await this.prisma.coachProfile.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-      if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
-      coachProfileId = coachProfile.id;
+    const assigned = await this.prisma.trialCoach.findUnique({
+      where: { trialId_coachUserId: { trialId: application.trialId, coachUserId: userId } },
+    });
+    if (!assigned) {
+      throw new ForbiddenException('Only a coach assigned to this trial can record its verdict');
     }
+    const coachProfile = await this.prisma.coachProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!coachProfile) throw new BadRequestException('That coach has no coach profile');
+    const coachProfileId = coachProfile.id;
 
     // A trial answers once. A second look is a second trial, with its own
     // application and its own verdict.
@@ -881,8 +877,6 @@ export class TrialsService {
      * later, once the manager places the player in a group and somebody becomes
      * responsible for coaching them (Rule 21, README §1.9).
      */
-    const deciderRole = application.trial.type === 'GENERAL' ? 'academy_manager' : 'coach';
-
     const result = await this.prisma.$transaction(async (tx) => {
       const written = await tx.trialResult.create({
         data: {
@@ -919,7 +913,7 @@ export class TrialsService {
       recommendationIds: backings,
       academyId: application.trial.academyId,
       status: dto.verdict === 'PASS' ? 'ACCEPTED' : 'REJECTED',
-      actor: { userId, role: deciderRole },
+      actor: { userId, role: 'coach' },
     });
 
     await this.notifications.notify(
@@ -933,7 +927,7 @@ export class TrialsService {
         verdict: dto.verdict,
         note: dto.note ?? null,
       },
-      { userId, role: deciderRole },
+      { userId, role: 'coach' },
     );
 
     /*
@@ -947,7 +941,7 @@ export class TrialsService {
      *
      * The whole sheet is still on the trial's own screen either way.
      */
-    if (dto.verdict === 'PASS' && application.trial.type === 'PRIVATE') {
+    if (dto.verdict === 'PASS') {
       const manager = await this.prisma.academyMember.findFirst({
         where: { academyId: application.trial.academyId, role: 'MANAGER' },
         select: { userId: true },
@@ -965,7 +959,7 @@ export class TrialsService {
             status: 'PASSED',
             verdict: 'PASS',
           },
-          { userId, role: deciderRole },
+          { userId, role: 'coach' },
         );
       }
     }
@@ -1022,10 +1016,9 @@ export class TrialsService {
    * still the player's yes to give — the same rule every other route into a
    * squad follows, and the same screen the player already answers it on.
    *
-   * The gate is a trial PASS and nothing else (Rule 8). It used to be an online
-   * review's APPROVED, which is a judgement about clips and numbers — §11 says
-   * in as many words that it is not a pass, and on a general trial there is no
-   * online review to consult at all.
+   * The gate is a trial PASS and nothing else (Rule 8). Nothing decided from a
+   * profile can stand in for it, because nothing is decided from a profile
+   * (§1.2).
    *
    * The scouts are already settled by then: their call was answered by the coach
    * on the day, not by this administrative step (§28).
@@ -1215,7 +1208,7 @@ export class TrialsService {
   /**
    * A player applies to a general trial, and that is the whole of it.
    *
-   * No screening of any kind — TRIAL.md §3. A general trial is the open day:
+   * No screening of any kind — TRIAL.md §1.2. A general trial is the open day:
    * the academy announced it, the player put themselves forward, and the next
    * thing that happens is a coach watching them play. Screening the profile first
    * would make the open day something a player could be turned away from without

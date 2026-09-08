@@ -67,7 +67,7 @@ export class UpdateRecommendationStatusDto {
  * A private trial invitation — one player, one date, one coach.
  *
  * Sent by an academy manager or an academy coach, from the player's profile or
- * the inbox (TRIAL.md §6–§9). A manager names the coach who will run it; a
+ * the inbox (TRIAL.md §11). A manager names the coach who will run it; a
  * coach who invites runs it themselves, so `coachUserId` is ignored for them.
  * `recommendationId` is the inbox's: the recommendation this invitation
  * answers, so the scout behind it is settled by the verdict.
