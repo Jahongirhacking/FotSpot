@@ -160,6 +160,13 @@ review`) rather than being hidden — an invisible pending role generates suppor
 
 Sessions: short-lived JWT access token + rotating refresh token, device-bound (§1.21).
 
+**An account is asked for a password the first time it signs in without one.** A Google token,
+a Telegram signature or a one-time code proves who somebody is but gives the account no
+password, so after that sign-in the app holds the account on the password screen
+(`mustChangePassword`, the same lock an admin-minted manager gets) until one is set; the screen
+says why, and names the username and email the person will sign in with next time. An account
+that already has a password is never asked.
+
 ### 1.4. Authorization
 
 RBAC over five tables: `users`, `roles`, `permissions`, `user_roles`, `role_permissions`.
