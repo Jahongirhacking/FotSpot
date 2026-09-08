@@ -20,6 +20,7 @@ import {
 } from 'class-validator';
 
 import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { TIME_PATTERN } from '../trial-window.util';
 
 export class CreateTrialDto {
@@ -234,6 +235,20 @@ export class RecordTrialVerdictDto {
   @IsIn(['PASS', 'FAIL']) verdict: 'PASS' | 'FAIL';
 
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
+}
+
+/**
+ * The coach's queue, one page at a time, optionally one kind of trial.
+ *
+ * The dashboard shows private and global trials apart — the players of the
+ * one, the sessions of the other — so it asks for `type=PRIVATE` rather than
+ * fetching both and discarding half.
+ */
+export class CoachQueueQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: TrialType, enumName: 'TrialType' })
+  @IsOptional()
+  @IsEnum(TrialType)
+  type?: TrialType;
 }
 
 /** Paging for the academy's archived-trial history. */

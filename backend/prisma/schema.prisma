@@ -1688,6 +1688,13 @@ model TrialResult {
   verdict TrialVerdict
   note    String?
 
+  /// When the verdict's consequences went out — scouts settled, the player
+  /// and manager told, the SMS sent. Null while the coach may still undo it:
+  /// a verdict is written at once but *acted on* only after a short window,
+  /// so an accidental press reverses cleanly instead of after a text message
+  /// has already reached a child. See TrialsService.settleVerdict.
+  settledAt DateTime?
+
   decidedAt DateTime @default(now())
 
   @@index([coachUserId])

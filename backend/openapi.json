@@ -5103,6 +5103,14 @@
               "default": 20,
               "type": "number"
             }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TrialType"
+            }
           }
         ],
         "responses": {
@@ -5163,6 +5171,7 @@
             "bearer": []
           }
         ],
+        "summary": "Who is on the sheet, and what was decided. The manager sees every row; a\ncoach sees the participants — never an unanswered invitation, and never\nthe note the manager wrote to the family. `pending` counts the\ninvitations still awaiting an answer.",
         "tags": [
           "trials"
         ]
@@ -5241,6 +5250,33 @@
           }
         ],
         "summary": "The coach's PASS or FAIL, after testing the player in person.\n\nWritten by a coach working this trial, never by the manager — the academy\ndoes not evaluate the football. Only a PASS makes the player eligible for a\nsquad place, and only a PASS clears their recommendations.",
+        "tags": [
+          "trials"
+        ]
+      },
+      "delete": {
+        "operationId": "trials_undoVerdict",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Takes a verdict back, inside the undo window — the coach's own, before its\nconsequences have gone out. 409 once they have, or once the manager has\noffered the passed player a squad place.",
         "tags": [
           "trials"
         ]

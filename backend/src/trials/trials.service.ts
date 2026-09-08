@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
+import type { Prisma, TrialType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -48,6 +51,30 @@ import { regionCentre } from '../common/uzbekistan';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 import { SmsService } from '../sms/sms.service';
+import {
+  SETTLE_ATTEMPTS,
+  SETTLE_BACKOFF_MS,
+  SETTLE_VERDICT_JOB,
+  TRIALS_QUEUE,
+  VERDICT_UNDO_WINDOW_MS,
+  settleJobId,
+  type SettleVerdictJob,
+} from './trials.constants';
+
+/**
+ * The application statuses that put a player on the pitch — and so on the
+ * coach's sheet. A general trial's applicant, or a private trial's invitee who
+ * said yes, and what became of them afterwards. `INVITED` is deliberately not
+ * here: an unanswered invitation is between the academy and the player, and a
+ * coach has nobody to judge yet (TRIAL.md §11).
+ */
+export const PARTICIPANT_STATUSES = [
+  'APPLIED',
+  'CONFIRMED',
+  'PASSED',
+  'FAILED',
+  'ACCEPTED',
+] as const;
 
 @Injectable()
 export class TrialsService {
@@ -62,6 +89,7 @@ export class TrialsService {
     private redis: RedisService,
     private sms: SmsService,
     private storage: StorageService,
+    @InjectQueue(TRIALS_QUEUE) private queue: Queue<SettleVerdictJob>,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -461,15 +489,31 @@ export class TrialsService {
    * The player and the trial come back on the row rather than being fetched per
    * card, so a page of twenty costs one query and not forty-one.
    */
-  async listPendingForCoach(userId: string, { page = 1, pageSize = 12 } = {}) {
+  async listPendingForCoach(
+    userId: string,
+    { page = 1, pageSize = 12, type }: { page?: number; pageSize?: number; type?: TrialType } = {},
+  ) {
     // Both kinds: the assigned coach decides a global trial's applicants and a
-    // private trial's invitee alike (TRIAL.md §10).
+    // private trial's invitee alike (TRIAL.md §10). `type` narrows to one when
+    // the screen shows them apart — the dashboard's private-trial list is the
+    // players themselves, its global-trial list is the sessions.
+    const trial: Prisma.TrialWhereInput = {
+      coaches: { some: { coachUserId: userId } },
+      ...(type ? { type } : {}),
+    };
+    /*
+     * `APPLIED` and `CONFIRMED` only. An `INVITED` row is an invitation the
+     * player has not answered — nobody is on the pitch yet, and a coach must
+     * not be handed a child to judge who has not agreed to be there (TRIAL.md
+     * §11). The count of those is returned beside the list, so the screen can
+     * say "2 invitations pending" without ever showing who.
+     */
     const where: Prisma.TrialApplicationWhereInput = {
       status: { in: ['APPLIED', 'CONFIRMED'] },
-      trial: { coaches: { some: { coachUserId: userId } } },
+      trial,
     };
 
-    const [items, total] = await Promise.all([
+    const [items, total, pendingInvitations] = await Promise.all([
       this.prisma.trialApplication.findMany({
         where,
         orderBy: [{ trial: { date: 'asc' } }, { createdAt: 'asc' }],
@@ -497,6 +541,7 @@ export class TrialsService {
               firstName: true,
               lastName: true,
               birthDate: true,
+              gender: true,
               primaryPosition: true,
               secondaryPosition: true,
               dominantFoot: true,
@@ -507,6 +552,7 @@ export class TrialsService {
         },
       }),
       this.prisma.trialApplication.count({ where }),
+      this.prisma.trialApplication.count({ where: { status: 'INVITED', trial } }),
     ]);
 
     return {
@@ -520,6 +566,7 @@ export class TrialsService {
       total,
       page,
       pageSize,
+      pendingInvitations,
     };
   }
 
@@ -695,6 +742,15 @@ export class TrialsService {
       }),
     ]);
     if (!staff && !coach && !application) throw new NotFoundException('Trial not found');
+
+    /*
+     * The note on a private trial is the invitation — what the manager wrote
+     * *to the player*: where to come, who to ask for, sometimes a phone number.
+     * It is for the player and the manager who wrote it. A coach assigned to
+     * run the session gets the session: title, date, time, place, requirements
+     * — and not the family's private message (TRIAL.md §29).
+     */
+    if (!staff && !application) return { ...trial, note: null };
     return trial;
   }
 
@@ -797,13 +853,15 @@ export class TrialsService {
    * squad (Rule 8). It answers one question — did they pass the football
    * examination — and nothing else on the platform answers it (§1.2).
    *
-   * ## What a verdict settles
+   * ## Written now, acted on shortly
    *
-   * Both outcomes move every backing scout's reputation, because both are
-   * finalized outcomes (§28) and a player rarely arrives on one scout's word.
-   * Only a PASS clears the player's recommendations (Rule 13) — a FAIL is an
-   * answer about one morning, not a reason to wipe the record of who spotted
-   * them.
+   * The row and the status are written here, at once: the sheet shows the
+   * verdict, the manager's dashboard shows the candidate. Everything that
+   * *follows* a verdict — settling the scouts, clearing the recommendations,
+   * telling the player and the manager, the SMS — runs in `settleVerdict`,
+   * from a delayed job, after `VERDICT_UNDO_WINDOW_MS`. In that window the coach
+   * may undo (`undoVerdict`) and nothing will have gone out. See
+   * trials.constants.ts for why a thumb on a phone earns that window.
    *
    * Neither outcome places anybody. That is `addToSquad`, and it is the
    * manager's (Rule 9).
@@ -896,24 +954,147 @@ export class TrialsService {
       return written;
     });
 
+    await this.scheduleSettlement(applicationId, VERDICT_UNDO_WINDOW_MS);
+
+    // The player's cached profile now has a verdict on it.
+    await this.redis.del(RedisKeys.playerProfile(application.playerId));
+
+    return { ...result, undoUntil: new Date(Date.now() + VERDICT_UNDO_WINDOW_MS) };
+  }
+
+  /**
+   * Queues the consequences of a verdict.
+   *
+   * One job per application, named after it, so `undoVerdict` can remove
+   * exactly that job. Retried on failure and re-queued by the boot sweep, so a
+   * verdict is never quietly left unsettled — a scout never paid for a right
+   * call would be the worst outcome here.
+   */
+  private async scheduleSettlement(applicationId: string, delay: number) {
+    await this.queue.add(
+      SETTLE_VERDICT_JOB,
+      { applicationId },
+      {
+        jobId: settleJobId(applicationId),
+        delay,
+        attempts: SETTLE_ATTEMPTS,
+        backoff: { type: 'exponential', delay: SETTLE_BACKOFF_MS },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    );
+  }
+
+  /**
+   * Takes a verdict back — the coach's own, inside the undo window.
+   *
+   * Reverses exactly what `recordVerdict` wrote: the result row goes, the
+   * application returns to where it was (a general trial's applicant, a
+   * private trial's confirmed invitee), and the delayed settlement is removed
+   * before it can run. Refused once the settlement has gone out — the scouts
+   * are settled and the player has been told, and none of that can be unsaid —
+   * and once the manager has acted on a pass by offering a squad place.
+   */
+  async undoVerdict(userId: string, applicationId: string) {
+    const application = await this.prisma.trialApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        trial: { select: { type: true } },
+        result: { select: { id: true, coachUserId: true, settledAt: true } },
+      },
+    });
+    if (!application?.result) throw new NotFoundException('There is no verdict to undo');
+    if (application.result.coachUserId !== userId) {
+      throw new ForbiddenException('Only the coach who recorded this verdict can undo it');
+    }
+    if (application.result.settledAt) {
+      throw new ConflictException('This verdict has already gone out and can no longer be undone');
+    }
+    if (application.status !== 'PASSED' && application.status !== 'FAILED') {
+      throw new ConflictException('The academy has already acted on this verdict');
+    }
+
+    // Removed first: a settlement that ran while the row was being reverted
+    // would settle a verdict that no longer exists.
+    const job = await this.queue.getJob(settleJobId(applicationId));
+    if (job) await job.remove();
+
+    const restored = application.trial.type === 'PRIVATE' ? 'CONFIRMED' : 'APPLIED';
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.trialResult.delete({ where: { applicationId } });
+      return tx.trialApplication.update({
+        where: { id: applicationId },
+        data: { status: restored },
+      });
+    });
+
+    await this.redis.del(RedisKeys.playerProfile(application.playerId));
+    return updated;
+  }
+
+  /**
+   * What a verdict sets in motion, once the undo window has closed.
+   *
+   * Idempotent: the row is marked `settledAt` under a guard, so a retried job
+   * or a sweep that re-queues one already done sends nothing twice. A verdict
+   * that was undone has no row, and settles nothing.
+   *
+   * ## What a verdict settles
+   *
+   * Both outcomes move every backing scout's reputation, because both are
+   * finalized outcomes (§23) and a player rarely arrives on one scout's word.
+   * Only a PASS clears the player's recommendations (Rule 13) — a FAIL is an
+   * answer about one morning, not a reason to wipe the record of who spotted
+   * them.
+   */
+  async settleVerdict(applicationId: string) {
+    const application = await this.prisma.trialApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        trial: { include: { academy: { select: { kind: true } } } },
+        player: {
+          select: {
+            id: true,
+            userId: true,
+            firstName: true,
+            lastName: true,
+            // For the SMS on a pass. Optional on an account, so it is often null.
+            user: { select: { phone: true } },
+          },
+        },
+        result: true,
+      },
+    });
+    const result = application?.result;
+    if (!application || !result) return { settled: false as const, reason: 'undone' as const };
+
+    const claimed = await this.prisma.trialResult.updateMany({
+      where: { id: result.id, settledAt: null },
+      data: { settledAt: new Date() },
+    });
+    if (claimed.count === 0) return { settled: false as const, reason: 'already' as const };
+
+    const verdict = result.verdict;
+    const coachUserId = result.coachUserId;
+
     /*
-     * The scouts, in the order §28 sets out: clear first, then recalculate.
+     * The scouts, in the order §23 sets out: clear first, then recalculate.
      *
      * Clearing does not touch the target rows the success rate is counted from,
      * so the order is not load-bearing for correctness — but the rule is written
-     * that way, and a reader checking this against §28 should find it in the same
+     * that way, and a reader checking this against §23 should find it in the same
      * sequence rather than having to work out that it does not matter.
      */
     const backings = await this.backings.backingsOf(applicationId, application.recommendationId);
 
-    if (dto.verdict === 'PASS') {
+    if (verdict === 'PASS') {
       await this.recommendations.clearPlayerRecommendations(application.playerId);
     }
     await this.recommendations.settleTrialBackings({
       recommendationIds: backings,
       academyId: application.trial.academyId,
-      status: dto.verdict === 'PASS' ? 'ACCEPTED' : 'REJECTED',
-      actor: { userId, role: 'coach' },
+      status: verdict === 'PASS' ? 'ACCEPTED' : 'REJECTED',
+      actor: { userId: coachUserId, role: 'coach' },
     });
 
     await this.notifications.notify(
@@ -923,11 +1104,11 @@ export class TrialsService {
         applicationId,
         trialId: application.trialId,
         trialTitle: application.trial.title,
-        status: dto.verdict === 'PASS' ? 'PASSED' : 'FAILED',
-        verdict: dto.verdict,
-        note: dto.note ?? null,
+        status: verdict === 'PASS' ? 'PASSED' : 'FAILED',
+        verdict,
+        note: result.note,
       },
-      { userId, role: 'coach' },
+      { userId: coachUserId, role: 'coach' },
     );
 
     /*
@@ -941,7 +1122,7 @@ export class TrialsService {
      *
      * The whole sheet is still on the trial's own screen either way.
      */
-    if (dto.verdict === 'PASS') {
+    if (verdict === 'PASS') {
       const manager = await this.prisma.academyMember.findFirst({
         where: { academyId: application.trial.academyId, role: 'MANAGER' },
         select: { userId: true },
@@ -959,7 +1140,7 @@ export class TrialsService {
             status: 'PASSED',
             verdict: 'PASS',
           },
-          { userId, role: 'coach' },
+          { userId: coachUserId, role: 'coach' },
         );
       }
     }
@@ -978,12 +1159,11 @@ export class TrialsService {
      * unreachable for one — the check is here anyway because it states the rule
      * where the money is spent rather than three services away.
      *
-     * Not awaited, and it cannot throw: a verdict a coach recorded on a pitch
-     * must not roll back because a gateway timed out, and the player's squad
-     * place must not wait on an HTTP call to a third party. `SmsService` returns
-     * its failures instead of raising them, which is what makes this safe.
+     * Not awaited, and it cannot throw: a settlement must not fail because a
+     * gateway timed out. `SmsService` returns its failures instead of raising
+     * them, which is what makes this safe.
      */
-    if (dto.verdict === 'PASS' && !isLocalTeam(application.trial.academy.kind)) {
+    if (verdict === 'PASS' && !isLocalTeam(application.trial.academy.kind)) {
       void this.sms
         .sendTrialPass({
           phone: application.player.user?.phone,
@@ -1002,10 +1182,29 @@ export class TrialsService {
         });
     }
 
-    // The player's cached profile now has a new assessment on it.
+    // The player's cached profile now carries the settled outcome.
     await this.redis.del(RedisKeys.playerProfile(application.playerId));
 
-    return result;
+    return { settled: true as const };
+  }
+
+  /**
+   * Re-queues any verdict whose settlement never ran — a worker that died with
+   * a delayed job, a Redis that was flushed. Called at boot by the processor.
+   * Immediate, not delayed: these are past their window already.
+   */
+  async settleOverdueVerdicts() {
+    const overdue = await this.prisma.trialResult.findMany({
+      where: {
+        settledAt: null,
+        decidedAt: { lt: new Date(Date.now() - VERDICT_UNDO_WINDOW_MS) },
+      },
+      select: { applicationId: true },
+    });
+    for (const { applicationId } of overdue) {
+      await this.scheduleSettlement(applicationId, 0);
+    }
+    return overdue.length;
   }
 
   /**
@@ -1288,6 +1487,18 @@ export class TrialsService {
    * cannot list the applicants has no way to reach the one they just watched.
    * The verdict comes back on the row with the applicant, so the sheet reads
    * as one thing: who came, and what was decided.
+   *
+   * ## What a coach is given, and what they are not
+   *
+   * The manager sees every row: an invitation is theirs, answered or not. A
+   * coach sees the *participants* — the players who are, or were, on the
+   * pitch (`PARTICIPANT_STATUSES`). An unanswered invitation is not one of
+   * them: the child has not agreed to come, and until they do there is nobody
+   * for the coach to judge and nothing for them to know (TRIAL.md §11). The
+   * count of those comes back as `pending`, so the sheet can say "2
+   * invitations pending" without naming anyone. The invitation note is the
+   * manager's message to the family and stays with them — a coach never
+   * receives it, whichever rows they see.
    */
   async listApplicationsForTrial(userId: string, trialId: string) {
     const trial = await this.getById(trialId);
@@ -1300,43 +1511,43 @@ export class TrialsService {
         where: { trialId_coachUserId: { trialId, coachUserId: userId } },
       }),
     ]);
-    if (membership?.role !== 'MANAGER' && !coaching) {
+    const manages = membership?.role === 'MANAGER';
+    if (!manages && !coaching) {
       throw new ForbiddenException('Only this academy or a coach working this trial can see that');
     }
 
-    /*
-     * The player's photograph comes with them.
-     *
-     * `avatarKey` lives on the account rather than the profile, so a bare
-     * `player: true` returns a card with no face on it — and the applicant grid
-     * a coach scans is built around the face. Flattened to `avatarUrl` below,
-     * the same shape `PlayersService` returns, so the client has one field to
-     * read rather than a key it would have to know how to turn into a URL.
-     */
-    const applications = await this.prisma.trialApplication.findMany({
-      where: { trialId },
-      include: {
-        player: { include: { user: { select: { avatarKey: true } } } },
-        result: {
-          select: {
-            id: true,
-            verdict: true,
-            note: true,
-            decidedAt: true,
-            coachUser: { select: { id: true, firstName: true, lastName: true } },
+    const [applications, pending] = await Promise.all([
+      this.prisma.trialApplication.findMany({
+        where: { trialId, ...(manages ? {} : { status: { in: [...PARTICIPANT_STATUSES] } }) },
+        include: {
+          player: { include: { user: { select: { avatarKey: true } } } },
+          result: {
+            select: {
+              id: true,
+              verdict: true,
+              note: true,
+              decidedAt: true,
+              settledAt: true,
+              coachUser: { select: { id: true, firstName: true, lastName: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.trialApplication.count({ where: { trialId, status: 'INVITED' } }),
+    ]);
 
-    return applications.map(({ player, ...application }) => {
-      const { user, ...profile } = player;
-      return {
-        ...application,
-        player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
-      };
-    });
+    return {
+      items: applications.map(({ player, inviteNote, ...application }) => {
+        const { user, ...profile } = player;
+        return {
+          ...application,
+          ...(manages ? { inviteNote } : {}),
+          player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
+        };
+      }),
+      pending,
+    };
   }
 
   /**

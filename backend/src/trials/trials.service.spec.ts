@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -8,6 +13,8 @@ import type { InvitationsService } from '../academies/invitations.service';
 import type { RedisService } from '../redis/redis.service';
 import type { SmsService } from '../sms/sms.service';
 import type { StorageService } from '../storage/storage.service';
+import type { Queue } from 'bullmq';
+import type { SettleVerdictJob } from './trials.constants';
 
 /**
  * The rules under test are TRIAL.md's, not this file's inventions:
@@ -55,6 +62,7 @@ function fakePrisma() {
         id: 'result-1',
         ...data,
       })),
+      delete: jest.fn(async () => ({})),
     },
     trialApplication: { update: jest.fn(async () => ({})) },
   };
@@ -101,6 +109,11 @@ function fakePrisma() {
     coachProfile: {
       findUnique: jest.fn(async (): Promise<unknown> => ({ id: 'coach-profile-1' })),
     },
+    // Settlement claims the row under a guard; the sweep looks for unclaimed ones.
+    trialResult: {
+      updateMany: jest.fn(async () => ({ count: 1 })),
+      findMany: jest.fn(async (): Promise<unknown[]> => []),
+    },
     /*
      * `create` staffs a new trial with the academy's endorsed coaches, so that a
      * published session is never one nobody can record a verdict on. Empty by
@@ -142,6 +155,15 @@ function build() {
   };
   const redis = { del: jest.fn(async () => undefined) };
   const sms = { sendTrialPass: jest.fn(async () => ({ sent: false as boolean })) };
+  /*
+   * The settlement queue. `add` records the delayed job; `getJob` answers a
+   * removable job so an undo has something to take out.
+   */
+  const job = { remove: jest.fn(async () => undefined) };
+  const queue = {
+    add: jest.fn(async () => undefined),
+    getJob: jest.fn(async (): Promise<unknown> => job),
+  };
 
   const service = new TrialsService(
     prisma as unknown as PrismaService,
@@ -154,9 +176,22 @@ function build() {
     // Only reached when a trial is returned, to turn a cover key into a URL.
     // These tests are about scheduling and eligibility, so no trial has a cover.
     { publicUrlOrNull: () => null } as unknown as StorageService,
+    queue as unknown as Queue<SettleVerdictJob>,
   );
 
-  return { service, prisma, tx, notifications, backings, invitations, recommendations, redis, sms };
+  return {
+    service,
+    prisma,
+    tx,
+    notifications,
+    backings,
+    invitations,
+    recommendations,
+    redis,
+    sms,
+    queue,
+    job,
+  };
 }
 
 /** An application as it stands the moment a coach is about to decide. */
@@ -196,6 +231,24 @@ describe('TrialsService — the general trial route (Rule 3)', () => {
 /** An application on a private trial — the same rule, the other kind of session. */
 function privateApplication(status: string) {
   return { ...pendingApplication(status), trial: { ...TRIAL, type: 'PRIVATE' } };
+}
+
+/** The same application once a verdict is written and its window still open. */
+function decidedApplication(verdict: 'PASS' | 'FAIL', extra: Record<string, unknown> = {}) {
+  return {
+    ...pendingApplication(verdict === 'PASS' ? 'PASSED' : 'FAILED'),
+    result: {
+      id: 'result-1',
+      applicationId: 'app-1',
+      coachUserId: 'coach-1',
+      coachProfileId: 'coach-profile-1',
+      verdict,
+      note: null,
+      decidedAt: new Date(),
+      settledAt: null,
+      ...extra,
+    },
+  };
 }
 
 /*
@@ -324,12 +377,75 @@ describe('TrialsService.recordVerdict — who may decide (§10)', () => {
   });
 });
 
-describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)', () => {
-  it('a PASS clears the recommendations and settles every backer as accepted', async () => {
-    const { service, prisma, tx, recommendations } = build();
+/*
+ * A verdict is written at once and *acted on* after the undo window — see
+ * trials.constants.ts. So `recordVerdict` writes the row and queues the
+ * settlement; `settleVerdict` is what the queue runs. The two are tested apart.
+ */
+describe('TrialsService.recordVerdict — written now, settled later', () => {
+  it('writes the row and the status at once', async () => {
+    const { service, prisma, tx } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
 
     await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(tx.trialResult.create).toHaveBeenCalled();
+    expect(tx.trialApplication.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'PASSED' } }),
+    );
+  });
+
+  it('queues the settlement after the undo window, one job per application', async () => {
+    const { service, prisma, queue } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(queue.add).toHaveBeenCalledWith(
+      'settle-verdict',
+      { applicationId: 'app-1' },
+      expect.objectContaining({ jobId: 'settle-verdict-app-1', delay: 30_000 }),
+    );
+  });
+
+  /* Nothing goes out while the coach may still take it back. */
+  it('settles nothing, tells nobody and sends no SMS yet', async () => {
+    const { service, prisma, recommendations, notifications, sms } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(recommendations.settleTrialBackings).not.toHaveBeenCalled();
+    expect(recommendations.clearPlayerRecommendations).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+    expect(sms.sendTrialPass).not.toHaveBeenCalled();
+  });
+
+  it('tells the caller until when the verdict can be undone', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+
+    const result = await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(result.undoUntil.getTime()).toBeGreaterThan(Date.now() + 20_000);
+  });
+
+  it('places nobody on its own — that is the manager’s (Rule 9)', async () => {
+    const { service, prisma, invitations } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+
+    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+
+    expect(invitations.invite).not.toHaveBeenCalled();
+  });
+});
+
+describe('TrialsService.settleVerdict — what a verdict settles (Rules 12-15)', () => {
+  it('a PASS clears the recommendations and settles every backer as accepted', async () => {
+    const { service, prisma, recommendations } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
+
+    await service.settleVerdict('app-1');
 
     expect(recommendations.clearPlayerRecommendations).toHaveBeenCalledWith(PLAYER.id);
     expect(recommendations.settleTrialBackings).toHaveBeenCalledWith({
@@ -339,16 +455,13 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
       // Attributed to the coach: the scouts are settled by their verdict.
       actor: { userId: 'coach-1', role: 'coach' },
     });
-    expect(tx.trialApplication.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: 'PASSED' } }),
-    );
   });
 
   it('a FAIL settles the backers without clearing anything', async () => {
-    const { service, prisma, tx, recommendations } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('APPLIED'));
+    const { service, prisma, recommendations } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('FAIL'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'FAIL' });
+    await service.settleVerdict('app-1');
 
     expect(recommendations.clearPlayerRecommendations).not.toHaveBeenCalled();
     expect(recommendations.settleTrialBackings).toHaveBeenCalledWith({
@@ -357,16 +470,13 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
       status: 'REJECTED',
       actor: { userId: 'coach-1', role: 'coach' },
     });
-    expect(tx.trialApplication.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { status: 'FAILED' } }),
-    );
   });
 
   it('tells the manager about a pass — it is the only verdict that asks them for anything', async () => {
     const { service, prisma, notifications } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+    await service.settleVerdict('app-1');
 
     expect(notifications.notify).toHaveBeenCalledWith(
       'manager-1',
@@ -379,9 +489,9 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
 
   it('does not tell the manager about a fail', async () => {
     const { service, prisma, notifications } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('APPLIED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('FAIL'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'FAIL' });
+    await service.settleVerdict('app-1');
 
     // The player still hears; the manager is not asked to act on a no.
     expect(notifications.notify).toHaveBeenCalledWith(
@@ -398,13 +508,125 @@ describe('TrialsService.recordVerdict — what a verdict settles (Rules 11-13)',
     );
   });
 
-  it('places nobody on its own — that is the manager’s (Rule 9)', async () => {
-    const { service, prisma, invitations } = build();
+  /* Claimed under a guard: a retried job, or a sweep re-queuing a job already
+     done, must send nothing twice. */
+  it('settles once — a row already claimed is left alone', async () => {
+    const { service, prisma, recommendations, notifications } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
+    prisma.trialResult.updateMany.mockResolvedValue({ count: 0 });
+
+    const outcome = await service.settleVerdict('app-1');
+
+    expect(outcome).toEqual({ settled: false, reason: 'already' });
+    expect(recommendations.settleTrialBackings).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  it('claims the row and only the unsettled row', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
+
+    await service.settleVerdict('app-1');
+
+    expect(prisma.trialResult.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'result-1', settledAt: null } }),
+    );
+  });
+
+  /* An undone verdict has no row. The job that was queued for it finds nothing. */
+  it('settles nothing for a verdict that was undone', async () => {
+    const { service, prisma, recommendations, notifications, sms } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+    const outcome = await service.settleVerdict('app-1');
 
-    expect(invitations.invite).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ settled: false, reason: 'undone' });
+    expect(recommendations.settleTrialBackings).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+    expect(sms.sendTrialPass).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * The undo: the coach's own verdict, inside the window, before anything has
+ * gone out. Reverses exactly what `recordVerdict` wrote and removes the job.
+ */
+describe('TrialsService.undoVerdict', () => {
+  it('removes the settlement job, the row, and returns a private invitee to CONFIRMED', async () => {
+    const { service, prisma, tx, job } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue({
+      ...decidedApplication('PASS'),
+      trial: { ...TRIAL, type: 'PRIVATE' },
+    });
+
+    await service.undoVerdict('coach-1', 'app-1');
+
+    expect(job.remove).toHaveBeenCalled();
+    expect(tx.trialResult.delete).toHaveBeenCalledWith({ where: { applicationId: 'app-1' } });
+    expect(tx.trialApplication.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'CONFIRMED' } }),
+    );
+  });
+
+  it("returns a general trial's applicant to APPLIED", async () => {
+    const { service, prisma, tx } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('FAIL'));
+
+    await service.undoVerdict('coach-1', 'app-1');
+
+    expect(tx.trialApplication.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'APPLIED' } }),
+    );
+  });
+
+  it('is refused once the verdict has gone out', async () => {
+    const { service, prisma, tx } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(
+      decidedApplication('PASS', { settledAt: new Date() }),
+    );
+
+    await expect(service.undoVerdict('coach-1', 'app-1')).rejects.toThrow(ConflictException);
+    expect(tx.trialResult.delete).not.toHaveBeenCalled();
+  });
+
+  it('is refused once the manager has offered a squad place', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue({
+      ...decidedApplication('PASS'),
+      status: 'ACCEPTED',
+    });
+
+    await expect(service.undoVerdict('coach-1', 'app-1')).rejects.toThrow(ConflictException);
+  });
+
+  it("is the deciding coach's alone", async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
+
+    await expect(service.undoVerdict('coach-2', 'app-1')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('has nothing to undo on an undecided application', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(privateApplication('CONFIRMED'));
+
+    await expect(service.undoVerdict('coach-1', 'app-1')).rejects.toThrow(NotFoundException);
+  });
+});
+
+/* A verdict whose settlement never ran is re-queued at boot, immediately. */
+describe('TrialsService.settleOverdueVerdicts', () => {
+  it('re-queues every unsettled verdict past its window, with no delay', async () => {
+    const { service, prisma, queue } = build();
+    prisma.trialResult.findMany.mockResolvedValue([{ applicationId: 'app-7' }]);
+
+    await expect(service.settleOverdueVerdicts()).resolves.toBe(1);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      'settle-verdict',
+      { applicationId: 'app-7' },
+      expect.objectContaining({ delay: 0 }),
+    );
   });
 });
 
@@ -647,7 +869,7 @@ describe('TrialsService.create — the coaches on it', () => {
   });
 });
 
-describe('TrialsService.recordVerdict — the SMS on a pass', () => {
+describe('TrialsService.settleVerdict — the SMS on a pass', () => {
   /*
    * SMS is the channel this market reads: a fourteen-year-old who was at a trial
    * on Saturday may not open the app for a week. It is also the only message here
@@ -655,9 +877,9 @@ describe('TrialsService.recordVerdict — the SMS on a pass', () => {
    */
   it('texts the player their result on a pass', async () => {
     const { service, prisma, sms } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+    await service.settleVerdict('app-1');
 
     expect(sms.sendTrialPass).toHaveBeenCalledWith({
       phone: '+998901234567',
@@ -670,9 +892,9 @@ describe('TrialsService.recordVerdict — the SMS on a pass', () => {
      reply, is the wrong medium for that news. */
   it('sends nothing on a fail', async () => {
     const { service, prisma, sms } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('FAIL'));
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'FAIL' });
+    await service.settleVerdict('app-1');
 
     expect(sms.sendTrialPass).not.toHaveBeenCalled();
   });
@@ -683,35 +905,32 @@ describe('TrialsService.recordVerdict — the SMS on a pass', () => {
   it('sends nothing for a local team', async () => {
     const { service, prisma, sms } = build();
     prisma.trialApplication.findUnique.mockResolvedValue({
-      ...pendingApplication('APPLIED'),
+      ...decidedApplication('PASS'),
       trial: { ...TRIAL, academy: { kind: 'LOCAL_TEAM' } },
     });
 
-    await service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' });
+    await service.settleVerdict('app-1');
 
     expect(sms.sendTrialPass).not.toHaveBeenCalled();
   });
 
   /*
-   * The isolation that matters: a gateway outage must not roll back a verdict a
-   * coach recorded on a pitch, nor stop the player being accepted. `SmsService`
-   * returns its failures rather than raising them, so this is belt and braces —
-   * but a future refactor that starts throwing would break the verdict, and this
-   * is what would catch it.
+   * The isolation that matters: a gateway outage must not fail the settlement.
+   * `SmsService` returns its failures rather than raising them, so this is belt
+   * and braces — but a future refactor that starts throwing would break it, and
+   * this is what would catch it.
    */
-  it('records the verdict even if the SMS path rejects', async () => {
+  it('settles even if the SMS path rejects', async () => {
     const { service, prisma, sms } = build();
-    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('APPLIED'));
+    prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
     sms.sendTrialPass.mockRejectedValue(new Error('gateway down'));
 
-    await expect(service.recordVerdict('coach-1', 'app-1', { verdict: 'PASS' })).resolves.toEqual(
-      expect.objectContaining({ verdict: 'PASS' }),
-    );
+    await expect(service.settleVerdict('app-1')).resolves.toEqual({ settled: true });
   });
 
   /*
    * No de-duplication table, deliberately: `TrialResult.applicationId` is unique
-   * and a second verdict is refused before anything is sent, so the database
+   * and a second verdict is refused before anything is written, so the database
    * already guarantees what a sent-messages log would be re-checking.
    */
   it('cannot send twice, because a second verdict is refused', async () => {
