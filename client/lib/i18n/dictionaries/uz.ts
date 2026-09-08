@@ -1669,6 +1669,8 @@ export const uz = {
     noFailedUploadsHint: 'Ishlov berish yuklashni tasdiqlay olmasa, u shu yerda ko‘rinadi.',
     failureReason: 'Sabab',
     failedBadge: 'Xato',
+    processingReviewHint:
+      'Hali optimallashtirilmoqda. Bu o‘yinchi yuklagan asl nusxa; tasdiqlasangiz u hozir chop etiladi, ishlov tugagach optimallashtirilgan nusxa uni avtomatik almashtiradi.',
     retryProcessing: 'Qayta ishlov berish',
     retryNowInQueue: 'Fayl topildi. Klip endi ko‘rik navbatida.',
     retryStillFailed: 'Bu yuklashga hali ham ishlov berib bo‘lmadi.',

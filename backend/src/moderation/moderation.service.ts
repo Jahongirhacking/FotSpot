@@ -449,12 +449,46 @@ export class ModerationService {
   ) {
     const media = await this.prisma.media.findUnique({
       where: { id: mediaId },
-      select: { id: true, playerId: true, status: true, moderationStatus: true },
+      select: {
+        id: true,
+        playerId: true,
+        status: true,
+        moderationStatus: true,
+        storageKey: true,
+      },
     });
     if (!media) throw new NotFoundException('Clip not found');
 
     if (!canTransition(media.moderationStatus, to)) {
       throw new ConflictException(transitionRefusal(media.moderationStatus, to));
+    }
+
+    /*
+     * A clip the worker has not finished with is verified as the original the
+     * player uploaded, and goes live as that — the optimised copy overwrites
+     * the same key later (`WATCHABLE_STATUSES`). What must never go live is a
+     * key with nothing under it: the API never saw the bytes, so before the
+     * one write that publishes a PROCESSING clip, the bucket is asked whether
+     * the file is there. "Not yet" is a 409 the moderator can retry in a
+     * minute; "could not ask" is a 503, not a guess.
+     */
+    if (to === 'VERIFIED' && media.status === 'PROCESSING') {
+      let present: boolean;
+      try {
+        present = (await this.storage.describeObject(media.storageKey)) !== null;
+      } catch (error) {
+        this.logger.warn(
+          `Could not check storage before verifying ${mediaId}: ${(error as Error).message}`,
+        );
+        throw new ServiceUnavailableException(
+          'Could not reach media storage to confirm this clip is there. Try again shortly.',
+        );
+      }
+      if (!present) {
+        throw new ConflictException(
+          'This clip has not finished uploading yet, so there is nothing to publish. Try again in a minute.',
+        );
+      }
     }
 
     const { count } = await this.prisma.media.updateMany({

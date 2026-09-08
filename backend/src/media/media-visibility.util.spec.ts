@@ -26,6 +26,21 @@ describe('isPubliclyVisible — both columns must agree', () => {
     expect(isPubliclyVisible({ status: 'ACTIVE', moderationStatus: 'VERIFIED' })).toBe(true);
   });
 
+  /*
+   * The worker's optimised copy overwrites the same key the original sits
+   * under, so a verified clip is playable before processing ends — as the
+   * original — and switches to the optimised bytes when they land. The
+   * decision and the processing are independent.
+   */
+  it('publishes a VERIFIED clip the worker has not finished with', () => {
+    expect(isPubliclyVisible({ status: 'PROCESSING', moderationStatus: 'VERIFIED' })).toBe(true);
+  });
+
+  it('never publishes an UNVERIFIED clip, processed or not', () => {
+    expect(isPubliclyVisible({ status: 'PROCESSING', moderationStatus: 'UNVERIFIED' })).toBe(false);
+    expect(isPubliclyVisible({ status: 'ACTIVE', moderationStatus: 'UNVERIFIED' })).toBe(false);
+  });
+
   it.each(['UNVERIFIED', 'BLOCKED'] as const)(
     'hides an ACTIVE clip whose moderation status is %s',
     (moderationStatus) => {
@@ -33,7 +48,7 @@ describe('isPubliclyVisible — both columns must agree', () => {
     },
   );
 
-  it.each(['PROCESSING', 'FAILED', 'FLAGGED', 'REMOVED'] as const)(
+  it.each(['FAILED', 'FLAGGED', 'REMOVED'] as const)(
     'hides a VERIFIED clip whose lifecycle status is %s',
     (status) => {
       expect(isPubliclyVisible({ status, moderationStatus: 'VERIFIED' })).toBe(false);
@@ -47,12 +62,18 @@ describe('isPubliclyVisible — both columns must agree', () => {
 });
 
 describe('the where clauses every query is built from', () => {
-  it('serves the public exactly ACTIVE + VERIFIED', () => {
-    expect(PUBLIC_MEDIA_WHERE).toEqual({ status: 'ACTIVE', moderationStatus: 'VERIFIED' });
+  it('serves the public VERIFIED clips that are ACTIVE or still PROCESSING', () => {
+    expect(PUBLIC_MEDIA_WHERE).toEqual({
+      status: { in: ['ACTIVE', 'PROCESSING'] },
+      moderationStatus: 'VERIFIED',
+    });
   });
 
-  it('offers moderators only the clips nobody has judged', () => {
-    expect(MODERATION_QUEUE_WHERE).toEqual({ status: 'ACTIVE', moderationStatus: 'UNVERIFIED' });
+  it('offers moderators only the clips nobody has judged, processed or not', () => {
+    expect(MODERATION_QUEUE_WHERE).toEqual({
+      status: { in: ['ACTIVE', 'PROCESSING'] },
+      moderationStatus: 'UNVERIFIED',
+    });
   });
 
   /*

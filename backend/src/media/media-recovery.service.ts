@@ -1,8 +1,9 @@
-import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { JobState, Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { MediaFinaliserService } from './media-finaliser.service';
 import {
   DEFAULT_STALE_AFTER_MINUTES,
@@ -10,8 +11,9 @@ import {
   MEDIA_QUEUE,
   PROCESSING_GAVE_UP_REASON,
   STALE_SWEEP_EVERY_MS,
+  SWEEP_LOCK_KEY,
+  SWEEP_LOCK_SECONDS,
   SWEEP_SCHEDULER_ID,
-  SWEEP_STALE_JOB,
   TRANSCODE_ATTEMPTS,
   TRANSCODE_BACKOFF_MS,
   TRANSCODE_CLIP_JOB,
@@ -107,14 +109,16 @@ export interface SweepSummary {
  * that work establishes. ACTIVE still means the file was found and bounded.
  */
 @Injectable()
-export class MediaRecoveryService implements OnModuleInit {
+export class MediaRecoveryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MediaRecoveryService.name);
   private readonly staleAfterMinutes: number;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private prisma: PrismaService,
     private finaliser: MediaFinaliserService,
     @InjectQueue(MEDIA_QUEUE) private queue: Queue,
+    private redis: RedisService,
     config: ConfigService,
   ) {
     const configured = Number(config.get<string>('MEDIA_PROCESSING_STALE_MINUTES'));
@@ -128,29 +132,54 @@ export class MediaRecoveryService implements OnModuleInit {
     void this.ensureScheduled();
   }
 
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  }
+
   /**
-   * Registers the sweep with the queue. Idempotent, so every instance may call
-   * it at boot and there is still one scheduler.
+   * Starts the sweep timer, and takes the old job scheduler out of Redis.
+   *
+   * The removal is the part that matters on a running deployment: the
+   * scheduler's delayed job is what held the worker to a ten-second wait (see
+   * `SWEEP_STALE_JOB`), and it outlives every process that created it until
+   * something deletes it. Returns whether that removal went through; the
+   * timer runs either way, since it needs no Redis to start.
    */
   async ensureScheduled(): Promise<boolean> {
+    if (!this.timer) {
+      this.timer = setInterval(() => void this.sweepIfElected(), STALE_SWEEP_EVERY_MS);
+      // Never the thing keeping a process alive.
+      this.timer.unref?.();
+    }
+
     try {
-      await this.queue.upsertJobScheduler(
-        SWEEP_SCHEDULER_ID,
-        { every: STALE_SWEEP_EVERY_MS },
-        {
-          name: SWEEP_STALE_JOB,
-          data: {},
-          // Nothing to inspect on a sweep after the fact; its summary is logged.
-          opts: { removeOnComplete: true, removeOnFail: true },
-        },
-      );
+      await this.queue.removeJobScheduler(SWEEP_SCHEDULER_ID);
       return true;
     } catch (error) {
       this.logger.warn(
-        `Could not schedule the stale-processing sweep: ${(error as Error).message}. ` +
-          'Until Redis is back, a stuck clip is recovered only by an admin retry.',
+        `Could not remove the legacy stale-processing scheduler: ${(error as Error).message}. ` +
+          'While it stays, the media worker polls every ten seconds instead of every minute.',
       );
       return false;
+    }
+  }
+
+  /**
+   * One round of the sweep, on whichever instance wins the lock.
+   *
+   * `claimOnce` fails closed — with Redis away nobody sweeps — which is the
+   * right way round: a stuck clip waits ten more minutes, where two instances
+   * restarting the same clip at once would spend its bounded attempts twice.
+   */
+  async sweepIfElected(): Promise<SweepSummary | null> {
+    const elected = await this.redis.claimOnce(SWEEP_LOCK_KEY, SWEEP_LOCK_SECONDS);
+    if (!elected) return null;
+    try {
+      return await this.sweep();
+    } catch (error) {
+      this.logger.warn(`The stale-processing sweep failed: ${(error as Error).message}`);
+      return null;
     }
   }
 

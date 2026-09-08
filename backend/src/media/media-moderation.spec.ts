@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { PUBLIC_MEDIA_WHERE } from './media-visibility.util';
 import type { Queue } from 'bullmq';
 import type { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
@@ -204,7 +205,7 @@ describe('a player profile — who is asking decides what comes back', () => {
 
     expect(prisma.media.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
+        where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
       }),
     );
   });
@@ -248,7 +249,7 @@ describe('the public strip on the landing page', () => {
 
     expect(prisma.media.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
+        where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
       }),
     );
   });
@@ -281,7 +282,7 @@ describe('the ranked feed', () => {
     await service.feed('scout-user-1', {});
 
     expect(prisma.media.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
+      where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
     });
   });
 });
@@ -431,9 +432,7 @@ describe('the owner and their own unreviewed clip — the full read chain', () =
     const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
       { where: Record<string, unknown> },
     ];
-    expect(call.where).toEqual(
-      expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
-    );
+    expect(call.where).toEqual(expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }));
   });
 
   it('does not return it to a signed-out visitor', async () => {
@@ -444,9 +443,7 @@ describe('the owner and their own unreviewed clip — the full read chain', () =
     const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
       { where: Record<string, unknown> },
     ];
-    expect(call.where).toEqual(
-      expect.objectContaining({ status: 'ACTIVE', moderationStatus: 'VERIFIED' }),
-    );
+    expect(call.where).toEqual(expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }));
   });
 
   /* Ownership comes from the authenticated user id and nothing else — there is

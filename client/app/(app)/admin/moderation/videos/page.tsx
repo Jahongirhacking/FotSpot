@@ -1,18 +1,18 @@
-import type * as React from 'react';
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Video } from 'lucide-react';
-import { getSession } from '@/lib/session';
-import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
-import { getServerT } from '@/lib/i18n/server';
-import { admin } from '@/lib/api/resources';
-import type { Page } from '@/lib/api/client';
-import type { MediaStatusFilter, PendingClip } from '@/lib/api/types';
-import { Alert } from '@/components/ui/Feedback';
-import { Badge } from '@/components/ui/Badge';
 import { Pagination } from '@/components/shared/Pagination';
+import { Badge } from '@/components/ui/Badge';
+import { Alert } from '@/components/ui/Feedback';
+import type { Page } from '@/lib/api/client';
+import { admin } from '@/lib/api/resources';
+import type { MediaStatusFilter, PendingClip } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
+import { getSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
+import { Video } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import type * as React from 'react';
 import { ModerationTabs } from '../ModerationTabs';
 import { StatusVideoList } from './StatusVideoList';
 import { VideoReviewQueue } from './VideoReviewQueue';
@@ -136,13 +136,6 @@ export default async function VideoModerationPage({
         </nav>
         {status === 'PROCESSING' && <p className="text-muted text-xs">{t.admin.stuckHint}</p>}
       </header>
-
-      {/* README §11.5: anything involving a child jumps every other queue, and
-          this is the queue where that footage is first seen. Stated where the
-          work happens, as on the reports queue beside it. */}
-      <Alert tone="danger" title={t.dashboard.childSafetyFirst}>
-        {t.dashboard.childSafetyBody}
-      </Alert>
 
       {listUnavailable && <Alert tone="danger">{t.admin.listUnavailable}</Alert>}
 

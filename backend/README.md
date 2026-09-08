@@ -368,6 +368,13 @@ REDIS_URL="rediss://default:<UPSTASH_REDIS_REST_TOKEN>@<name>.upstash.io:6379"
 `rediss://` (two s) is TLS, which Upstash requires; ioredis reads the scheme and
 configures itself. Worth knowing that Upstash bills per command and a BullMQ
 worker polls whether or not there is work, so an idle queue is not a free queue.
+Measured idle, per API instance: each of the four workers issues two commands a
+minute (one `EVALSHA`, one 60-second `BZPOPMIN`), about 12,000 a day for all four.
+One rule keeps it there: **never leave a delayed job sitting in a queue** — a
+repeatable job scheduler, say. BullMQ caps a worker's wait at ten seconds while
+its queue holds a delayed job, whatever `drainDelay` says, which is six wakes a
+minute and ~520,000 commands a month from one idle worker. That is why the
+stale-media sweep is a timer with a `SET NX` lock and not a queue scheduler.
 
 Then **turn eviction off** — Upstash → Database → Configuration → Eviction. New
 databases default to `optimistic-volatile`, and BullMQ says so at boot:

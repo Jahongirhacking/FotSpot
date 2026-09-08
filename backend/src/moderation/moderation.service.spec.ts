@@ -1,6 +1,7 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
 import { ModerationService } from './moderation.service';
+import { MODERATION_QUEUE_WHERE } from '../media/media-visibility.util';
 import { AuditAction } from '../audit/audit.actions';
 import type { AuditService } from '../audit/audit.service';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -59,6 +60,8 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
     readUrlOrNull: jest.fn(async () => 'https://signed.example/clip'),
     publicUrlOrNull: jest.fn(() => null),
     deleteObject: jest.fn(async () => undefined),
+    // The bucket's answer about a PROCESSING clip: there, by default.
+    describeObject: jest.fn(async (): Promise<{ size: number } | null> => ({ size: 1024 })),
   };
 
   // The worker's own finalisation, which retry reuses. ACTIVE by default: the
@@ -95,14 +98,14 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
 }
 
 describe('listUnverifiedMedia — what a moderator is shown', () => {
-  it('asks for unreviewed clips only, and only ones whose bytes arrived', async () => {
+  it('asks for unreviewed clips only, processed or still processing', async () => {
     const { service, prisma } = build();
 
     await service.listUnverifiedMedia({});
 
     expect(prisma.media.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: 'ACTIVE', moderationStatus: 'UNVERIFIED' },
+        where: MODERATION_QUEUE_WHERE,
       }),
     );
   });
@@ -306,6 +309,56 @@ describe('verifyMedia — the one write that makes a clip public', () => {
     prisma.media.findUnique.mockResolvedValue(null);
 
     await expect(service.verifyMedia('admin-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  /*
+   * A clip the worker has not finished with goes live as the original — the
+   * optimised copy overwrites the same key later — but only once the bucket
+   * confirms the original is actually there. The API never saw the bytes.
+   */
+  describe('a clip still PROCESSING', () => {
+    it('is verified when its file is in the bucket, without waiting for the worker', async () => {
+      const { service, prisma, storage } = build();
+      prisma.media.findUnique.mockResolvedValue({ ...CLIP, status: 'PROCESSING' });
+
+      await service.verifyMedia('admin-1', 'clip-1');
+
+      expect(storage.describeObject).toHaveBeenCalledWith(CLIP.storageKey);
+      expect(prisma.media.updateMany).toHaveBeenCalledWith({
+        where: { id: 'clip-1', moderationStatus: 'UNVERIFIED' },
+        data: { moderationStatus: 'VERIFIED' },
+      });
+    });
+
+    it('is refused while the file has not arrived', async () => {
+      const { service, prisma, storage } = build();
+      prisma.media.findUnique.mockResolvedValue({ ...CLIP, status: 'PROCESSING' });
+      storage.describeObject.mockResolvedValue(null);
+
+      await expect(service.verifyMedia('admin-1', 'clip-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.media.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('is a 503, not a guess, when storage cannot be asked', async () => {
+      const { service, prisma, storage } = build();
+      prisma.media.findUnique.mockResolvedValue({ ...CLIP, status: 'PROCESSING' });
+      storage.describeObject.mockRejectedValue(new Error('R2 unreachable'));
+
+      await expect(service.verifyMedia('admin-1', 'clip-1')).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+      expect(prisma.media.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('does not ask the bucket for a clip the worker already confirmed', async () => {
+      const { service, storage } = build();
+
+      await service.verifyMedia('admin-1', 'clip-1');
+
+      expect(storage.describeObject).not.toHaveBeenCalled();
+    });
   });
 });
 
