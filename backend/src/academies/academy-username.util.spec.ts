@@ -98,11 +98,7 @@ describe('academy and player handles cannot collide', () => {
    * construction rather than by a cross-table check somebody has to remember.
    */
   it('rejects every valid academy handle as a player handle', () => {
-    for (const handle of [
-      'bunyodkorfc_academy',
-      'fc_pakhtakor_1956_academy',
-      'x_academy',
-    ]) {
+    for (const handle of ['bunyodkorfc_academy', 'fc_pakhtakor_1956_academy', 'x_academy']) {
       expect(validateAcademyUsername(handle)).toBeNull();
       expect(validateUsername(handle)).not.toBeNull();
     }

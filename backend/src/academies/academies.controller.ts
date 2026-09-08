@@ -1,21 +1,11 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { AcademyMemberRole } from '@prisma/client';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
 import { GroupsService } from './groups.service';
 import { ListEndorsementsDto } from './dto/endorsement.dto';
 import { InvitationsService } from './invitations.service';
-import { InviteMemberDto } from './dto/invitation.dto';
+import { InviteMemberDto, RejectInvitationDto } from './dto/invitation.dto';
 import {
   CreateGroupDto,
   ListCandidatesDto,
@@ -252,9 +242,23 @@ export class AcademiesController {
     return this.invitations.decide(user.userId, invitationId, true);
   }
 
+  /** Declining, with an optional note the manager reads in their notification. */
   @Post('invitations/:invitationId/reject')
-  rejectInvitation(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
-    return this.invitations.decide(user.userId, invitationId, false);
+  rejectInvitation(
+    @CurrentUser() user: AuthUser,
+    @Param('invitationId') invitationId: string,
+    @Body() dto: RejectInvitationDto,
+  ) {
+    return this.invitations.decide(user.userId, invitationId, false, dto.note);
+  }
+
+  /**
+   * Takes an acceptance back inside its undo window, before the membership is
+   * written. 409 once it has been.
+   */
+  @Post('invitations/:invitationId/undo')
+  undoInvitationAnswer(@CurrentUser() user: AuthUser, @Param('invitationId') invitationId: string) {
+    return this.invitations.undoAcceptance(user.userId, invitationId);
   }
 
   /** The academy withdrawing a question nobody has answered yet. */
@@ -427,11 +431,7 @@ export class AcademiesController {
 
   /** Replaces one role's list outright — see `setFeatured` for why wholesale. */
   @Put(':id/featured')
-  setFeatured(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: SetFeaturedDto,
-  ) {
+  setFeatured(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: SetFeaturedDto) {
     return this.academiesService.setFeatured(user.userId, id, dto);
   }
 

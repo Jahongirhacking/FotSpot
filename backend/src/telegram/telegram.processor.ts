@@ -1,5 +1,6 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Job } from 'bullmq';
 
 import { notificationMessage, notificationPath } from './telegram.messages';
@@ -21,7 +22,7 @@ import {
  *
  * `TrialsService` sends its PASS SMS with a floating promise, and that is right
  * *there*: a trial verdict is rare and deliberate. Notifications are neither —
- * they fire on recommendations, reviews, invitations, trial publications, squad
+ * they fire on recommendations, invitations, trial publications, squad
  * changes, and one action can produce many at once. A floating `fetch` per
  * notification means an unbounded number of in-flight sockets held by a process
  * whose request has already returned, no retry when Telegram rate-limits (which
@@ -45,8 +46,40 @@ export class TelegramProcessor extends WorkerHost {
   constructor(
     private telegram: TelegramService,
     private notifications: TelegramNotificationsService,
+    private config: ConfigService,
   ) {
     super();
+  }
+
+  /**
+   * Outside production, nothing reaches a real person's Telegram.
+   *
+   * A developer seeding trials against a copy of the data would otherwise be
+   * messaging real families about sessions that do not exist. So every
+   * message the worker would send — a user's notification copy, an operator
+   * alert — goes to the operator's own chat instead, tagged `#DEV_ENV` and,
+   * for a user copy, saying who it was for. With no operator chat configured
+   * the message is dropped and logged: a dev box with no chat id sends
+   * nothing, which is the safe default.
+   *
+   * Returns the chat and text to actually send, or null for "send nothing".
+   */
+  private route(
+    chatId: string,
+    text: string,
+    about: string | null,
+  ): { chatId: string; text: string } | null {
+    if (this.config.get('NODE_ENV') === 'production') return { chatId, text };
+
+    const operator = (this.config.get<string>('TELEGRAM_ADMIN_CHAT_ID') ?? '').trim();
+    if (!operator) {
+      this.logger.log(
+        `Not production and TELEGRAM_ADMIN_CHAT_ID is unset — a Telegram message ${about ?? 'for the operator'} was dropped.`,
+      );
+      return null;
+    }
+    const tag = about ? `${DEV_TAG} (${about})` : DEV_TAG;
+    return { chatId: operator, text: `${tag}\n${text}` };
   }
 
   async process(job: Job<TelegramJob>): Promise<void> {
@@ -83,7 +116,9 @@ export class TelegramProcessor extends WorkerHost {
       headline: HEADLINE,
     });
 
-    const result = await this.telegram.send(telegramId, text);
+    const routed = this.route(telegramId, text, `for user ${userId}, ${event}`);
+    if (!routed) return;
+    const result = await this.telegram.send(routed.chatId, routed.text);
 
     if (result.status === 'unreachable') {
       /*
@@ -127,11 +162,13 @@ export class TelegramProcessor extends WorkerHost {
    * want to know about the one time they read the logs.
    */
   private async deliverAdminAlert(data: SendAdminAlertJob): Promise<void> {
-    const result = await this.telegram.send(data.chatId, data.text);
+    const routed = this.route(data.chatId, data.text, null);
+    if (!routed) return;
+    const result = await this.telegram.send(routed.chatId, routed.text);
 
     if (result.status === 'unreachable') {
       this.logger.warn(
-        `The operator chat ${data.chatId} is unreachable (${result.reason}). ` +
+        `The operator chat ${routed.chatId} is unreachable (${result.reason}). ` +
           'Check TELEGRAM_ADMIN_CHAT_ID, and that the operator has started the bot.',
       );
       return;
@@ -167,3 +204,6 @@ export class TelegramProcessor extends WorkerHost {
  * is a nudge to open the app, and the app says what happened.
  */
 const HEADLINE = 'Sizda yangi bildirishnoma bor.';
+
+/** The first line of every message sent from a non-production environment. */
+const DEV_TAG = '#DEV_ENV';

@@ -16,19 +16,36 @@ import {
   Building2,
   CalendarCheck,
   CheckCheck,
-  ClipboardCheck,
-  PartyPopper,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
   UserMinus,
   UserPlus,
   Users,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 
 /** For an event this build has not been taught yet — news, but no destination. */
 const FALLBACK = { icon: Bell, title: '', tone: 'text-muted' } as const;
+
+/**
+ * What a TRIAL_RESULT payload is telling the player.
+ *
+ * A verdict carries `verdict`; the manager's decisions carry `status`
+ * REJECTED, with `candidacyClosed` when it was a passed player's candidacy
+ * rather than an application withdrawn before any verdict.
+ */
+function trialOutcome(
+  payload: Record<string, unknown> | null | undefined,
+): 'PASS' | 'FAIL' | 'CANDIDACY_CLOSED' | 'CLOSED' | null {
+  const verdict = payload?.verdict;
+  const status = payload?.status;
+  if (verdict === 'PASS' || status === 'PASSED') return 'PASS';
+  if (verdict === 'FAIL' || status === 'FAILED') return 'FAIL';
+  if (status === 'REJECTED') return payload?.candidacyClosed ? 'CANDIDACY_CLOSED' : 'CLOSED';
+  return null;
+}
 
 export function NotificationList({ initial }: { initial: AppNotification[] }) {
   const { t, f } = useI18n();
@@ -49,6 +66,8 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       iconFor?: (
         payload: Record<string, unknown> | null | undefined,
       ) => React.ComponentType<{ className?: string }> | undefined;
+      /** Overrides `tone` from the payload; falls back when it returns undefined. */
+      toneFor?: (payload: Record<string, unknown> | null | undefined) => string | undefined;
     }
   > = {
     // Answering this is the point of it, so it opens the screen where the answer
@@ -87,6 +106,13 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       title: t.notifications.joinAnswer,
       tone: 'text-info',
       href: '/academies/mine/squad',
+      // A yes and a no read differently at a glance; the note they left, if
+      // any, is on the detail line below.
+      // Only a no arrives here now — a yes is announced as the squad growing
+      // (SQUAD_JOINED), once, with the player's name on it.
+      titleFor: (payload) =>
+        payload?.accepted === false ? t.notifications.joinAnswerDeclined : undefined,
+      iconFor: (payload) => (payload?.accepted === false ? UserMinus : undefined),
       hrefFor: (payload) =>
         payload?.role === 'SCOUT' && typeof payload.userId === 'string'
           ? `/scouts/${payload?.userId}`
@@ -96,30 +122,6 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       icon: Building2,
       title: t.notifications.academyInvitation,
       tone: 'text-primary',
-    },
-    /*
-     * Straight to the player, not to the queue.
-     *
-     * A coach told "you have a player to look at" wants the player — the clips,
-     * the numbers, the profile they are being asked to judge. The queue is a
-     * list they would then have to find the same person in. The decision screen
-     * is reachable from their Trials menu either way.
-     */
-    REVIEW_ASSIGNED: {
-      icon: ClipboardCheck,
-      title: t.notifications.reviewAssigned,
-      tone: 'text-primary',
-      href: '/players',
-      idKey: 'playerId',
-    },
-    // The manager's half: a coach accepted somebody, and the invitation is
-    // theirs to send. Only acceptances are sent — see RecommendationsService.
-    REVIEW_DECIDED: {
-      icon: ThumbsUp,
-      title: t.notifications.reviewAccepted,
-      tone: 'text-success',
-      href: '/players',
-      idKey: 'playerId',
     },
     RECOMMENDATION_ACCEPTED: {
       icon: ThumbsUp,
@@ -147,14 +149,40 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       href: '/trials',
       idKey: 'trialId',
     },
-    TRIAL_RESULT: { icon: Building2, title: t.notifications.trialResult, tone: 'text-info' },
-    // The good news, and it goes to the squad screen where the invitation to
-    // join is waiting to be answered.
-    SQUAD_PLACEMENT: {
-      icon: PartyPopper,
-      title: t.notifications.squadPlacement,
-      tone: 'text-success',
-      href: '/invitations?action=JOIN_ACADEMY',
+    /*
+     * The result itself, not "a result": a player opening this wants the one
+     * word — passed, failed, closed — before anything else, and the coach's
+     * or manager's note under it. The icon and tone follow the word, so the
+     * list reads at a glance.
+     */
+    TRIAL_RESULT: {
+      icon: Building2,
+      title: t.notifications.trialResult,
+      tone: 'text-info',
+      href: '/trials',
+      idKey: 'trialId',
+      titleFor: (payload) => {
+        const outcome = trialOutcome(payload);
+        if (outcome === 'PASS') return t.notifications.trialPassed;
+        if (outcome === 'FAIL') return t.notifications.trialFailed;
+        if (outcome === 'CANDIDACY_CLOSED') return t.notifications.candidacyClosed;
+        if (outcome === 'CLOSED') return t.notifications.applicationClosed;
+        return undefined;
+      },
+      iconFor: (payload) => {
+        const outcome = trialOutcome(payload);
+        if (outcome === 'PASS') return ThumbsUp;
+        if (outcome === 'FAIL') return ThumbsDown;
+        if (outcome === 'CANDIDACY_CLOSED' || outcome === 'CLOSED') return X;
+        return undefined;
+      },
+      toneFor: (payload) => {
+        const outcome = trialOutcome(payload);
+        if (outcome === 'PASS') return 'text-success';
+        if (outcome === 'FAIL' || outcome === 'CANDIDACY_CLOSED' || outcome === 'CLOSED')
+          return 'text-danger';
+        return undefined;
+      },
     },
     /*
      * The squad changed. Straight to the squad screen, which is where the
@@ -243,6 +271,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
           };
           const Icon = meta?.iconFor?.(notification?.payload) ?? meta?.icon;
           const title = meta?.titleFor?.(notification?.payload) ?? meta?.title;
+          const tone = meta?.toneFor?.(notification?.payload) ?? meta?.tone;
           const href =
             meta?.hrefFor?.(notification?.payload) ??
             (meta?.href
@@ -262,6 +291,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
           const detail = [
             notification?.payload?.playerName,
             notification?.payload?.academyName,
+            notification?.payload?.trialTitle,
             notification?.payload?.note,
           ]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)
@@ -288,7 +318,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
           const card = (
             <Card className={cn(!notification?.read && 'border-primary/30 bg-primary/[0.03]')}>
               <CardContent className="flex items-start gap-3 p-4">
-                <Icon className={cn('mt-0.5 size-5 shrink-0', meta?.tone)} aria-hidden />
+                <Icon className={cn('mt-0.5 size-5 shrink-0', tone)} aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{title}</p>
 

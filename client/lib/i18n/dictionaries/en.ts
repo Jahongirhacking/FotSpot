@@ -20,6 +20,7 @@ export const en: Dictionary = {
     tagline: 'Grassroots to academy',
     save: 'Save',
     cancel: 'Cancel',
+    undo: 'Undo',
     back: 'Back',
     continue: 'Continue',
     search: 'Search',
@@ -38,6 +39,7 @@ export const en: Dictionary = {
     previous: 'Previous',
     next: 'Next',
     pageOf: 'Page {page} of {pages}',
+    loadMore: 'Load more ({count} left)',
     seeAll: 'See all',
     open: 'Open',
     language: 'Language',
@@ -352,6 +354,10 @@ export const en: Dictionary = {
     setPassword: 'Set password',
     passwordChanged: 'Password changed.',
     otherSessionsRevoked: 'Changing your password signs you out on every other device.',
+    /* An account that signed in with Google, Telegram or a code and has no password yet. */
+    setPasswordTitle: 'Set a password for your account',
+    setPasswordHint:
+      'You signed in with Google, Telegram or a one-time code, so your account has no password yet. Set one now to sign in with your username or email next time.',
     mustChangeTitle: 'Change your password first',
     mustChangeHint:
       'Your account still uses the password an admin generated, which they also know. Set your own before continuing.',
@@ -377,9 +383,15 @@ export const en: Dictionary = {
     accepted: 'Accepted',
     rejected: 'Turned down',
     cancelled: 'Withdrawn',
-    confirmAccept: 'Join this academy? You start in their reserve.',
     confirmReject: 'Turn down this invitation?',
-    acceptedNote: 'You are in the academy’s reserve. A manager moves you into a squad from there.',
+    acceptedNote:
+      'You are joining the academy’s reserve. A manager moves you into a squad from there.',
+    acceptedToast: 'You accepted. You join the reserve in a moment.',
+    rejectedToast: 'Invitation turned down.',
+    undone: 'Answer taken back.',
+    rejectDialogBody: '{academy} will be told. You can add a short note for them — it is optional.',
+    rejectNote: 'Note (optional)',
+    rejectNotePlaceholder: 'Add an optional reason or note…',
     sent: 'Invitation sent — waiting on their answer.',
   },
   requests: {
@@ -479,8 +491,16 @@ export const en: Dictionary = {
       'Mint a new account — the username and password are shown once. Somebody already on the platform is invited from the squad screen instead.',
     coachBio: 'About the coach',
     applicants: 'Applicants',
-    applicantsHint: "Each candidate's card and age — set their status here.",
+    applicantsHint:
+      'Each candidate’s card and age. The coaches on this trial record the verdict; a pass lets you offer a squad place.',
     noApplicants: 'No applications yet',
+    /* The page behind the dashboard's "See all" — see academies/mine/candidates. */
+    candidates: 'Squad candidates',
+    candidatesHint:
+      'Players who passed one of your trials and are waiting for your answer: invite them to the squad, or close the candidacy.',
+    noWaitingCandidates: 'Nobody is waiting',
+    noWaitingCandidatesHint:
+      'Players who pass a trial appear here until you invite them or close the candidacy.',
     hostedBy: 'Hosted by',
     memberActive: 'Active',
     memberInactive: 'Inactive',
@@ -679,6 +699,8 @@ export const en: Dictionary = {
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
     seek: 'Seek',
+    fullscreen: 'Full screen',
+    exitFullscreen: 'Exit full screen',
     views: 'Views',
     likeOnce: 'One like per account — switching roles does not add another.',
     signInToLike: 'Sign in to like this',
@@ -777,6 +799,16 @@ export const en: Dictionary = {
     age: 'Age',
     actions: 'Actions',
     noActions: 'You have no actions for this profile.',
+    contacts: 'Details & contact',
+    exactAge: 'Age',
+    address: 'Lives in',
+    contactsHint:
+      'The exact age, address and contacts are visible to you as the academy’s manager, and to nobody else.',
+    contactPhone: 'Phone',
+    contactEmail: 'Email',
+    contactTelegram: 'Telegram',
+    openInTelegram: 'Open chat',
+    noContacts: 'No contact details on file.',
     followPlayer: 'Follow this player',
     coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',
     alreadyRecommended: 'You already recommended this player',
@@ -786,8 +818,14 @@ export const en: Dictionary = {
     addToSquadHint:
       'Local teams recruit by invitation: the player joins the squad once they accept.',
     squadInviteSent: 'Invitation sent — waiting on their answer.',
+    declinedInvitation: 'They declined the last invitation.',
+    /* Why a scout sees no "Recommend" button — see PlayerActions. */
+    cannotRecommendInAcademy: 'This player is already at an academy and cannot be recommended.',
+    cannotRecommendInTrial:
+      'This player is in a trial process and cannot be recommended until it ends.',
+    /* The academy's own player, on their profile — no trial to invite them to. */
+    fromYourAcademy: 'This player is from your academy.',
     alreadyInSquad: 'This player is already in your squad.',
-    alreadyInvited: 'This player has already been invited.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',
     comparedWithinPlain: 'Bars are compared within {band} only — never across age groups.',
@@ -871,6 +909,7 @@ export const en: Dictionary = {
     sectionSchedule: 'When',
     sectionEligibility: 'Who can apply',
     sectionDetails: 'Details',
+    sectionStaff: 'Who runs it',
     sortLabel: 'Sort',
     sortNewest: 'Newest',
     sortRecommended: 'Recommended',
@@ -897,6 +936,7 @@ export const en: Dictionary = {
     fromDate: 'From date',
     toDate: 'To date',
     fromTime: 'From time',
+    startTime: 'Start time',
     toTime: 'To time',
     dailyWindowHint: 'The times apply to each day of the trial.',
     endBeforeStart: 'The end date cannot be before the start date.',
@@ -911,32 +951,29 @@ export const en: Dictionary = {
     coverType: 'Choose a JPG, PNG or WebP image.',
     coverTooLarge: 'That image is too large (up to 5 MB).',
     trialType: 'Trial type',
-    withCoach: 'With',
     awaitingPlayer: 'Waiting on the player',
     invitePlaceholder: 'Saturday 10:00, Yunusobod pitch 3. Bring boots and a water bottle.',
     addedToSquad: 'Added to squad',
     aboutThisTrial: 'About this trial',
-    addedToSquadDone: 'Player added to the squad',
-    verdictRecorded: 'Verdict recorded',
+    addedToSquadDone: 'Invitation sent — the player answers it.',
+    passedToast: 'Player passed the trial.',
+    failedToast: 'Player marked as not passed.',
+    verdictUndone: 'Verdict taken back.',
     trialCreated: 'Trial created',
     coachesUpdated: 'Coaches updated',
     answerSent: 'Your answer has been sent',
     trialUpdated: 'Trial updated',
     applicationSent: 'Application sent',
-    addToSquad: 'Add to squad',
+    addToSquad: 'Invite to squad',
     squadInvitationSent: 'An invitation to join the academy has been sent — the player accepts it.',
-    statusScreening: 'With a coach',
     statusConfirmed: 'Confirmed',
     assignedCoaches: 'Coaches on this trial',
     assignedCoachesHint:
-      'Who works this session. A general trial sends its applications to them first.',
-    noCoachesYet: 'Add a coach to the academy first — somebody has to read the profiles.',
-    nominatePlayer: 'Put a player forward',
-    nominate: 'Choose',
-    nominateHint:
-      'Nothing reaches the player yet: the profile goes to a coach, and only their yes lets you invite.',
-    reviewingCoach: 'Reviewing coach',
-    sendForReview: 'Send for review',
+      'Who works this session — and the only people who can record a verdict on it.',
+    runByCoach: 'Coach who will run it',
+    runByCoachHint: 'They record the verdict after the session.',
+    chooseCoach: 'Choose a coach',
+    noCoachesYet: 'Add a coach to the academy first — somebody has to run the session.',
     typeGeneral: 'General trial',
     typePrivate: 'Private trial',
     typeHint: 'A general trial is public. A private one is only ever seen by the players you pick.',
@@ -960,26 +997,23 @@ export const en: Dictionary = {
     editWarning:
       'Narrowing the age range can leave someone who already applied outside it — their application is not removed.',
     closedToApplications: 'This trial is closed — it is not taking new applications.',
-    shortlist: 'Shortlist',
     invite: 'Invite',
     accept: 'Accept',
     reject: 'Reject',
     statusApplied: 'Applied',
-    statusShortlisted: 'Shortlisted',
     statusInvited: 'Invited',
     statusAccepted: 'Accepted',
     statusRejected: 'Rejected',
     examDate: 'Trial date and time',
+    trialDay: 'Trial date',
     applyDeadline: 'Applications close',
     applyDeadlineHint: 'Nobody can apply after this. It cannot be later than the trial itself.',
     deadlineAfterExam: 'Applications cannot close after the trial has happened.',
     moveDateWarning: 'Changing the date notifies every player who has applied.',
     history: 'History',
-    historyHint:
-      'Finished trials — every applicant has a verdict, and the trial has archived itself.',
+    historyHint: 'Trials you archived. Everyone who applied stays on them.',
     noHistory: 'Nothing in the history yet',
-    noHistoryHint:
-      'A trial archives itself once every application has a verdict, and appears here.',
+    noHistoryHint: 'A trial appears here once you archive it. Nothing archives itself.',
     applicationStatus: 'Your application',
     applicationsClosed: 'Applications have closed',
     applicationsClosedOn: 'The deadline was {date}. You can still read the trial, but not apply.',
@@ -991,23 +1025,18 @@ export const en: Dictionary = {
     // The manager's two sections
     globalTrials: 'Global trials',
     globalTrialsHint:
-      'The open day: you announce it, any eligible player applies, and a coach tests them on the day.',
+      'The open day: you announce it, any eligible player applies, and the coaches you assign pass or fail them on the day.',
     createGlobalTrial: 'Create global trial',
     privateTrials: 'Private trials',
     privateTrialsHint:
-      'One player each, and only after a coach has accepted them online. They appear here when you invite somebody from the inbox.',
+      'One player each, run by the coach you name. They appear here when you or a coach invite somebody — from the inbox or from their profile.',
     noPrivateTrials: 'No private trials',
-    noPrivateTrialsHint:
-      'A private trial appears once a coach accepts a player at online review and you invite them.',
-
+    noPrivateTrialsHint: 'A private trial appears once you or a coach invite a player to one.',
     // The coach's view
-    coachTrialsHint: 'The sessions you are working, and the profiles waiting on you.',
+    coachTrialsHint: 'The sessions you are working, and the players waiting on your verdict.',
     myTrialsHint: 'Trials you are assigned to. This is the only place a verdict is written.',
     noAssignedTrials: 'No trials assigned to you',
     noAssignedTrialsHint: 'Once a manager puts you on a trial, it appears here.',
-    onlineCoachReview: 'Online coach review',
-    onlineCoachReviewHint: 'Players whose profile is waiting on your judgement.',
-    statOnlineReviews: 'Online reviews',
     statAwaitingVerdict: 'Awaiting verdict',
     statTrials: 'Trials',
     needsYourVerdict: 'Needs your verdict',
@@ -1020,23 +1049,26 @@ export const en: Dictionary = {
     datePassed: 'date passed',
     allAnswered: 'Settled',
     applicantCount: '{count} applicants',
+    playerCount: '{count} players',
     awaitingCount: '{count} awaiting',
-    decideReviews: 'Decide {count} reviews',
-    openReviewQueue: 'Open the review queue',
-
     // The sheet and the verdict
     sheet: 'Trial sheet',
-    sheetHint: 'Who turned up, and what you said about them. The verdict is PASS or FAIL.',
+    sheetHint:
+      'Who is on the pitch, and what you said about them. Pass is one press and can be undone for a moment; Fail asks first.',
+    participants: 'Participants',
+    noParticipantsYet: 'No players are ready for the trial yet.',
+    noParticipantsYetHint: 'Players appear here after they accept the invitation.',
+    pendingInvitations: '{count} invitations pending',
+    privateQueueHint: 'One player each. Pass or fail them right here — nothing to open.',
+    globalQueueHint: 'Sessions you work. Open one to judge its players together.',
     sheetForbidden: 'Only the coaches working this trial can see it.',
     recordVerdict: 'Record verdict',
     trialHasNoCoaches:
       'No coach is working this trial yet, so nobody can record a verdict on the applicants. Pick at least one below.',
     /* What is happening to an applicant, for every status — ApplicantCard. */
     stepApplied: 'Waiting on a coach’s verdict at the trial.',
-    stepScreening: 'With a coach for an online review.',
-    stepShortlisted: 'A coach approved them — the manager invites them to a trial.',
     stepInvited: 'Invited. Waiting on the player’s answer.',
-    stepConfirmed: 'Coming to the trial. Waiting on a coach’s verdict.',
+    stepConfirmed: 'Coming to the trial. Waiting on the coach’s verdict.',
     stepPassed: 'Passed the trial — the manager can offer them a squad place.',
     stepFailed: 'Did not pass this trial. Nothing further here.',
     stepRejected: 'Turned down for this trial.',
@@ -1051,14 +1083,31 @@ export const en: Dictionary = {
     noApplicantsMatch: 'No applicants match that.',
     pass: 'Pass',
     fail: 'Fail',
-    confirmPass: 'Pass this player?',
-    confirmPassBody:
-      'This cannot be undone. The player becomes eligible for a squad place — the manager decides whether to take them — their recommendations are cleared, and the success rating of every scout who put them forward is recalculated.',
+    failPlayer: 'Fail player',
+    verdictNoteOptional: 'Note (optional)',
+    verdictNotePlaceholder: 'Add an optional reason or note…',
     confirmFail: 'Fail this player?',
-    confirmFailBody:
-      'This cannot be undone. The player is not added to a squad, and the success rating of every scout who put them forward is recalculated. Their recommendations are not cleared.',
+    failDialogBody:
+      '{name} will be marked as not passed. You can add a short reason — it is optional.',
     verdictPassed: 'Passed the trial',
     verdictFailed: 'Did not pass the trial',
+    /* The manager's "x" beside the squad invitation — see CandidateCard. */
+    closeCandidacy: 'Close candidacy',
+    /* Where an applicant stands, one tab each — see StageTabs. */
+    stagePending: 'Pending',
+    stageFailed: 'Failed',
+    stagePassed: 'Passed',
+    stageCandidacyClosed: 'Cancelled candidacy',
+    stageSquadInvited: 'Invited to squad',
+    stageInvitationDeclined: 'Rejected invitation',
+    stageSquadJoined: 'Added to squad',
+    openTrialPage: 'Open the trial page',
+    noApplicantsAtStage: 'Nobody at this stage.',
+    closeCandidacyTitle: 'Close this candidacy?',
+    closeCandidacyBody:
+      '{name} passed the trial but will not be invited to the squad. The scouts who recommended them are marked as turned down, and the player is told.',
+    closeCandidacyPlaceholder: 'Add an optional reason for the player…',
+    candidacyClosed: 'Candidacy closed.',
     notExpectedYet: 'This player is not expected on the day yet.',
     awaitingVerdict: 'Waiting on the coach’s verdict at the trial',
     title: 'Title',
@@ -1101,66 +1150,27 @@ export const en: Dictionary = {
 
   recommendations: {
     invite: 'Invite',
+    inviteToPrivateTrial: 'Invite to private trial',
     inviteTitle: 'Invite to a private trial',
     inviteCreatesTrial:
-      'Sending this creates a private trial for this player. Only they will see it.',
-    activeSection: 'Active',
-    activeSectionHint: 'With a coach, or approved and waiting on your invitation.',
-    activeEmpty: 'Nothing in motion',
+      'Sending this creates a private trial for this player, run by one coach. Only they, you and that coach will see it.',
     statusAccepted: 'accepted',
     statusRejected: 'rejected',
     statusPending: 'still pending',
-    reviewAskedOf: 'You were asked to judge this player',
     /* A coach putting forward a player nobody sent them — never an invitation. */
-    coachDiscoverTitle: 'Found this player yourself?',
-    coachDiscoverHint: 'Approve them for {academy}. Your manager decides whether a trial follows',
-    coachDiscoverAction: 'Approve for my academy',
-    coachDiscoverConfirmTitle: 'Approve {name} for {academy}?',
-    coachDiscoverConfirmBody:
-      'This records your approval as an online review, exactly as it would from your inbox. Your manager can then invite them to a private trial. It cannot be undone.',
-    coachBlockedMember: 'They are already at your academy.',
-    coachBlockedApproved: 'You have already approved them — it is with your manager now.',
-    coachBlockedPending: 'A review of this player is already open at your academy.',
-    coachBlockedTrial: 'They already have an open trial with your academy.',
-    coachBlockedGeneral:
-      'They have already applied to one of your open trials — that one is decided on the day, not online.',
-    confirmApproveTitle: 'Accept this player?',
-    confirmApproveBody:
-      'This cannot be undone. The academy manager will be able to invite them to a private trial.',
-    confirmRejectTitle: 'Reject this player?',
-    confirmRejectBody:
-      'This cannot be undone. It ends the process for this academy, and the success rating of every scout who put them forward is recalculated.',
     confirmReject: 'Reject {name}? That ends the process for this academy.',
-    noReviews: 'Nothing to review',
-    noReviewsHint: 'When a manager sends you a player, they show up here.',
-    reviewed: 'Already reviewed',
-    approved: 'Approved',
-    noClips: 'This player has no clips yet',
-    sentForReview: 'Sent to a coach for review',
     recommendationSent: 'Recommendation sent',
     invitationSent: 'Invitation sent',
-    reviewDecided: 'Your decision has been recorded',
-    coachNote: "Coach's note",
-    approvePlayer: 'Approve',
     rejectPlayer: 'Reject',
-    reviewQueueHint:
-      'Watch the clips and score them — your ratings are the ones that count as verified.',
     fromEndorsedScouts: 'From your endorsed scouts',
-    reviewFlowHint:
-      'A coach watches every player first. Once they approve, you send the invitation.',
+    inboxFlowHint:
+      'Invite a player to a private trial, or turn the recommendation down. The trial decides — nothing is judged online.',
     inboxEmpty: 'Nothing new to look at',
+    inboxEmptyHint: 'When a scout recommends a player to your academy, they show up here.',
     history: 'Recommendation history',
-    historyHint: 'Players you invited, and players a coach turned down.',
+    historyHint: 'Players you invited to a trial, and players you turned down.',
     historyEmpty: 'Nothing settled yet',
-    sendToCoach: 'Send to a coach',
-    anyCoach: 'Any endorsed coach',
-    sendForReview: 'Send for review',
-    inReview: 'In review',
-    notReviewed: 'Not reviewed',
-    coachApproved: 'Coach approved',
-    coachRejected: 'Coach rejected',
-    awaitingCoach: 'Waiting on the coach',
-    rejectedByCoach: 'A coach turned them down — moved to history',
+    historyEmptyHint: 'Players you invite or turn down move here.',
     inviteNote: 'What the player will read',
     sendInvite: 'Send invitation',
     invited: 'Invited',
@@ -1239,10 +1249,9 @@ export const en: Dictionary = {
     /** A local team is not an academy, and the player deciding should be told which. */
     joinInvitationLocalTeam: 'A local team wants you to join their squad',
     joinAnswer: 'Your invitation has been answered',
+    joinAnswerDeclined: 'Somebody turned down your invitation',
     academyInvitation: 'An academy is inviting you for a trial',
     trialRescheduled: 'A trial you applied to has moved',
-    reviewAssigned: 'A player has been handed to you for review',
-    reviewAccepted: 'A coach accepted a player — the invitation is yours to send',
     title: 'Notifications',
     nothingYet: 'Nothing yet',
     nothingYetHint:
@@ -1253,8 +1262,12 @@ export const en: Dictionary = {
     recommendationAccepted: 'A recommendation was accepted',
     recommendationRejected: 'A recommendation was declined',
     trialInvitation: "You're invited to a trial",
-    squadPlacement: 'Congratulations — the academy is taking you on',
     trialResult: 'Trial result',
+    /* The result itself, read from the payload — see NotificationList. */
+    trialPassed: 'Trial result: passed',
+    trialFailed: 'Trial result: failed',
+    candidacyClosed: 'Squad candidacy closed',
+    applicationClosed: 'The academy closed your application',
     verificationResult: 'Verification update',
   },
 
@@ -1274,29 +1287,14 @@ export const en: Dictionary = {
     yourTrials: 'Your trials',
     noTrialsPosted: 'No trials posted yet.',
     /* The coach's two work queues — see dashboard/CoachQueues.tsx. */
-    onlineReviewQueue: 'Online reviews',
-    onlineReviewQueueHint: 'Players an academy has asked you to judge from their profile.',
-    noPendingReviews: 'No reviews waiting',
-    noPendingReviewsHint: 'When an academy sends you a player, they appear here.',
-    reviewQueueFailed: 'Could not load your reviews.',
-    reviewPlayer: 'Review player',
-    trialQueue: 'Trials to judge',
-    trialQueueHint: 'Players you are due to test in person, and have not answered on yet.',
-    noPendingTrials: 'Nobody waiting on a verdict',
-    noPendingTrialsHint: 'Players on the trials you work appear here until you pass or fail them.',
     trialQueueFailed: 'Could not load your trials.',
-    openTrial: 'Open trial',
     coachQueuesFootnote:
-      'A review is a yes or no on a profile; a trial is a pass or fail on the pitch. Inviting a player and placing them in a squad are the manager’s.',
-
+      'A verdict is a pass or fail on the pitch, and it is the assigned coach’s on every trial. Inviting a player and placing them in a squad are the manager’s.',
     /* What is blocked on the manager — see PendingTrialActions. */
     pendingActions: 'Waiting on you',
-    pendingActionsHint:
-      'A coach has answered, or a player has passed a trial. Nothing moves until you decide.',
-    inviteToTrial: 'Invite to trial',
-    coachFound: 'Approved by a coach who found them',
-    coachApproved: 'Approved by your coach',
+    pendingActionsHint: 'A player has passed a trial. Nothing moves until you decide.',
     passedTrial: 'Passed the trial',
+    seeAllCandidates: 'See all ({count})',
     noAcademyLinked: 'No academy linked to your account yet',
     noAcademyLinkedBody:
       'Register your academy and an admin will review it. Once approved you can post trials and receive recommendations.',
@@ -1521,7 +1519,6 @@ export const en: Dictionary = {
   },
 
   admin: {
-    noReviewsHint: 'Players a manager hands you for review will appear here.',
     noReportsHint: 'Reports from users queue up here.',
     noAuditEntriesHint: 'Significant actions across the platform are recorded here.',
     noApplicantsHint: 'Players who apply to this trial will appear here.',
@@ -1732,9 +1729,7 @@ export const en: Dictionary = {
     statAcademies: 'Academies',
     statTrials: 'Open Trials',
 
-    pipelineBypass:
-      'Open trial: players apply directly — no online review or recommendation required.',
-
+    pipelineBypass: 'Open trial: players apply directly — no recommendation required.',
     pipelineTitle: 'How a Player reaches an Academy',
 
     pipelineBody:
@@ -1749,11 +1744,6 @@ export const en: Dictionary = {
       recommended: {
         title: 'Recommended',
         body: 'A Scout recommends the Player to an Academy. The outcome affects the Scout’s reputation.',
-      },
-
-      review: {
-        title: 'Online Coach Review',
-        body: 'The Coach reviews the profile and accepts or rejects the Player. Open Trials skip this step.',
       },
 
       trial: {
@@ -1794,14 +1784,14 @@ export const en: Dictionary = {
         body: 'Find the right players faster and save valuable time.',
         points: [
           'Search by age, position, and location',
-          'Coaches screen players online before the trial',
+          'Invite a player to a private trial straight from their profile',
           'Manage trials and squads in one place',
         ],
       },
     },
     academyTitle: 'Want to add your academy to FotSpot?',
     academyBody:
-      'An academy is a football organization with coaches, player trials, and online review processes. Every academy is reviewed by the FotSpot team to help ensure that children’s information is only accessible to trusted organizations. Once approved, you can manage your squad, trials, and scout recommendations.',
+      'An academy is a football organization with coaches and player trials. Every academy is reviewed by the FotSpot team to help ensure that children’s information is only accessible to trusted organizations. Once approved, you can manage your squad, trials, and scout recommendations.',
     academyCta: 'Request to add an academy',
     academyMessage: 'Hello! I would like to add my football academy to FotSpot.',
 

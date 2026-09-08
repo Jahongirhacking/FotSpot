@@ -4,32 +4,51 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, Check, MailOpen, Users, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { browserFetch } from '@/lib/api/browser';
 import type { MyInvitation } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { Field, Textarea } from '@/components/ui/Field';
 import { relativeTime } from '@/lib/utils';
 
+/** How long the Undo stays on screen. The API allows a little longer. */
+const UNDO_TOAST_MS = 8_000;
+
 /**
- * Invitations addressed to me, and the yes or no only I can give.
+ * The invitations addressed to this account, and the answer to each.
  *
- * ## Why this screen exists at all
+ * ## Accept is one press, and undoable
  *
- * An academy used to be able to write itself onto somebody's record. Now it
- * asks, and this is where the question is answered — which is why the
- * notification links straight here rather than to a page that only repeats it.
+ * A yes is recorded at once, and the API acts on it — the membership, the
+ * manager's notification — only after a short window; the toast that confirms
+ * the press carries Undo for that window, and Undo is a real call that returns
+ * the invitation to unanswered. So there is no "are you sure?" in front of
+ * the button: the way back is after it, where a mis-tap is actually noticed.
  *
- * Answered invitations stay on the list. "Which academy did I turn down in
- * March, and did I ever answer the other one?" is a real question, and a list
- * that empties itself the moment you decide cannot answer it.
+ * ## Turning down asks first, and lets them say why
+ *
+ * A no is final and reaches the manager, so it opens a small dialog with an
+ * optional note — a sentence the manager reads in their notification. It is
+ * optional because saying no must stay cheap.
  */
 export function InvitationList({ initial }: { initial: MyInvitation[] }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [answered, setAnswered] = React.useState<string | null>(null);
+  const [declining, setDeclining] = React.useState<MyInvitation | null>(null);
 
   const list = useQuery({
     queryKey: ['invitations', 'mine'],
@@ -37,17 +56,47 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
     initialData: initial,
   });
 
-  const decide = useMutation({
-    mutationFn: ({ id, accept }: { id: string; accept: boolean }) =>
-      browserFetch(`/academies/invitations/${id}/${accept ? 'accept' : 'reject'}`, {
-        method: 'POST',
-      }),
-    onSuccess: (_result, variables) => {
-      setAnswered(variables.accept ? t.invitations.acceptedNote : null);
-      void queryClient.invalidateQueries({ queryKey: ['invitations'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
-      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['invitations'] });
+    void queryClient.invalidateQueries({ queryKey: ['profile-summary'] });
+    void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  };
+
+  const undo = useMutation({
+    mutationFn: (id: string) =>
+      browserFetch<MyInvitation>(`/academies/invitations/${id}/undo`, { method: 'POST' }),
+    onSuccess: () => {
+      setAnswered(null);
+      refresh();
     },
+    meta: { success: t.invitations.undone },
+  });
+
+  const accept = useMutation({
+    mutationFn: (id: string) =>
+      browserFetch<MyInvitation>(`/academies/invitations/${id}/accept`, { method: 'POST' }),
+    onSuccess: (_result, id) => {
+      setAnswered(t.invitations.acceptedNote);
+      refresh();
+      toast.success(t.invitations.acceptedToast, {
+        duration: UNDO_TOAST_MS,
+        action: { label: t.common.undo, onClick: () => undo.mutate(id) },
+      });
+    },
+  });
+
+  const reject = useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      browserFetch<MyInvitation>(`/academies/invitations/${id}/reject`, {
+        method: 'POST',
+        body: note ? { note } : {},
+      }),
+    onSuccess: () => {
+      setDeclining(null);
+      setAnswered(null);
+      refresh();
+    },
+    meta: { success: t.invitations.rejectedToast },
   });
 
   const invitations = list.data ?? [];
@@ -71,7 +120,9 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
       <ul className="space-y-3">
         {invitations?.map((invitation) => {
           const pending = invitation?.status === 'PENDING';
-          const busy = decide.isPending && decide.variables?.id === invitation?.id;
+          const busy =
+            (accept.isPending && accept.variables === invitation?.id) ||
+            (undo.isPending && undo.variables === invitation?.id);
 
           return (
             <li key={invitation?.id}>
@@ -127,28 +178,26 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
                     <p className="bg-surface-2 rounded-lg p-3 text-sm">{invitation?.note}</p>
                   )}
 
+                  {/* What they said when turning it down — shown back to them,
+                      as the manager sees it. */}
+                  {invitation?.status === 'REJECTED' && invitation?.answerNote && (
+                    <p className="text-muted text-sm">— {invitation.answerNote}</p>
+                  )}
+
                   {pending && (
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button
                         size="sm"
                         variant="ghost"
                         disabled={busy}
-                        onClick={() => {
-                          if (window.confirm(t.invitations.confirmReject)) {
-                            decide.mutate({ id: invitation?.id, accept: false });
-                          }
-                        }}
+                        onClick={() => setDeclining(invitation)}
                       >
                         <X aria-hidden /> {t.invitations.reject}
                       </Button>
                       <Button
                         size="sm"
                         loading={busy}
-                        onClick={() => {
-                          if (window.confirm(t.invitations.confirmAccept)) {
-                            decide.mutate({ id: invitation?.id, accept: true });
-                          }
-                        }}
+                        onClick={() => accept.mutate(invitation?.id)}
                       >
                         <Check aria-hidden /> {t.invitations.accept}
                       </Button>
@@ -160,6 +209,85 @@ export function InvitationList({ initial }: { initial: MyInvitation[] }) {
           );
         })}
       </ul>
+
+      <DeclineDialog
+        invitation={declining}
+        pending={reject.isPending}
+        onOpenChange={(open) => {
+          if (!open) setDeclining(null);
+        }}
+        onConfirm={(note) => {
+          if (declining) reject.mutate({ id: declining.id, note });
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * "Turn down this invitation?" — with a line for the manager, if wanted.
+ */
+function DeclineDialog({
+  invitation,
+  pending,
+  onOpenChange,
+  onConfirm,
+}: {
+  invitation: MyInvitation | null;
+  pending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (note?: string) => void;
+}) {
+  const { t, f } = useI18n();
+  const [note, setNote] = React.useState('');
+
+  return (
+    <Dialog
+      open={invitation !== null}
+      onOpenChange={(next) => {
+        if (!next) setNote('');
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t.invitations.confirmReject}</DialogTitle>
+          <DialogDescription>
+            {f(t.invitations.rejectDialogBody, { academy: invitation?.academy.name ?? '' })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogBody>
+          <Field label={t.invitations.rejectNote} htmlFor="decline-note">
+            <Textarea
+              id="decline-note"
+              value={note}
+              rows={3}
+              maxLength={500}
+              autoFocus
+              onChange={(event) => setNote(event.target.value)}
+              placeholder={t.invitations.rejectNotePlaceholder}
+            />
+          </Field>
+        </DialogBody>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+            {t.common.cancel}
+          </Button>
+          <Button
+            variant="danger"
+            loading={pending}
+            onClick={() => {
+              const trimmed = note.trim();
+              setNote('');
+              onConfirm(trimmed || undefined);
+            }}
+          >
+            <X aria-hidden /> {t.invitations.reject}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

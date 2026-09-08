@@ -9,10 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 
-import {
-  TelegramAuthPayload,
-  verifyTelegramAuth,
-} from '../auth/oauth/telegram-oauth.util';
+import { TelegramAuthPayload, verifyTelegramAuth } from '../auth/oauth/telegram-oauth.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnectTelegramDto } from './dto/telegram.dto';
 
@@ -235,7 +232,9 @@ export class TelegramLinkService {
     // the screen does not show "on" for an account with no Telegram attached.
     if (!user.telegramId) {
       if (enabled) {
-        throw new BadRequestException('Connect a Telegram account before turning notifications on.');
+        throw new BadRequestException(
+          'Connect a Telegram account before turning notifications on.',
+        );
       }
       return this.describe(user);
     }

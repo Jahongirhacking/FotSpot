@@ -61,23 +61,25 @@ function build(rows: Row[], env: Record<string, string> = { TELEGRAM_BOT_TOKEN: 
         if (where.id) return store.get(where.id) ?? null;
         return [...store.values()].find((row) => row.telegramId === where.telegramId) ?? null;
       }),
-      update: jest.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const taken = [...store.values()].find(
-          (row) => data.telegramId && row.telegramId === data.telegramId && row.id !== where.id,
-        );
-        // The unique index, modelled: the database is the last word, not the
-        // read that preceded this.
-        if (taken) {
-          throw new Prisma.PrismaClientKnownRequestError('unique', {
-            code: 'P2002',
-            clientVersion: '5',
-          });
-        }
-        updates.push({ id: where.id, data });
-        const row = { ...store.get(where.id)!, ...data } as Row;
-        store.set(where.id, row);
-        return row;
-      }),
+      update: jest.fn(
+        async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+          const taken = [...store.values()].find(
+            (row) => data.telegramId && row.telegramId === data.telegramId && row.id !== where.id,
+          );
+          // The unique index, modelled: the database is the last word, not the
+          // read that preceded this.
+          if (taken) {
+            throw new Prisma.PrismaClientKnownRequestError('unique', {
+              code: 'P2002',
+              clientVersion: '5',
+            });
+          }
+          updates.push({ id: where.id, data });
+          const row = { ...store.get(where.id)!, ...data } as Row;
+          store.set(where.id, row);
+          return row;
+        },
+      ),
       /*
        * Every condition in the `where` is honoured, including `id`.
        *
@@ -253,7 +255,12 @@ describe('setNotifications', () => {
    */
   it('keeps the Telegram id when notifications are turned off', async () => {
     const { service, store } = build([
-      user({ id: 'B', telegramId: '123', telegramNotificationsEnabled: true, phone: '+998900000000' }),
+      user({
+        id: 'B',
+        telegramId: '123',
+        telegramNotificationsEnabled: true,
+        phone: '+998900000000',
+      }),
     ]);
 
     await service.setNotifications('B', false);
@@ -264,7 +271,12 @@ describe('setNotifications', () => {
 
   it('writes only the preference column', async () => {
     const { service, updates } = build([
-      user({ id: 'B', telegramId: '123', telegramNotificationsEnabled: true, phone: '+998900000000' }),
+      user({
+        id: 'B',
+        telegramId: '123',
+        telegramNotificationsEnabled: true,
+        phone: '+998900000000',
+      }),
     ]);
 
     await service.setNotifications('B', false);
@@ -440,5 +452,4 @@ describe('the bot side of the link', () => {
     expect(await service.enableFromStart('999')).toEqual({ linked: false });
     expect(store.get('B')?.telegramNotificationsEnabled).toBe(false);
   });
-
 });

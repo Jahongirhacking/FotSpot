@@ -195,8 +195,6 @@ export function ApplyToTrialButton({
 /** Application status → the dictionary key that names it. */
 const STATUS_LABEL = {
   APPLIED: 'statusApplied',
-  SCREENING: 'statusScreening',
-  SHORTLISTED: 'statusShortlisted',
   INVITED: 'statusInvited',
   CONFIRMED: 'statusConfirmed',
   PASSED: 'statusPassed',

@@ -2,7 +2,7 @@
 
 You are working on **FotSpot**, a football talent discovery and academy management platform.
 
-This document defines the **canonical business logic** for Players, Scouts, Academies, Coaches, Recommendations, Online Coach Reviews, Trials, and Squad placement.
+This document defines the **canonical business logic** for Players, Scouts, Academies, Coaches, Recommendations, Trials, and Squad placement.
 
 Before implementing, modifying, refactoring, or designing any feature related to these domains, you MUST follow the rules in this document.
 
@@ -20,30 +20,37 @@ FotSpot connects:
 - Academy Managers
 - Coaches
 
-The platform provides a structured pipeline for discovering football talent, evaluating Players online, conducting real-life football Trials, and eventually placing successful Players into Academy Squads.
+The platform provides a structured pipeline for discovering football talent, testing it at real-life football Trials, and placing successful Players into Academy Squads.
 
 The core pipeline is:
 
 ```text
 Player Discovery
       ↓
-Recommendation / Trial Application
-      ↓
-Online Coach Review (only where required)
+Trial Application  /  Private Trial Invitation
       ↓
 Real-Life Trial
       ↓
-Coach PASS / FAIL
+PASS / FAIL
       ↓
 If PASS → Academy Manager can add Player to Squad
 ```
 
-The system MUST strictly distinguish between:
+Nothing is decided about a Player before the Trial. The Trial is the whole of the evaluation.
 
-1. **Online Coach Review**
-2. **Trial**
+## 1.1 Who runs a Trial
 
-They are different domain concepts.
+Only the **Academy Manager** creates a Global Trial. When creating it, the Manager assigns one or more of the Academy's Coaches to it; a Trial created without naming any is worked by every Coach the Academy currently endorses.
+
+A Private Trial is created by an invitation (§11). It is run by exactly one Coach: the Coach who sent the invitation, or the Coach the Manager named when sending it.
+
+On both kinds of Trial, the assigned Coaches are the only people who record the verdict (§10). The Academy Manager never does.
+
+## 1.2 There is no online review
+
+FotSpot has **no Online Coach Review**. No Player is accepted or rejected from their profile, by anybody, at any stage.
+
+The only evaluation a Player receives is the Trial verdict, given after they have been physically tested. Every screen, endpoint, state and notification MUST reflect this: there is no "screening", "shortlisting", "approval" or "review" step anywhere in the pipeline.
 
 ---
 
@@ -87,6 +94,8 @@ After registration, the user chooses one of the available user roles:
 
 - Player
 - Scout
+
+---
 
 ---
 
@@ -153,6 +162,15 @@ If a Scout is hired by an Academy, the Scout can recommend a Player directly to 
 
 The Academy-specific recommendation appears in the Academy Inbox.
 
+### Who can be recommended
+
+A recommendation is a Scout saying "look at this Player". There is nobody to say it to about a Player an Academy already has, and nothing to add about one an Academy is already looking at on a pitch. So a Scout **cannot** recommend a Player who:
+
+- is on an **Academy's** books (a Local Team membership does not count — Local Teams hold no Trials), or
+- has an **open Trial application** — applied to a Global Trial, invited to or confirmed for a Private Trial, passed and awaiting the Squad decision, or offered a Squad place.
+
+The Player's profile shows the reason in place of the "Recommend" button, and the API refuses the recommendation independently. The door reopens when the Trial process ends: a FAIL, a closed candidacy, a declined invitation, or the Player leaving the Academy.
+
 ---
 
 # 6. Scout Success Rating
@@ -163,31 +181,39 @@ The goal is NOT to reward Scouts simply for making many recommendations.
 
 The goal is to measure the **quality and outcome of their recommendations**.
 
-A Scout's Success Rating is affected by the eventual evaluation outcomes of Players they recommended.
+A Scout's Success Rating is affected by the eventual outcome of the Players they recommended.
 
 The Success Rating MUST be recalculated when one of the following outcomes is finalized:
 
 ```text
-Online Coach Review → REJECT
+Trial → FAIL                                   (by the assigned Coach)   → decrease
 ```
 
 or
 
 ```text
-Trial → FAIL
+Academy Manager → Invite to Squad              (after a PASS)            → increase
 ```
 
 or
 
 ```text
-Trial → PASS
+Academy Manager → Close the candidacy          (after a PASS)            → decrease
 ```
+
+or
+
+```text
+Academy turns the recommendation down          (from the Inbox)          → decrease
+```
+
+A **PASS on its own changes nothing** for any Scout. A pass is one Coach's thumb on one morning and can be an accident; what the Academy does with the passed Player next — invite them, or close the candidacy — is the outcome the Scouts are measured by.
 
 The exact mathematical algorithm for calculating the Success Rating is a separate business rule and should be implemented independently.
 
 The important domain requirement is:
 
-> Whenever a relevant Online Coach Review or Trial decision is finalized, the Success Rating of Scouts associated with the Player's recommendations must be recalculated.
+> Whenever a Trial ends in a FAIL, an Academy Manager invites a passed Player to the Squad or closes their candidacy, or an Academy turns a recommendation down, the Success Rating **and level** of every Scout who recommended the Player must be recalculated.
 
 ---
 
@@ -195,17 +221,17 @@ The important domain requirement is:
 
 Whenever the system or product uses the term **Trial**, it ALWAYS means a:
 
-> **Real-life/offline football examination conducted by a Coach.**
+> **Real-life/offline football examination.**
 
-A Trial is NOT an online profile review.
+A Trial is NOT an online profile review. There is no such thing on FotSpot (§1.2).
 
 A Trial requires the Player to physically attend the Academy or designated football environment.
 
 During a Trial:
 
 1. The Player physically attends the Trial.
-2. The Coach tests/evaluates the Player's actual football abilities.
-3. The Coach enters a final verdict.
+2. The Player's actual football abilities are tested on the pitch.
+3. A Coach assigned to the Trial enters a final verdict (§10).
 
 The final Trial verdict is:
 
@@ -223,7 +249,7 @@ FAIL
 
 # 8. Trial PASS
 
-When the Coach gives:
+When the verdict is:
 
 ```text
 PASS
@@ -234,10 +260,13 @@ the Player has successfully passed the real-life football examination.
 The following actions MUST occur:
 
 1. The Player becomes eligible for Academy Squad placement.
-2. The Academy Manager can add the Player to the Squad.
-3. The Player's `recommendations` array MUST be emptied/cleared.
-4. The Success Rating of every Scout who recommended this Player MUST be recalculated.
-5. The successful Trial outcome must be reflected in the affected Scouts' Success Ratings.
+2. The Player appears on the Academy Manager's dashboard as a Squad candidate (§12).
+3. The Academy Manager either **invites the Player to the Squad** or **closes the candidacy** (§12).
+
+The following MUST NOT occur on the PASS itself:
+
+- The Player's `recommendations` array is NOT cleared.
+- No Scout's Success Rating is recalculated.
 
 Conceptually:
 
@@ -246,26 +275,24 @@ Trial → PASS
     ↓
 Player passed real-life examination
     ↓
-Clear Player.recommendations
+Player becomes a Squad candidate
     ↓
-Recalculate affected Scouts' Success Ratings
-    ↓
-Player becomes eligible for Squad placement
-    ↓
-Academy Manager can add Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 Important:
 
-> A Coach PASS during a Trial does not itself automatically add the Player to the Squad.
+> A PASS does not itself automatically add the Player to the Squad, and it does not itself settle any Scout.
 
-The **Academy Manager** is responsible for adding the Player to the Squad.
+The **Academy Manager** is responsible for the decision that follows, and that decision is what the Scouts are measured by.
 
 ---
 
 # 9. Trial FAIL
 
-When the Coach gives:
+When the verdict is:
 
 ```text
 FAIL
@@ -277,7 +304,9 @@ The following must occur:
 
 1. The Player is not eligible for Squad placement based on that Trial.
 2. The Player is not added to the Academy Squad based on that Trial.
-3. The Success Rating of every Scout who recommended this Player MUST be recalculated.
+3. The Player does NOT appear as a Squad candidate anywhere (§12).
+4. The Player's `recommendations` array MUST be emptied/cleared.
+5. The Success Rating and level of every Scout who recommended this Player MUST be recalculated (decrease).
 
 Conceptually:
 
@@ -286,140 +315,116 @@ Trial → FAIL
     ↓
 Player failed real-life examination
     ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+    ↓
+Recalculate affected Scouts' Success Ratings (decrease)
     ↓
 Player is not added to Squad
 ```
 
-Do NOT clear the Player's `recommendations` array merely because a Trial failed.
-
-The recommendation-clearing rule applies specifically to:
-
-```text
-Trial → PASS
-```
+A FAIL is not permanent. A second look is a second Trial, with its own application and its own verdict.
 
 ---
 
-# 10. Important Terminology: Online Coach Review
+# 10. Who Records the Verdict
 
-**Online Coach Review** is completely different from a Trial.
+> **Only a Coach assigned to the Trial records PASS / FAIL — on a Global Trial and on a Private Trial alike.**
 
-Online Coach Review means:
+### Global Trial
 
-> An Academy sends a Player's profile to a Coach, and the Coach reviews the Player's profile online.
+The Academy Manager creates it and assigns one or more Coaches (§1.1). Those Coaches, and only they, pass or fail the applicants. The Manager sees the applicant list and presses nothing.
 
-The Coach does NOT physically test the Player during an Online Coach Review.
+### Private Trial
 
-The Coach reviews information such as:
+The one assigned Coach — the Coach who sent the invitation, or the Coach the Manager named — passes or fails the invited Player. The Manager sees the Trial and its applicant and presses nothing.
 
-- Player profile
-- Position
-- Playing style
-- Statistics
-- Video proof
-- Uploaded football videos
-- Existing recommendations
-- Other available Player information
+### The Academy Manager never decides
 
-The Coach then makes an online decision:
+A Manager's attempt to record a verdict, on either kind of Trial, MUST be refused by the backend, whatever the UI shows. A Manager who is also one of the assigned Coaches decides *as that Coach*. The Manager's part begins after a PASS: the Player appears on their dashboard (§12), and the Manager invites them to the Squad.
 
-```text
-ACCEPT
-```
+### Applies to both
 
-or:
+- One verdict per application. A Trial answers once.
+- The verdict is recorded from the Coach's participant list — quick PASS / FAIL inline — never from a separate review screen. **PASS is one press** and is recorded at once; **FAIL asks first**, in a small dialog with an optional note.
+- The participant list shows, for each Player: avatar, name, age, position, gender, and where the application stands. The Manager and the assigned Coaches see it; only the Coaches act on it.
 
-```text
-REJECT
-```
+### The undo window
+
+A verdict is written the moment the Coach presses, and **acted on** — on a FAIL the Scouts settled and the recommendations cleared, the Player told, on a PASS the SMS sent — only after a short window (30 seconds). Inside that window the deciding Coach may **undo** the verdict: the row is removed, the application returns to where it was, and nothing has gone out. After the window the verdict has gone out and stands; a Manager who has already offered a squad place also closes the window. Undo is a backend operation, never a screen pretending.
+
+### Private Trials on the Coach's dashboard
+
+A Private Trial has exactly one Player, so the Coach's dashboard lists the **Players** of their Private Trials, each with PASS / FAIL on the row — there is no "open trial" step. Global Trials have many Players and are listed as **sessions**, each opened to judge the group.
 
 ---
 
-# 11. Online Coach Review — ACCEPT
+# 11. Private Trial — the Invitation
 
-If the Coach gives:
+A Private Trial is **an invitation to one specific Player**. Sending the invitation is what creates the Trial: there is no such thing as a Private Trial with nobody invited to it.
 
-```text
-ACCEPT
-```
+### Who sends it
 
-during Online Coach Review:
+- The **Academy Manager**, from the Player's profile ("Actions → Invite to Private Trial"), from the Academy Inbox, or wherever the Player is shown to them.
+- A **Coach** of the Academy, from the Player's profile.
 
-- The Player has passed the online screening.
-- The Player becomes eligible to receive a Private Trial invitation.
-- The Academy Manager can invite the Player to a Private Trial.
+### What it carries
 
-Important:
+- Date and time
+- Location
+- A note the Player reads
+- Requirements (optional)
+- The Coach who will run it
 
-> Online Coach Review ACCEPT does NOT mean the Player passed a football Trial.
+### Coach assignment
 
-It only means:
+- Created by a Coach → that Coach is automatically assigned. They cannot hand it to somebody else at creation.
+- Created by the Academy Manager → the Manager MUST select the Coach who will run it. The backend refuses an invitation from a Manager that names nobody, or names somebody the Academy does not endorse as a Coach.
 
-> The Coach believes the Player deserves an opportunity to attend a real-life Private Trial.
+### What it produces
 
-The Player still has to attend and pass the offline Trial.
+- One Trial of type PRIVATE, for the Player's gender, never listed anywhere.
+- One application at `INVITED`, awaiting the Player's yes or no.
+- A snapshot of every recommendation backing the Player, so the outcome — a FAIL, or the Manager's Squad decision after a PASS — can settle the Scouts behind them (§22, §23).
 
----
+A Player with an unanswered or confirmed invitation from the same Academy cannot be invited again until that Trial has answered.
 
-# 12. Online Coach Review — REJECT
+The Player answers from their invitations. Accepting moves the application to `CONFIRMED`; declining moves it to `REJECTED`.
 
-If the Coach gives:
+### Nothing reaches the Coach until the Player accepts
 
-```text
-REJECT
-```
+An invitation that has not been answered is between the Academy and the family. Until the Player accepts:
 
-during Online Coach Review:
+- the Player is **not** in the assigned Coach's participant list, on the dashboard or on the Trial page — only counted ("1 invitation pending"), never named;
+- there are no PASS / FAIL controls for them;
+- a verdict on the application is refused by the backend;
+- the Coach is not shown any player-specific invitation information.
 
-- The online screening process ends.
-- The Player does not proceed to the Private Trial through that review.
-- The Player is not added to the Squad based on this review.
-- The Success Rating of every Scout associated with the Player's recommendations MUST be recalculated.
+`INVITED` is not `CONFIRMED`. Only a `CONFIRMED` invitee is a participant. This is enforced in the queries and the verdict endpoint, not by a screen hiding a row.
 
-Conceptually:
+### What the Coach is shown of a Private Trial
 
-```text
-Online Coach Review → REJECT
-        ↓
-Online review ends
-        ↓
-Recalculate affected Scouts' Success Ratings
-        ↓
-No Private Trial
-```
-
-Important:
-
-> Online Coach Review REJECT triggers Scout Success Rating recalculation, but it does NOT clear the Player's recommendations array.
+The session — title, date, time, location, requirements, status — and the accepted participant. **Not** the note the Manager wrote to the Player (where to come, who to ask for, a phone number): that is for the Player and the Manager, and the backend removes it from the Trial and the application before a Coach reads them.
 
 ---
 
-# 13. Online Coach Review vs Trial
+# 12. Squad Candidates
 
-These concepts MUST remain separate throughout the entire application.
+Every Player who **passed** a Trial of the Academy — Global or Private — and has not yet been offered a Squad place appears on the Academy Manager's dashboard as a Squad candidate.
 
-| Concept                            | Online Coach Review | Trial                                        |
-| ---------------------------------- | ------------------- | -------------------------------------------- |
-| Type                               | Online              | Real-life / Offline                          |
-| Purpose                            | Initial screening   | Football examination                         |
-| Player physically attends?         | No                  | Yes                                          |
-| Coach reviews profile?             | Yes                 | May use profile, but physically tests Player |
-| Coach decision                     | ACCEPT / REJECT     | PASS / FAIL                                  |
-| Can lead to Private Trial?         | ACCEPT              | N/A                                          |
-| Can lead to Squad placement?       | No                  | PASS makes Player eligible                   |
-| Clears recommendations?            | No                  | PASS does                                    |
-| Recalculates Scout Success Rating? | REJECT              | PASS and FAIL                                |
+From there the Manager does one of two things, and nothing else:
 
-The most important rule is:
+1. **Invite to Squad** — one press. The Squad invitation (§25) goes out; the Player accepts or declines it. This settles every Scout who recommended the Player as **right** (increase) and clears the Player's `recommendations`.
+2. **Close the candidacy** — the "x" on the card. A dialog asks once, with an optional note for the Player. A Coach's pass can be an accident, and this is the Manager saying so. It settles every Scout who recommended the Player as **wrong** (decrease), clears the Player's `recommendations`, tells the Player, and is written to the audit log with the note.
 
-> **Online Coach Review determines whether a Player deserves an opportunity to attend a Private Trial.**
+The dashboard shows the **latest four** candidates and how many there are in all; a "See all" link opens the candidates page, where every waiting Player is listed, paged, with the same two answers on each card.
 
-> **Trial determines whether the Player has actually passed the real-life football examination.**
+The Manager is **not notified of the verdict itself**. PASS / FAIL is told to the Player — in-site, and by Telegram when connected — and to nobody else: a "trial result" notification is never sent to an Academy Manager or a Coach, and the Player's answer to a Private Trial invitation is not one either. The dashboard list is how the Manager learns who passed; the trial's applicant list, read by stage (§32), is how they learn everything else. The Player's notice carries the result itself — passed, failed, candidacy closed — and the Coach's or Manager's note when one was written.
+
+A Player who **failed** never appears as a candidate. Nothing is owed on a FAIL.
 
 ---
 
-# 14. Trial Types
+# 13. Trial Types
 
 FotSpot has two Trial types:
 
@@ -428,7 +433,7 @@ FotSpot has two Trial types:
 
 Both are **real-life/offline football examinations**.
 
-Both require a Coach to physically test the Player.
+Both require the Player to be physically tested.
 
 Both result in:
 
@@ -442,166 +447,140 @@ or:
 FAIL
 ```
 
-The difference between them is how the Player reaches the Trial.
+The difference between them is how the Player reaches the Trial. Who records the verdict is the same for both: a Coach assigned to it (§10).
 
 ---
 
-# 15. Global Trial
+# 14. Global Trial
 
 A Global Trial is an Academy-announced Trial.
 
-It is visible to eligible Players on FotSpot.
+It is created by the Academy Manager, and only by the Academy Manager (§1.1).
 
-A Player can discover the Global Trial and apply directly.
+It is visible to eligible Players on FotSpot. A Player can discover it and apply directly. No recommendation and no review is required.
 
-A Global Trial does NOT require an Online Coach Review before the Trial.
+### Notification on publishing
+
+Publishing a Global Trial notifies **only** the Players who:
+
+1. follow the Academy, **and**
+2. match the Trial's age range, **and**
+3. match one of the Trial's positions (when it names any), **and**
+4. match the Trial's gender (when it is not open to everybody).
+
+The notification is delivered in-site, and by Telegram when the Player has connected it. It is never sent to everybody.
+
+Publishing also alerts the platform operator: one line in the Telegram chat named by `TELEGRAM_ADMIN_CHAT_ID` — the Academy, the title, the day, the place.
+
+### Applicants
+
+The applicant list is visible to the Academy Manager and to the Coaches assigned to the Trial. Each row shows the Player's avatar, name, age, position and gender. The assigned Coaches record PASS / FAIL inline from the list (§10); the Manager reads it.
 
 The flow is:
 
 ```text
-Academy announces Global Trial
+Academy Manager creates Global Trial, assigns Coaches
         ↓
-Global Trial becomes visible to eligible Players
+Matching followers are notified
         ↓
 Player applies
         ↓
-NO Online Coach Review
-        ↓
 Player attends real-life Trial
         ↓
-Coach physically tests Player
+Player is tested on the pitch
         ↓
-Coach enters PASS / FAIL
+Assigned Coach enters PASS / FAIL
 ```
 
 ---
 
-# 16. Global Trial — PASS
-
-If the Coach passes the Player:
+# 15. Global Trial — PASS
 
 ```text
 Global Trial
      ↓
-Coach PASS
+Assigned Coach → PASS
      ↓
 Player successfully passed offline examination
      ↓
-Clear Player.recommendations
+Player becomes a Squad candidate
      ↓
-Recalculate affected Scouts' Success Ratings
-     ↓
-Player becomes eligible for Squad placement
-     ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 The Player's application to the Global Trial does not automatically add the Player to the Squad.
 
-The Academy Manager performs the actual Squad placement.
+The Academy Manager performs the actual Squad placement, and that decision — not the PASS — settles the Scouts.
 
 ---
 
-# 17. Global Trial — FAIL
-
-If the Coach fails the Player:
+# 16. Global Trial — FAIL
 
 ```text
 Global Trial
      ↓
-Coach FAIL
+Assigned Coach → FAIL
      ↓
 Player failed offline examination
      ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+     ↓
+Recalculate affected Scouts' Success Ratings (decrease)
      ↓
 Player is not added to Squad
 ```
 
-The Player's recommendations array is NOT automatically cleared by the Trial failure.
-
 ---
 
-# 18. Private Trial
-
-A Private Trial is also a real-life/offline football examination.
-
-The key difference is:
-
-> A Private Trial is only available to a specific Player after the Player has successfully passed an Online Coach Review.
-
-A Private Trial is not publicly available to all Players.
-
-The Private Trial becomes visible only to the specific invited Player.
-
-Flow:
+# 17. Private Trial — PASS
 
 ```text
-Player
-   ↓
-Online Coach Review
-   ↓
-Coach ACCEPT
-   ↓
-Academy Manager invites Player
-to Private Trial
-   ↓
-Private Trial visible only to that Player
-   ↓
-Player attends offline Trial
-   ↓
-Coach physically tests Player
-   ↓
-Coach enters PASS / FAIL
+Invitation (§11)
+        ↓
+Player accepts
+        ↓
+Private Trial
+        ↓
+Player is tested on the pitch
+        ↓
+Assigned Coach → PASS
+        ↓
+Player becomes a Squad candidate
+        ↓
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 ---
 
-# 19. Private Trial — PASS
+# 18. Private Trial — FAIL
 
 ```text
-Online Coach Review → ACCEPT
+Invitation (§11)
+        ↓
+Player accepts
         ↓
 Private Trial
         ↓
-Coach physically tests Player
+Player is tested on the pitch
         ↓
-Trial → PASS
+Assigned Coach → FAIL
         ↓
 Clear Player.recommendations
         ↓
-Recalculate affected Scouts' Success Ratings
-        ↓
-Player becomes eligible for Squad placement
-        ↓
-Academy Manager can add Player to Squad
-```
-
----
-
-# 20. Private Trial — FAIL
-
-```text
-Online Coach Review → ACCEPT
-        ↓
-Private Trial
-        ↓
-Coach physically tests Player
-        ↓
-Trial → FAIL
-        ↓
-Recalculate affected Scouts' Success Ratings
+Recalculate affected Scouts' Success Ratings (decrease)
         ↓
 Player is not added to Squad
 ```
 
-The Player's recommendations array is NOT cleared merely because the Trial failed.
-
 ---
 
-# 21. Exactly Three Ways a Player Can Reach a Trial
+# 19. Exactly Three Ways a Player Can Reach a Trial
 
-There are exactly three supported paths for a Player to reach a Trial.
+There are exactly three supported paths for a Player to reach a Trial. All three end on a pitch, and none of them passes through a review.
 
 ---
 
@@ -615,26 +594,22 @@ An Academy announces a Global Trial.
 
 The Player discovers the Trial and applies.
 
-There is NO Online Coach Review.
-
 ### Flow
 
 ```text
-Academy
+Academy Manager
    ↓
 Creates Global Trial
    ↓
-Global Trial visible to eligible Players
+Matching followers are notified
    ↓
 Player applies
    ↓
-NO Online Coach Review
-   ↓
 Player attends offline Trial
    ↓
-Coach physically tests Player
+Player is tested on the pitch
    ↓
-Coach enters PASS / FAIL
+Assigned Coach enters PASS / FAIL
 ```
 
 ### PASS
@@ -642,13 +617,11 @@ Coach enters PASS / FAIL
 ```text
 Coach PASS
    ↓
-Clear Player.recommendations
+Player becomes a Squad candidate
    ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-Player becomes eligible for Squad placement
-   ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 ### FAIL
@@ -656,194 +629,105 @@ Academy Manager adds Player to Squad
 ```text
 Coach FAIL
    ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+   ↓
+Recalculate affected Scouts' Success Ratings (decrease)
    ↓
 Player is not added to Squad
 ```
 
 ---
 
-# 22. CASE 2 — Academy Manager Independently Finds a Player
+## CASE 2 — The Academy Finds a Player
 
 This case does NOT originate from a hired Scout.
 
-The Academy Manager independently discovers/finds a Player.
+The Academy Manager, or one of the Academy's Coaches, finds a Player — in search, in the feed, on a profile.
 
 The Player may already have recommendations attached to their profile, for example global recommendations from Scouts.
 
-The Academy Manager sends the Player to a Coach for an Online Coach Review.
+Whoever found them invites them to a Private Trial from the Player's profile (§11).
 
 ### Flow
 
 ```text
-Academy Manager finds Player
+Manager or Coach finds Player
         ↓
-Academy Manager sends Player to Coach
+Invite to Private Trial
+  (Coach → runs it themselves;
+   Manager → names the Coach)
         ↓
-Online Coach Review
+Player accepts or declines
         ↓
-Coach ACCEPT / REJECT
+Private Trial
+        ↓
+Assigned Coach enters PASS / FAIL
 ```
 
----
-
-## Case 2 — Online Review REJECT
-
-```text
-Coach REJECT
-   ↓
-Online review ends
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-No Private Trial
-```
-
-The Player's recommendations array is NOT cleared.
-
----
-
-## Case 2 — Online Review ACCEPT
-
-```text
-Coach ACCEPT
-   ↓
-Academy Manager invites Player
-to Private Trial
-   ↓
-Private Trial visible only
-to that Player
-   ↓
-Player attends offline Trial
-   ↓
-Coach physically tests Player
-   ↓
-Coach enters PASS / FAIL
-```
-
-### If Trial PASS
+### PASS
 
 ```text
 Coach PASS
    ↓
-Clear Player.recommendations
+Player becomes a Squad candidate
    ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-Player becomes eligible for Squad placement
-   ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
-### If Trial FAIL
+### FAIL
 
 ```text
 Coach FAIL
    ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+   ↓
+Recalculate affected Scouts' Success Ratings (decrease)
    ↓
 Player is not added to Squad
 ```
 
 ---
 
-# 23. CASE 3 — Hired Scout Recommends a Player
+## CASE 3 — Hired Scout Recommends a Player
 
-This case starts with a Scout who is hired by the Academy.
+A Scout hired by the Academy recommends a Player directly to it.
 
-The Scout discovers a Player and recommends them to the Academy.
+The recommendation lands in the Academy Inbox, ranked by credibility.
+
+### The Manager's two answers
+
+From the Inbox the Academy Manager does one of two things, and nothing else:
+
+1. **Invite to Private Trial** — the same invitation as Case 2, carrying the recommendation it answers. A FAIL, or the Manager's Squad decision after a PASS, settles the Scout.
+2. **Turn down** — the recommendation is rejected; the affected Scouts' Success Ratings are recalculated; nothing is cleared.
+
+There is no step between the Inbox and the invitation.
 
 ### Flow
 
 ```text
-Hired Scout discovers Player
+Hired Scout recommends Player
         ↓
-Scout recommends Player
-        ↓
-Player + recommendation
-appear in Academy Inbox
-        ↓
-Academy sees recommendation
-        ↓
-Academy sends Player to Coach
-        ↓
-CASE 2 CONTINUES
-```
-
-The Academy does NOT directly evaluate the Player's profile.
-
-The Academy's role at this stage is to see the recommendation and send the Player to a Coach for Online Coach Review.
-
-From this point onward, the process is exactly the same as Case 2.
-
----
-
-# 24. Case 3 — Online Coach Review
-
-```text
 Academy Inbox
-      ↓
-Academy sends Player to Coach
-      ↓
-Online Coach Review
-      ↓
-Coach ACCEPT / REJECT
+        ↓
+Academy Manager
+   ├── turns down → recalculate Scouts → END
+   └── invites to Private Trial (names the Coach)
+                ↓
+        Player accepts or declines
+                ↓
+           Private Trial
+                ↓
+   Assigned Coach enters PASS / FAIL
 ```
 
-### If REJECTED
-
-```text
-Coach REJECT
-   ↓
-Online review ends
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-No Private Trial
-```
-
-### If ACCEPTED
-
-```text
-Coach ACCEPT
-   ↓
-Academy Manager invites Player
-to Private Trial
-   ↓
-Player attends offline Trial
-   ↓
-Coach physically tests Player
-   ↓
-Coach PASS / FAIL
-```
-
-### If Trial PASSED
-
-```text
-Coach PASS
-   ↓
-Clear Player.recommendations
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-Player becomes eligible for Squad placement
-   ↓
-Academy Manager adds Player to Squad
-```
-
-### If Trial FAILED
-
-```text
-Coach FAIL
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
-Player is not added to Squad
-```
+PASS and FAIL continue exactly as in Case 2.
 
 ---
 
-# 25. Complete FotSpot Domain Flow
+# 20. Complete FotSpot Domain Flow
 
 The three cases can be represented as:
 
@@ -858,48 +742,51 @@ The three cases can be represented as:
              GLOBAL TRIAL    ACADEMY FINDS     HIRED SCOUT
               APPLICATION        PLAYER        RECOMMENDATION
                     │               │                │
-                    │               ▼                ▼
-                    │        ONLINE COACH       ACADEMY INBOX
-                    │           REVIEW               │
-                    │               │                │
-                    │          ACCEPT?               │
-                    │          /     \               │
-                    │       NO        YES            │
-                    │       │          │             │
-                    │       ▼          └─────────────┘
-                    │      END               │
-                    │                        ▼
-                    │                 PRIVATE TRIAL
-                    │                        │
-                    └──────────┐             │
-                               │             │
-                               ▼             ▼
-                         OFFLINE REAL-LIFE TRIAL
-                                  │
-                                  ▼
-                            COACH PASS / FAIL
-                                  │
-                         ┌────────┴────────┐
-                         │                 │
-                       FAIL              PASS
-                         │                 │
-                         ▼                 ▼
-                  Recalculate       Clear recommendations
-                  Scout ratings            │
-                         │          Recalculate Scout ratings
-                         │                 │
-                         ▼                 ▼
-                        END       Player eligible for Squad
-                                          │
-                                          ▼
-                                  ACADEMY MANAGER
-                                  ADDS PLAYER TO
-                                       SQUAD
+                    │               │                ▼
+                    │               │          ACADEMY INBOX
+                    │               │            /      \
+                    │               │      TURN DOWN    INVITE
+                    │               │           │          │
+                    │               │           ▼          │
+                    │               │          END         │
+                    │               ▼                      │
+                    │        INVITE TO PRIVATE TRIAL ◄─────┘
+                    │        (Manager names Coach /
+                    │         Coach runs it)
+                    │               │
+                    │               ▼
+                    │         PLAYER ACCEPTS
+                    │               │
+                    ▼               ▼
+              OFFLINE TRIAL    PRIVATE TRIAL
+                    │               │
+                    └───────┬───────┘
+                            ▼
+                  ASSIGNED COACH: PASS / FAIL
+                            │
+                   ┌────────┴────────┐
+                   │                 │
+                 FAIL              PASS
+                   │                 │
+                   ▼                 ▼
+         Clear recommendations   Player is a Squad candidate
+                   │                 │
+         Recalculate Scout           ▼
+         ratings (decrease)    ACADEMY MANAGER
+                   │            /          \
+                   ▼     CLOSE CANDIDACY   INVITE TO SQUAD
+                  END          │                │
+                               ▼                ▼
+                    Clear recommendations   Clear recommendations
+                    Recalculate (decrease)  Recalculate (increase)
+                               │                │
+                               ▼                ▼
+                              END      Player accepts → Reserve
 ```
 
 ---
 
-# 26. Recommendation Lifecycle
+# 21. Recommendation Lifecycle
 
 Recommendations are not simple social interactions.
 
@@ -914,85 +801,73 @@ Scout recommends Player
         ↓
 Recommendation attached to Player
         ↓
-Player enters Academy evaluation pipeline
+Academy Inbox
         ↓
-Online Coach Review
-        ↓
-ACCEPT / REJECT
-        ↓
-If ACCEPT → Private Trial
+Invite to Private Trial  /  Turn down
         ↓
 Real-life Trial
         ↓
 PASS / FAIL
 ```
 
+A recommendation is `PENDING` until the Academy answers it. The Academy's answer is a Trial FAIL (REJECTED), the Manager's Squad decision after a PASS (ACCEPTED on an invitation to the Squad, REJECTED on a closed candidacy), or a refusal from the Inbox (REJECTED). A PASS on its own settles nothing. Inviting the Player to a Trial takes the row out of the Inbox queue while the Trial is pending, but does not settle it.
+
 ---
 
-# 27. Recommendation Array
+# 22. Recommendation Array
 
 The Player has a `recommendations` collection/array representing Scouts who have recommended the Player.
 
 The recommendation collection is relevant to Scout Success Rating calculations.
 
-### On Trial PASS
+When a Player is invited to a Private Trial, or applies to a Global Trial, the recommendations backing them at that moment are snapshotted onto the application. The settling event answers exactly those.
 
-The Player's recommendation collection MUST be cleared:
+The collection is cleared after exactly **three** events, and only these:
+
+### On Trial FAIL
 
 ```text
 Player.recommendations = []
 ```
 
-Then the affected Scouts' Success Ratings MUST be recalculated.
+Then the affected Scouts' Success Ratings MUST be recalculated (decrease).
 
-### On Online Review REJECT
+### On the Academy Manager inviting the passed Player to the Squad
+
+```text
+Player.recommendations = []
+```
+
+Then the affected Scouts' Success Ratings MUST be recalculated (increase).
+
+### On the Academy Manager closing the passed Player's candidacy
+
+```text
+Player.recommendations = []
+```
+
+Then the affected Scouts' Success Ratings MUST be recalculated (decrease).
+
+### On Trial PASS
+
+Nothing. The collection is NOT cleared and no Scout is recalculated; the Manager's decision that follows does both.
+
+### On the Academy turning the recommendation down from the Inbox
 
 The recommendation collection is NOT cleared.
 
-However, affected Scouts' Success Ratings MUST be recalculated.
-
-### On Trial FAIL
-
-The recommendation collection is NOT cleared merely because the Trial failed.
-
-However, affected Scouts' Success Ratings MUST be recalculated.
+However, the affected Scouts' Success Ratings MUST be recalculated.
 
 ---
 
-# 28. Scout Success Rating Recalculation Rules
+# 23. Scout Success Rating Recalculation Rules
 
-The system MUST trigger Scout Success Rating recalculation after each of these finalized outcomes:
+The system MUST trigger Scout Success Rating **and level** recalculation, for every Scout who recommended the Player, after each of these finalized outcomes:
 
 ### Event 1
 
 ```text
-Online Coach Review → REJECT
-```
-
-Action:
-
-```text
-Recalculate Success Rating
-for Scouts associated with Player recommendations
-```
-
-### Event 2
-
-```text
-Trial → FAIL
-```
-
-Action:
-
-```text
-Recalculate Success Rating
-for Scouts associated with Player recommendations
-```
-
-### Event 3
-
-```text
-Trial → PASS
+Trial → FAIL                (by an assigned Coach; Global or Private Trial)
 ```
 
 Actions:
@@ -1000,15 +875,68 @@ Actions:
 ```text
 Clear Player.recommendations
         ↓
-Recalculate Success Rating
-for affected Scouts
+Recalculate Success Rating and level
+for affected Scouts               (decrease)
 ```
+
+### Event 2
+
+```text
+Academy Manager → Invite to Squad   (after a PASS)
+```
+
+Actions:
+
+```text
+Clear Player.recommendations
+        ↓
+Recalculate Success Rating and level
+for affected Scouts               (increase)
+```
+
+### Event 3
+
+```text
+Academy Manager → Close the candidacy   (after a PASS; the "x" on the card, optional note)
+```
+
+Actions:
+
+```text
+Clear Player.recommendations
+        ↓
+Recalculate Success Rating and level
+for affected Scouts               (decrease)
+```
+
+### Not an event
+
+```text
+Trial → PASS
+```
+
+A PASS changes nothing for any Scout and clears nothing. Coaches pass Players by accident; the Manager's decision that follows is the outcome.
+
+### Also recalculated, but nothing cleared
+
+```text
+Academy turns the recommendation down   (from the Inbox)
+```
+
+Action:
+
+```text
+Recalculate Success Rating and level
+for Scouts associated with Player recommendations   (decrease)
+```
+
+This is canonical. Where any other document disagrees, this section wins.
 
 ---
 
-# 29. Important Note About Global Recommendations
+# 24. Important Note About Global Recommendations
 
-A Player can have existing recommendations even when an Academy Manager independently finds the Player.
+A Player can have existing recommendations even when an Academy finds the Player independently.
 
 For example:
 
@@ -1019,38 +947,34 @@ Player
  └── Global recommendation from Scout C
 ```
 
-The Academy Manager may find this Player independently and send them to a Coach for Online Coach Review.
+The Academy Manager or a Coach may find this Player independently and invite them to a Private Trial.
 
-The existing recommendations remain attached to the Player and can be considered during the process.
-
-If the Online Coach Review is rejected:
+The existing recommendations remain attached to the Player and are snapshotted onto the application. The Trial settles them for this Academy by §23:
 
 ```text
-Coach REJECT
+Trial FAIL
       ↓
-Recalculate affected Scouts' Success Ratings
+Clear recommendations
+      ↓
+Recalculate affected Scouts' Success Ratings (decrease)
 ```
-
-If the Player later passes a Trial:
 
 ```text
 Trial PASS
       ↓
-Clear recommendations
-      ↓
-Recalculate affected Scouts' Success Ratings
+Academy Manager invites to Squad      → Clear recommendations → Recalculate (increase)
+Academy Manager closes the candidacy  → Clear recommendations → Recalculate (decrease)
 ```
 
 ---
 
-# 30. Squad Placement Rule
+# 25. Squad Placement Rule
 
 A Player MUST NOT automatically join a Squad because:
 
 - A Scout recommended the Player.
 - An Academy received the recommendation.
-- The Academy Manager found the Player.
-- The Coach accepted the Player during Online Coach Review.
+- The Academy Manager or a Coach found the Player.
 - The Player applied to a Global Trial.
 - The Player was invited to a Private Trial.
 - The Player attended a Trial.
@@ -1058,48 +982,42 @@ A Player MUST NOT automatically join a Squad because:
 The Player becomes eligible for Squad placement only after:
 
 ```text
-Coach → Trial → PASS
+Trial → PASS
 ```
 
 After that:
 
 ```text
-Coach PASS
-      ↓
-Academy Manager
-      ↓
-Add Player to Squad
+PASS
+  ↓
+Player appears as a Squad candidate
+  ↓
+Academy Manager → Invite to Squad   (settles the Scouts as right; clears the recommendations)
+  ↓
+Player is notified (in-site + Telegram, with a link to the answer page)
+  ↓
+Player accepts  →  joins the Academy's Reserve automatically
+Player declines →  the invitation is closed; the Manager is told, with the Player's note
 ```
 
-The Academy Manager is responsible for the actual Squad placement.
+The Academy Manager is responsible for the invitation; the Player's yes is what places them. Nobody is added by hand.
+
+### The Player's answer
+
+- **Accept** is one press. It is recorded at once and acted on after a short undo window (30 seconds), during which the Player may take it back and nothing has happened. After the window the membership is written into the Reserve — no Group, no manual placement step — and the Manager is notified once, as "a player joined your squad" (in-site and Telegram).
+- **Decline** asks first, in a dialog with an optional note. The invitation is closed, the Player leaves the Manager's candidate list, and the Manager is notified with the note.
+
+When a Player joins an Academy's Squad, the platform operator is also told, by Telegram, which Player joined which Academy.
+
+### Contacts
+
+Only an Academy Manager may see a Player's contact details — email, phone, Telegram — and only on the Player's profile. A Coach, a Scout, another Player, or a guest is never shown them; the backend withholds them rather than the screen hiding them.
 
 ---
 
-# 31. Coach Responsibilities
+# 26. Coach Responsibilities
 
-The Coach has two fundamentally different evaluation responsibilities.
-
-### Online
-
-The Coach performs:
-
-```text
-Online Coach Review
-```
-
-Decision:
-
-```text
-ACCEPT / REJECT
-```
-
-Purpose:
-
-> Decide whether the Player deserves an opportunity to attend a Private Trial.
-
-### Offline
-
-The Coach performs:
+A Coach's evaluation responsibility on FotSpot is one thing:
 
 ```text
 Trial
@@ -1113,22 +1031,24 @@ PASS / FAIL
 
 Purpose:
 
-> Determine whether the Player successfully passes the real-life football examination.
+> Determine whether the Player successfully passes the real-life football examination on a Trial the Coach is assigned to — Global or Private.
 
-These responsibilities MUST NOT be merged into one operation.
+A Coach may also:
+
+- Invite a Player to a Private Trial from the Player's profile (§11). The Coach is assigned to run it.
+
+A Coach does NOT review profiles, approve or reject Players online, invite anybody to a Squad, or decide a Trial they are not assigned to.
 
 ---
 
-## 31.1 Attribute Assessment — a third thing, and not a decision at all
+## 26.1 Attribute Assessment — a separate thing, and not a decision at all
 
 Rating a Player's **attributes** (speed, passing, vision, dribbling, finishing, physical,
-leadership, discipline) is NOT part of either decision above.
-
-An Online Coach Review answers ACCEPT / REJECT.
+leadership, discipline) is NOT part of the Trial verdict.
 
 A Trial answers PASS / FAIL.
 
-Neither of them asks the Coach for a number, and neither of them may require one.
+It does not ask the decider for a number, and it may not require one.
 
 Attribute assessment is a **squad activity**: it is what a Coach records about a Player they
 train week after week, not about a stranger they are judging for admission.
@@ -1141,37 +1061,34 @@ train week after week, not about a stranger they are judging for admission.
 Both sides of the "if and only if" are load-bearing:
 
 - **Only if** — a Coach with no shared Group has no standing to put a number on a Player, even
-  if they are a verified Coach, even if they are reviewing that Player online, and even if they
-  are the Coach running the Trial that Player has turned up to.
+  if they are a verified Coach, and even if they are the Coach running the Trial that Player has
+  turned up to.
 - **If** — a Coach who _does_ share the Group needs no further permission. That is their squad;
   assessing it is the job.
 
 ### Why
 
 An attribute rating is the one number on this platform a Player cannot write about themselves.
-It is worth that only if whoever wrote it has actually watched the Player train. A Coach
-reading clips for an Online Coach Review has seen video — enough to say "worth a look", not
-enough to say "physical 62". A Coach at a Trial has seen one morning — enough to say PASS, not
-enough to fill in eight attributes as though they had coached the Player for a season.
+It is worth that only if whoever wrote it has actually watched the Player train. A Coach at a
+Trial has seen one morning — enough to say PASS, not enough to fill in eight attributes as
+though they had coached the Player for a season.
 
-Allowing it in either place would also quietly re-merge the two decisions Rule 19 keeps apart:
-a screen that asks for eight ratings _and_ a verdict is a screen where the verdict stops being
-the point.
+Allowing it at the Trial would also change what the Trial is: a screen that asks for eight
+ratings _and_ a verdict is a screen where the verdict stops being the point.
 
 ### What follows from it
 
-1. An Online Coach Review MUST NOT accept, require, or write attribute ratings.
-2. A Trial verdict MUST NOT accept, require, or write attribute ratings.
-3. An attribute assessment MUST be refused unless the Coach and the Player share a Group.
-4. A Player in the **Reserve** (no Group) is assessable by nobody — the Reserve is the absence
+1. A Trial verdict MUST NOT accept, require, or write attribute ratings.
+2. An attribute assessment MUST be refused unless the Coach and the Player share a Group.
+3. A Player in the **Reserve** (no Group) is assessable by nobody — the Reserve is the absence
    of a Group, not a Group everybody shares.
-5. A Player who has just passed a Trial is not yet assessable. They become assessable when the
+4. A Player who has just passed a Trial is not yet assessable. They become assessable when the
    Academy Manager places them in a Squad Group (Rule 9), which is the moment somebody becomes
    responsible for coaching them.
 
 ---
 
-# 32. Academy Manager Responsibilities
+# 27. Academy Manager Responsibilities
 
 The Academy Manager is responsible for:
 
@@ -1180,21 +1097,18 @@ The Academy Manager is responsible for:
 - Managing Scouts
 - Managing Squads
 - Managing Groups
-- Creating Global Trials
-- Viewing Academy Inbox
-- Sending Players to Coaches for Online Coach Review
-- Inviting Players to Private Trials after Coach ACCEPT
-- Adding successful Players to Squads
+- Creating Global Trials and assigning their Coaches
+- Viewing the Academy Inbox
+- Inviting Players to Private Trials, naming the Coach who runs each
+- Turning recommendations down
+- Inviting passed Players to the Squad, or closing their candidacy
+- Archiving Trials
 
-The Academy Manager does NOT replace the Coach in football evaluation.
-
-The Coach performs the football evaluation.
-
-The Academy Manager performs the administrative actions around it.
+The Academy Manager does not record the verdict on any Trial; the assigned Coaches do. The Manager's part after a PASS is the decision the Scouts are measured by: invite the Player to the Squad, or close the candidacy.
 
 ---
 
-# 33. Academy Responsibilities in Scout Recommendations
+# 28. Academy Responsibilities in Scout Recommendations
 
 When a hired Scout recommends a Player:
 
@@ -1206,18 +1120,16 @@ Recommendation
 Academy Inbox
 ```
 
-The Academy does NOT directly approve/reject the Player profile.
+The Academy does NOT evaluate the Player profile online.
 
 Instead:
 
 ```text
 Academy Inbox
       ↓
-Academy sends Player to Coach
+Academy Manager invites to Private Trial  /  turns down
       ↓
-Online Coach Review
-      ↓
-Coach ACCEPT / REJECT
+Trial → PASS / FAIL
 ```
 
 This distinction must be maintained in:
@@ -1232,49 +1144,53 @@ This distinction must be maintained in:
 
 ---
 
-# 34. Private Trial Visibility
+# 29. Private Trial Visibility
 
 A Private Trial is not a publicly discoverable Trial.
 
-It is created/invited as a result of:
+It is visible **only** to:
 
-```text
-Online Coach Review → ACCEPT
-```
+- the invited Player,
+- the Academy Manager,
+- the Coach assigned to run it.
 
-The Private Trial is visible only to the specific Player who has been invited.
+This is enforced by the backend, not only by the UI. A Private Trial never appears in public listings, in the Trials board, in search results, or in announcements. No Player other than the invited one is notified of it, can discover it, or can apply to it.
 
-Other Players must not be able to discover or apply to that Private Trial.
+On the Academy Manager's Trials screen the Private Trials are listed **by stage** (§32), pending first, one row per trial showing the invited Player — photograph, name, age, position — and where they stand. The row offers **no action**: the verdict is the assigned Coach's (§10), and the Squad decision after a PASS is taken on the dashboard beside the candidate (§12).
 
 ---
 
-# 35. Global Trial Visibility
+# 30. Global Trial Visibility
 
 A Global Trial is intended for public/eligible Player discovery.
 
 The flow is:
 
 ```text
-Academy creates Global Trial
+Academy Manager creates Global Trial
        ↓
-Eligible Players can discover it
+Followers of the Academy who match age, position and gender are notified
        ↓
-Players can apply
+Eligible Players can discover it and apply
        ↓
 Directly to offline Trial
 ```
 
-No Online Coach Review is required.
+No review of any kind is required or exists.
 
 ---
 
-# 36. State Separation
+# 31. Archiving
 
-The backend and frontend should model Online Coach Review and Trial as separate concepts.
+A Trial is archived **only** when the Academy Manager archives it. Trials never archive themselves — not when every application has a verdict, not when the date has passed, not when every Player has been placed.
 
-## Online Coach Review
+An archived Trial stops taking applications and leaves the public board. Everybody who already applied stays on it, with their verdicts. The Manager may reopen it.
 
-Recommended conceptual states:
+---
+
+# 32. State Separation
+
+### Recommendation
 
 ```text
 PENDING
@@ -1282,35 +1198,41 @@ ACCEPTED
 REJECTED
 ```
 
-Meaning:
-
 ```text
-PENDING  = Coach has not made a decision
-ACCEPTED = Player is eligible for Private Trial invitation
-REJECTED = Player does not proceed to Private Trial
+PENDING  = the Academy has not answered
+ACCEPTED = settled by the Manager inviting the passed Player to the Squad
+REJECTED = settled by a Trial FAIL, a closed candidacy, or turned down from the Inbox
 ```
 
----
-
-## Trial
-
-Recommended conceptual states:
+### Trial application
 
 ```text
-SCHEDULED
-IN_PROGRESS
-PASSED
-FAILED
+APPLIED     = the Player applied to a Global Trial
+INVITED     = a Private Trial's invitation is out, awaiting the Player
+CONFIRMED   = the Player accepted the invitation and is expected on the day
+PASSED      = tested in person and passed (see TrialResult)
+FAILED      = tested in person and failed
+ACCEPTED    = the Academy offered a Squad place, after a PASS
+REJECTED    = the Academy said no (a closed candidacy after a PASS carries the Manager's note), or the Player declined the invitation
 ```
 
-Meaning:
+There is no `SCREENING`, `SHORTLISTED`, or `REVIEWING` state. There is no review entity.
+
+### Applicant stage
+
+What the Academy reads. Derived by the backend from the application, the verdict, the Squad invitation and the membership — the story after a PASS lives in other tables — and returned on every row of the Academy's lists as `stage`:
 
 ```text
-SCHEDULED    = Trial has been scheduled
-IN_PROGRESS  = Trial is currently taking place
-PASSED       = Coach passed Player after real-life examination
-FAILED       = Coach failed Player after real-life examination
+PENDING              = applied, invited or confirmed; waiting on the Coach
+FAILED               = the Coach said no
+PASSED               = the Coach said yes; waiting on the Manager
+CANDIDACY_CLOSED     = the Manager closed the candidacy, or withdrew
+SQUAD_INVITED        = the Manager offered a Squad place; waiting on the Player
+INVITATION_DECLINED  = the Player said no — to the Squad, or to the Private Trial
+SQUAD_JOINED         = the Player accepted and is on the Academy's books
 ```
+
+Both the Manager's Private Trial list and a Global Trial's applicant list are read through one tab per stage, in this order, with **pending open by default**.
 
 Do not use `ACCEPTED` / `REJECTED` for Trial verdicts.
 
@@ -1320,27 +1242,11 @@ Use:
 PASS / FAIL
 ```
 
-Do not use `PASS / FAIL` for Online Coach Review.
-
-Use:
-
-```text
-ACCEPT / REJECT
-```
-
 ---
 
-# 37. Domain Vocabulary
+# 33. Domain Vocabulary
 
 Use these terms consistently throughout the codebase, API, database, UI, documentation, and product.
-
-### Online Coach Review
-
-```text
-ACCEPT / REJECT
-```
-
-Online Player profile screening.
 
 ### Trial
 
@@ -1352,11 +1258,11 @@ Real-life/offline football examination.
 
 ### Global Trial
 
-Public/eligible Trial announced by an Academy.
+Public/eligible Trial announced by an Academy Manager. Verdict by the assigned Coaches.
 
 ### Private Trial
 
-Specific Trial invitation available only to the selected Player after Online Coach Review ACCEPT.
+A Trial created by inviting one Player, sent by the Academy Manager or a Coach. Verdict by the assigned Coach.
 
 ### Recommendation
 
@@ -1364,7 +1270,16 @@ A Scout's recommendation of a Player.
 
 ### Scout Success Rating
 
-A reputation metric based on the outcomes of the Scouts' recommendations.
+A reputation metric based on the outcomes of the Scouts' recommendations. Moved by exactly three Trial events — a FAIL, a Squad invitation after a PASS, a closed candidacy after a PASS — and by an Inbox refusal; never by a PASS on its own (§23).
+
+### Squad candidate
+
+A Player who passed one of the Academy's Trials and is waiting for the Manager's answer: an invitation to the Squad, or a closed candidacy (§12).
+
+### Closed candidacy
+
+The Manager's "x" on a Squad candidate: the passed Player will not be invited. Carries an optional note for the Player, settles the Scouts as wrong, clears the Player's recommendations, and is written to the audit log (§12, §23).
+
 
 ### Squad
 
@@ -1377,7 +1292,7 @@ A named team inside the Squad — "U14", "First team", "Goalkeepers". Only the A
 creates Groups and decides who is in them; a Coach works with the Group they are given.
 
 A Group is what makes a Coach responsible for a Player, and it is the only thing that permits
-attribute assessment (§31.1).
+attribute assessment (§26.1).
 
 ### Reserve
 
@@ -1392,12 +1307,14 @@ Player in the Reserve, so nobody may assess them.
 A Coach's ratings of a Player's speed, passing, vision, dribbling, finishing, physical,
 leadership and discipline.
 
-Not a decision, not a verdict, and never part of an Online Coach Review or a Trial. Permitted
-only between a Coach and a Player who share a Group (§31.1).
+Not a decision, not a verdict, and never part of a Trial. Permitted only between a Coach and a
+Player who share a Group (§26.1).
 
 ---
 
-# 38. Final Canonical Rules
+---
+
+# 34. Final Canonical Rules
 
 The following rules are mandatory:
 
@@ -1407,27 +1324,27 @@ The following rules are mandatory:
 
 ### Rule 2
 
-**Online Coach Review is NOT a Trial.**
+**There is no Online Review. No Player is accepted or rejected from their profile.**
 
 ### Rule 3
 
-**Online Coach Review uses ACCEPT / REJECT.**
+**A Global Trial takes applications directly. No recommendation is required.**
 
 ### Rule 4
 
-**Trial uses PASS / FAIL.**
+**Trial uses PASS / FAIL, never ACCEPT / REJECT.**
 
 ### Rule 5
 
-**Global Trial does not require Online Coach Review.**
+**Only the Academy Manager creates a Global Trial, and assigns its Coaches.**
 
 ### Rule 6
 
-**Private Trial requires Online Coach Review → ACCEPT.**
+**A Private Trial exists only as an invitation to one Player, sent by the Academy Manager or a Coach.**
 
 ### Rule 7
 
-**A Coach must physically test the Player during every Trial.**
+**A Player is physically tested at every Trial.**
 
 ### Rule 8
 
@@ -1439,43 +1356,43 @@ The following rules are mandatory:
 
 ### Rule 10
 
-**Online Coach Review → REJECT triggers Scout Success Rating recalculation.**
+**Only a Coach assigned to the Trial records its verdict — on a Global Trial and a Private Trial alike.**
 
 ### Rule 11
 
-**Trial → FAIL triggers Scout Success Rating recalculation.**
+**The Academy Manager never records a verdict. After a PASS, the Manager either invites the Player to the Squad or closes the candidacy.**
 
 ### Rule 12
 
-**Trial → PASS triggers Scout Success Rating recalculation.**
+**Trial → PASS settles nobody: no Scout's Success Rating moves and nothing is cleared.**
 
 ### Rule 13
 
-**Trial → PASS clears the Player's `recommendations` array.**
+**Exactly three events settle the Scouts who recommended a Player and clear the Player's `recommendations`: Trial → FAIL by the assigned Coach (decrease), the Manager inviting the passed Player to the Squad (increase), and the Manager closing the passed Player's candidacy (decrease). Every affected Scout's Success Rating and level are recalculated.**
 
 ### Rule 14
 
-**Online Coach Review → REJECT does NOT clear the Player's recommendations.**
+**An Academy turning a recommendation down from the Inbox triggers Scout Success Rating recalculation and clears nothing.**
 
 ### Rule 15
 
-**Trial → FAIL does NOT clear the Player's recommendations merely because of the failure.**
+**A Scout cannot recommend a Player who is on an Academy's books or has an open Trial application; the profile shows the reason instead of the button.**
 
 ### Rule 16
 
-**An Academy does not directly evaluate a Player profile after a hired Scout recommendation. The Academy sends the Player to a Coach for Online Coach Review.**
+**Publishing a Global Trial notifies only Players who follow the Academy and match its age range, positions and gender.**
 
 ### Rule 17
 
-**A hired Scout recommendation enters the Academy Inbox and then follows the same Online Coach Review → Private Trial pipeline as an independently discovered Player.**
+**A hired Scout recommendation enters the Academy Inbox. The Manager's answer is an invitation to a Private Trial or a refusal — nothing in between.**
 
 ### Rule 18
 
-**A Private Trial is visible only to the specific Player invited to it.**
+**A Private Trial is visible only to the invited Player, the Academy Manager and the assigned Coach, and the backend enforces it.**
 
 ### Rule 19
 
-**Do not merge Online Coach Review and Trial into one entity or business operation unless the architecture explicitly preserves their separate domain semantics.**
+**A Trial never archives itself. Only the Academy Manager archives a Trial.**
 
 ### Rule 20
 
@@ -1484,69 +1401,87 @@ The following rules are mandatory:
 ### Rule 21
 
 **A Coach may assess a Player's attributes if and only if the Coach and the Player share a
-Group inside the same Academy Squad (§31.1).**
+Group inside the same Academy Squad (§26.1).**
 
 ### Rule 22
 
-**Neither an Online Coach Review nor a Trial verdict may require, accept or write attribute
-ratings. A Coach presses ACCEPT / REJECT, or PASS / FAIL, and nothing else.**
+**A Trial verdict may not require, accept or write attribute ratings. The decider presses
+PASS / FAIL, and nothing else.**
 
 ### Rule 23
 
 **The Reserve is the absence of a Group. A Player in the Reserve shares a Group with nobody and
 is therefore assessable by nobody.**
 
+### Rule 24
+
+**A Private Trial's Player reaches the assigned Coach only after accepting the invitation. Until then the Coach is not shown them, cannot record a verdict, and never sees the invitation note.**
+
+### Rule 25
+
+**A verdict is written at once and acted on after a short undo window. Inside the window the deciding Coach may take it back, and nothing has gone out; after it, the verdict stands.**
+
+### Rule 26
+
+**A trial verdict is told to the Player, and to nobody else. The Manager learns who passed from their dashboard, invites them to the Squad with one press, and is told once how the Player answered — "a player joined your squad" on a yes, or the refusal with the Player's note.**
+
+### Rule 27
+
+**Accepting a Squad invitation places the Player in the Reserve automatically, after a short undo window. Nobody adds a Player to a Squad by hand.**
+
+### Rule 28
+
+**Only an Academy Manager sees a Player's exact facts — date of birth, exact age, address — and contact details (email, phone, Telegram), and only on the Player's profile. Everybody else is shown the age band and no address.**
+
 ---
 
-# 39. Canonical Short Version
+# 35. Canonical Short Version
 
 For quick reference:
 
 ```text
 CASE 1 — GLOBAL TRIAL
 
-Academy creates Global Trial
+Academy Manager creates Global Trial, assigns Coaches
+        ↓
+Matching followers notified
         ↓
 Player applies
         ↓
-NO Online Coach Review
-        ↓
 Offline Trial
         ↓
-Coach PASS / FAIL
+Assigned Coach PASS / FAIL
         ↓
-PASS → Clear recommendations
-     → Recalculate Scout Success Ratings
-     → Academy Manager can add Player to Squad
+PASS → Squad candidate (nothing settled yet)
+     → Manager invites to Squad     → Clear recommendations → Recalculate Scouts (increase)
+     → Manager closes the candidacy → Clear recommendations → Recalculate Scouts (decrease)
 
-FAIL → Recalculate Scout Success Ratings
+FAIL → Clear recommendations
+     → Recalculate Scout Success Ratings (decrease)
      → No Squad placement
 ```
 
 ```text
 CASE 2 — ACADEMY FINDS PLAYER
 
-Academy Manager finds Player
+Academy Manager or Coach finds Player
         ↓
-Online Coach Review
+Invite to Private Trial
+  (Coach runs it / Manager names the Coach)
         ↓
-Coach ACCEPT / REJECT
+Player accepts
+        ↓
+Offline Trial
+        ↓
+Assigned Coach PASS / FAIL
 
-REJECT → Recalculate Scout Success Ratings
-       → End
+PASS → Squad candidate (nothing settled yet)
+     → Manager invites to Squad     → Clear recommendations → Recalculate Scouts (increase)
+     → Manager closes the candidacy → Clear recommendations → Recalculate Scouts (decrease)
 
-ACCEPT → Private Trial invitation
-       ↓
-       Offline Trial
-       ↓
-       Coach PASS / FAIL
-
-       PASS → Clear recommendations
-            → Recalculate Scout Success Ratings
-            → Academy Manager can add Player to Squad
-
-       FAIL → Recalculate Scout Success Ratings
-            → No Squad placement
+FAIL → Clear recommendations
+     → Recalculate Scout Success Ratings (decrease)
+     → No Squad placement
 ```
 
 ```text
@@ -1556,26 +1491,11 @@ Hired Scout recommends Player
         ↓
 Academy Inbox
         ↓
-Academy sends Player to Coach
+Academy Manager turns down → Recalculate Scout Success Ratings → End
+                 or
+Academy Manager invites to Private Trial (names the Coach)
         ↓
 CASE 2 CONTINUES
-        ↓
-Online Coach Review
-        ↓
-ACCEPT / REJECT
-        ↓
-If ACCEPT → Private Trial
-        ↓
-Offline Trial
-        ↓
-PASS / FAIL
-        ↓
-PASS → Clear recommendations
-     → Recalculate Scout Success Ratings
-     → Academy Manager can add Player to Squad
-
-FAIL → Recalculate Scout Success Ratings
-     → No Squad placement
 ```
 
 This is the **canonical FotSpot domain logic**. All future implementation decisions involving these entities should be consistent with this specification.

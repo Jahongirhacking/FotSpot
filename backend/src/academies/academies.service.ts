@@ -757,8 +757,8 @@ export class AcademiesService {
       });
 
       // Taking somebody onto the staff is the endorsement. Making the manager
-      // say it twice, on another screen, only produced coaches whose reviews
-      // their own academy would not accept.
+      // say it twice, on another screen, only produced coaches their own
+      // academy would not let run a trial.
       await tx.academyEndorsement.upsert({
         where: { academyId_userId_role: { academyId, userId, role: 'COACH' } },
         update: { status: 'ACTIVE', revokedAt: null },
@@ -901,7 +901,7 @@ export class AcademiesService {
      * three say one thing: this academy vouches for this person as a coach.
      * This method did not — it changed the role and stopped — so a manager
      * promoting a scout to coach produced somebody the squad list called a
-     * coach and every review path refused, with a message about the *academy*
+     * coach and every trial path refused, with a message about the *academy*
      * having no coaches.
      *
      * Moving somebody the other way withdraws it, for the reason `releaseMember`
@@ -923,7 +923,7 @@ export class AcademiesService {
         const holds = row.role === role && active;
 
         if (holds && role === 'COACH') {
-          // A scout being promoted has no coach profile yet, and every review
+          // A scout being promoted has no coach profile yet, and the verdict
           // path asks for one by name.
           const coach = await tx.coachProfile.upsert({
             where: { userId: row.userId },
@@ -986,7 +986,7 @@ export class AcademiesService {
     const released = await this.prisma.$transaction(async (tx) => {
       // Expelling withdraws the trust that came with joining. A scout who is no
       // longer staff must not keep addressing recommendations to this academy,
-      // and a coach must not keep reviewing for it.
+      // and a coach must not keep running trials for it.
       await tx.academyEndorsement.updateMany({
         where: { academyId, userId: member.userId, status: 'ACTIVE' },
         data: { status: 'REVOKED', revokedAt: new Date() },

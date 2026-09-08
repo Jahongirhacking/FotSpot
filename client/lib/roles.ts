@@ -108,9 +108,9 @@ export function isSuperAdminActing(activeRole: Role | null): boolean {
 /**
  * Roles that may open a scout's reputation page.
  *
- * `coach` is missing on purpose. A coach answers "is this player worth a look"
- * from the clips in front of them (README §1.9, TRIAL.md Rule 22); putting the
- * recommending scout's level beside that question turns the review into a
+ * `coach` is missing on purpose. A coach judges the player's football on the
+ * pitch and nothing else (README §1.9, TRIAL.md Rule 2); putting the
+ * recommending scout's level beside the player turns the verdict into a
  * judgement of the scout's record instead of the player's football.
  *
  * `scout` is missing too — a scout reaches their own page as themselves, and

@@ -94,14 +94,15 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
   });
 
   /*
-   * The Inbox badge: players nobody has been asked about yet.
+   * The Inbox badge: recommended players the academy has not yet answered —
+   * neither invited to a trial nor turned down.
    *
    * Only fetched while acting as a manager, since Inbox is only in that menu —
    * asking as a player would be a request whose answer is always zero.
    */
   const { data: inbox } = useQuery({
-    queryKey: ['inbox-awaiting-review'],
-    queryFn: () => browserFetch<{ count: number }>('/recommendations/inbox/awaiting-review-count'),
+    queryKey: ['inbox-count'],
+    queryFn: () => browserFetch<{ count: number }>('/recommendations/inbox/count'),
     enabled: isAuthenticated && activeRole === 'academy_manager',
     refetchInterval: BADGE_POLL_MS,
     staleTime: BADGE_POLL_MS,

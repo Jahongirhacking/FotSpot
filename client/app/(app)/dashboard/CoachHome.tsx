@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { ScoutLevelCard } from '@/components/player/ScoutLevelCard';
 import type { Dictionary } from '@/lib/i18n';
-import { CoachQueues } from './CoachQueues';
+import { CoachQueues } from '@/components/trials/CoachQueues';
 
 export async function CoachHome({ token, t }: { token: string; t: Dictionary }) {
   const [profile, stats] = await Promise.all([

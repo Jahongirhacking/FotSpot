@@ -266,10 +266,7 @@ export class TariffsService implements OnModuleInit {
       where: {
         scoutId,
         clearedAt: null,
-        OR: [
-          { targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } } },
-          { targets: { none: {} } },
-        ],
+        OR: [{ targets: { some: { status: 'PENDING' } } }, { targets: { none: {} } }],
       },
     });
     return quota(used, plan.pendingRecommendationLimit);

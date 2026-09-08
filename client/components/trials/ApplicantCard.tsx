@@ -3,9 +3,15 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
-import type { DominantFoot, PlayerProfile, TrialApplicationStatus } from '@/lib/api/types';
+import type {
+  ApplicationStage,
+  DominantFoot,
+  PlayerProfile,
+  TrialApplicationStatus,
+} from '@/lib/api/types';
 import { ageFrom, initials } from '@/lib/utils';
 import * as React from 'react';
+import { StageBadge } from './StageTabs';
 
 /** The player as an applicant list returns them, photograph included. */
 export interface ApplicantPlayer extends PlayerProfile {
@@ -17,30 +23,33 @@ export interface ApplicantPlayer extends PlayerProfile {
  *
  * ## Why the player is the biggest thing on it
  *
- * A coach working through a trial is answering one question per person — is this
+ * Whoever works through a trial is answering one question per person — is this
  * player worth a place — and the thing that question is *about* is the player.
  * The old list put the trial's own details on every row beside the name, so the
  * same six words repeated down the page and the person got a line of grey text.
  * The trial is stated once, in the header above the grid; each card carries only
  * what distinguishes one applicant from the next: face, name, position, age,
- * foot, and where they stand.
+ * gender, foot, and where they stand.
  *
  * ## What it deliberately does not decide
  *
  * Nothing. The actions are passed in, because who may act on an applicant
- * depends on who is looking: a coach writes PASS or FAIL (TRIAL.md Rule 7), a
- * manager invites or places, and neither may do the other's job (Rule 16). One
- * card, two callers, no branch inside it that has to be kept in step with the
- * permission rules on the server.
+ * depends on who is looking: an assigned coach writes PASS or FAIL (TRIAL.md
+ * §10), the manager places a passed player, and neither may do the other's
+ * job. One card, several callers, no branch inside it that has to be kept in
+ * step with the permission rules on the server.
  */
 export function ApplicantCard({
   player,
   status,
+  stage,
   detail,
   actions,
 }: {
   player: ApplicantPlayer;
   status: TrialApplicationStatus;
+  /** Where they stand in the academy's words, when the list knows it — drawn instead of the raw status. */
+  stage?: ApplicationStage;
   /** One line under the identity — the verdict, or what is being waited on. */
   detail?: React.ReactNode;
   /** Whatever this viewer may do about this applicant, or nothing. */
@@ -53,6 +62,7 @@ export function ApplicantCard({
     .filter(Boolean)
     .join(' · ');
   const age = player?.birthDate ? ageFrom(player.birthDate) : null;
+  const gender = genderLabel(player?.gender, t);
 
   return (
     <li className="border-border flex flex-wrap items-center gap-x-4 gap-y-3 border-b p-3 last:border-b-0 sm:flex-nowrap">
@@ -79,6 +89,7 @@ export function ApplicantCard({
           {[
             positions || null,
             age !== null ? f(t.trials.ageYears, { age }) : null,
+            gender,
             player?.dominantFoot ? footLabel(player.dominantFoot, t) : null,
           ]
             .filter(Boolean)
@@ -88,7 +99,7 @@ export function ApplicantCard({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <StatusBadge status={status} />
+        {stage ? <StageBadge stage={stage} /> : <StatusBadge status={status} />}
       </div>
 
       {/*
@@ -111,6 +122,17 @@ function footLabel(foot: DominantFoot, t: ReturnType<typeof useI18n>['t']) {
 }
 
 /**
+ * The player's gender, in the reader's words — or nothing for a value the
+ * profile does not state, since "—" beside a name says less than silence.
+ */
+function genderLabel(gender: string | null | undefined, t: ReturnType<typeof useI18n>['t']) {
+  const value = (gender ?? '').trim().toLowerCase();
+  if (value === 'male') return t.trials.genderMale;
+  if (value === 'female') return t.trials.genderFemale;
+  return null;
+}
+
+/**
  * What is happening to this applicant, in a sentence — for every status.
  *
  * A card shows an action when this viewer has one, and this when they do not.
@@ -128,8 +150,6 @@ export function useApplicationStep(status: TrialApplicationStatus): string {
 
   const step: Record<TrialApplicationStatus, string> = {
     APPLIED: t.trials.stepApplied,
-    SCREENING: t.trials.stepScreening,
-    SHORTLISTED: t.trials.stepShortlisted,
     INVITED: t.trials.stepInvited,
     CONFIRMED: t.trials.stepConfirmed,
     PASSED: t.trials.stepPassed,
@@ -157,14 +177,12 @@ export function StatusBadge({ status }: { status: TrialApplicationStatus }) {
       ? 'success'
       : status === 'REJECTED' || status === 'FAILED'
         ? 'danger'
-        : status === 'INVITED' || status === 'SHORTLISTED' || status === 'CONFIRMED'
+        : status === 'INVITED' || status === 'CONFIRMED'
           ? 'warning'
           : 'neutral';
 
   const label: Record<TrialApplicationStatus, string> = {
     APPLIED: t.trials.statusApplied,
-    SCREENING: t.trials.statusScreening,
-    SHORTLISTED: t.trials.statusShortlisted,
     INVITED: t.trials.statusInvited,
     CONFIRMED: t.trials.statusConfirmed,
     PASSED: t.trials.statusPassed,

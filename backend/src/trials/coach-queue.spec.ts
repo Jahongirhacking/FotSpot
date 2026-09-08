@@ -32,7 +32,11 @@ function build() {
   return { service, prisma };
 }
 
-async function queryFor(options?: { page?: number; pageSize?: number }) {
+async function queryFor(options?: {
+  page?: number;
+  pageSize?: number;
+  type?: 'GENERAL' | 'PRIVATE';
+}) {
   const { service, prisma } = build();
   await service.listPendingForCoach(COACH, options);
   const [args] = prisma.trialApplication.findMany.mock.calls[0] ?? [];
@@ -75,10 +79,42 @@ describe('which applications reach a coach’s queue', () => {
     expect(where.trial.status).toBeUndefined();
   });
 
-  /* Both kinds: the queue is a list of jobs, and the job is the same. */
-  it('does not filter on the trial’s type', async () => {
+  /* Both kinds: the assigned coach decides a global trial's applicants and a
+     private trial's invitee alike (TRIAL.md §10). Filtering on the kind would
+     hide half the work. */
+  it('does not filter on the trial’s kind unless asked', async () => {
     const { where } = await queryFor();
     expect(where.trial.type).toBeUndefined();
+  });
+
+  /* The dashboard lists private-trial players and global-trial sessions apart. */
+  it('narrows to one kind when the screen asks for it', async () => {
+    const { where } = await queryFor({ type: 'PRIVATE' });
+    expect(where.trial.type).toBe('PRIVATE');
+    expect(where.trial.coaches.some.coachUserId).toBe(COACH);
+  });
+
+  /*
+   * An unanswered invitation is not in the queue — the player has not agreed
+   * to come, so there is nobody to judge (TRIAL.md §11). It is *counted*, so
+   * the screen can say "2 invitations pending" without naming anyone.
+   */
+  it('never lists an unanswered invitation', async () => {
+    const { where } = await queryFor({ type: 'PRIVATE' });
+    expect(where.status.in).not.toContain('INVITED');
+  });
+
+  it('counts the unanswered invitations on the same trials, by the same scope', async () => {
+    const { service, prisma } = build();
+    prisma.trialApplication.count.mockResolvedValueOnce(0).mockResolvedValueOnce(2);
+
+    const page = await service.listPendingForCoach(COACH, { type: 'PRIVATE' });
+
+    expect(page.pendingInvitations).toBe(2);
+    const pendingArgs = prisma.trialApplication.count.mock.calls[1][0] as Record<string, any>;
+    expect(pendingArgs.where.status).toBe('INVITED');
+    expect(pendingArgs.where.trial.coaches.some.coachUserId).toBe(COACH);
+    expect(pendingArgs.where.trial.type).toBe('PRIVATE');
   });
 });
 
@@ -169,6 +205,6 @@ describe('a new trial gets the academy’s coaches', () => {
   /* An academy with no coaches yet still gets its trial — it just has no staff
      on it, which the trial page now says out loud. */
   it('still creates the trial when the academy has no coaches', () => {
-    expect(TrialsService.prototype.create.toString()).toMatch(/coaches\.length > 0/);
+    expect(TrialsService.prototype.create.toString()).toMatch(/staff\.length > 0/);
   });
 });

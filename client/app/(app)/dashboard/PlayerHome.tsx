@@ -193,7 +193,6 @@ function statusTone(status: TrialApplication['status']) {
   if (status === 'ACCEPTED') return 'success' as const;
   if (status === 'REJECTED') return 'danger' as const;
   if (status === 'INVITED') return 'primary' as const;
-  if (status === 'SHORTLISTED') return 'info' as const;
   return 'neutral' as const;
 }
 

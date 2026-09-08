@@ -4,7 +4,7 @@ import { Inbox } from 'lucide-react';
 import { academies, recommendations } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import type { AcademyHistoryRow, AcademyProfile, RankedRecommendation } from '@/lib/api/types';
-import { ReviewFlow } from './ReviewFlow';
+import { InboxQueue } from './InboxQueue';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { getServerT } from '@/lib/i18n/server';
 
@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: 'Recommendation inbox' };
 /**
  * Academy recommendation inbox, ranked by credibility (README §1.5.1/§1.5.2).
  *
- * Two lists on purpose: the ranked view answers "who should I look at first", the
- * raw list answers "what has been sent". Ranking replaces neither.
+ * Two lists on purpose: the queue answers "who should I look at first", the
+ * history answers "what did we do about them". Ranking replaces neither.
  */
 export default async function InboxPage() {
   const session = await getSession();
@@ -60,7 +60,7 @@ export default async function InboxPage() {
         {t.recommendations.howOrderWorksBody}
       </Alert>
 
-      <ReviewFlow academyId={academy?.id} initialItems={ranked.items} initialHistory={history} />
+      <InboxQueue academyId={academy?.id} initialItems={ranked.items} initialHistory={history} />
     </div>
   );
 }

@@ -24,23 +24,15 @@ export type PlayingStyle =
   | 'DEFENSIVE_KEEPER';
 
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
-export type RecommendationStatus = 'PENDING' | 'REVIEWING' | 'ACCEPTED' | 'REJECTED';
+export type RecommendationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 /** In the order it moves — see the Prisma enum for what each one means. */
 export type TrialApplicationStatus =
-  | 'APPLIED'
-  | 'SCREENING'
-  | 'SHORTLISTED'
-  | 'INVITED'
-  | 'CONFIRMED'
-  | 'PASSED'
-  | 'FAILED'
-  | 'REJECTED'
-  | 'ACCEPTED';
+  'APPLIED' | 'INVITED' | 'CONFIRMED' | 'PASSED' | 'FAILED' | 'REJECTED' | 'ACCEPTED';
 
 /**
- * A coach's verdict after testing the player in person.
+ * The assigned coach's verdict after testing the player in person.
  *
- * Never ACCEPT/REJECT — those are the online review's words. See TRIAL.md §36.
+ * Never ACCEPT/REJECT — those are a recommendation's answers, not a trial's.
  */
 export type TrialVerdict = 'PASS' | 'FAIL';
 /** One value per card attribute (§21.1), plus highlights. */
@@ -349,9 +341,13 @@ export interface AcademyInvitation {
   role: AcademyMemberRole;
   status: InvitationStatus;
   note: string | null;
+  /** What the person said when turning it down, if anything. */
+  answerNote?: string | null;
   invitedByUserId: string;
   createdAt: string;
   decidedAt: string | null;
+  /** When an acceptance was acted on. Null while it may still be undone. */
+  settledAt?: string | null;
 }
 
 /** The invitee's view — they need to know which academy is asking. */
@@ -427,10 +423,45 @@ export interface PlayerMemberships {
   academyHistory: SquadMembership[];
 }
 
+export type AgeBand = 'U12' | 'U14' | 'U16' | 'U18' | 'Senior';
+
+/** The exact facts about a player — an academy's manager only. */
+export interface PlayerDetails {
+  birthDate: string;
+  age: number;
+  region: string | null;
+  district: string | null;
+}
+
+/**
+ * How to reach a player. Sent only to an academy's manager — null for every
+ * other viewer, and never inside the cached profile.
+ */
+export interface PlayerContacts {
+  email: string | null;
+  phone: string | null;
+  /** A `tg://user?id=` link, when the account is connected to Telegram. */
+  telegram: string | null;
+}
+
 export interface PlayerProfile {
   id: string;
   /** Absent on responses that predate the field; never null once present. */
   memberships?: PlayerMemberships;
+  /** For an academy's manager only; null or absent for everybody else. */
+  contacts?: PlayerContacts | null;
+  /**
+   * The exact date of birth, the age it makes, and where the player lives —
+   * for an academy's manager only. Everybody else gets the age band and no
+   * address (README §11, TRIAL.md Rule 28).
+   */
+  details?: PlayerDetails | null;
+  /**
+   * The age band, computed by the API from the real date of birth. On the
+   * public profile this is what stands in for `birthDate`, which is null
+   * there for anybody but an academy's manager.
+   */
+  ageBand?: AgeBand;
   /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
@@ -443,7 +474,12 @@ export interface PlayerProfile {
   userId: string;
   firstName: string;
   lastName: string;
-  birthDate: string;
+  /**
+   * Null on the public profile for anybody but an academy's manager — the
+   * band (`ageBand`) is what a stranger is told. Always present on the lists
+   * an academy or an admin reads.
+   */
+  birthDate: string | null;
   gender: string;
   height?: number | null;
   weight?: number | null;
@@ -640,24 +676,17 @@ export interface RankedRecommendation {
   recommendationIds: string[];
   recommendationCount: number;
   credibility: number;
-  /** Where this player stands in the coach review — null before anyone is asked. */
-  review: InboxReview | null;
-}
-
-export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-export interface InboxReview {
-  id: string;
-  recommendationId: string;
-  status: ReviewStatus;
-  note: string | null;
-  decidedAt: string | null;
-  coach: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    avatarUrl: string | null;
-  };
+  /**
+   * The private trial this academy has invited them to, while it is still
+   * unanswered or upcoming — null until the manager sends one. The row stays
+   * in the inbox until the trial answers the recommendation.
+   */
+  invitation: {
+    applicationId: string;
+    status: TrialApplicationStatus;
+    trialId: string;
+    date: string | null;
+  } | null;
 }
 
 /** A settled recommendation: invited, or turned down. */
@@ -687,19 +716,14 @@ export interface AcademyHistoryRow {
     avatarUrl: string | null;
   };
   note: string | null;
-  review: {
-    status: ReviewStatus;
-    note: string | null;
-    coach: { id: string; firstName: string | null; lastName: string | null };
-  } | null;
 }
 
-/** One player waiting on this coach's verdict. */
 /**
  * One page of anything the API paginates — `{ items, total, page, pageSize }`.
  *
  * The shape backend/CLAUDE.md §5 mandates for every paginated read, named once
- * so a caller writes `Paged<CoachReview>` rather than restating the envelope.
+ * so a caller writes `Paged<PendingTrialApplicant>` rather than restating the
+ * envelope.
  */
 export interface Paged<T> {
   items: T[];
@@ -711,9 +735,10 @@ export interface Paged<T> {
 /**
  * A player a coach still owes a verdict, with the session they owe it on.
  *
- * Carries the trial because the coach's queue mixes both kinds deliberately —
- * it is a list of jobs, not a catalogue — and the card has to say which flow
- * each one is.
+ * Carries the trial because the coach's queue can mix both kinds — it is a
+ * list of jobs, not a catalogue — and the card has to say which flow each one
+ * is. Never an unanswered invitation: the player has to have agreed to come
+ * before there is anybody to judge (TRIAL.md §11).
  */
 export interface PendingTrialApplicant {
   id: string;
@@ -730,27 +755,36 @@ export interface PendingTrialApplicant {
     location: string;
   };
   player: PlayerProfile & { avatarUrl?: string | null };
+  /** Set once a verdict is written and patched onto the row in place. */
+  result?: TrialApplication['result'];
 }
 
-export interface CoachReview {
-  id: string;
-  status: ReviewStatus;
-  note: string | null;
-  assignedAt: string;
-  decidedAt: string | null;
-  academy: { id: string; name: string };
-  /**
-   * Who is being judged. The only person on this shape.
-   *
-   * There is deliberately no scout and no recommendation: a coach is never told
-   * who put the player forward — see `RecommendationsService.listMyReviews` for
-   * why that would put a thumb on the scale.
-   */
-  player: NonNullable<RankedRecommendation['player']> & {
-    avatarUrl?: string | null;
-    secondaryPosition?: string | null;
-    dominantFoot?: DominantFoot | null;
-  };
+/**
+ * The coach's queue, one page at a time. `pendingInvitations` counts the
+ * private-trial invitations still unanswered on the coach's sessions — enough
+ * to say "2 invitations pending" without naming anybody.
+ */
+export interface CoachQueuePage extends Paged<PendingTrialApplicant> {
+  pendingInvitations: number;
+}
+
+/**
+ * GET /trials/:id/applications. The manager gets every row; a coach gets the
+ * participants only, and `pending` says how many invitations are still
+ * unanswered.
+ */
+/**
+ * One page of one stage of a trial's applicants, with how many sit at every
+ * stage — the list is never read whole (see `useStagePages`).
+ */
+export interface TrialApplicationsPage {
+  items: TrialApplication[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<ApplicationStage, number>;
+  /** Invitations still awaiting the player's answer — counted, never named. */
+  pending: number;
 }
 
 export type TrialStatus = 'OPEN' | 'ARCHIVED';
@@ -852,51 +886,124 @@ export interface Trial {
  * on is finished however recent it is, and one with players outstanding is work
  * however long ago the date was.
  */
-/** This coach's own review of one player — see RecommendationsService.myReviewFor. */
-export interface MyCoachReview {
-  id: string;
-  status: ReviewStatus;
-  note: string | null;
-  assignedAt: string;
-  decidedAt: string | null;
-  academy: { id: string; name: string };
-}
-
 export interface CoachTrial extends Trial {
   applicantCount: number;
   awaitingVerdict: number;
 }
+
+/**
+ * Where an applicant stands, in the seven words the academy reads
+ * (TRIAL.md §32). Derived by the API from the application, the verdict, the
+ * squad invitation and the membership — the story after a PASS lives in other
+ * tables, which is why the screens do not derive it themselves.
+ */
+export type ApplicationStage =
+  | 'PENDING'
+  | 'FAILED'
+  | 'PASSED'
+  | 'CANDIDACY_CLOSED'
+  | 'SQUAD_INVITED'
+  | 'INVITATION_DECLINED'
+  | 'SQUAD_JOINED';
+
+/** The tabs' order, as the brief lists them. */
+export const APPLICATION_STAGES: readonly ApplicationStage[] = [
+  'PENDING',
+  'FAILED',
+  'PASSED',
+  'CANDIDACY_CLOSED',
+  'SQUAD_INVITED',
+  'INVITATION_DECLINED',
+  'SQUAD_JOINED',
+];
 
 export interface TrialApplication {
   id: string;
   trialId: string;
   playerId: string;
   status: TrialApplicationStatus;
+  /** On the academy's lists: see `ApplicationStage`. */
+  stage?: ApplicationStage;
   /** What the academy wrote when inviting — private trials only. */
   inviteNote?: string | null;
-  /**
-   * The *online* screening, when the row came from a screen that includes it.
-   *
-   * Private trials only — a general trial is never screened online (Rule 5).
-   */
-  review?: {
-    id: string;
-    status: ReviewStatus;
-    note: string | null;
-    decidedAt: string | null;
-    coachUser: { id: string; firstName: string | null; lastName: string | null };
-  } | null;
-  /** What the coach said after testing them in person. Both trial types. */
+  /** Why the manager closed a passed player's candidacy, when they said. */
+  cancelNote?: string | null;
+  /** The assigned coach's verdict after testing them in person (TRIAL.md §10). */
   result?: {
     id: string;
     verdict: TrialVerdict;
     note: string | null;
     decidedAt: string;
+    /**
+     * When its consequences went out. Null while the coach may still undo it —
+     * see `trials.undoVerdict`.
+     */
+    settledAt?: string | null;
     coachUser: { id: string; firstName: string | null; lastName: string | null };
   } | null;
   /** Joined on the player's own list so they can read what they were invited to. */
   trial?: Trial;
   createdAt: string;
+}
+
+/**
+ * A private trial on the manager's list, with the one player it was created
+ * for. `applicant` is null only for a row whose application was removed.
+ */
+export interface PrivateTrialRow extends Trial {
+  applicant:
+    | (TrialApplication & {
+        player: PlayerProfile & { avatarUrl?: string | null };
+      })
+    | null;
+}
+
+/** One page of one stage of the academy's private trials — the same shape as the applicants. */
+export interface PrivateTrialsPage {
+  items: PrivateTrialRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<ApplicationStage, number>;
+}
+
+/** The player card the manager's desk sends with each waiting candidate. */
+export interface CandidatePlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  gender: string | null;
+  primaryPosition: string | null;
+  region: string | null;
+  district: string | null;
+  avatarUrl: string | null;
+}
+
+/**
+ * The one thing that can be waiting on a manager: a player who passed a trial
+ * and is not yet offered a squad place. It acts on the **application** that
+ * recorded the pass. Failed players never appear — a FAIL owes the manager
+ * nothing (TRIAL.md §12).
+ */
+export interface PendingAction {
+  type: 'ADD_TO_SQUAD';
+  applicationId: string;
+  playerId: string;
+  player: CandidatePlayer;
+  trial: { id: string; title: string; type: TrialType; date: string | null };
+  passedAt: string;
+}
+
+/**
+ * Why a scout may not put this player forward right now: they are on an
+ * academy's books, or an academy is already looking at them on a pitch.
+ */
+export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL';
+
+export interface RecommendEligibility {
+  canRecommend: boolean;
+  reason: RecommendBlocker | null;
 }
 
 export interface CoachAssessment {
@@ -916,8 +1023,6 @@ export interface CoachAssessment {
 }
 
 export type NotificationEvent =
-  | 'REVIEW_ASSIGNED'
-  | 'REVIEW_DECIDED'
   | 'ACADEMY_INVITATION'
   | 'ACADEMY_JOIN_INVITATION'
   | 'ACADEMY_JOIN_ANSWER'
@@ -926,7 +1031,6 @@ export type NotificationEvent =
   | 'TRIAL_INVITATION'
   | 'TRIAL_RESCHEDULED'
   | 'TRIAL_RESULT'
-  | 'SQUAD_PLACEMENT'
   | 'SQUAD_JOINED'
   | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT';

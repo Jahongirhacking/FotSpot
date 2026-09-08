@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog';
+import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { browserFetch } from '@/lib/api/browser';
@@ -23,8 +24,17 @@ import type { Trial } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
 import { htmlToMarkdown, markdownToHtml, sanitizeNote } from '@/lib/rich-text';
 import { cn, localNowInput } from '@/lib/utils';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
+
+/** One of the academy's endorsed coaches, as the endorsements endpoint lists them. */
+interface EndorsedCoach {
+  userId: string;
+  user: { id: string; firstName: string | null; lastName: string | null } | null;
+}
+
+const coachName = (row: EndorsedCoach) =>
+  [row?.user?.firstName, row?.user?.lastName].filter(Boolean).join(' ') || row?.userId.slice(0, 8);
 
 /**
  * Who a trial is open to.
@@ -91,7 +101,37 @@ export function TrialForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const editing = Boolean(trial);
+
+  /*
+   * Who works the session — the academy's endorsed coaches, each on or off.
+   *
+   * Every coach is on by default on a new trial, which is what the API does
+   * when nothing is named; the manager unticks the ones who will not be there.
+   * On an existing trial the toggles start from who is already assigned, and
+   * a change is sent as the whole list once the edit itself has saved — the
+   * same replace-the-list call the trial page's staff card makes.
+   */
+  const staff = useQuery({
+    queryKey: ['endorsed-coaches', academyId],
+    queryFn: () => browserFetch<EndorsedCoach[]>(`/academies/${academyId}/endorsements?role=COACH`),
+    enabled: open,
+  });
+  const assigned = useQuery({
+    queryKey: ['trial-coaches', trial?.id],
+    queryFn: () =>
+      browserFetch<{ id: string }[]>(`/trials/${trial?.id}/coaches`).then((rows) =>
+        rows.map((row) => row.id),
+      ),
+    enabled: open && editing,
+  });
+  /** Null until the manager touches a toggle — derived from the queries until then. */
+  const [pickedCoaches, setPickedCoaches] = React.useState<string[] | null>(null);
+  const defaultCoaches = editing
+    ? (assigned.data ?? [])
+    : (staff.data ?? []).map((row) => row.userId);
+  const coachUserIds = pickedCoaches ?? defaultCoaches;
 
   const [ageRange, setAgeRange] = React.useState<[number, number]>([
     trial?.ageRangeMin ?? 12,
@@ -138,10 +178,25 @@ export function TrialForm({
   const windowInvalid = endBeforeStart || endTimeBeforeStart || deadlineAfterExam;
 
   const save = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      editing
-        ? browserFetch<Trial>(`/trials/${trial!.id}`, { method: 'PATCH', body })
-        : browserFetch<Trial>(`/trials/academy/${academyId}`, { method: 'POST', body }),
+    mutationFn: async (body: Record<string, unknown>) => {
+      if (!editing) {
+        return browserFetch<Trial>(`/trials/academy/${academyId}`, {
+          method: 'POST',
+          body: { ...body, coachUserIds },
+        });
+      }
+      const saved = await browserFetch<Trial>(`/trials/${trial!.id}`, { method: 'PATCH', body });
+      // Only when the manager changed it: the staff list is its own resource,
+      // and rewriting it unchanged on every edit would be a write for nothing.
+      if (pickedCoaches) {
+        await browserFetch(`/trials/${trial!.id}/coaches`, {
+          method: 'POST',
+          body: { coachUserIds: pickedCoaches },
+        });
+        void queryClient.invalidateQueries({ queryKey: ['trial-coaches', trial!.id] });
+      }
+      return saved;
+    },
     onSuccess: onSaved,
     meta: { success: editing ? t.trials.trialUpdated : t.trials.trialCreated },
   });
@@ -154,9 +209,10 @@ export function TrialForm({
 
     const form = new FormData(event.currentTarget);
     save.mutate({
-      // Never PRIVATE: a private trial is what an accepted review earns, not
-      // something a manager announces. Sent only on create — `type` is not
-      // editable, and PATCH would be changing what kind of thing this is.
+      // Never PRIVATE: a private trial is an invitation to one player, sent
+      // from their profile or the inbox, not something a manager announces.
+      // Sent only on create — `type` is not editable, and PATCH would be
+      // changing what kind of thing this is.
       ...(editing ? {} : { type: 'GENERAL' }),
       title: String(form.get('title') ?? '').trim(),
       location: String(form.get('location') ?? '').trim(),
@@ -438,6 +494,43 @@ export function TrialForm({
                     )}
                   </div>
                 </div>
+              </Field>
+            </Section>
+
+            <Section title={t.trials.sectionStaff}>
+              <Field
+                label={t.trials.assignedCoaches}
+                htmlFor="trial-coaches"
+                hint={t.trials.assignedCoachesHint}
+              >
+                {staff.isSuccess && (staff.data ?? []).length === 0 ? (
+                  <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
+                ) : (
+                  <ul id="trial-coaches" className="flex flex-wrap gap-2">
+                    {(staff.data ?? []).map((row) => {
+                      const on = coachUserIds.includes(row.userId);
+                      return (
+                        <li key={row.userId}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={on ? 'primary' : 'outline'}
+                            aria-pressed={on}
+                            onClick={() =>
+                              setPickedCoaches(
+                                on
+                                  ? coachUserIds.filter((id) => id !== row.userId)
+                                  : [...coachUserIds, row.userId],
+                              )
+                            }
+                          >
+                            {coachName(row)}
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </Field>
             </Section>
 

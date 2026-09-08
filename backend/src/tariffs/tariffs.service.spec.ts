@@ -94,11 +94,13 @@ describe('TariffsService — clip limit (A over B days)', () => {
 
 describe('TariffsService — pending recommendations (C)', () => {
   it('refuses the scout who is already at the cap, and allows the one below it', async () => {
-    await expect(build({ recommendations: 9 }).service.assertCanRecommend('s1')).resolves
-      .toMatchObject({ remaining: 1 });
+    await expect(
+      build({ recommendations: 9 }).service.assertCanRecommend('s1'),
+    ).resolves.toMatchObject({ remaining: 1 });
 
-    await expect(build({ recommendations: 10 }).service.assertCanRecommend('s1')).rejects
-      .toBeInstanceOf(ForbiddenException);
+    await expect(
+      build({ recommendations: 10 }).service.assertCanRecommend('s1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   /**
@@ -125,7 +127,7 @@ describe('TariffsService — pending recommendations (C)', () => {
         scoutId: 'scout-1',
         clearedAt: null,
         OR: [
-          { targets: { some: { status: { in: ['PENDING', 'REVIEWING'] } } } },
+          { targets: { some: { status: 'PENDING' } } },
           { targets: { none: {} } },
         ],
       },
@@ -135,18 +137,18 @@ describe('TariffsService — pending recommendations (C)', () => {
 
 describe('TariffsService — academy limits (D and E)', () => {
   it('refuses a sixth coach and a sixth group', async () => {
-    await expect(build({ coaches: 5 }).service.assertCanAddCoach('m1', 'a1')).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      build({ coaches: 5 }).service.assertCanAddCoach('m1', 'a1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
       build({ groups: 5 }).service.assertCanCreateGroup('m1', 'a1'),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('allows the fifth of each', async () => {
-    await expect(build({ coaches: 4 }).service.assertCanAddCoach('m1', 'a1')).resolves.toMatchObject(
-      { remaining: 1 },
-    );
+    await expect(
+      build({ coaches: 4 }).service.assertCanAddCoach('m1', 'a1'),
+    ).resolves.toMatchObject({ remaining: 1 });
     await expect(
       build({ groups: 4 }).service.assertCanCreateGroup('m1', 'a1'),
     ).resolves.toMatchObject({ remaining: 1 });

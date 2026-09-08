@@ -9,8 +9,6 @@ import * as React from 'react';
 /** What the filter bar can narrow to. Only states the domain actually has. */
 const FILTERABLE = [
   'APPLIED',
-  'SCREENING',
-  'SHORTLISTED',
   'INVITED',
   'CONFIRMED',
   'PASSED',
@@ -50,12 +48,15 @@ export function ApplicantGrid<T extends Filterable>({
   applicants,
   children,
   empty,
+  statusFilter = true,
 }: {
   applicants: T[];
   /** Renders one card. Given the filtered list, in the order shown. */
   children: (applicant: T) => React.ReactNode;
   /** Shown when the filters exclude everything — not when there are none. */
   empty?: React.ReactNode;
+  /** Off where stage tabs above the list already narrow it — see `StageTabs`. */
+  statusFilter?: boolean;
 }) {
   const { t } = useI18n();
   const [query, setQuery] = React.useState('');
@@ -99,7 +100,7 @@ export function ApplicantGrid<T extends Filterable>({
             />
           </div>
 
-          {present.length > 1 && (
+          {statusFilter && present.length > 1 && (
             <Select
               value={status}
               aria-label={t.trials.filterByStatus}
@@ -136,8 +137,6 @@ export function ApplicantGrid<T extends Filterable>({
 /** Status value to its dictionary key, so the dropdown reads in the viewer's language. */
 const STATUS_KEY: Record<TrialApplicationStatus, string> = {
   APPLIED: 'statusApplied',
-  SCREENING: 'statusScreening',
-  SHORTLISTED: 'statusShortlisted',
   INVITED: 'statusInvited',
   CONFIRMED: 'statusConfirmed',
   PASSED: 'statusPassed',

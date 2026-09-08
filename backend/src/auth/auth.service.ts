@@ -544,29 +544,44 @@ export class AuthService {
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
 
-    /*
-     * A code proved the number; it did not give the account a password.
-     *
-     * Without one, the next sign-in has to send another SMS — which is the cost
-     * this whole flow exists to remove. So the account is handed the same lock an
-     * admin-created one gets: `mustChangePassword` holds it on the password
-     * screen (see the app layout's ALLOWED_WHILE_LOCKED) and `changePassword`
-     * already accepts a new password with no current one while it is set.
-     *
-     * Reusing that rather than inventing a half-authenticated session: a second
-     * kind of "signed in but not really" is a second thing every guard has to
-     * know about, and this one is already understood across the app.
-     */
-    if (!user.passwordHash && !user.mustChangePassword) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { mustChangePassword: true },
-      });
-      this.logger.log('[AUTH] OTP verified for an account with no password — password setup required');
-    }
+    // A code proved the number; it did not give the account a password.
+    // Without one, the next sign-in has to send another SMS — which is the
+    // cost this whole flow exists to remove.
+    await this.requirePasswordIfMissing(user, 'OTP');
 
     await this.throttle.clear('login', client.ipAddress);
     return this.issueTokens(user.id, client);
+  }
+
+  /**
+   * Holds an account with no password on the password screen after it signs in.
+   *
+   * A code, a Google token or a Telegram signature proves who somebody is; it
+   * does not give the account a password, and without one there is no
+   * username-and-password way back in — the next sign-in depends on the same
+   * third party being to hand. So the account is handed the same lock an
+   * admin-created one gets: `mustChangePassword` holds it on the password
+   * screen (see the app layout's ALLOWED_WHILE_LOCKED) and `changePassword`
+   * already accepts a new password with no current one while it is set.
+   *
+   * Reusing that rather than inventing a half-authenticated session: a second
+   * kind of "signed in but not really" is a second thing every guard has to
+   * know about, and this one is already understood across the app. The
+   * screen tells a social sign-in apart from a minted password by
+   * `hasPassword` on the profile, so the wording fits.
+   */
+  private async requirePasswordIfMissing(
+    user: { id: string; passwordHash: string | null; mustChangePassword: boolean },
+    via: 'OTP' | 'Google' | 'Telegram',
+  ) {
+    if (user.passwordHash || user.mustChangePassword) return;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { mustChangePassword: true },
+    });
+    this.logger.log(
+      `[AUTH] ${via} sign-in for an account with no password — password setup required`,
+    );
   }
 
   /**
@@ -638,6 +653,9 @@ export class AuthService {
           data: { emailVerifiedAt: new Date() },
         });
       }
+      // An account that signed up by email has a password; one that only ever
+      // came through Google does not, and is asked for one after this.
+      await this.requirePasswordIfMissing(existing, 'Google');
       return this.issueTokens(existing.id, client);
     }
 
@@ -650,6 +668,9 @@ export class AuthService {
         firstName: identity.firstName ?? null,
         lastName: identity.lastName ?? null,
         username: await this.mintUsername(this.prisma),
+        // Brand new, with no password: held on the password screen after the
+        // first-login question — see `requirePasswordIfMissing`.
+        mustChangePassword: true,
       },
     });
     return this.issueTokens(user.id, client);
@@ -692,6 +713,9 @@ export class AuthService {
     });
     if (existing) {
       if (!existing.isActive) throw new UnauthorizedException('Account disabled');
+      // Linked from a signed-in session, the account may already have a
+      // password; one that only ever came through Telegram does not.
+      await this.requirePasswordIfMissing(existing, 'Telegram');
       return this.issueTokens(existing.id, client);
     }
 
@@ -701,6 +725,8 @@ export class AuthService {
         firstName: result.firstName ?? null,
         lastName: result.lastName ?? null,
         username: await this.mintUsername(this.prisma),
+        // Brand new, with no password — see `requirePasswordIfMissing`.
+        mustChangePassword: true,
       },
     });
     return this.issueTokens(user.id, client);

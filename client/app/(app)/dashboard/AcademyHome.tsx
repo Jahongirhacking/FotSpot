@@ -136,7 +136,7 @@ export async function AcademyHome({ token, t }: { token: string; t: Dictionary }
         blocked on the manager. The inbox is a queue to work through; this is
         work already half done that stops until they finish it.
       */}
-      <PendingTrialActions academyId={academy?.id} />
+      <PendingTrialActions />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card>

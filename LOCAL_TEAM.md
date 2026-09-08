@@ -45,13 +45,11 @@ However, its workflow is intentionally much simpler.
 ```text
 Player
   ↓
-Recommendation
-  ↓
-Online Coach Review
+Recommendation / Application
   ↓
 Private Trial / Global Trial
   ↓
-Coach Pass / Fail
+Pass / Fail
   ↓
 Squad
 ```
@@ -68,7 +66,7 @@ Invite / Accept Player
 Squad
 ```
 
-There is **no Coach, Online Coach Review, or Trial** for Local Teams.
+There is **no Coach, Trial Invitation, or Trial** for Local Teams.
 
 ---
 
@@ -81,7 +79,7 @@ Existing verified Academy functionality must remain unchanged:
 - Coach exists.
 - Academy Manager can create/manage Coaches.
 - Coach transfer works.
-- Online Coach Review works.
+- Private Trial invitations work.
 - Trials work.
 - Coach can Pass/Fail a trial.
 - Existing recommendation lifecycle works.
@@ -169,11 +167,9 @@ There must be no Coach-management menu.
 - Create a Coach.
 - Transfer a Coach.
 - Manage Coaches.
-- Create Online Coach Reviews.
-- Send players to Online Coach Review.
+- Invite players to Private Trials.
 - Create Trials.
 - Manage Trials.
-- Accept/reject Coach Review.
 - Perform Pass/Fail trial operations.
 
 ---
@@ -204,7 +200,7 @@ Create Coach
 Transfer Coach
 Assign Coach
 Remove Coach
-Coach Review
+Private Trial Invitation
 ```
 
 This restriction must be enforced on both:
@@ -216,9 +212,9 @@ Hiding buttons in the frontend is not sufficient.
 
 ---
 
-# 7. No Online Coach Review
+# 7. No Private Trial Invitations
 
-Local Teams do not use the Coach review pipeline.
+Local Teams do not use the trial pipeline at all — not the public one and not the invitation to a private trial (TRIAL.md §11).
 
 For a Local Team:
 
@@ -235,12 +231,12 @@ There must be no:
 ```text
 Player
   ↓
-Online Coach Review
+Private Trial Invitation
   ↓
-Accept / Reject
+Pass / Fail
 ```
 
-Any backend endpoint that creates or manages Online Coach Reviews must reject requests involving an `UNVERIFIED` Academy/Local Team.
+Any backend endpoint that invites a player to a trial must reject requests involving an `UNVERIFIED` Academy/Local Team.
 
 Use the project's existing authorization/error conventions.
 
@@ -306,7 +302,7 @@ Support Squad Recruitment
 They do not trigger:
 
 ```text
-Online Review
+Trial Invitation
 Trial
 Pass / Fail
 Recommendation Reset
@@ -323,7 +319,7 @@ This is one of the most important business rules.
 
 The existing verified Academy logic remains unchanged.
 
-For example, if a player fails an applicable Online Coach Review or Trial, the existing system may:
+For example, if a player fails an applicable Trial, or the Academy turns a recommendation down, the existing system may:
 
 - remove recommendations from the player;
 - recalculate success rates of scouts who recommended that player.
@@ -402,7 +398,7 @@ Accept into squad
 They must NOT:
 
 ```text
-Online Review
+Trial Invitation
 Trial
 Pass
 Fail
@@ -569,7 +565,7 @@ Local Team should NOT receive:
 Coach Management
 Coach Creation
 Coach Transfer
-Online Coach Review
+Private Trial Invitation
 Trial Management
 Trial Creation
 Trial Pass/Fail
@@ -589,9 +585,7 @@ Create Trial
 Apply to Trial
 Accept Trial
 Reject Trial
-Create Online Coach Review
-Accept Coach Review
-Reject Coach Review
+Invite to Private Trial
 Pass Trial
 Fail Trial
 ```
@@ -610,7 +604,7 @@ Local Team → 403
 POST /trial
 Local Team → 403
 
-POST /coach-review
+POST /recommendations/players/:playerId/invite
 Local Team → 403
 ```
 
@@ -781,7 +775,7 @@ Before writing code, inspect the existing repository and identify:
 - Coach creation.
 - Coach transfer.
 - Coach permissions.
-- Online Coach Review model/workflow.
+- Private Trial invitation workflow.
 - Trial model/workflow.
 - Player invitation flow.
 - Squad membership logic.
@@ -811,7 +805,7 @@ Implement in this order:
 5. Add Local Team manager permissions.
 6. Isolate Local Team navigation/routes.
 7. Disable Coach functionality for Local Teams.
-8. Disable Online Coach Review for Local Teams.
+8. Disable Private Trial invitations for Local Teams.
 9. Disable Trial functionality for Local Teams.
 10. Reuse existing Player Invite/Squad logic where appropriate.
 11. Allow Local Teams to accept/add scouts.
@@ -847,7 +841,7 @@ Shared:
 
 Verified Academy-specific:
 - Coach
-- Online Coach Review
+- Private Trial invitations
 - Trials
 - Pass/Fail
 - Recommendation lifecycle
@@ -855,7 +849,7 @@ Verified Academy-specific:
 
 Local Team-specific:
 - No Coach
-- No Online Review
+- No Trial invitations
 - No Trials
 - Squad placement only
 - Recommendations remain unchanged
@@ -879,7 +873,7 @@ Do not accidentally change:
 - Verified Academy permissions.
 - Coach behavior.
 - Coach transfers.
-- Online Reviews.
+- Private Trial invitations.
 - Trials.
 - Trial Pass/Fail.
 - Recommendation cleanup.
@@ -898,7 +892,7 @@ The new Local Team feature must behave as an isolated extension.
 
 - Existing Academy behavior remains unchanged.
 - Coaches continue to work.
-- Online Coach Review continues to work.
+- Private Trial invitations continue to work.
 - Trials continue to work.
 - Pass/Fail continues to work.
 - Recommendation lifecycle continues to work.
@@ -924,7 +918,7 @@ The new Local Team feature must behave as an isolated extension.
 - Local Team cannot create Coaches.
 - Local Team cannot transfer Coaches.
 - Local Team cannot create Trials.
-- Local Team cannot use Online Coach Review.
+- Local Team cannot invite players to Private Trials.
 - Local Teams do not appear in Verified Academy lists.
 - Player Profile shows the player's current squad.
 - Player Profile identifies whether the squad belongs to a Verified Academy or Local Team.
@@ -960,8 +954,8 @@ The default architecture should be:
               |                     |
        Existing workflow        Simplified workflow
               |                     |
-       Coach + Review             No Coach
-       Trials + Pass/Fail         No Review
+       Coach + Invitations        No Coach
+       Trials + Pass/Fail         No Invitations
        Recommendation             No Trials
        lifecycle                  Squad only
        Scout recalculation        Recommendations unchanged

@@ -10,7 +10,7 @@ import type { PrismaService } from '../prisma/prisma.service';
  * say the same thing — the academy vouches for this person as a coach.
  *
  * `updateMember` did not. A manager promoting a scout to coach produced
- * somebody the squad list called a coach and every review path refused, with an
+ * somebody the squad list called a coach and every trial path refused, with an
  * error about the *academy* having no coaches. The person was in the squad; the
  * rows that make that mean anything were missing.
  */

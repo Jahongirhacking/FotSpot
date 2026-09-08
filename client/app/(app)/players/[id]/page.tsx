@@ -15,10 +15,11 @@ import { jsonLd } from '@/lib/seo';
 import { breadcrumbLd, personLd } from '@/lib/structured-data';
 import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
-import { ageBand, formatDate } from '@/lib/utils';
+import { bandOf, formatDate } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PlayerActions } from './PlayerActions';
+import { ContactCard } from './ContactCard';
 
 /**
  * One segment serves both `/players/<uuid>` and `/players/@handle`.
@@ -60,12 +61,9 @@ export async function generateMetadata({
   try {
     const player = await fetchPlayer(id, { revalidate: 300 });
     const name = `${player?.firstName} ${player?.lastName}`;
-    const description = [
-      player?.primaryPosition,
-      ageBand(player?.birthDate),
-      player?.region,
-      'on FotSpot',
-    ]
+    // The band and nothing more precise: the public profile carries no date of
+    // birth and no address, whoever is asking (README §11).
+    const description = [player?.primaryPosition, bandOf(player), 'on FotSpot']
       .filter(Boolean)
       .join(' · ');
 
@@ -265,12 +263,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <aside>
+      <aside className="space-y-4">
         <PlayerActions
           playerId={player?.id}
           playerName={player?.firstName}
           playerUserId={player?.userId}
         />
+        {/* Only ever present for an academy's manager — the API decides. */}
+        {player?.contacts && <ContactCard contacts={player.contacts} details={player?.details} />}
       </aside>
     </div>
   );

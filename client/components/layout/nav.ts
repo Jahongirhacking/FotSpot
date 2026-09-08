@@ -74,15 +74,13 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
 
     /*
      * A coach works inside one academy and judges the players put in front of
-     * them. Browsing other academies, hosting trials and keeping a pick list are
-     * a scout's and a manager's jobs — leaving them here made the menu a list of
-     * things a coach cannot do.
+     * them on the pitch. Browsing other academies, hosting trials and keeping a
+     * pick list are a scout's and a manager's jobs — leaving them here made the
+     * menu a list of things a coach cannot do.
      *
-     * Trials rather than a separate "Recommended players": both halves of a
-     * coach's judging are the same job seen at two moments — read the profile,
-     * then watch them play — and the online review queue now sits alongside the
-     * trials it feeds, on /trials. Two menu entries made them look like two
-     * unrelated inboxes.
+     * Trials is where their work is: the sessions they are assigned to and the
+     * private-trial verdicts they owe. Players is where they find somebody to
+     * invite to one.
      */
     case 'coach':
       return [

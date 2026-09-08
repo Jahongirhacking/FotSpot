@@ -58,6 +58,10 @@ export class UsersService {
         // Drives the forced password change on an admin-created account — the
         // client can't know to redirect without it.
         mustChangePassword: true,
+        // Whether there is a password at all: the same lock reads "change the
+        // one an admin gave you" on a minted account and "set one" on an
+        // account that only ever signed in with Google, Telegram or a code.
+        passwordHash: true,
         // Settings renders the privacy switch from this, so it has to be here
         // rather than behind a second request the page would have to wait on.
         isPrivate: true,
@@ -74,8 +78,14 @@ export class UsersService {
     const access = await this.rbac.getEffectiveAccess(userId);
     // The URL is built here, at read time, so changing CDN or provider is a
     // config change rather than a migration.
-    const { avatarKey: key, ...rest } = user;
-    return { ...rest, username, avatarUrl: this.storage.publicUrlOrNull(key), ...access };
+    const { avatarKey: key, passwordHash, ...rest } = user;
+    return {
+      ...rest,
+      username,
+      hasPassword: passwordHash !== null,
+      avatarUrl: this.storage.publicUrlOrNull(key),
+      ...access,
+    };
   }
 
   /**

@@ -7,7 +7,7 @@ import { AcademyKind } from '@prisma/client';
  * ## Why a util and not a branch at each call site
  *
  * The rule is not "local teams have fewer buttons" — it is that one specific
- * pipeline does not exist for them: coaches, the online coach review, trials,
+ * pipeline does not exist for them: coaches, trials,
  * pass/fail, and the recommendation settlement that hangs off a trial verdict.
  * Six services touch some part of that pipeline, and six hand-written `if
  * (academy.kind === 'LOCAL_TEAM') throw` lines would be six chances to word the

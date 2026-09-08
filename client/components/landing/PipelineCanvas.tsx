@@ -10,10 +10,10 @@ import { useI18n } from '@/components/layout/I18nProvider';
  * ## Why a canvas and not a diagram image
  *
  * The thing a first-time visitor cannot work out from any amount of prose is
- * *the order* — that a scout's recommendation does not get anybody in, that a
- * coach reads the profile before anybody is invited, and that the only step
- * which reaches a squad is somebody standing on a pitch. Motion carries order
- * for free: a ball travels the path and stops at each stage in turn.
+ * *the order* — that a scout's recommendation does not get anybody in, and
+ * that the only step which reaches a squad is somebody standing on a pitch.
+ * Motion carries order for free: a ball travels the path and stops at each
+ * stage in turn.
  *
  * A canvas rather than an SVG animation because the whole scene is one element
  * with one repaint, which is cheaper than animating a dozen DOM nodes on the
@@ -24,14 +24,16 @@ import { useI18n } from '@/components/layout/I18nProvider';
  * The first version moved at a constant speed, and a constant speed says every
  * step is the same size. They are not: the ball resting on a node while its card
  * lights up is what makes a reader connect the dot to the sentence. So the
- * timeline is travel-then-dwell, four times, and the dwell is the longer half.
+ * timeline is travel-then-dwell, once per stage, and the dwell is the longer
+ * half.
  *
  * ## The dashed arc underneath is the rule people get wrong
  *
- * A global trial needs no online review (TRIAL.md Rule 5), and nothing in a
- * left-to-right row of five can say so. The bypass curve is drawn permanently,
- * with a slow marching dash so it reads as a live alternative route rather than
- * a decoration, and the legend under the canvas names it in words.
+ * A global trial needs no recommendation — a player applies to it directly —
+ * and nothing in a left-to-right row of four can say so. The bypass curve is
+ * drawn permanently, with a slow marching dash so it reads as a live
+ * alternative route rather than a decoration, and the legend under the canvas
+ * names it in words.
  *
  * ## What it will not do
  *
@@ -41,30 +43,29 @@ import { useI18n } from '@/components/layout/I18nProvider';
  *   the section scrolls away, so a landing page left open in a tab is not
  *   quietly spending somebody's battery.
  * - **No re-render per frame.** The canvas paints itself at 60fps; React only
- *   hears about it when the *stage* changes, which is five times a cycle.
+ *   hears about it when the *stage* changes, which is four times a cycle.
  * - **No text baked into pixels.** Labels are real DOM beneath the canvas, so
  *   they translate with the rest of the page (§14) and a screen reader reads the
  *   stages in order. The canvas itself is `aria-hidden`, and each label is a
  *   button that seeks the animation to its stage.
  */
 
-/** One stage of the pipeline. `optional` is the online review, skipped by a global trial. */
+/** One stage of the pipeline. `optional` is the recommendation, skipped by a global trial. */
 interface Stage {
-  key: 'discovered' | 'recommended' | 'review' | 'trial' | 'squad';
+  key: 'discovered' | 'recommended' | 'trial' | 'squad';
   optional?: boolean;
 }
 
 const STAGES: Stage[] = [
   { key: 'discovered' },
-  { key: 'recommended' },
-  { key: 'review', optional: true },
+  { key: 'recommended', optional: true },
   { key: 'trial' },
   { key: 'squad' },
 ];
 
-/** Where the bypass leaves the track and where it rejoins it — Rule 5. */
+/** Where the bypass leaves the track and where it rejoins it — the open trial. */
 const BYPASS_FROM = 0;
-const BYPASS_TO = 3;
+const BYPASS_TO = 2;
 
 const TRAVEL = 1300;
 const DWELL = 900;
@@ -149,7 +150,7 @@ export function PipelineCanvas() {
       };
     };
 
-    /** Travel-then-dwell, four times over. Returns a fractional node index. */
+    /** Travel-then-dwell, once per edge. Returns a fractional node index. */
     const positionAt = (elapsed: number) => {
       if (elapsed < DWELL) return 0;
       let cursor = DWELL;
@@ -163,9 +164,9 @@ export function PipelineCanvas() {
     };
 
     /**
-     * The route a player takes to an open trial: no recommendation, no online
-     * review, straight to the pitch. Drawn under the track as a curve, because a
-     * second straight line would read as a second pipeline.
+     * The route a player takes to an open trial: no recommendation, straight to
+     * the pitch. Drawn under the track as a curve, because a second straight
+     * line would read as a second pipeline.
      */
     const drawBypass = (dashOffset: number) => {
       const from = pointAt(BYPASS_FROM);
@@ -312,7 +313,7 @@ export function PipelineCanvas() {
         /*
          * The last stop is a goal, not another tick.
          *
-         * Every node looked identical, so the run read as five equal steps that
+         * Every node looked identical, so the run read as four equal steps that
          * happened to stop. Drawing the end as a goalmouth says what the whole
          * diagram is for — a squad place is the thing being reached — and it
          * costs one shape rather than a legend explaining the same thing in
@@ -466,7 +467,7 @@ export function PipelineCanvas() {
        * somebody who wants to reread step three should not have to wait for the
        * ball to come round again.
        */}
-      <ol className="grid gap-3 sm:grid-cols-5">
+      <ol className="grid gap-3 sm:grid-cols-4">
         {STAGES.map((stage, index) => {
           const done = index < active;
           const current = index === active;

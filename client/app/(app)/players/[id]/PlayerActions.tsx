@@ -19,10 +19,15 @@ import { Alert, Skeleton } from '@/components/ui/Feedback';
 import { Field, Select, Textarea } from '@/components/ui/Field';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyKind, Follow, MyCoachReview } from '@/lib/api/types';
+import type {
+  AcademyKind,
+  Follow,
+  RecommendEligibility,
+  TrialApplicationStatus,
+} from '@/lib/api/types';
 import { formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Heart, Mail, Send, UserPlus, X } from 'lucide-react';
+import { Check, Heart, Mail, Send, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -36,44 +41,25 @@ interface MyRecommendation {
   canRecommendAgainAt: string | null;
 }
 
-/** What `GET /recommendations/players/:id/coach-state` answers. */
-interface CoachDiscoveryState {
-  /** The academy this viewer coaches at, or null if they coach nowhere. */
-  academy: { id: string; name: string } | null;
-  canAccept: boolean;
-  reason:
-    | 'NOT_A_COACH'
-    | 'LOCAL_TEAM'
-    | 'ALREADY_MEMBER'
-    | 'ALREADY_APPROVED'
-    | 'ALREADY_PENDING'
-    | 'OPEN_TRIAL'
-    | 'GENERAL_TRIAL'
-    | null;
-}
-
+/** What `GET /recommendations/player/:id/academy-state` answers. */
 interface AcademyState {
   academy: { id: string; name: string; kind: AcademyKind };
+  /** What the viewer is to that academy — who names the coach, and who is one. */
+  role: 'MANAGER' | 'COACH';
   recommendation: { id: string; status: string; note: string | null } | null;
-  review: {
-    id: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
-    note: string | null;
-    coachUser: { id: string; firstName: string | null; lastName: string | null };
-  } | null;
-  /** Set once this academy has invited them to a private trial. */
+  /** The latest private trial this academy invited them to, whatever came of it. */
   invitation: {
     applicationId: string;
-    status: string;
+    status: TrialApplicationStatus;
     trialId: string;
     trialTitle: string;
-    date: string;
+    date: string | null;
   } | null;
-  /** False when the academy has endorsed nobody who could take a review. */
+  /** False when the academy has endorsed nobody who could run a trial. */
   hasCoaches: boolean;
   /**
    * Where the player stands with this squad — the half a local team has instead
-   * of the review/trial pipeline. Null if the player profile has since gone.
+   * of the trial pipeline. Null if the player profile has since gone.
    */
   squad: {
     /** An invitation is addressed to the account, not the player profile. */
@@ -88,9 +74,9 @@ interface AcademyState {
  * What this viewer can do about this player — one action, chosen by their role.
  *
  * A panel that offers everybody everything makes each role read the other roles'
- * buttons to find its own. So: a scout follows and recommends, an academy manager
- * moves the player through review, and nobody sees a control that belongs to
- * somebody else's job.
+ * buttons to find its own. So: a scout follows and recommends, an academy's
+ * manager or coach invites the player to a private trial, and nobody sees a
+ * control that belongs to somebody else's job.
  *
  * Gated by the *active* role for clarity, not for security — every endpoint below
  * checks the caller again regardless of what is drawn.
@@ -128,6 +114,16 @@ export function PlayerActions({
     queryKey: ['my-recommendation', playerId],
     queryFn: () =>
       browserFetch<MyRecommendation | null>(`/recommendations/player/${playerId}/mine`),
+    enabled: isAuthenticated && activeRole === 'scout',
+  });
+
+  // Whether there is anybody to recommend this player to. A player an academy
+  // already has, or is already trying on a pitch, cannot be put forward, and
+  // the panel says why instead of drawing a button the API would refuse.
+  const { data: eligibility } = useQuery({
+    queryKey: ['recommend-eligibility', playerId],
+    queryFn: () =>
+      browserFetch<RecommendEligibility>(`/recommendations/player/${playerId}/eligibility`),
     enabled: isAuthenticated && activeRole === 'scout',
   });
 
@@ -176,7 +172,7 @@ export function PlayerActions({
   /*
    * Whether this card offers anything at all.
    *
-   * Every action here — follow, recommend, send for review, assess — is something
+   * Every action here — follow, recommend, invite, assess — is something
    * one person does about another, so your own profile offers none of them
    * whatever role you are wearing. The backend refuses each of these on a
    * self-target too (see RecommendationsService.create, CoachesService
@@ -224,19 +220,21 @@ export function PlayerActions({
             !isOwnProfile &&
             (mine ? (
               <RecommendationResult mine={mine} />
+            ) : eligibility?.reason ? (
+              <p className="text-muted text-sm">
+                {eligibility.reason === 'IN_ACADEMY'
+                  ? t.player.cannotRecommendInAcademy
+                  : t.player.cannotRecommendInTrial}
+              </p>
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />
             ))}
 
-          {isManager && !isOwnProfile && (
-            <ManagerAction playerId={playerId} playerName={playerName} />
-          )}
-
-          {isCoach && !isOwnProfile && (
-            <>
-              <CoachReviewAction playerId={playerId} playerName={playerName} />
-              <CoachDiscoveryAction playerId={playerId} />
-            </>
+          {/* The same panel for both: a manager and a coach both invite a player
+              to a private trial (TRIAL.md §11), and the API tells the panel which
+              of the two is reading. */}
+          {(isManager || isCoach) && !isOwnProfile && (
+            <AcademyAction playerId={playerId} playerName={playerName} />
           )}
 
           {/* Says so, rather than leaving a titled card with nothing under it.
@@ -296,41 +294,29 @@ function f2(template: string, value: string) {
 }
 
 /**
- * The academy manager's single action, and the only one they get here.
+ * The academy's single action about a player, and the only one it gets here.
  *
- * It is the same three states as the inbox, because it is the same decision seen
- * from the player's page: nobody has looked yet, a coach has it, a coach has
- * answered. A rejection puts the button back to "send for review" — a coach
- * saying no this month is not a permanent verdict, and the manager may want a
- * second opinion later.
+ * It is the same decision seen from the player's page as from the inbox:
+ * invite them to a private trial, or not. Nothing is decided online — the trial
+ * answers (TRIAL.md §11) — so the panel has only to say where that stands:
+ * nobody has asked yet, an invitation is out, the trial has answered.
+ *
+ * Read by a manager and by a coach alike. Both may send the invitation; a
+ * manager names the coach who will run the session and a coach is that person
+ * themselves, which is the one difference and the dialog handles it.
  *
  * No recommendation is required. An academy that finds a player in search may
- * send them to a coach directly; a scout's recommendation is how a player reaches
- * the *inbox*, not permission to look at them.
+ * invite them directly; a scout's recommendation is how a player reaches the
+ * *inbox*, not permission to look at them.
  */
-function ManagerAction({ playerId, playerName }: { playerId: string; playerName: string }) {
+function AcademyAction({ playerId, playerName }: { playerId: string; playerName: string }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
-  const [coachUserId, setCoachUserId] = React.useState('');
 
   const { data: state, isLoading } = useQuery({
     queryKey: ['academy-state', playerId],
     queryFn: () =>
       browserFetch<AcademyState | null>(`/recommendations/player/${playerId}/academy-state`),
-  });
-
-  const coaches = useQuery({
-    queryKey: ['endorsed-coaches', state?.academy.id],
-    queryFn: () =>
-      browserFetch<
-        {
-          userId: string;
-          user: { id: string; firstName: string | null; lastName: string | null } | null;
-        }[]
-      >(`/academies/${state?.academy.id}/endorsements?role=COACH`),
-    // Never for a local team: it has no coaches by construction, so this would be
-    // a round trip whose only possible answer is an empty list.
-    enabled: Boolean(state?.academy.id) && state?.academy.kind !== 'LOCAL_TEAM',
   });
 
   const refresh = () => {
@@ -339,27 +325,15 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
     void queryClient.invalidateQueries({ queryKey: ['inbox-history'] });
   };
 
-  const assign = useMutation({
-    mutationFn: () =>
-      browserFetch(`/recommendations/players/${playerId}/review`, {
-        method: 'POST',
-        body: coachUserId ? { coachUserId } : {},
-      }),
-    onSuccess: refresh,
-    // Said out loud by the shared handler. The panel does change — it becomes
-    // "waiting on a coach" — but that is a quiet swap two lines down, and
-    // somebody who pressed a button on a phone deserves to be told it worked.
-    meta: { success: t.recommendations.sentForReview },
-  });
-
   if (isLoading) return <Skeleton className="h-11 w-full rounded-lg" />;
+  // A coach at no academy, or a manager of none: nothing to invite them to.
   if (!state) return null;
 
   /*
    * A local team's manager does a different job, so they get a different control.
    *
-   * Everything below this line is the verified-academy pipeline — send for
-   * review, wait on a coach, invite to a private trial — and a local team has
+   * Everything below this line is the verified-academy pipeline — invite to a
+   * private trial, wait on the answer, wait on the day — and a local team has
    * none of it (LOCAL_TEAM.md §6–§8). Until now they were shown it anyway and
    * the endpoint behind the button answered 403, which is the failure §5 is
    * about: hiding a control the API refuses is not decoration, it is the screen
@@ -367,97 +341,86 @@ function ManagerAction({ playerId, playerName }: { playerId: string; playerName:
    *
    * Placed before every other branch rather than folded into them, so the two
    * workflows stay legible as two workflows (LOCAL_TEAM.md §23) instead of one
-   * with conditionals threaded through it.
+   * with conditionals threaded through it. A local team has no coaches, so
+   * only its manager ever reaches this.
    */
   if (state.academy.kind === 'LOCAL_TEAM') {
+    if (state.role !== 'MANAGER') return null;
     return <LocalTeamAction academyId={state.academy.id} squad={state.squad} onDone={refresh} />;
   }
 
-  if (state?.recommendation?.status === 'ACCEPTED') {
+  // Already one of ours, or asked to be: the trial has done its work. Said
+  // for the manager and the coach alike, and the API refuses the invitation
+  // too — a trial is how an academy decides on a player it does not have.
+  if (state.squad?.status) {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
-        <Check className="size-4" aria-hidden /> {t.player.alreadyInvited}
+        <Check className="size-4" aria-hidden /> {t.player.fromYourAcademy}
       </p>
     );
   }
-
-  const review = state?.review;
-
-  if (review?.status === 'PENDING') {
-    return (
-      <p className="text-muted text-sm">
-        {t.recommendations.awaitingCoach}
-        {review?.coachUser.firstName
-          ? ` — ${review?.coachUser.firstName} ${review?.coachUser.lastName ?? ''}`
-          : ''}
-      </p>
-    );
+  if (state.squad?.invitationPending) {
+    return <p className="text-muted text-sm">{t.player.squadInviteSent}</p>;
   }
 
-  if (state?.invitation) {
+  const invitation = state.invitation;
+
+  // An invitation is out, or the player is coming: nothing to send until the
+  // trial answers. Inviting again would be a 409 from the API anyway.
+  if (invitation && (invitation.status === 'INVITED' || invitation.status === 'CONFIRMED')) {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
-        <Check className="size-4" aria-hidden /> {t.recommendations.invited} ·{' '}
-        {formatDate(state?.invitation.date)}
+        <Check className="size-4" aria-hidden />
+        <Link href={`/trials/${invitation.trialId}`} className="hover:underline">
+          {invitation.status === 'CONFIRMED' ? t.trials.statusConfirmed : t.recommendations.invited}
+          {invitation.date ? ` · ${formatDate(invitation.date)}` : ''}
+        </Link>
       </p>
     );
   }
 
-  if (review?.status === 'APPROVED') {
+  // Passed: the manager's next step is the squad, and that lives on their
+  // dashboard and the trial's own page rather than here.
+  if (invitation?.status === 'PASSED') {
     return (
-      <div className="space-y-2">
-        <p className="text-success flex items-center gap-1.5 text-sm">
-          <Check className="size-4" aria-hidden /> {t.recommendations.coachApproved}
-        </p>
-        {/* The same dialog the inbox opens. It used to be an inline note box here
-            that posted without a date or a location — which the API now refuses,
-            because sending an invitation is what creates the trial. */}
-        <InviteToPrivateTrialDialog
-          playerId={playerId}
-          playerName={playerName}
-          academyId={state?.academy.id}
-          trigger={
-            <Button className="w-full">
-              <Mail aria-hidden /> {t.recommendations.invite}
-            </Button>
-          }
-          onInvited={refresh}
-        />
-      </div>
+      <p className="text-success flex items-center gap-1.5 text-sm">
+        <Check className="size-4" aria-hidden />
+        <Link href={`/trials/${invitation.trialId}`} className="hover:underline">
+          {t.trials.verdictPassed}
+        </Link>
+      </p>
     );
   }
 
   return (
     <div className="space-y-2">
-      {review?.status === 'REJECTED' && (
-        <p className="text-muted text-xs">{t.recommendations.rejectedByCoach}</p>
+      {/* A verdict or a no is not permanent: a second look is a second trial.
+          Said quietly above the button rather than hidden. */}
+      {invitation?.status === 'FAILED' && (
+        <p className="text-muted text-xs">{t.trials.verdictFailed}</p>
       )}
-      {/* The reason instead of the button. `assignReview` refuses with exactly
-          this, and an error that explains a control should not have been there
-          is a worse answer than not offering it. */}
-      {!state?.hasCoaches ? (
+      {invitation?.status === 'REJECTED' && (
+        <p className="text-muted text-xs">{t.player.declinedInvitation}</p>
+      )}
+      {/* The reason instead of the button. The invitation refuses without a
+          coach to name, and an error that explains a control should not have
+          been there is a worse answer than not offering it. */}
+      {!state.hasCoaches ? (
         <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
       ) : (
-        <>
-          <Field label={t.recommendations.sendToCoach} htmlFor="review-coach">
-            <Select
-              id="review-coach"
-              value={coachUserId}
-              onChange={(event) => setCoachUserId(event.target.value)}
-            >
-              <option value="">{t.recommendations.anyCoach}</option>
-              {(coaches?.data ?? []).map((row) => (
-                <option key={row?.userId} value={row?.userId}>
-                  {[row?.user?.firstName, row?.user?.lastName].filter(Boolean).join(' ') ||
-                    row?.userId.slice(0, 8)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Button className="w-full" loading={assign.isPending} onClick={() => assign.mutate()}>
-            <Send aria-hidden /> {t.recommendations.sendForReview}
-          </Button>
-        </>
+        <InviteToPrivateTrialDialog
+          playerId={playerId}
+          playerName={playerName}
+          academyId={state.academy.id}
+          role={state.role}
+          recommendationId={state.recommendation?.id}
+          trigger={
+            <Button className="w-full" variant="violet">
+              <Mail aria-hidden /> {t.recommendations.inviteToPrivateTrial}
+            </Button>
+          }
+          onInvited={refresh}
+        />
       )}
     </div>
   );
@@ -644,201 +607,5 @@ function RecommendDialog({ playerId, playerName }: { playerId: string; playerNam
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * The coach's Accept/Reject, on the profile they are actually reading.
- *
- * ## Why it belongs here
- *
- * An online review asks a coach to judge a profile — the clips, the numbers, the
- * position. That is this page. Sending them to a queue to answer a question they
- * have already answered in their head is a round trip for no reason, so the two
- * buttons sit where the evidence is.
- *
- * ## Why it is usually absent
- *
- * It renders only when an academy has actually handed this coach this player.
- * That is the rule, not a nicety: a coach may judge nobody they were not given
- * (TRIAL.md §33, Rule 16). `myReviewFor` returns null otherwise, and the decision
- * endpoint checks the same assignment again before writing — so a coach who
- * forges the request gains nothing.
- *
- * Accepting needs all eight ratings, which do not fit here, so an accept sends
- * them to the full screen. A rejection needs none, and can be given from here.
- */
-function CoachReviewAction({ playerId, playerName }: { playerId: string; playerName: string }) {
-  const { t } = useI18n();
-  const queryClient = useQueryClient();
-
-  const review = useQuery({
-    queryKey: ['my-review', playerId],
-    queryFn: () =>
-      browserFetch<MyCoachReview | null>(`/recommendations/player/${playerId}/my-review`),
-  });
-
-  const decide = useMutation({
-    mutationFn: (reviewId: string) =>
-      browserFetch(`/recommendations/reviews/${reviewId}/decision`, {
-        method: 'POST',
-        body: { decision: 'REJECTED' },
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['my-review', playerId] });
-      void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
-    },
-  });
-
-  if (review?.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
-
-  // Nobody gave this coach this player. Nothing to offer, and saying so would
-  // only advertise a door they cannot open.
-  if (!review?.data) return null;
-
-  const { id, status, academy } = review?.data;
-
-  if (status !== 'PENDING') {
-    return (
-      <Alert tone={status === 'APPROVED' ? 'success' : 'info'}>
-        {status === 'APPROVED' ? t.recommendations.approved : t.recommendations.rejected}
-        {academy?.name ? ` · ${academy?.name}` : ''}
-      </Alert>
-    );
-  }
-
-  return (
-    <div className="border-border space-y-2 rounded-lg border p-3">
-      <p className="text-sm font-medium">{t.trials.onlineCoachReview}</p>
-      <p className="text-muted text-xs">
-        {academy?.name} · {t.recommendations.reviewAskedOf}
-      </p>
-
-      <div className="flex flex-wrap gap-2">
-        {/* An accept writes eight ratings, which do not belong in a sidebar —
-            the full screen is where a coach scores what they watched. */}
-        <Button asChild size="sm" className="flex-1">
-          <Link href={`/recommendations/review#${id}`}>
-            <Check aria-hidden /> {t.recommendations.approvePlayer}
-          </Link>
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-danger flex-1"
-          loading={decide.isPending}
-          onClick={() => {
-            if (window.confirm(t.recommendations.confirmReject.replace('{name}', playerName))) {
-              decide.mutate(id);
-            }
-          }}
-        >
-          <X aria-hidden /> {t.recommendations.rejectPlayer}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A coach putting forward a player nobody sent them.
- *
- * ## Why this is not an invitation
- *
- * A coach never invites anybody to a trial — that is the manager's decision, and
- * the player's to answer (TRIAL.md §11). What a coach has is an opinion, and this
- * is the button for it: the same **online review ACCEPT** they would give a player
- * their manager had sent them, reached from the player's own profile instead of
- * from the inbox. The manager then sees the approval waiting on their dashboard
- * and decides whether a trial follows.
- *
- * So the label says "approve", the confirmation says what happens next, and the
- * word "invite" appears nowhere.
- *
- * ## Why it asks before it draws
- *
- * `/recommendations/players/:id/coach-state` answers with the same four checks the
- * POST applies, so a coach reads *"already at your academy"* rather than pressing
- * a button that answers 409. A viewer who is not a coach at an academy gets
- * `NOT_A_COACH` and nothing is drawn — the query is harmless for them, and the
- * server never has to 403 an ordinary profile view.
- */
-function CoachDiscoveryAction({ playerId }: { playerId: string }) {
-  const { t, f } = useI18n();
-  const queryClient = useQueryClient();
-  const state = useQuery({
-    queryKey: ['coach-state', playerId],
-    queryFn: () =>
-      browserFetch<CoachDiscoveryState>(`/recommendations/players/${playerId}/coach-state`),
-  });
-
-  const accept = useMutation({
-    mutationFn: () =>
-      browserFetch(`/recommendations/players/${playerId}/coach-accept`, {
-        method: 'POST',
-        body: {},
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['coach-state', playerId] });
-      void queryClient.invalidateQueries({ queryKey: ['my-review', playerId] });
-      void queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
-    },
-  });
-
-  if (state?.isLoading) return <Skeleton className="h-20 w-full rounded-lg" />;
-
-  const data = state?.data;
-  // Not a coach anywhere, or a local team, which runs no online review at all.
-  if (!data?.academy || data?.reason === 'LOCAL_TEAM') return null;
-
-  /*
-   * A blocked coach is told why, not shown a disabled button.
-   *
-   * `ALREADY_PENDING` is the one worth naming: it is the case where *this* coach
-   * may be the one holding the review, and `CoachReviewAction` above is already
-   * showing them the accept/reject pair. Repeating it as a blocked action would
-   * read as a contradiction, so it says what is true and stops.
-   */
-  if (!data?.canAccept) {
-    const reasons: Record<string, string> = {
-      ALREADY_MEMBER: t.recommendations.coachBlockedMember,
-      ALREADY_APPROVED: t.recommendations.coachBlockedApproved,
-      ALREADY_PENDING: t.recommendations.coachBlockedPending,
-      OPEN_TRIAL: t.recommendations.coachBlockedTrial,
-      GENERAL_TRIAL: t.recommendations.coachBlockedGeneral,
-    };
-    const reason = data?.reason ? reasons[data?.reason] : undefined;
-    if (!reason) return null;
-    return <p className="text-muted text-xs">{reason}</p>;
-  }
-
-  return (
-    <div className="border-border space-y-2 rounded-lg border p-3">
-      <p className="text-sm font-medium">{t.recommendations.coachDiscoverTitle}</p>
-      <p className="text-muted text-xs">
-        {f(t.recommendations.coachDiscoverHint, { academy: data?.academy.name })}
-      </p>
-
-      {accept.isError && (
-        <Alert tone="danger">{(accept.error as Error)?.message ?? t.common.somethingWrong}</Alert>
-      )}
-
-      {/*
-        Straight through, with no confirmation — the same rule the review queue
-        follows. An accept says "worth a look" and commits nobody: the manager
-        still decides whether to invite, the player still decides whether to
-        come, and the coach still has to judge them on a pitch. The academy it
-        goes to is named in the line above, which is the one fact a coach who
-        works for two clubs needs before pressing.
-      */}
-      <Button
-        size="sm"
-        className="w-full"
-        loading={accept.isPending}
-        onClick={() => accept.mutate()}
-      >
-        <Check aria-hidden /> {t.recommendations.coachDiscoverAction}
-      </Button>
-    </div>
   );
 }

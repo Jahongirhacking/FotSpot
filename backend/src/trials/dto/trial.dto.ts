@@ -20,7 +20,9 @@ import {
 } from 'class-validator';
 
 import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { TIME_PATTERN } from '../trial-window.util';
+import { APPLICATION_STAGES, type ApplicationStage } from '../application-stage.util';
 
 export class CreateTrialDto {
   /**
@@ -74,10 +76,12 @@ export class CreateTrialDto {
    * instant, and parsing it into one would need a day to attach it to. See the
    * schema comment on `Trial.startTime`.
    */
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
   startTime?: string;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string;
 
   /**
@@ -119,6 +123,12 @@ export class CreateTrialDto {
    * client sanitises too, but anybody can post here without loading the client.
    */
   @IsOptional() @IsString() @MaxLength(20_000) note?: string;
+
+  /**
+   * The coaches who will run the day — TRIAL.md §1.1. Each must be a coach the
+   * academy has endorsed. Omitted, every endorsed coach is attached.
+   */
+  @IsOptional() @IsArray() @IsUUID('4', { each: true }) coachUserIds?: string[];
 }
 
 /**
@@ -171,10 +181,12 @@ export class UpdateTrialDto {
   /** The other end of the window. See `CreateTrialDto`. */
   @IsOptional() @IsDateString() endDate?: string | null;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'startTime must be HH:mm' })
   startTime?: string | null;
 
-  @IsOptional() @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
+  @IsOptional()
+  @Matches(TIME_PATTERN, { message: 'endTime must be HH:mm' })
   endTime?: string | null;
 
   @IsOptional() @IsIn(['male', 'female', 'general']) gender?: string;
@@ -196,17 +208,19 @@ export class UpdateTrialDto {
  * The academy withdrawing its own interest — the only status a manager may write
  * by hand.
  *
- * It used to accept SHORTLISTED, INVITED and ACCEPTED as well, which made every
- * gate in this flow optional: SHORTLISTED is what unlocks a private trial's
- * invitation, so a manager could invite a player no coach had screened, and
- * ACCEPTED is squad placement, so they could sign one no coach had tested. Both
- * are decisions TRIAL.md reserves for a coach (Rules 6, 8, 16). Saying "no
- * thanks" is not — an academy may always decline.
+ * Every other status is the outcome of something else: INVITED of an
+ * invitation, PASSED and FAILED of a verdict, ACCEPTED of a squad placement
+ * after a PASS (TRIAL.md Rules 6 and 8). Writing one directly would skip the
+ * thing it records. Saying "no thanks" skips nothing — an academy may always
+ * decline.
  */
 const APPLICATION_STATUSES = ['REJECTED'] as const;
 
 export class UpdateTrialApplicationStatusDto {
   @IsIn(APPLICATION_STATUSES) status: (typeof APPLICATION_STATUSES)[number];
+
+  /** Why, when closing a passed player's candidacy — optional, the manager's record. */
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
 /**
@@ -227,6 +241,36 @@ export class RecordTrialVerdictDto {
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
 }
 
+/**
+ * The coach's queue, one page at a time, optionally one kind of trial.
+ *
+ * The dashboard shows private and global trials apart — the players of the
+ * one, the sessions of the other — so it asks for `type=PRIVATE` rather than
+ * fetching both and discarding half.
+ */
+/**
+ * One page of one stage of a trial's applicants — or of the academy's
+ * private trials, which are read the same way.
+ *
+ * Paged per stage rather than fetched whole: an open day collects hundreds
+ * of applications and a season of private trials runs to hundreds more, and
+ * the screen shows one tab of one page at a time. `stage` omitted means
+ * every stage, newest first.
+ */
+export class ListApplicationsQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: APPLICATION_STAGES })
+  @IsOptional()
+  @IsIn(APPLICATION_STAGES)
+  stage?: ApplicationStage;
+}
+
+export class CoachQueueQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: TrialType, enumName: 'TrialType' })
+  @IsOptional()
+  @IsEnum(TrialType)
+  type?: TrialType;
+}
+
 /** Paging for the academy's archived-trial history. */
 export class TrialHistoryQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number = 1;
@@ -236,11 +280,6 @@ export class TrialHistoryQueryDto {
 /** Who works this trial. Replaces the whole list, so it is also how one is removed. */
 export class AssignCoachesDto {
   @IsArray() @IsUUID('4', { each: true }) coachUserIds: string[];
-}
-
-/** The invitation the player reads, so the note is not optional. */
-export class InviteToTrialDto {
-  @IsString() @MinLength(1) @MaxLength(500) note: string;
 }
 
 export class RespondToInvitationDto {

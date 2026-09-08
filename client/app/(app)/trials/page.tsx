@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/Button';
 
 import { Alert, EmptyState } from '@/components/ui/Feedback';
-import { academies, recommendations, trials } from '@/lib/api/resources';
-import type { CoachReview, CoachTrial } from '@/lib/api/types';
+import { academies, trials } from '@/lib/api/resources';
+import type { CoachTrial, PrivateTrialsPage } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { jsonLd } from '@/lib/seo';
 import { itemListLd } from '@/lib/structured-data';
@@ -75,20 +75,16 @@ export default async function TrialsPage({
   /*
    * A coach's Trials is a different screen, not the public board with extras.
    *
-   * What they need is the sessions they are working and the profiles waiting on
-   * them; the open-day list is a thing players apply to and academies host, and
-   * a coach does neither. Keyed on the *active* role, so somebody who coaches
-   * and also has a player profile still sees the board while wearing that hat.
+   * What they need is the sessions they are working and the players waiting on
+   * their verdict; the open-day list is a thing players apply to and academies
+   * host, and a coach does neither. Keyed on the *active* role, so somebody who
+   * coaches and also has a player profile still sees the board while wearing
+   * that hat.
    */
   if (session?.activeRole === 'coach') {
-    const opts = { token: session?.accessToken, cache: 'no-store' as const };
-    const [coaching, pending] = await Promise.all([
-      trials?.myCoaching(opts).catch(() => [] as CoachTrial[]),
-      recommendations
-        ?.myReviews('PENDING', { pageSize: 50 }, opts)
-        .then((page) => page.items)
-        .catch(() => [] as CoachReview[]),
-    ]);
+    const coaching = await trials
+      ?.myCoaching({ token: session?.accessToken, cache: 'no-store' })
+      .catch(() => [] as CoachTrial[]);
 
     return (
       <div className="space-y-6">
@@ -97,7 +93,7 @@ export default async function TrialsPage({
           <h1 className="text-xl font-bold">{t.nav.trials}</h1>
           <p className="text-muted text-sm">{t.trials.coachTrialsHint}</p>
         </header>
-        <CoachTrials initialTrials={coaching} initialReviews={pending} />
+        <CoachTrials initialTrials={coaching} />
       </div>
     );
   }
@@ -134,6 +130,32 @@ export default async function TrialsPage({
         .listForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
         .catch(() => [])
     : [];
+  // The private ones separately — the first page of the pending tab, with
+  // the count at every stage; the rest is fetched as tabs are opened.
+  const emptyPrivate: PrivateTrialsPage = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    counts: {
+      PENDING: 0,
+      FAILED: 0,
+      PASSED: 0,
+      CANDIDACY_CLOSED: 0,
+      SQUAD_INVITED: 0,
+      INVITATION_DECLINED: 0,
+      SQUAD_JOINED: 0,
+    },
+  };
+  const privateTrials = managed
+    ? await trials
+        .listPrivateForAcademy(
+          managed.id,
+          { stage: 'PENDING', page: 1, pageSize: 10 },
+          { token: session!.accessToken, cache: 'no-store' },
+        )
+        .catch(() => emptyPrivate)
+    : emptyPrivate;
 
   /*
    * Resolved here rather than in the client component, so a bad `?edit=` is
@@ -201,6 +223,7 @@ export default async function TrialsPage({
           academyId={managed.id}
           academyName={managed.name}
           initial={managedTrials}
+          initialPrivate={privateTrials}
           editTrial={editTrial}
         />
       )}

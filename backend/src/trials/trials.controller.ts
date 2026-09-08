@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -11,14 +12,14 @@ import {
 } from '@nestjs/common';
 import { TrialsService } from './trials.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
-import { PaginationDto } from '../common/dto/pagination.dto';
 import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import {
   ListTrialsQueryDto,
   AssignCoachesDto,
+  CoachQueueQueryDto,
+  ListApplicationsQueryDto,
   CreateTrialDto,
-  InviteToTrialDto,
   RecordTrialVerdictDto,
   RespondToInvitationDto,
   TrialHistoryQueryDto,
@@ -91,6 +92,19 @@ export class TrialsController {
       query.page,
       query.pageSize,
     );
+  }
+
+  /**
+   * The manager's private trials, open and archived, each with the one player
+   * it was created for and where that player stands (`stage`). Manager only.
+   */
+  @Get('academy/:academyId/private')
+  listPrivateForAcademy(
+    @CurrentUser() user: AuthUser,
+    @Param('academyId') academyId: string,
+    @Query() query: ListApplicationsQueryDto,
+  ) {
+    return this.trialsService.listPrivateForAcademy(user.userId, academyId, query);
   }
 
   /**
@@ -168,8 +182,8 @@ export class TrialsController {
    * another coach's queue or another academy's workload whoever asks.
    */
   @Get('coaching/pending')
-  listPendingForCoach(@CurrentUser() user: AuthUser, @Query() page: PaginationDto) {
-    return this.trialsService.listPendingForCoach(user.userId, page);
+  listPendingForCoach(@CurrentUser() user: AuthUser, @Query() query: CoachQueueQueryDto) {
+    return this.trialsService.listPendingForCoach(user.userId, query);
   }
 
   @Get('coaching/mine')
@@ -177,19 +191,19 @@ export class TrialsController {
     return this.trialsService.listForCoach(user.userId);
   }
 
+  /**
+   * Who is on the sheet, and what was decided. The manager sees every row; a
+   * coach sees the participants — never an unanswered invitation, and never
+   * the note the manager wrote to the family. `pending` counts the
+   * invitations still awaiting an answer.
+   */
   @Get(':id/applications')
-  listApplicationsForTrial(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.trialsService.listApplicationsForTrial(user.userId, id);
-  }
-
-  /** Invite a screened player to a private trial, with the note they will read. */
-  @Post('applications/:applicationId/invite')
-  invite(
+  listApplicationsForTrial(
     @CurrentUser() user: AuthUser,
-    @Param('applicationId') applicationId: string,
-    @Body() dto: InviteToTrialDto,
+    @Param('id') id: string,
+    @Query() query: ListApplicationsQueryDto,
   ) {
-    return this.trialsService.invite(user.userId, applicationId, dto);
+    return this.trialsService.listApplicationsForTrial(user.userId, id, query);
   }
 
   /** The player's yes or no — the one step nobody can take for them. */
@@ -216,6 +230,16 @@ export class TrialsController {
     @Body() dto: RecordTrialVerdictDto,
   ) {
     return this.trialsService.recordVerdict(user.userId, applicationId, dto);
+  }
+
+  /**
+   * Takes a verdict back, inside the undo window — the coach's own, before its
+   * consequences have gone out. 409 once they have, or once the manager has
+   * offered the passed player a squad place.
+   */
+  @Delete('applications/:applicationId/verdict')
+  undoVerdict(@CurrentUser() user: AuthUser, @Param('applicationId') applicationId: string) {
+    return this.trialsService.undoVerdict(user.userId, applicationId);
   }
 
   /**

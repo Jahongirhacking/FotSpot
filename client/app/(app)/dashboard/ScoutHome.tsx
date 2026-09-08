@@ -26,7 +26,7 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
     safe(() => follows.academiesFollowingMe({ token, cache: 'no-store' }), []),
   ]);
 
-  const pending = mine.filter((r) => r.status === 'PENDING' || r.status === 'REVIEWING');
+  const pending = mine.filter((r) => r.status === 'PENDING');
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -125,7 +125,6 @@ export async function ScoutHome({ token, t }: { token: string; t: Dictionary }) 
 function tone(status: MyRecommendation['status']) {
   if (status === 'ACCEPTED') return 'success' as const;
   if (status === 'REJECTED') return 'danger' as const;
-  if (status === 'REVIEWING') return 'info' as const;
   return 'neutral' as const;
 }
 

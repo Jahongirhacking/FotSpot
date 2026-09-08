@@ -1,13 +1,12 @@
 import { RecommendationsService } from './recommendations.service';
 
 /**
- * What a manager's panel is told about a player, and how that differs by the kind
- * of organisation they run.
+ * What the profile panel is told about a player, and how that differs by the
+ * kind of organisation the viewer works for and what they are to it.
  *
- * A verified academy gets the coach/review/trial pipeline it has always had. A
- * local team has none of it (LOCAL_TEAM.md §6–§8) and gets the squad instead —
- * which is the whole reason its manager was being shown a "Send for review"
- * button that the API answers with 403.
+ * A verified academy gets the private-trial pipeline. A local team has none of
+ * it (LOCAL_TEAM.md §6–§8) and gets the squad instead — which is the whole
+ * reason its manager was once shown a button the API answers with 403.
  *
  * The regression guarded hardest here is §24: the verified-academy shape must not
  * change. Every field it returned before is still returned, still computed the
@@ -20,14 +19,22 @@ const ACADEMY_ID = 'academy-1';
 
 function build(
   kind: 'ACADEMY' | 'LOCAL_TEAM',
-  overrides: { member?: { status: string } | null; pendingInvite?: boolean } = {},
+  overrides: {
+    member?: { status: string } | null;
+    pendingInvite?: boolean;
+    /** What the viewer is to the academy. `null` stands with none. */
+    viewer?: 'MANAGER' | 'COACH' | null;
+  } = {},
 ) {
+  const viewer = overrides.viewer === undefined ? 'MANAGER' : overrides.viewer;
   const prisma = {
     academyMember: {
-      findFirst: jest.fn(async (): Promise<unknown> => ({
-        academyId: ACADEMY_ID,
-        academy: { id: ACADEMY_ID, name: 'Yoshlik', kind },
-      })),
+      // Asked as a manager first, then as an endorsed coach — see `viewerAcademy`.
+      findFirst: jest.fn(async (args: { where: { role: string } }): Promise<unknown> =>
+        args.where.role === viewer
+          ? { academyId: ACADEMY_ID, academy: { id: ACADEMY_ID, name: 'Yoshlik', kind } }
+          : null,
+      ),
       findUnique: jest.fn(async (): Promise<unknown> => overrides.member ?? null),
     },
     academyInvitation: {
@@ -39,7 +46,6 @@ function build(
       findUnique: jest.fn(async (): Promise<unknown> => ({ userId: PLAYER_USER })),
     },
     recommendationTarget: { findFirst: jest.fn(async (): Promise<unknown> => null) },
-    recommendationReview: { findUnique: jest.fn(async (): Promise<unknown> => null) },
     trialApplication: { findFirst: jest.fn(async (): Promise<unknown> => null) },
     academyEndorsement: { count: jest.fn(async () => 2) },
   };
@@ -60,16 +66,15 @@ describe('academyStateFor — a local team manager', () => {
   });
 
   /*
-   * The bug this fixes. A null review beside `hasCoaches: false` is exactly the
-   * shape the panel read as "send this player for review", and the endpoint
-   * behind that button refuses a local team with 403.
+   * The bug this fixes. `hasCoaches: false` beside a null invitation is exactly
+   * the shape the panel reads as "invite this player", and the endpoint behind
+   * that button refuses a local team with 403.
    */
-  it('is offered no review, trial or coach pipeline at all', async () => {
+  it('is offered no trial or coach pipeline at all', async () => {
     const { service } = build('LOCAL_TEAM');
 
     const state = await service.academyStateFor('manager-1', PLAYER_ID);
 
-    expect(state?.review).toBeNull();
     expect(state?.invitation).toBeNull();
     expect(state?.hasCoaches).toBe(false);
   });
@@ -79,7 +84,6 @@ describe('academyStateFor — a local team manager', () => {
 
     await service.academyStateFor('manager-1', PLAYER_ID);
 
-    expect(prisma.recommendationReview.findUnique).not.toHaveBeenCalled();
     expect(prisma.trialApplication.findFirst).not.toHaveBeenCalled();
     expect(prisma.academyEndorsement.count).not.toHaveBeenCalled();
   });
@@ -142,12 +146,11 @@ describe('academyStateFor — a local team manager', () => {
 });
 
 describe('academyStateFor — a verified academy is unchanged (LOCAL_TEAM.md §24)', () => {
-  it('still looks up the review, the trial invitation and the coaches', async () => {
+  it('still looks up the trial invitation and the coaches', async () => {
     const { service, prisma } = build('ACADEMY');
 
     const state = await service.academyStateFor('manager-1', PLAYER_ID);
 
-    expect(prisma.recommendationReview.findUnique).toHaveBeenCalled();
     expect(prisma.trialApplication.findFirst).toHaveBeenCalled();
     expect(state?.hasCoaches).toBe(true);
   });
@@ -161,7 +164,6 @@ describe('academyStateFor — a verified academy is unchanged (LOCAL_TEAM.md §2
       expect.objectContaining({
         academy: expect.objectContaining({ id: ACADEMY_ID, name: 'Yoshlik' }),
         recommendation: null,
-        review: null,
         invitation: null,
         hasCoaches: true,
       }),
@@ -169,9 +171,63 @@ describe('academyStateFor — a verified academy is unchanged (LOCAL_TEAM.md §2
   });
 
   it('returns null when the caller manages nothing', async () => {
-    const { service, prisma } = build('ACADEMY');
-    prisma.academyMember.findFirst.mockResolvedValue(null);
+    const { service } = build('ACADEMY', { viewer: null });
 
     await expect(service.academyStateFor('nobody', PLAYER_ID)).resolves.toBeNull();
+  });
+
+  it('says the viewer is the manager', async () => {
+    const { service } = build('ACADEMY');
+
+    const state = await service.academyStateFor('manager-1', PLAYER_ID);
+
+    expect(state?.role).toBe('MANAGER');
+  });
+});
+
+/**
+ * A coach may invite a player to a private trial (TRIAL.md §11), so their
+ * profile panel needs the same answer — and needs to know it is a coach
+ * reading it, because a coach names no other coach to run the session.
+ */
+describe('academyStateFor — an endorsed coach', () => {
+  it('gets the academy state, marked as the coach', async () => {
+    const { service, prisma } = build('ACADEMY', { viewer: 'COACH' });
+
+    const state = await service.academyStateFor('coach-1', PLAYER_ID);
+
+    expect(state?.role).toBe('COACH');
+    expect(state?.academy.id).toBe(ACADEMY_ID);
+    expect(prisma.trialApplication.findFirst).toHaveBeenCalled();
+  });
+
+  /* The coach asking is the one who would run it; nobody has to be counted. */
+  it('is somebody to run a trial, without counting the staff', async () => {
+    const { service, prisma } = build('ACADEMY', { viewer: 'COACH' });
+    prisma.academyEndorsement.count.mockResolvedValue(0);
+
+    const state = await service.academyStateFor('coach-1', PLAYER_ID);
+
+    expect(state?.hasCoaches).toBe(true);
+    expect(prisma.academyEndorsement.count).not.toHaveBeenCalled();
+  });
+
+  /* Only an *endorsed* coach speaks for the academy — the query says so. */
+  it('is only recognised through an active endorsement', async () => {
+    const { service, prisma } = build('ACADEMY', { viewer: 'COACH' });
+
+    await service.academyStateFor('coach-1', PLAYER_ID);
+
+    const asCoach = prisma.academyMember.findFirst.mock.calls.find(
+      ([args]) => args.where.role === 'COACH',
+    );
+    expect(asCoach?.[0].where).toEqual(
+      expect.objectContaining({
+        status: 'ACTIVE',
+        academy: {
+          endorsements: { some: { userId: 'coach-1', role: 'COACH', status: 'ACTIVE' } },
+        },
+      }),
+    );
   });
 });
