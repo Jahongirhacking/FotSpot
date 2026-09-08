@@ -184,7 +184,7 @@ export function VerdictResult({
       className={
         compact
           ? 'flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm'
-          : 'bg-surface-3 rounded-lg p-2 text-xs'
+          : 'bg-surface-3 flex gap-1 rounded-lg p-2 text-xs'
       }
     >
       <span

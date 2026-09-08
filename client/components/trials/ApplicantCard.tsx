@@ -10,6 +10,7 @@ import type {
   TrialApplicationStatus,
 } from '@/lib/api/types';
 import { ageFrom, initials } from '@/lib/utils';
+import Link from 'next/link';
 import * as React from 'react';
 import { StageBadge } from './StageTabs';
 
@@ -74,17 +75,25 @@ export function ApplicantCard({
         recognise somebody — and puts every name, every status and every button
         in the same column, so the eye travels straight down.
       */}
-      <Avatar
-        src={player?.avatarUrl}
-        fallback={initials(player?.firstName, player?.lastName)}
-        alt={name}
-        className="size-14 shrink-0 rounded-lg text-base sm:size-16"
-      />
+
+      <Link href={`/players/${player?.username ? `@${player?.username}` : player?.id}`}>
+        <Avatar
+          src={player?.avatarUrl}
+          fallback={initials(player?.firstName, player?.lastName)}
+          alt={name}
+          className="size-14 shrink-0 rounded-lg text-base sm:size-16"
+        />
+      </Link>
 
       <div className="min-w-0 flex-1 basis-48">
-        <p className="truncate font-semibold" title={name}>
-          {name}
-        </p>
+        <Link
+          href={`/players/${player?.username ? `@${player?.username}` : player?.id}`}
+          className="hover:underline"
+        >
+          <p className="truncate font-semibold" title={name}>
+            {name}
+          </p>
+        </Link>
         <p className="text-muted truncate text-xs">
           {[
             positions || null,

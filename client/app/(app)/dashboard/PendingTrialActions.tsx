@@ -1,14 +1,14 @@
 'use client';
 
 import { useI18n } from '@/components/layout/I18nProvider';
+import { CandidateCard, useCandidateActions } from '@/components/trials/CandidateCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, Skeleton } from '@/components/ui/Feedback';
-import { CandidateCard, useCandidateActions } from '@/components/trials/CandidateCard';
 import { browserFetch } from '@/lib/api/browser';
-import type { PendingAction } from '@/lib/api/types';
 import type { Page } from '@/lib/api/client';
+import type { PendingAction } from '@/lib/api/types';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
@@ -56,12 +56,21 @@ export function PendingTrialActions() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ClipboardCheck className="text-primary size-4" aria-hidden />{' '}
-          {t.dashboard.pendingActions}
-          <Badge variant="warning">{total}</Badge>
-        </CardTitle>
-        <CardDescription>{t.dashboard.pendingActionsHint}</CardDescription>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-col gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardCheck className="text-primary size-4" aria-hidden />{' '}
+              {t.dashboard.pendingActions}
+              <Badge variant="warning">{total}</Badge>
+            </CardTitle>
+            <CardDescription>{t.dashboard.pendingActionsHint}</CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+            <Link href="/academies/mine/candidates">
+              {f(t.dashboard.seeAllCandidates, { count: total })} <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {actions.error && (
@@ -74,7 +83,7 @@ export function PendingTrialActions() {
           trial they passed — read at a glance, one card per player.
         */}
         <ul className="grid gap-3 sm:grid-cols-2">
-          {items.map((item) => (
+          {items?.map((item) => (
             <CandidateCard
               key={item?.applicationId}
               item={item}
@@ -87,12 +96,6 @@ export function PendingTrialActions() {
             />
           ))}
         </ul>
-
-        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-          <Link href="/academies/mine/candidates">
-            {f(t.dashboard.seeAllCandidates, { count: total })} <ArrowRight aria-hidden />
-          </Link>
-        </Button>
       </CardContent>
     </Card>
   );
