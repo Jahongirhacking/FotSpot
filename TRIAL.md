@@ -401,7 +401,9 @@ The session — title, date, time, location, requirements, status — and the ac
 
 Every Player who **passed** a Trial of the Academy — Global or Private — and has not yet been offered a Squad place appears on the Academy Manager's dashboard as a Squad candidate.
 
-From there the Manager sends the Squad invitation (§25). The Player accepts or declines it.
+From there the Manager sends the Squad invitation (§25) with one press. The Player accepts or declines it.
+
+The Manager is **not notified of the verdict itself**. PASS / FAIL is told to the Player — in-site, and by Telegram when connected — and to nobody else; the dashboard list is how the Manager learns who passed.
 
 A Player who **failed** never appears as a candidate. Nothing is owed on a FAIL.
 
@@ -933,12 +935,24 @@ PASS
   ↓
 Player appears as a Squad candidate
   ↓
-Academy Manager
+Academy Manager → Invite to Squad
   ↓
-Add Player to Squad (an invitation the Player accepts)
+Player is notified (in-site + Telegram, with a link to the answer page)
+  ↓
+Player accepts  →  joins the Academy's Reserve automatically
+Player declines →  the invitation is closed; the Manager is told, with the Player's note
 ```
 
-The Academy Manager is responsible for the actual Squad placement.
+The Academy Manager is responsible for the invitation; the Player's yes is what places them. Nobody is added by hand.
+
+### The Player's answer
+
+- **Accept** is one press. It is recorded at once and acted on after a short undo window (30 seconds), during which the Player may take it back and nothing has happened. After the window the membership is written into the Reserve — no Group, no manual placement step — and the Manager is notified (in-site and Telegram).
+- **Decline** asks first, in a dialog with an optional note. The invitation is closed, the Player leaves the Manager's candidate list, and the Manager is notified with the note.
+
+### Contacts
+
+Only an Academy Manager may see a Player's contact details — email, phone, Telegram — and only on the Player's profile. A Coach, a Scout, another Player, or a guest is never shown them; the backend withholds them rather than the screen hiding them.
 
 ---
 
@@ -1321,6 +1335,18 @@ is therefore assessable by nobody.**
 ### Rule 25
 
 **A verdict is written at once and acted on after a short undo window. Inside the window the deciding Coach may take it back, and nothing has gone out; after it, the verdict stands.**
+
+### Rule 26
+
+**A trial verdict is told to the Player, and to nobody else. The Manager learns who passed from their dashboard, invites them to the Squad with one press, and is told how the Player answered — with the Player's note if they declined.**
+
+### Rule 27
+
+**Accepting a Squad invitation places the Player in the Reserve automatically, after a short undo window. Nobody adds a Player to a Squad by hand.**
+
+### Rule 28
+
+**Only an Academy Manager sees a Player's contact details (email, phone, Telegram), and only on the Player's profile.**
 
 ---
 

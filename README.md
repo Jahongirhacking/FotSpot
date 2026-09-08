@@ -593,6 +593,11 @@ Rules that hold this apart from anything online:
 - **Pass is one press, fail asks first, both can be undone for 30 seconds** (Rule 25). The
   verdict is written at once and its consequences (scouts, notifications, the SMS) run from a
   delayed job; `DELETE /trials/applications/:id/verdict` inside the window removes both.
+- **The squad invitation is the player's to answer** (§1.10, TRIAL.md §25). Accepting is one
+  press, undoable for 30 seconds, after which the membership is written into the reserve and the
+  manager is told; declining asks first and carries an optional note the manager reads.
+- **Only an academy's manager sees a player's contacts** (Rule 28): email, phone and a Telegram
+  link, sent beside the profile and never inside its shared cache.
 
 Only a trial PASS makes a player eligible for a squad, and only the academy manager performs
 the placement (Rules 8–9). Every passed player appears on the manager's dashboard as a squad
@@ -611,12 +616,14 @@ are read very differently.
 | `TRIAL_PUBLISHED`                                                                                | followers of the academy who match the trial's age, position and gender — in-site and by Telegram |
 | `TRIAL_INVITATION`                                                                               | the invited player                                                 |
 | `TRIAL_RESCHEDULED`                                                                              | everyone holding an application, when the exam date moves          |
-| `TRIAL_RESULT`                                                                                   | the player; the manager **on PASS only**                           |
-| `SQUAD_PLACEMENT`                                                                                | the player the academy has taken on                                |
-| `ACADEMY_JOIN_INVITATION` / `ACADEMY_JOIN_ANSWER` · `ACADEMY_INVITATION` · `VERIFICATION_RESULT` | as named                                                           |
+| `TRIAL_RESULT`                                                                                   | **the player only** — in-site, and by Telegram when connected. The manager reads passed players off their dashboard instead |
+| `ACADEMY_JOIN_INVITATION`                                                                        | the player invited to the squad — with a Telegram link straight to the page where it is answered |
+| `ACADEMY_JOIN_ANSWER`                                                                            | the manager: joined the reserve, or turned it down — with the player's note, if they left one |
+| `ACADEMY_INVITATION` · `VERIFICATION_RESULT`                                                     | as named                                                           |
 
 The asymmetries are deliberate: a manager is told what asks something of them, not given a
-running commentary on a morning they did not attend.
+running commentary on a morning they did not attend. A verdict is between the coach and the
+player; the manager's part starts when a passed player appears on their dashboard.
 
 ### 1.13. Moderation system
 
