@@ -730,14 +730,22 @@ model AcademyInvitation {
   user      User           @relation("InvitationsReceived", fields: [userId], references: [id], onDelete: Cascade)
 
   /// What they are being asked to join as. Never MANAGER — that is appointed.
-  role   AcademyMemberRole
-  status InvitationStatus  @default(PENDING)
-  note   String?
+  role       AcademyMemberRole
+  status     InvitationStatus  @default(PENDING)
+  /// The manager's words to the person invited.
+  note       String?
+  /// The person's words back, when they declined — optional, and the manager
+  /// reads it in the notification.
+  answerNote String?
 
   invitedByUserId String
 
   createdAt DateTime  @default(now())
   decidedAt DateTime?
+  /// When an acceptance was acted on — the membership written, the manager
+  /// told. Null while the person may still undo their yes; see
+  /// InvitationsService.settleAcceptance.
+  settledAt DateTime?
 
   @@index([userId, status])
   @@index([academyId, status])
@@ -1729,13 +1737,6 @@ enum NotificationEvent {
    */
   TRIAL_RESCHEDULED
   TRIAL_RESULT
-  /**
-   * The academy has taken the player on after a trial they passed.
-   * Separate from the join invitation the placement also sends: that one is
-   * paperwork awaiting a yes, this one is the news. A child who passed a trial
-   * should be told they passed and were wanted, not only handed a form.
-   */
-  SQUAD_PLACEMENT
   /**
    * Somebody joined a squad this manager runs.
    * Separate from ACADEMY_JOIN_ANSWER, which is the answer to *one* invitation

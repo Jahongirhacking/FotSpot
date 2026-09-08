@@ -2469,7 +2469,14 @@
         ],
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2495,6 +2502,52 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Declining, with an optional note the manager reads in their notification.",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
+    "/api/v1/academies/invitations/{invitationId}/undo": {
+      "post": {
+        "operationId": "academies_undoInvitationAnswer",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -2505,6 +2558,7 @@
             "bearer": []
           }
         ],
+        "summary": "Takes an acceptance back inside its undo window, before the membership is\nwritten. 409 once it has been.",
         "tags": [
           "academies"
         ]
@@ -7352,6 +7406,15 @@
           "role",
           "userId"
         ]
+      },
+      "RejectInvitationDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
       },
       "RequestTransferDto": {
         "type": "object",

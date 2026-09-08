@@ -472,17 +472,23 @@ describe('TrialsService.settleVerdict — what a verdict settles (Rules 12-15)',
     });
   });
 
-  it('tells the manager about a pass — it is the only verdict that asks them for anything', async () => {
+  /*
+   * The manager is not told. What they need — a passed player waiting for a
+   * squad place — is on their dashboard, read from the application itself;
+   * the verdict is between the coach and the player (TRIAL.md §12).
+   */
+  it('tells the player, and not the manager, about a pass', async () => {
     const { service, prisma, notifications } = build();
     prisma.trialApplication.findUnique.mockResolvedValue(decidedApplication('PASS'));
 
     await service.settleVerdict('app-1');
 
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
     expect(notifications.notify).toHaveBeenCalledWith(
-      'manager-1',
+      PLAYER.userId,
       'TRIAL_RESULT',
       expect.objectContaining({ verdict: 'PASS' }),
-      // Every notification now says who caused it, and in what capacity.
+      // Every notification says who caused it, and in what capacity.
       { userId: 'coach-1', role: 'coach' },
     );
   });
@@ -752,6 +758,17 @@ describe('TrialsService.addToSquad — the gate is a trial PASS (Rule 8)', () =>
     expect(prisma.trialApplication.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'ACCEPTED' } }),
     );
+  });
+
+  /* One message, not two: the invitation itself is the news, and it links to
+     the page where the player answers. */
+  it('sends no second notification beside the invitation', async () => {
+    const { service, prisma, notifications } = build();
+    prisma.trialApplication.findUnique.mockResolvedValue(pendingApplication('PASSED'));
+
+    await service.addToSquad('manager-1', 'app-1');
+
+    expect(notifications.notify).not.toHaveBeenCalled();
   });
 
   it('refuses somebody who is not the academy manager', async () => {

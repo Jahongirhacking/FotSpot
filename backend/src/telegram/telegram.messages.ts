@@ -52,6 +52,19 @@ export function notificationPath(
     case NotificationEvent.RECOMMENDATION_ACCEPTED:
     case NotificationEvent.RECOMMENDATION_REJECTED:
       return '/recommendations';
+    // The verdict, on the trial it was given at.
+    case NotificationEvent.TRIAL_RESULT: {
+      const trialId = id('trialId');
+      return trialId ? `/trials/${trialId}` : '/notifications';
+    }
+    // Straight to the page where the answer is given — the message is the
+    // invitation, and a link that lands on a list of notifications is a
+    // second tap for nothing.
+    case NotificationEvent.ACADEMY_JOIN_INVITATION:
+      return '/invitations?action=JOIN_ACADEMY';
+    // The manager's squad, where the person who answered now is (or is not).
+    case NotificationEvent.ACADEMY_JOIN_ANSWER:
+      return '/academies/mine/squad';
     default:
       return '/notifications';
   }

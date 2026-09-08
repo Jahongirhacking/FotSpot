@@ -5,6 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { AuditService } from '../audit/audit.service';
@@ -15,6 +17,15 @@ import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
 import { InviteMemberDto } from './dto/invitation.dto';
 import { assertNotLocalTeam } from './academy-kind.util';
+import {
+  ACCEPT_UNDO_WINDOW_MS,
+  INVITATIONS_QUEUE,
+  SETTLE_ACCEPTANCE_JOB,
+  SETTLE_ATTEMPTS,
+  SETTLE_BACKOFF_MS,
+  settleJobId,
+  type SettleAcceptanceJob,
+} from './invitations.constants';
 
 /**
  * An academy asking somebody to join, and their answer.
@@ -42,6 +53,7 @@ export class InvitationsService {
     private notifications: NotificationsService,
     private squads: SquadNotificationsService,
     private redis: RedisService,
+    @InjectQueue(INVITATIONS_QUEUE) private queue: Queue<SettleAcceptanceJob>,
   ) {}
 
   /**
@@ -212,11 +224,22 @@ export class InvitationsService {
   /**
    * The invited person's answer — the only place a membership is created this way.
    *
+   * ## A no is final; a yes has a moment's grace
+   *
+   * Declining is written at once, with whatever the person wanted to say to
+   * the manager, and the manager is told. Accepting is *recorded* at once —
+   * the invitation reads ACCEPTED, the screen says so — but the membership,
+   * the manager's notification and any release from a previous club are
+   * written by `settleAcceptance` after `ACCEPT_UNDO_WINDOW_MS`, so a
+   * mis-tapped yes can be taken back before anything has happened (see
+   * invitations.constants.ts).
+   *
    * Re-checked on acceptance rather than trusted from invitation time: an
-   * invitation can sit unanswered for weeks, and in that time the person may have
-   * joined somewhere else or the academy may have taken them on by transfer.
+   * invitation can sit unanswered for weeks, and in that time the person may
+   * have joined somewhere else or the academy may have taken them on by
+   * transfer.
    */
-  async decide(userId: string, invitationId: string, accept: boolean) {
+  async decide(userId: string, invitationId: string, accept: boolean, note?: string) {
     const invitation = await this.prisma.academyInvitation.findUnique({
       where: { id: invitationId },
       include: { academy: { select: { id: true, name: true, kind: true } } },
@@ -230,11 +253,17 @@ export class InvitationsService {
     }
 
     if (!accept) {
+      const answerNote = note?.trim() || null;
       const rejected = await this.prisma.academyInvitation.update({
         where: { id: invitationId },
-        data: { status: 'REJECTED', decidedAt: new Date() },
+        data: { status: 'REJECTED', decidedAt: new Date(), answerNote },
       });
-      await this.announce(invitation.invitedByUserId, invitation, false);
+      await this.announce(invitation.invitedByUserId, invitation, false, answerNote);
+      await this.audit.record(userId, AuditAction.ACADEMY_INVITATION_ANSWERED, {
+        invitationId,
+        academyId: invitation.academyId,
+        accepted: false,
+      });
       return rejected;
     }
 
@@ -245,6 +274,70 @@ export class InvitationsService {
     if (existing && existing.status !== 'RELEASED') {
       throw new ConflictException('You are already at this academy');
     }
+
+    const accepted = await this.prisma.academyInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'ACCEPTED', decidedAt: new Date(), settledAt: null },
+    });
+    await this.scheduleSettlement(invitationId, ACCEPT_UNDO_WINDOW_MS);
+
+    return { ...accepted, undoUntil: new Date(Date.now() + ACCEPT_UNDO_WINDOW_MS) };
+  }
+
+  /**
+   * Takes a yes back, inside the window — the person's own, before the
+   * membership has been written. Refused once it has: they are in the squad
+   * now, and leaving is a different act with a different screen.
+   */
+  async undoAcceptance(userId: string, invitationId: string) {
+    const invitation = await this.prisma.academyInvitation.findUnique({
+      where: { id: invitationId },
+      select: { id: true, userId: true, status: true, settledAt: true },
+    });
+    if (!invitation) throw new NotFoundException('Invitation not found');
+    if (invitation.userId !== userId) {
+      throw new ForbiddenException('That invitation was not addressed to you');
+    }
+    if (invitation.status !== 'ACCEPTED') {
+      throw new BadRequestException('There is no acceptance to undo');
+    }
+    if (invitation.settledAt) {
+      throw new ConflictException('You have already joined; this can no longer be undone');
+    }
+
+    // Removed first: a settlement that ran while the row was being reverted
+    // would write a membership for a yes that no longer exists.
+    const job = await this.queue.getJob(settleJobId(invitationId));
+    if (job) await job.remove();
+
+    return this.prisma.academyInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'PENDING', decidedAt: null },
+    });
+  }
+
+  /**
+   * What a yes sets in motion, once the undo window has closed: the
+   * membership, the release from a previous club, the endorsement for staff,
+   * and the manager's notification. Idempotent — the row is claimed under a
+   * guard, so a retried job writes nothing twice — and a yes that was undone
+   * has no row at ACCEPTED, and settles nothing.
+   */
+  async settleAcceptance(invitationId: string) {
+    const invitation = await this.prisma.academyInvitation.findUnique({
+      where: { id: invitationId },
+      include: { academy: { select: { id: true, name: true, kind: true } } },
+    });
+    if (!invitation || invitation.status !== 'ACCEPTED') {
+      return { settled: false as const, reason: 'undone' as const };
+    }
+    const claimed = await this.prisma.academyInvitation.updateMany({
+      where: { id: invitationId, status: 'ACCEPTED', settledAt: null },
+      data: { settledAt: new Date() },
+    });
+    if (claimed.count === 0) return { settled: false as const, reason: 'already' as const };
+
+    const { userId } = invitation;
 
     // A coach's membership points at their profile so their assessments stay
     // attributable to the club they made them at.
@@ -258,15 +351,10 @@ export class InvitationsService {
      *
      * A player belongs to at most one academy at a time (PLAYER_SQUAD.md §3),
      * and accepting an academy's invitation is one of only two ways that can
-     * change — the other is the manager removing them. Local teams are not in
-     * this query: a player may be in any number of those at once, and joining
-     * an academy takes them out of none of them (§7).
-     *
-     * Read before the transaction and closed inside it. Reading it here costs
-     * one indexed lookup and keeps the transaction to writes; the row cannot
-     * meaningfully change in between, because the only two things that would
-     * change it are this endpoint and a manager acting on the same player, and
-     * whichever lands second leaves a consistent state either way.
+     * change — the other being a transfer both academies agreed to. The
+     * previous membership is released rather than deleted, so the record of
+     * where they were stays. A local team is not an academy for this purpose:
+     * a player may be at a neighbourhood team and an academy at once.
      */
     const leaving =
       invitation.role === 'PLAYER' && invitation.academy.kind === 'ACADEMY'
@@ -282,17 +370,7 @@ export class InvitationsService {
           })
         : null;
 
-    const accepted = await this.prisma.$transaction(async (tx) => {
-      /*
-       * The old academy closes in the same transaction that opens the new one.
-       *
-       * Either both happen or neither does — the two states this rules out are
-       * a player showing at two academies, and a player showing at none after
-       * accepting an invitation. RELEASED rather than deleted, because the
-       * membership is the history: `joinedAt` stays, `releasedAt` records the
-       * end, and the academy that trained them keeps its record of having done
-       * so (§4).
-       */
+    await this.prisma.$transaction(async (tx) => {
       if (leaving) {
         await tx.academyMember.update({
           where: { id: leaving.id },
@@ -332,41 +410,14 @@ export class InvitationsService {
           create: { academyId: invitation.academyId, userId, role },
         });
       }
-
-      return tx.academyInvitation.update({
-        where: { id: invitationId },
-        data: { status: 'ACCEPTED', decidedAt: new Date() },
-      });
     });
 
     await this.announce(invitation.invitedByUserId, invitation, true);
-    /*
-     * The squads that changed, told after the write landed (§17).
-     *
-     * Inside the transaction a rollback would leave a manager reading that
-     * somebody joined a squad they are not in. Out here the worst case is the
-     * opposite and much cheaper: the membership is real and one message did not
-     * arrive.
-     *
-     * Two messages, not one: the academy taking the player on and the academy
-     * losing them are different people who each need to know, and the departure
-     * is the one nobody would otherwise be told about.
-     */
     await this.squads.announceJoined(invitation.academyId, userId, userId);
     if (leaving) {
       await this.squads.announceLeft(leaving.academyId, userId, userId);
     }
 
-    /*
-     * Both academies' cached profiles, because both squads changed.
-     *
-     * `AcademiesService.getPublicProfile` caches the academy *with its members*
-     * for five minutes, and nothing on this path was clearing it — so a manager
-     * who watched somebody accept saw the old member count until the TTL ran
-     * out, which reads as the acceptance not having worked. A transfer touches
-     * two academies, and the one losing the player is the one that would
-     * otherwise keep showing them (§25).
-     */
     await this.redis.del(
       RedisKeys.academyProfile(invitation.academyId),
       ...(leaving ? [RedisKeys.academyProfile(leaving.academyId)] : []),
@@ -378,10 +429,38 @@ export class InvitationsService {
       accepted: true,
     });
 
-    return accepted;
+    return { settled: true as const };
   }
 
-  /** Withdrawing a question nobody has answered yet. */
+  /** Re-queues any yes whose settlement never ran. Called at boot by the processor. */
+  async settleOverdueAcceptances() {
+    const overdue = await this.prisma.academyInvitation.findMany({
+      where: {
+        status: 'ACCEPTED',
+        settledAt: null,
+        decidedAt: { lt: new Date(Date.now() - ACCEPT_UNDO_WINDOW_MS) },
+      },
+      select: { id: true },
+    });
+    for (const { id } of overdue) await this.scheduleSettlement(id, 0);
+    return overdue.length;
+  }
+
+  private async scheduleSettlement(invitationId: string, delay: number) {
+    await this.queue.add(
+      SETTLE_ACCEPTANCE_JOB,
+      { invitationId },
+      {
+        jobId: settleJobId(invitationId),
+        delay,
+        attempts: SETTLE_ATTEMPTS,
+        backoff: { type: 'exponential', delay: SETTLE_BACKOFF_MS },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    );
+  }
+
   async cancel(userId: string, invitationId: string) {
     const invitation = await this.prisma.academyInvitation.findUnique({
       where: { id: invitationId },
@@ -403,6 +482,7 @@ export class InvitationsService {
     managerUserId: string,
     invitation: { academyId: string; userId: string; role: string; academy: { name: string } },
     accepted: boolean,
+    note: string | null = null,
   ) {
     await this.notifications.notify(
       managerUserId,
@@ -413,6 +493,8 @@ export class InvitationsService {
         userId: invitation.userId,
         role: invitation.role,
         accepted,
+        // What they said when declining, if anything — the manager reads it here.
+        ...(note ? { note } : {}),
       },
       // The person answering, in the capacity they were invited in.
       { userId: invitation.userId, role: invitation.role.toLowerCase() },

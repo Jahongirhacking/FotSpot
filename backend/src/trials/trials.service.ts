@@ -1112,38 +1112,12 @@ export class TrialsService {
     );
 
     /*
-     * The manager hears about a pass, and only a pass.
-     *
-     * A PASS is the one verdict that asks something of them — the player is now
-     * eligible for a squad place and nobody else can give it. A FAIL asks
-     * nothing: it is the coach's judgement, complete on its own, and forwarding
-     * every one of them would bury the handful that need an answer under a
-     * running commentary on a morning the manager did not attend.
-     *
-     * The whole sheet is still on the trial's own screen either way.
+     * The manager is not told. A verdict is between the coach and the player;
+     * what the manager needs — a passed player waiting for a squad place — is
+     * on their dashboard, read from the application itself, and a notification
+     * for every pass would be a running commentary on a morning they did not
+     * attend (TRIAL.md §12).
      */
-    if (verdict === 'PASS') {
-      const manager = await this.prisma.academyMember.findFirst({
-        where: { academyId: application.trial.academyId, role: 'MANAGER' },
-        select: { userId: true },
-      });
-      if (manager) {
-        await this.notifications.notify(
-          manager.userId,
-          'TRIAL_RESULT',
-          {
-            applicationId,
-            trialId: application.trialId,
-            trialTitle: application.trial.title,
-            playerId: application.playerId,
-            playerName: `${application.player.firstName} ${application.player.lastName}`,
-            status: 'PASSED',
-            verdict: 'PASS',
-          },
-          { userId: coachUserId, role: 'coach' },
-        );
-      }
-    }
 
     /*
      * The player hears about a pass on their phone, not only in the app.
@@ -1245,26 +1219,8 @@ export class TrialsService {
       data: { status: 'ACCEPTED' },
     });
 
-    /*
-     * The news, separate from the paperwork.
-     *
-     * `invitations.invite` already notifies — with an academy join invitation
-     * awaiting a yes. That is a form. A fourteen-year-old who trained for this,
-     * turned up and passed should also be told plainly that they passed and the
-     * academy wants them, in words that are about them rather than about a
-     * membership record.
-     */
-    await this.notifications.notify(
-      application.player.userId,
-      'SQUAD_PLACEMENT',
-      {
-        applicationId,
-        trialId: application.trialId,
-        trialTitle: application.trial.title,
-        academyId: application.trial.academyId,
-      },
-      { userId, role: 'academy_manager' },
-    );
+    // One message, not two: the invitation `invite` just sent carries the
+    // trial in its note and links to the page where the player answers.
 
     return invitation;
   }

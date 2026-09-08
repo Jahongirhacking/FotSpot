@@ -399,7 +399,43 @@ export class PlayersService {
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
-    return { ...profile, memberships: await this.membershipsFor(owner.userId) };
+    return {
+      ...profile,
+      memberships: await this.membershipsFor(owner.userId),
+      contacts: await this.contactsFor(owner.userId, viewer),
+    };
+  }
+
+  /**
+   * How to reach the player — for an academy's manager, and for nobody else.
+   *
+   * The manager is the one person with a reason to reach a player directly:
+   * the invitation they just sent, the trial they are arranging. A scout has
+   * no contact channel at all (README §11.2) and a coach judges on the pitch,
+   * so both see nothing here. Resolved outside the cached profile, because the
+   * cached copy is shared with everybody and must never carry a phone number.
+   *
+   * Telegram is the account's id, offered as a `tg://user?id=` link — there is
+   * no username on file, and the id opens the chat where Telegram allows it.
+   */
+  private async contactsFor(playerUserId: string, viewer?: AuthUser) {
+    if (!viewer) return null;
+    const manages = await this.prisma.academyMember.findFirst({
+      where: { userId: viewer.userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (!manages) return null;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: playerUserId },
+      select: { email: true, phone: true, telegramId: true },
+    });
+    if (!user) return null;
+    return {
+      email: user.email,
+      phone: user.phone,
+      telegram: user.telegramId ? `tg://user?id=${user.telegramId}` : null,
+    };
   }
 
   /**

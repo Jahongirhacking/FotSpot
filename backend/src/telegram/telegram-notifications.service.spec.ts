@@ -212,6 +212,24 @@ describe('notificationPath', () => {
     );
   });
 
+  /* The message *is* the invitation, so the link lands where it is answered. */
+  it('sends a join invitation straight to the page where it is answered', () => {
+    expect(notificationPath(NotificationEvent.ACADEMY_JOIN_INVITATION, {})).toBe(
+      '/invitations?action=JOIN_ACADEMY',
+    );
+  });
+
+  it('sends the manager to their squad for an answer', () => {
+    expect(notificationPath(NotificationEvent.ACADEMY_JOIN_ANSWER, { accepted: true })).toBe(
+      '/academies/mine/squad',
+    );
+  });
+
+  it('sends a verdict to the trial it was given at', () => {
+    expect(notificationPath(NotificationEvent.TRIAL_RESULT, { trialId: 't1' })).toBe('/trials/t1');
+    expect(notificationPath(NotificationEvent.TRIAL_RESULT, {})).toBe('/notifications');
+  });
+
   it('falls back to the notification list for anything else', () => {
     expect(notificationPath(NotificationEvent.ACADEMY_INVITATION, {})).toBe('/notifications');
   });

@@ -17,3 +17,11 @@ export class InviteMemberDto {
   /** Shown to the person deciding — "we watched you at the Andijon trial". */
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
+
+/**
+ * Declining, with a word for the manager if the person wants to give one.
+ * Optional: saying no must stay cheap.
+ */
+export class RejectInvitationDto {
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
+}
