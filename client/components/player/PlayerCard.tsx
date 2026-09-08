@@ -1,7 +1,7 @@
 import { PlayerPortrait } from '@/components/player/PlayerPortrait';
 import type { PlayerProfile } from '@/lib/api/types';
 import { CARD_THEME, positionGroup, starTier } from '@/lib/player-card';
-import { ageBand, cn, humanizeEnum } from '@/lib/utils';
+import { bandOf, cn, humanizeEnum } from '@/lib/utils';
 import Link from 'next/link';
 
 /**
@@ -51,7 +51,7 @@ export function PlayerCard({
   const group = positionGroup(player?.primaryPosition);
   const theme = CARD_THEME[group];
   const stars = player?.stars ?? 0;
-  const bandLabel = ageBand(player?.birthDate).replace('U-', 'U');
+  const bandLabel = (bandOf(player) ?? '').replace('U-', 'U');
   const small = size === 'sm';
 
   const card = (

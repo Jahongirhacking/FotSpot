@@ -8,7 +8,7 @@ import {
   type Attribute,
   type AttributeKey,
 } from '@/lib/player-card';
-import { ageBand, cn } from '@/lib/utils';
+import { bandOf, cn } from '@/lib/utils';
 import { ChevronRight } from 'lucide-react';
 
 /**
@@ -42,7 +42,7 @@ export function AttributeBars({
 }) {
   const { t } = useI18n();
   const attributes = deriveAttributes(player, assessments, clips ?? player?.media ?? []);
-  const band = ageBand(player?.birthDate);
+  const band = bandOf(player) ?? 'Senior';
 
   return (
     <div className={className}>

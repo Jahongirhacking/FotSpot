@@ -33,6 +33,11 @@
   --warning: oklch(72% 0.16 75);
   --danger: oklch(58% 0.2 22);
   --info: oklch(62% 0.14 245);
+  /* The one action that is neither the green "go" nor a warning: inviting a
+     player to a private trial. Its own hue, so it never reads as Apply. */
+  --violet: oklch(52% 0.2 300);
+  --violet-strong: oklch(45% 0.19 300);
+  --violet-foreground: oklch(99% 0.01 300);
 
   /* Provenance chips — README §12.4 / §21.1. Distinct hues so a self-reported
      number never visually passes as a measured one. */
@@ -74,6 +79,9 @@
     --warning: oklch(80% 0.15 78);
     --danger: oklch(68% 0.19 22);
     --info: oklch(72% 0.13 245);
+    --violet: oklch(66% 0.19 300);
+    --violet-strong: oklch(74% 0.17 300);
+    --violet-foreground: oklch(16% 0.05 300);
 
     --prov-combine: oklch(72% 0.13 245);
     --prov-coach: oklch(72% 0.16 152);
@@ -98,6 +106,9 @@
   --primary-foreground: oklch(99% 0.01 155);
   --accent: oklch(80% 0.19 130);
   --accent-foreground: oklch(24% 0.07 140);
+  --violet: oklch(52% 0.2 300);
+  --violet-strong: oklch(45% 0.19 300);
+  --violet-foreground: oklch(99% 0.01 300);
   --prov-combine: oklch(62% 0.14 245);
   --prov-coach: oklch(60% 0.15 152);
   --prov-self: oklch(58% 0.02 257);
@@ -117,6 +128,9 @@
   --primary-foreground: oklch(16% 0.04 155);
   --accent: oklch(86% 0.2 128);
   --accent-foreground: oklch(18% 0.06 140);
+  --violet: oklch(66% 0.19 300);
+  --violet-strong: oklch(74% 0.17 300);
+  --violet-foreground: oklch(16% 0.05 300);
   --prov-combine: oklch(72% 0.13 245);
   --prov-coach: oklch(72% 0.16 152);
   --prov-self: oklch(66% 0.02 257);
@@ -141,6 +155,9 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-violet: var(--violet);
+  --color-violet-strong: var(--violet-strong);
+  --color-violet-foreground: var(--violet-foreground);
 
   --color-prov-combine: var(--prov-combine);
   --color-prov-coach: var(--prov-coach);

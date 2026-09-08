@@ -787,8 +787,11 @@ export const en: Dictionary = {
     age: 'Age',
     actions: 'Actions',
     noActions: 'You have no actions for this profile.',
-    contacts: 'Contact',
-    contactsHint: 'Visible to you as the academy’s manager, and to nobody else.',
+    contacts: 'Details & contact',
+    exactAge: 'Age',
+    address: 'Lives in',
+    contactsHint:
+      'The exact age, address and contacts are visible to you as the academy’s manager, and to nobody else.',
     contactPhone: 'Phone',
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
@@ -1211,7 +1214,6 @@ export const en: Dictionary = {
     /** A local team is not an academy, and the player deciding should be told which. */
     joinInvitationLocalTeam: 'A local team wants you to join their squad',
     joinAnswer: 'Your invitation has been answered',
-    joinAnswerAccepted: 'Somebody accepted your invitation and joined the reserve',
     joinAnswerDeclined: 'Somebody turned down your invitation',
     academyInvitation: 'An academy is inviting you for a trial',
     trialRescheduled: 'A trial you applied to has moved',
@@ -1245,12 +1247,7 @@ export const en: Dictionary = {
     yourTrials: 'Your trials',
     noTrialsPosted: 'No trials posted yet.',
     /* The coach's two work queues — see dashboard/CoachQueues.tsx. */
-    trialQueue: 'Trials to judge',
-    trialQueueHint: 'Players you are due to test in person, and have not answered on yet.',
-    noPendingTrials: 'Nobody waiting on a verdict',
-    noPendingTrialsHint: 'Players on the trials you work appear here until you pass or fail them.',
     trialQueueFailed: 'Could not load your trials.',
-    openTrial: 'Open trial',
     coachQueuesFootnote:
       'A verdict is a pass or fail on the pitch, and it is the assigned coach’s on every trial. Inviting a player and placing them in a squad are the manager’s.',
     /* What is blocked on the manager — see PendingTrialActions. */

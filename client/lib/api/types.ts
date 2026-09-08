@@ -423,6 +423,16 @@ export interface PlayerMemberships {
   academyHistory: SquadMembership[];
 }
 
+export type AgeBand = 'U12' | 'U14' | 'U16' | 'U18' | 'Senior';
+
+/** The exact facts about a player — an academy's manager only. */
+export interface PlayerDetails {
+  birthDate: string;
+  age: number;
+  region: string | null;
+  district: string | null;
+}
+
 /**
  * How to reach a player. Sent only to an academy's manager — null for every
  * other viewer, and never inside the cached profile.
@@ -441,6 +451,18 @@ export interface PlayerProfile {
   /** For an academy's manager only; null or absent for everybody else. */
   contacts?: PlayerContacts | null;
   /**
+   * The exact date of birth, the age it makes, and where the player lives —
+   * for an academy's manager only. Everybody else gets the age band and no
+   * address (README §11, TRIAL.md Rule 28).
+   */
+  details?: PlayerDetails | null;
+  /**
+   * The age band, computed by the API from the real date of birth. On the
+   * public profile this is what stands in for `birthDate`, which is null
+   * there for anybody but an academy's manager.
+   */
+  ageBand?: AgeBand;
+  /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
    *
@@ -452,7 +474,12 @@ export interface PlayerProfile {
   userId: string;
   firstName: string;
   lastName: string;
-  birthDate: string;
+  /**
+   * Null on the public profile for anybody but an academy's manager — the
+   * band (`ageBand`) is what a stranger is told. Always present on the lists
+   * an academy or an admin reads.
+   */
+  birthDate: string | null;
   gender: string;
   height?: number | null;
   weight?: number | null;

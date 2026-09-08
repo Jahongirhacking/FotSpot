@@ -818,8 +818,11 @@ export const uz = {
     age: 'Yosh',
     actions: 'Amallar',
     noActions: 'Bu profil uchun sizda amallar yo‘q.',
-    contacts: 'Aloqa',
-    contactsHint: 'Faqat sizga — akademiya menejeri sifatida — ko‘rinadi.',
+    contacts: 'Ma’lumotlar va aloqa',
+    exactAge: 'Yoshi',
+    address: 'Yashash joyi',
+    contactsHint:
+      'Aniq yosh, manzil va aloqa ma’lumotlari faqat sizga — akademiya menejeri sifatida — ko‘rinadi.',
     contactPhone: 'Telefon',
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
@@ -1256,7 +1259,6 @@ export const uz = {
     /** Mahalliy jamoa akademiya emas — taklifni kim yuborganini o‘yinchi bilishi kerak. */
     joinInvitationLocalTeam: 'Mahalliy jamoa sizni o‘z tarkibiga taklif qilmoqda',
     joinAnswer: 'Taklifga javob keldi',
-    joinAnswerAccepted: 'Kimdir taklifingizni qabul qilib, zaxira tarkibga qo‘shildi',
     joinAnswerDeclined: 'Kimdir taklifingizni rad etdi',
     academyInvitation: 'Akademiya sizni sinovga chaqirmoqda',
     trialRescheduled: 'Sinov sanasi o‘zgardi',
@@ -1290,14 +1292,7 @@ export const uz = {
     yourTrials: 'Sizning sinovlaringiz',
     noTrialsPosted: 'Hali sinov e’lon qilinmagan.',
     /* Murabbiyning ikki ish navbati — dashboard/CoachQueues.tsx ga qarang. */
-    trialQueue: 'Baholanadigan sinovlar',
-    trialQueueHint:
-      'Shaxsan sinab ko‘rishingiz kerak bo‘lgan va hali hukm yozilmagan futbolchilar.',
-    noPendingTrials: 'Hukm kutayotgan yo‘q',
-    noPendingTrialsHint:
-      'Siz ishlayotgan sinovlardagi o‘yinchilar siz qaror chiqarguningizcha shu yerda turadi.',
     trialQueueFailed: 'Sinovlaringizni yuklab bo‘lmadi.',
-    openTrial: 'Sinovni ochish',
     coachQueuesFootnote:
       'Qaror — maydondagi o‘tdi yoki o‘tmadi, va har bir sinovda u tayinlangan murabbiyniki. O‘yinchini taklif qilish va tarkibga qo‘shish menejerniki.',
     /* Menejerning qaroriga bog‘liq ishlar — PendingTrialActions ga qarang. */

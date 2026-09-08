@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, Skeleton } from '@/components/ui/Feedback';
+import { Avatar } from '@/components/ui/Avatar';
 import { browserFetch } from '@/lib/api/browser';
-import { ageBand } from '@/lib/utils';
+import { ageFrom, formatDate, initials } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardCheck, UserPlus } from 'lucide-react';
+import { Check, ClipboardCheck, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -19,8 +20,11 @@ interface PendingPlayer {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  gender: string | null;
   primaryPosition: string | null;
   region: string | null;
+  district: string | null;
+  avatarUrl: string | null;
 }
 
 /**
@@ -58,8 +62,16 @@ interface PendingAction {
  * dashboard-specific placement path — a second one would be a second state
  * machine, drifting from the first the first time either changed.
  */
+/** The player's gender in the reader's words, or nothing for a value not stated. */
+function genderLabel(gender: string | null | undefined, t: ReturnType<typeof useI18n>['t']) {
+  const value = (gender ?? '').trim().toLowerCase();
+  if (value === 'male') return t.trials.genderMale;
+  if (value === 'female') return t.trials.genderFemale;
+  return null;
+}
+
 export function PendingTrialActions() {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -108,51 +120,82 @@ export function PendingTrialActions() {
           </Alert>
         )}
 
-        <ul className="divide-border divide-y">
-          {items.map((item) => (
-            <li key={item?.applicationId} className="flex flex-wrap items-center gap-3 py-3">
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/players/${item?.playerId}`}
-                  className="block truncate text-sm font-medium hover:underline"
-                >
-                  {item?.player.firstName} {item?.player.lastName}
-                </Link>
-                <p className="text-muted truncate text-xs">
-                  {[
-                    item?.player.birthDate ? ageBand(item?.player.birthDate) : null,
-                    item?.player.primaryPosition,
-                    item?.player.region,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-                <p className="text-muted mt-0.5 text-xs">
-                  <Link href={`/trials/${item?.trial.id}`} className="hover:underline">
+        {/*
+          Cards, not rows: each is a person the manager is about to bring into
+          the club, and the decision deserves a face, the exact age and the
+          trial they passed — read at a glance, one card per player.
+        */}
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => {
+            const age = item?.player.birthDate ? ageFrom(item.player.birthDate) : null;
+            const gender = genderLabel(item?.player.gender, t);
+            return (
+              <li
+                key={item?.applicationId}
+                className="border-border bg-surface-2 flex flex-col gap-3 rounded-xl border p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar
+                    src={item?.player.avatarUrl ?? null}
+                    fallback={initials(item?.player.firstName, item?.player.lastName)}
+                    alt=""
+                    className="size-14 shrink-0 rounded-lg text-base"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/players/${item?.playerId}`}
+                      className="block truncate font-semibold hover:underline"
+                    >
+                      {item?.player.firstName} {item?.player.lastName}
+                    </Link>
+                    <p className="text-muted truncate text-xs">
+                      {[
+                        age !== null ? f(t.trials.ageYears, { age }) : null,
+                        item?.player.primaryPosition,
+                        gender,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    {/* The exact date and where they live: the manager's to know. */}
+                    <p className="text-muted truncate text-xs">
+                      {[
+                        item?.player.birthDate ? formatDate(item.player.birthDate) : null,
+                        [item?.player.district, item?.player.region].filter(Boolean).join(', ') ||
+                          null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-success flex items-center gap-1.5 text-xs font-medium">
+                  <Check className="size-3.5 shrink-0" aria-hidden />
+                  <Link href={`/trials/${item?.trial.id}`} className="truncate hover:underline">
                     {t.dashboard.passedTrial} · {item?.trial.title}
                   </Link>
                 </p>
 
-                {/*
-                  TRIAL.md names the manager's action "Add Player to Squad", so
-                  the button keeps that name. What it actually does is send an
-                  `AcademyInvitation` the player has to accept — nobody is placed
-                  by pressing it — and a button reading as an immediate placement
-                  hides the step the player still owns. This is the sentence the
-                  squad screens already use, not a second wording of it.
-                */}
-                <p className="text-muted mt-0.5 text-xs">{t.academy.addWarning}</p>
-              </div>
-
-              <Button
-                size="sm"
-                loading={addToSquad.isPending && addToSquad.variables === item?.applicationId}
-                onClick={() => addToSquad.mutate(item?.applicationId)}
-              >
-                <UserPlus aria-hidden /> {t.trials.addToSquad}
-              </Button>
-            </li>
-          ))}
+                <div className="mt-auto space-y-1.5">
+                  {/*
+                    The button says "Invite to squad" because that is what it
+                    does: it sends an `AcademyInvitation` the player has to
+                    accept, and nobody is placed by pressing it.
+                  */}
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    loading={addToSquad.isPending && addToSquad.variables === item?.applicationId}
+                    onClick={() => addToSquad.mutate(item?.applicationId)}
+                  >
+                    <UserPlus aria-hidden /> {t.trials.addToSquad}
+                  </Button>
+                  <p className="text-muted text-xs">{t.academy.addWarning}</p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </CardContent>
     </Card>

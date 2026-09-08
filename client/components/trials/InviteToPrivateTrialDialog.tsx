@@ -175,7 +175,7 @@ export function InviteToPrivateTrialDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button size="sm">
+          <Button size="sm" variant="violet">
             <Mail aria-hidden /> {t.recommendations.invite}
           </Button>
         )}
@@ -281,7 +281,12 @@ export function InviteToPrivateTrialDialog({
           <Button variant="ghost" onClick={() => setOpen(false)}>
             {t.common.cancel}
           </Button>
-          <Button loading={invite.isPending} disabled={!ready} onClick={() => invite.mutate()}>
+          <Button
+            variant="violet"
+            loading={invite.isPending}
+            disabled={!ready}
+            onClick={() => invite.mutate()}
+          >
             <Mail aria-hidden /> {t.recommendations.sendInvite}
           </Button>
         </DialogFooter>

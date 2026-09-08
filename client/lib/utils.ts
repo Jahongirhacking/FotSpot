@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { AgeBand } from '@/lib/api/types';
 
 /** Merge conditional classes, letting later Tailwind utilities win over earlier ones. */
 export function cn(...inputs: ClassValue[]) {
@@ -19,13 +20,29 @@ export function ageFrom(birthDate: string | Date, at: Date = new Date()): number
  * Age band per README §21.2 — attribute bars and comparisons are only ever made
  * within a band, never across.
  */
-export function ageBand(birthDate: string | Date): 'U12' | 'U14' | 'U16' | 'U18' | 'Senior' {
+export function ageBand(birthDate: string | Date): AgeBand {
   const age = ageFrom(birthDate);
   if (age < 12) return 'U12';
   if (age < 14) return 'U14';
   if (age < 16) return 'U16';
   if (age < 18) return 'U18';
   return 'Senior';
+}
+
+/**
+ * The band a player is compared in, from whatever the row carries.
+ *
+ * The public profile hides the date of birth from everybody but an academy's
+ * manager and sends the band instead (README §11); every list an academy or
+ * an admin reads still carries the date. One helper, so no screen has to know
+ * which of the two it was given.
+ */
+export function bandOf(player: {
+  ageBand?: AgeBand | null;
+  birthDate?: string | Date | null;
+}): AgeBand | null {
+  if (player?.ageBand) return player.ageBand;
+  return player?.birthDate ? ageBand(player.birthDate) : null;
 }
 
 /** Turn a SCREAMING_SNAKE enum into readable text: DEEP_LYING_FORWARD -> Deep Lying Forward. */

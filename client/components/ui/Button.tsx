@@ -16,6 +16,7 @@ const buttonVariants = cva(
         outline: 'border border-border bg-surface hover:bg-surface-2',
         ghost: 'hover:bg-surface-2',
         danger: 'bg-danger text-white hover:opacity-90',
+        violet: 'bg-violet text-violet-foreground hover:bg-violet-strong',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

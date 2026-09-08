@@ -275,7 +275,7 @@ function InboxRow({
           recommendationId={item?.recommendationIds?.[0]}
           onInvited={onInvited}
           trigger={
-            <Button size="sm">
+            <Button size="sm" variant="violet">
               <Mail aria-hidden /> {t.recommendations.inviteToPrivateTrial}
             </Button>
           }

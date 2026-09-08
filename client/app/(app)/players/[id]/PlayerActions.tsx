@@ -392,7 +392,7 @@ function AcademyAction({ playerId, playerName }: { playerId: string; playerName:
           role={state.role}
           recommendationId={state.recommendation?.id}
           trigger={
-            <Button className="w-full">
+            <Button className="w-full" variant="violet">
               <Mail aria-hidden /> {t.recommendations.inviteToPrivateTrial}
             </Button>
           }

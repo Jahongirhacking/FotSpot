@@ -87,12 +87,10 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       href: '/academies/mine/squad',
       // A yes and a no read differently at a glance; the note they left, if
       // any, is on the detail line below.
+      // Only a no arrives here now — a yes is announced as the squad growing
+      // (SQUAD_JOINED), once, with the player's name on it.
       titleFor: (payload) =>
-        payload?.accepted === true
-          ? t.notifications.joinAnswerAccepted
-          : payload?.accepted === false
-            ? t.notifications.joinAnswerDeclined
-            : undefined,
+        payload?.accepted === false ? t.notifications.joinAnswerDeclined : undefined,
       iconFor: (payload) => (payload?.accepted === false ? UserMinus : undefined),
       hrefFor: (payload) =>
         payload?.role === 'SCOUT' && typeof payload.userId === 'string'
