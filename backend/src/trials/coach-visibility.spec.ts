@@ -28,6 +28,7 @@ const row = (status: string, extra: Record<string, unknown> = {}) => ({
   trialId: 'trial-1',
   playerId: 'player-1',
   status,
+  trial: TRIAL,
   inviteNote: '<p>Ask for Bobur at the gate</p>',
   player: {
     id: 'player-1',
@@ -39,6 +40,24 @@ const row = (status: string, extra: Record<string, unknown> = {}) => ({
   result: null,
   ...extra,
 });
+
+type Row = { id: string; status: string };
+type Where = {
+  trialId?: string;
+  status?: string | { in: string[] };
+  id?: { in: string[] };
+  AND?: Where[];
+};
+
+/** The subset of Prisma's `where` the pager uses, evaluated in memory. */
+function matches(row: Row, where: Where | undefined): boolean {
+  if (!where) return true;
+  if (where.AND && !where.AND.every((part) => matches(row, part))) return false;
+  if (typeof where.status === 'string' && where.status !== row.status) return false;
+  if (typeof where.status === 'object' && !where.status.in.includes(row.status)) return false;
+  if (where.id && !where.id.in.includes(row.id)) return false;
+  return true;
+}
 
 function build(
   viewer: 'MANAGER' | 'COACH' | 'NOBODY',
@@ -72,17 +91,31 @@ function build(
         viewer === 'COACH' ? { trialId: 'trial-1', coachUserId: 'coach-1' } : null,
       ),
     },
+    /*
+     * Enough of Prisma for the stage pager: `where` arrives as the base
+     * filter, as `AND: [base, status]`, or as `id: { in }`, and the rows are
+     * grouped, counted, and paged from the same in-memory list.
+     */
     trialApplication: {
-      findMany: jest.fn(async (args: { where: { status?: { in: string[] } } }) => {
-        const allowed = args.where.status?.in;
-        return applications.filter(
-          (a) => !allowed || allowed.includes((a as { status: string }).status),
-        );
-      }),
-      count: jest.fn(
-        async () =>
-          applications.filter((a) => (a as { status: string }).status === 'INVITED').length,
+      findMany: jest.fn(
+        async (args: { where: Where; skip?: number; take?: number; orderBy?: unknown }) => {
+          const rows = applications.filter((a) => matches(a as Row, args.where));
+          const from = args.skip ?? 0;
+          return rows.slice(from, args.take != null ? from + args.take : undefined);
+        },
       ),
+      count: jest.fn(
+        async (args: { where: Where }) =>
+          applications.filter((a) => matches(a as Row, args.where)).length,
+      ),
+      groupBy: jest.fn(async (args: { where: Where }) => {
+        const tally = new Map<string, number>();
+        for (const a of applications.filter((a) => matches(a as Row, args.where))) {
+          const status = (a as Row).status;
+          tally.set(status, (tally.get(status) ?? 0) + 1);
+        }
+        return [...tally].map(([status, n]) => ({ status, _count: { _all: n } }));
+      }),
       // `getVisibleById` asks whether the viewer is the player; never here.
       findFirst: jest.fn(async (): Promise<unknown> => null),
     },
@@ -118,12 +151,16 @@ describe('listApplicationsForTrial — what a coach is handed', () => {
     const { items } = await service.listApplicationsForTrial('coach-1', 'trial-1');
 
     expect(items.map((item) => item.status)).toEqual(['CONFIRMED', 'PASSED']);
-    // Filtered in the query, not after it.
-    const [args] = prisma.trialApplication.findMany.mock.calls[0] as unknown as [
-      { where: { status: { in: string[] } } },
-    ];
-    expect(args.where.status.in).not.toContain('INVITED');
-    expect(args.where.status.in).not.toContain('REJECTED');
+    // Filtered in the query, not after it: every read carries the participant
+    // restriction, whether on its own or intersected with a stage.
+    const reads = prisma.trialApplication.findMany.mock.calls as unknown as [{ where: Where }][];
+    expect(reads.length).toBeGreaterThan(0);
+    for (const [args] of reads) {
+      const filter = args.where.AND ? args.where.AND[0] : args.where;
+      const allowed = typeof filter.status === 'object' ? filter.status.in : [];
+      expect(allowed).not.toContain('INVITED');
+      expect(allowed).not.toContain('REJECTED');
+    }
   });
 
   it('counts the unanswered invitations for both, without naming anyone', async () => {
@@ -229,5 +266,87 @@ describe('listApplicationsForTrial — the stage on every row', () => {
 
     expect(prisma.academyInvitation.findMany).not.toHaveBeenCalled();
     expect(prisma.academyMember.findMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Paged per stage, so an open day with hundreds of applicants is never read
+ * whole. A status stage is cut in the database; a stage that depends on the
+ * squad invitation is cut from the staged ids. Every page says how many sit
+ * at every stage, so the tabs read right before they are opened.
+ */
+describe('listApplicationsForTrial — one page of one stage', () => {
+  const many = [
+    ...Array.from({ length: 5 }, (_, i) => ({ ...row('APPLIED'), id: `applied-${i}` })),
+    ...Array.from({ length: 3 }, (_, i) => ({
+      ...row('PASSED', { result: { verdict: 'PASS' } }),
+      id: `passed-${i}`,
+    })),
+    ...Array.from({ length: 4 }, (_, i) => ({
+      ...row('ACCEPTED', { result: { verdict: 'PASS' } }),
+      id: `offered-${i}`,
+    })),
+    row('REJECTED', { result: { verdict: 'PASS' } }),
+  ];
+
+  it('cuts a status stage in the database', async () => {
+    const { service, prisma } = build('MANAGER', many);
+
+    const page = await service.listApplicationsForTrial('manager-1', 'trial-1', {
+      stage: 'PENDING',
+      page: 2,
+      pageSize: 2,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual(['applied-2', 'applied-3']);
+    expect(page).toMatchObject({ total: 5, page: 2, pageSize: 2 });
+    // The database did the cutting: the page read asked for skip and take.
+    const paged = (
+      prisma.trialApplication.findMany.mock.calls as unknown as [{ skip?: number; take?: number }][]
+    ).find(([args]) => args.take === 2);
+    expect(paged?.[0]).toMatchObject({ skip: 2, take: 2 });
+  });
+
+  it('cuts a squad stage from the staged ids, in order', async () => {
+    const { service } = build('MANAGER', many, { invitation: { status: 'PENDING' } });
+
+    const page = await service.listApplicationsForTrial('manager-1', 'trial-1', {
+      stage: 'SQUAD_INVITED',
+      page: 1,
+      pageSize: 3,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual(['offered-0', 'offered-1', 'offered-2']);
+    expect(page.items.every((item) => item.stage === 'SQUAD_INVITED')).toBe(true);
+    expect(page.total).toBe(4);
+  });
+
+  it('says how many sit at every stage, on every page', async () => {
+    const { service } = build('MANAGER', many, { invitation: { status: 'PENDING' } });
+
+    const page = await service.listApplicationsForTrial('manager-1', 'trial-1', {
+      stage: 'FAILED',
+    });
+
+    expect(page.items).toEqual([]);
+    expect(page.counts).toEqual({
+      PENDING: 5,
+      FAILED: 0,
+      PASSED: 3,
+      CANDIDACY_CLOSED: 1,
+      SQUAD_INVITED: 4,
+      INVITATION_DECLINED: 0,
+      SQUAD_JOINED: 0,
+    });
+  });
+
+  it('never reads the pending rows whole for a squad stage', async () => {
+    const { service, prisma } = build('MANAGER', many);
+
+    await service.listApplicationsForTrial('manager-1', 'trial-1', { stage: 'SQUAD_JOINED' });
+
+    // Two reads: the light decided set, and the page by id. No read of everything.
+    const reads = prisma.trialApplication.findMany.mock.calls as unknown as [{ where: Where }][];
+    expect(reads.every(([args]) => args.where.AND || args.where.id)).toBe(true);
   });
 });

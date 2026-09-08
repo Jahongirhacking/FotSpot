@@ -4992,6 +4992,44 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "FAILED",
+                "PASSED",
+                "CANDIDACY_CLOSED",
+                "SQUAD_INVITED",
+                "INVITATION_DECLINED",
+                "SQUAD_JOINED"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5291,6 +5329,44 @@
             "required": true,
             "in": "path",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "FAILED",
+                "PASSED",
+                "CANDIDACY_CLOSED",
+                "SQUAD_INVITED",
+                "INVITATION_DECLINED",
+                "SQUAD_JOINED"
+              ],
               "type": "string"
             }
           }

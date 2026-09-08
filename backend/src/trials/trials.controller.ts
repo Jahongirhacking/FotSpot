@@ -18,6 +18,7 @@ import {
   ListTrialsQueryDto,
   AssignCoachesDto,
   CoachQueueQueryDto,
+  ListApplicationsQueryDto,
   CreateTrialDto,
   RecordTrialVerdictDto,
   RespondToInvitationDto,
@@ -98,8 +99,12 @@ export class TrialsController {
    * it was created for and where that player stands (`stage`). Manager only.
    */
   @Get('academy/:academyId/private')
-  listPrivateForAcademy(@CurrentUser() user: AuthUser, @Param('academyId') academyId: string) {
-    return this.trialsService.listPrivateForAcademy(user.userId, academyId);
+  listPrivateForAcademy(
+    @CurrentUser() user: AuthUser,
+    @Param('academyId') academyId: string,
+    @Query() query: ListApplicationsQueryDto,
+  ) {
+    return this.trialsService.listPrivateForAcademy(user.userId, academyId, query);
   }
 
   /**
@@ -193,8 +198,12 @@ export class TrialsController {
    * invitations still awaiting an answer.
    */
   @Get(':id/applications')
-  listApplicationsForTrial(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.trialsService.listApplicationsForTrial(user.userId, id);
+  listApplicationsForTrial(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query() query: ListApplicationsQueryDto,
+  ) {
+    return this.trialsService.listApplicationsForTrial(user.userId, id, query);
   }
 
   /** The player's yes or no — the one step nobody can take for them. */

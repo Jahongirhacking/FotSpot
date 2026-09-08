@@ -22,6 +22,7 @@ import {
 import { MAX_KEYWORDS, MAX_KEYWORD_LENGTH } from '../../common/seo-keywords.util';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { TIME_PATTERN } from '../trial-window.util';
+import { APPLICATION_STAGES, type ApplicationStage } from '../application-stage.util';
 
 export class CreateTrialDto {
   /**
@@ -247,6 +248,22 @@ export class RecordTrialVerdictDto {
  * one, the sessions of the other — so it asks for `type=PRIVATE` rather than
  * fetching both and discarding half.
  */
+/**
+ * One page of one stage of a trial's applicants — or of the academy's
+ * private trials, which are read the same way.
+ *
+ * Paged per stage rather than fetched whole: an open day collects hundreds
+ * of applications and a season of private trials runs to hundreds more, and
+ * the screen shows one tab of one page at a time. `stage` omitted means
+ * every stage, newest first.
+ */
+export class ListApplicationsQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ enum: APPLICATION_STAGES })
+  @IsOptional()
+  @IsIn(APPLICATION_STAGES)
+  stage?: ApplicationStage;
+}
+
 export class CoachQueueQueryDto extends PaginationDto {
   @ApiPropertyOptional({ enum: TrialType, enumName: 'TrialType' })
   @IsOptional()

@@ -54,7 +54,12 @@ import { SmsService } from '../sms/sms.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
-import { applicationStage, type ApplicationStage } from './application-stage.util';
+import {
+  applicationStage,
+  STAGE_STATUSES,
+  STATUS_STAGES,
+  type ApplicationStage,
+} from './application-stage.util';
 import {
   SETTLE_ATTEMPTS,
   SETTLE_BACKOFF_MS,
@@ -1499,7 +1504,11 @@ export class TrialsService {
    * manager's message to the family and stays with them — a coach never
    * receives it, whichever rows they see.
    */
-  async listApplicationsForTrial(userId: string, trialId: string) {
+  async listApplicationsForTrial(
+    userId: string,
+    trialId: string,
+    query: { stage?: ApplicationStage; page?: number; pageSize?: number } = {},
+  ) {
     const trial = await this.getById(trialId);
 
     const [membership, coaching] = await Promise.all([
@@ -1515,48 +1524,21 @@ export class TrialsService {
       throw new ForbiddenException('Only this academy or a coach working this trial can see that');
     }
 
-    const [applications, pending] = await Promise.all([
-      this.prisma.trialApplication.findMany({
-        where: { trialId, ...(manages ? {} : { status: { in: [...PARTICIPANT_STATUSES] } }) },
-        include: {
-          player: { include: { user: { select: { avatarKey: true } } } },
-          result: {
-            select: {
-              id: true,
-              verdict: true,
-              note: true,
-              decidedAt: true,
-              settledAt: true,
-              coachUser: { select: { id: true, firstName: true, lastName: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
+    const base: Prisma.TrialApplicationWhereInput = {
+      trialId,
+      ...(manages ? {} : { status: { in: [...PARTICIPANT_STATUSES] } }),
+    };
+    const [page, pending] = await Promise.all([
+      this.pageApplicationsByStage(base, trial.academyId, query),
       this.prisma.trialApplication.count({ where: { trialId, status: 'INVITED' } }),
     ]);
 
-    const stages = await this.stagesFor(
-      trial.academyId,
-      applications.map((application) => ({
-        id: application.id,
-        status: application.status,
-        trialType: trial.type,
-        verdict: application.result?.verdict ?? null,
-        playerUserId: application.player.userId,
-      })),
-    );
-
     return {
-      items: applications.map(({ player, inviteNote, ...application }) => {
-        const { user, ...profile } = player;
-        return {
-          ...application,
-          ...(manages ? { inviteNote } : {}),
-          stage: stages.get(application.id) ?? 'PENDING',
-          player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
-        };
-      }),
+      ...page,
+      items: page.items.map(({ inviteNote, trial: _trial, ...application }) => ({
+        ...application,
+        ...(manages ? { inviteNote } : {}),
+      })),
       pending,
     };
   }
@@ -1566,65 +1548,192 @@ export class TrialsService {
    * and archived alike, because the list is read by stage (pending, passed,
    * joined…) and a session that ended is exactly what most of those are.
    *
-   * No action on these rows: the verdict is the assigned coach's (TRIAL.md
-   * §10), and the squad decision lives on the dashboard with the candidate.
-   * The manager reads where each child stands.
+   * Paged per stage like a trial's applicants, and for the same reason: a
+   * season of private trials runs to hundreds, and the screen shows one tab
+   * of one page. No action on these rows: the verdict is the assigned coach's
+   * (TRIAL.md §10), and the squad decision lives on the dashboard with the
+   * candidate. The manager reads where each child stands.
    */
-  async listPrivateForAcademy(userId: string, academyId: string) {
+  async listPrivateForAcademy(
+    userId: string,
+    academyId: string,
+    query: { stage?: ApplicationStage; page?: number; pageSize?: number } = {},
+  ) {
     await this.assertAcademyManager(userId, academyId);
 
-    const trials = await this.prisma.trial.findMany({
-      where: { academyId, type: 'PRIVATE' },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        academy: { select: TrialsService.ACADEMY_SUMMARY },
-        applications: {
-          include: {
-            player: { include: { user: { select: { avatarKey: true } } } },
-            result: {
-              select: {
-                id: true,
-                verdict: true,
-                note: true,
-                decidedAt: true,
-                settledAt: true,
-                coachUser: { select: { id: true, firstName: true, lastName: true } },
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
-
-    const stages = await this.stagesFor(
+    const page = await this.pageApplicationsByStage(
+      { trial: { academyId, type: 'PRIVATE' } },
       academyId,
-      trials.flatMap((trial) =>
-        trial.applications.map((application) => ({
-          id: application.id,
-          status: application.status,
-          trialType: trial.type,
-          verdict: application.result?.verdict ?? null,
-          playerUserId: application.player.userId,
-        })),
-      ),
+      query,
     );
 
-    return trials.map(({ applications, ...trial }) => {
-      const application = applications[0];
-      let applicant: Record<string, unknown> | null = null;
-      if (application) {
-        const { player, ...rest } = application;
+    return {
+      ...page,
+      // The row is the trial, with the one application as its `applicant`.
+      items: page.items.map(({ trial, ...applicant }) => ({
+        ...this.withCoverUrl(trial),
+        applicant,
+      })),
+    };
+  }
+
+  /**
+   * One page of applications at one stage, with how many sit at every stage.
+   *
+   * ## Why the stage is not a column
+   *
+   * Three stages are the application's own status and are paged in the
+   * database. The four after a PASS depend on the squad invitation and the
+   * membership (`applicationStage`), which live in other tables; those rows —
+   * the ones the academy has already decided on — are read with a light
+   * select, staged in memory, and the page cut from the ids. The rows the
+   * academy is still working through are never loaded whole.
+   *
+   * The counts come back with every page so the tabs can say "Pending 12"
+   * before the tab is opened, and the same light read serves both.
+   */
+  private async pageApplicationsByStage(
+    base: Prisma.TrialApplicationWhereInput,
+    academyId: string,
+    {
+      stage,
+      page = 1,
+      pageSize = 20,
+    }: { stage?: ApplicationStage; page?: number; pageSize?: number },
+  ) {
+    const skip = (page - 1) * pageSize;
+    const include = {
+      player: { include: { user: { select: { avatarKey: true } } } },
+      result: {
+        select: {
+          id: true,
+          verdict: true,
+          note: true,
+          decidedAt: true,
+          settledAt: true,
+          coachUser: { select: { id: true, firstName: true, lastName: true } },
+        },
+      },
+      trial: { include: { academy: { select: TrialsService.ACADEMY_SUMMARY } } },
+    } satisfies Prisma.TrialApplicationInclude;
+
+    // The stages that are a status, counted in the database.
+    const grouped = await this.prisma.trialApplication.groupBy({
+      by: ['status'],
+      where: base,
+      _count: { _all: true },
+    });
+    const byStatus = new Map(grouped.map((row) => [row.status, row._count._all]));
+    const statusCount = (statuses: readonly string[]) =>
+      statuses.reduce((sum, status) => sum + (byStatus.get(status as never) ?? 0), 0);
+
+    // The decided rows, staged in memory — the only place their stage is known.
+    // `AND`, never a spread: `base` may carry its own status filter (a coach
+    // is handed the participants only), and a spread would replace it.
+    const decided = await this.prisma.trialApplication.findMany({
+      where: { AND: [base, { status: { in: ['REJECTED', 'ACCEPTED'] } }] },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        result: { select: { verdict: true } },
+        player: { select: { userId: true } },
+        trial: { select: { type: true } },
+      },
+    });
+    const decidedStages = await this.stagesFor(
+      academyId,
+      decided.map((row) => ({
+        id: row.id,
+        status: row.status,
+        trialType: row.trial.type,
+        verdict: row.result?.verdict ?? null,
+        playerUserId: row.player.userId,
+      })),
+    );
+
+    const counts: Record<ApplicationStage, number> = {
+      PENDING: statusCount(STAGE_STATUSES.PENDING),
+      FAILED: statusCount(STAGE_STATUSES.FAILED),
+      PASSED: statusCount(STAGE_STATUSES.PASSED),
+      CANDIDACY_CLOSED: 0,
+      SQUAD_INVITED: 0,
+      INVITATION_DECLINED: 0,
+      SQUAD_JOINED: 0,
+    };
+    for (const row of decided) {
+      const rowStage = decidedStages.get(row.id) ?? 'CANDIDACY_CLOSED';
+      counts[rowStage] += 1;
+    }
+
+    let rows: Prisma.TrialApplicationGetPayload<{ include: typeof include }>[];
+    let total: number;
+    if (!stage) {
+      const where = base;
+      [rows, total] = await Promise.all([
+        this.prisma.trialApplication.findMany({
+          where,
+          include,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: pageSize,
+        }),
+        this.prisma.trialApplication.count({ where }),
+      ]);
+    } else if (STATUS_STAGES.has(stage)) {
+      const where = { AND: [base, { status: { in: [...STAGE_STATUSES[stage]] } }] };
+      [rows, total] = await Promise.all([
+        this.prisma.trialApplication.findMany({
+          where,
+          include,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: pageSize,
+        }),
+        this.prisma.trialApplication.count({ where }),
+      ]);
+    } else {
+      const ids = decided.filter((row) => decidedStages.get(row.id) === stage).map((row) => row.id);
+      total = ids.length;
+      const pageIds = ids.slice(skip, skip + pageSize);
+      const found = await this.prisma.trialApplication.findMany({
+        where: { id: { in: pageIds } },
+        include,
+      });
+      const byId = new Map(found.map((row) => [row.id, row]));
+      rows = pageIds
+        .map((id) => byId.get(id))
+        .filter((row): row is (typeof found)[number] => !!row);
+    }
+
+    // Stages for the page: the decided ones are known; the rest are a status.
+    const pageStages = await this.stagesFor(
+      academyId,
+      rows
+        .filter((row) => !decidedStages.has(row.id))
+        .map((row) => ({
+          id: row.id,
+          status: row.status,
+          trialType: row.trial.type,
+          verdict: row.result?.verdict ?? null,
+          playerUserId: row.player.userId,
+        })),
+    );
+
+    return {
+      items: rows.map(({ player, ...application }) => {
         const { user, ...profile } = player;
-        applicant = {
-          ...rest,
-          stage: stages.get(application.id) ?? 'PENDING',
+        return {
+          ...application,
+          stage: decidedStages.get(application.id) ?? pageStages.get(application.id) ?? 'PENDING',
           player: { ...profile, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
         };
-      }
-      return { ...this.withCoverUrl(trial), applicant };
-    });
+      }),
+      total,
+      page,
+      pageSize,
+      counts,
+    };
   }
 
   /**

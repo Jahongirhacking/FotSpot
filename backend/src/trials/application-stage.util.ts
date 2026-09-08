@@ -38,6 +38,27 @@ export const APPLICATION_STAGES: readonly ApplicationStage[] = [
   'SQUAD_JOINED',
 ];
 
+/**
+ * The statuses each stage is read from. The first three are exact; the four
+ * after a PASS share a status and are told apart by `applicationStage`.
+ */
+export const STAGE_STATUSES: Record<ApplicationStage, readonly TrialApplicationStatus[]> = {
+  PENDING: ['APPLIED', 'INVITED', 'CONFIRMED'],
+  FAILED: ['FAILED'],
+  PASSED: ['PASSED'],
+  CANDIDACY_CLOSED: ['REJECTED', 'ACCEPTED'],
+  SQUAD_INVITED: ['ACCEPTED'],
+  INVITATION_DECLINED: ['REJECTED', 'ACCEPTED'],
+  SQUAD_JOINED: ['ACCEPTED'],
+};
+
+/** The stages a status decides on its own — pageable in the database. */
+export const STATUS_STAGES: ReadonlySet<ApplicationStage> = new Set([
+  'PENDING',
+  'FAILED',
+  'PASSED',
+]);
+
 export interface StageInput {
   status: TrialApplicationStatus;
   trialType: TrialType;
