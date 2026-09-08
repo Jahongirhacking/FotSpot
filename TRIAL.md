@@ -162,7 +162,14 @@ If a Scout is hired by an Academy, the Scout can recommend a Player directly to 
 
 The Academy-specific recommendation appears in the Academy Inbox.
 
----
+### Who can be recommended
+
+A recommendation is a Scout saying "look at this Player". There is nobody to say it to about a Player an Academy already has, and nothing to add about one an Academy is already looking at on a pitch. So a Scout **cannot** recommend a Player who:
+
+- is on an **Academy's** books (a Local Team membership does not count — Local Teams hold no Trials), or
+- has an **open Trial application** — applied to a Global Trial, invited to or confirmed for a Private Trial, passed and awaiting the Squad decision, or offered a Squad place.
+
+The Player's profile shows the reason in place of the "Recommend" button, and the API refuses the recommendation independently. The door reopens when the Trial process ends: a FAIL, a closed candidacy, a declined invitation, or the Player leaving the Academy.
 
 ---
 
@@ -179,26 +186,34 @@ A Scout's Success Rating is affected by the eventual outcome of the Players they
 The Success Rating MUST be recalculated when one of the following outcomes is finalized:
 
 ```text
-Trial → PASS
+Trial → FAIL                                   (by the assigned Coach)   → decrease
 ```
 
 or
 
 ```text
-Trial → FAIL
+Academy Manager → Invite to Squad              (after a PASS)            → increase
 ```
 
 or
 
 ```text
-Academy turns the recommendation down
+Academy Manager → Close the candidacy          (after a PASS)            → decrease
 ```
+
+or
+
+```text
+Academy turns the recommendation down          (from the Inbox)          → decrease
+```
+
+A **PASS on its own changes nothing** for any Scout. A pass is one Coach's thumb on one morning and can be an accident; what the Academy does with the passed Player next — invite them, or close the candidacy — is the outcome the Scouts are measured by.
 
 The exact mathematical algorithm for calculating the Success Rating is a separate business rule and should be implemented independently.
 
 The important domain requirement is:
 
-> Whenever a Trial verdict is finalized, or an Academy turns a recommendation down, the Success Rating of Scouts associated with the Player's recommendations must be recalculated.
+> Whenever a Trial ends in a FAIL, an Academy Manager invites a passed Player to the Squad or closes their candidacy, or an Academy turns a recommendation down, the Success Rating **and level** of every Scout who recommended the Player must be recalculated.
 
 ---
 
@@ -246,10 +261,12 @@ The following actions MUST occur:
 
 1. The Player becomes eligible for Academy Squad placement.
 2. The Player appears on the Academy Manager's dashboard as a Squad candidate (§12).
-3. The Academy Manager can add the Player to the Squad.
-4. The Player's `recommendations` array MUST be emptied/cleared.
-5. The Success Rating of every Scout who recommended this Player MUST be recalculated.
-6. The successful Trial outcome must be reflected in the affected Scouts' Success Ratings.
+3. The Academy Manager either **invites the Player to the Squad** or **closes the candidacy** (§12).
+
+The following MUST NOT occur on the PASS itself:
+
+- The Player's `recommendations` array is NOT cleared.
+- No Scout's Success Rating is recalculated.
 
 Conceptually:
 
@@ -258,20 +275,18 @@ Trial → PASS
     ↓
 Player passed real-life examination
     ↓
-Clear Player.recommendations
+Player becomes a Squad candidate
     ↓
-Recalculate affected Scouts' Success Ratings
-    ↓
-Player becomes eligible for Squad placement
-    ↓
-Academy Manager can add Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 Important:
 
-> A PASS does not itself automatically add the Player to the Squad.
+> A PASS does not itself automatically add the Player to the Squad, and it does not itself settle any Scout.
 
-The **Academy Manager** is responsible for adding the Player to the Squad.
+The **Academy Manager** is responsible for the decision that follows, and that decision is what the Scouts are measured by.
 
 ---
 
@@ -290,7 +305,8 @@ The following must occur:
 1. The Player is not eligible for Squad placement based on that Trial.
 2. The Player is not added to the Academy Squad based on that Trial.
 3. The Player does NOT appear as a Squad candidate anywhere (§12).
-4. The Success Rating of every Scout who recommended this Player MUST be recalculated.
+4. The Player's `recommendations` array MUST be emptied/cleared.
+5. The Success Rating and level of every Scout who recommended this Player MUST be recalculated (decrease).
 
 Conceptually:
 
@@ -299,17 +315,11 @@ Trial → FAIL
     ↓
 Player failed real-life examination
     ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+    ↓
+Recalculate affected Scouts' Success Ratings (decrease)
     ↓
 Player is not added to Squad
-```
-
-Do NOT clear the Player's `recommendations` array merely because a Trial failed.
-
-The recommendation-clearing rule applies specifically to:
-
-```text
-Trial → PASS
 ```
 
 A FAIL is not permanent. A second look is a second Trial, with its own application and its own verdict.
@@ -340,7 +350,7 @@ A Manager's attempt to record a verdict, on either kind of Trial, MUST be refuse
 
 ### The undo window
 
-A verdict is written the moment the Coach presses, and **acted on** — Scouts settled, recommendations cleared, the Player and Manager told, the SMS sent — only after a short window (30 seconds). Inside that window the deciding Coach may **undo** the verdict: the row is removed, the application returns to where it was, and nothing has gone out. After the window the verdict has gone out and stands; a Manager who has already offered a squad place also closes the window. Undo is a backend operation, never a screen pretending.
+A verdict is written the moment the Coach presses, and **acted on** — on a FAIL the Scouts settled and the recommendations cleared, the Player told, on a PASS the SMS sent — only after a short window (30 seconds). Inside that window the deciding Coach may **undo** the verdict: the row is removed, the application returns to where it was, and nothing has gone out. After the window the verdict has gone out and stands; a Manager who has already offered a squad place also closes the window. Undo is a backend operation, never a screen pretending.
 
 ### Private Trials on the Coach's dashboard
 
@@ -374,7 +384,7 @@ A Private Trial is **an invitation to one specific Player**. Sending the invitat
 
 - One Trial of type PRIVATE, for the Player's gender, never listed anywhere.
 - One application at `INVITED`, awaiting the Player's yes or no.
-- A snapshot of every recommendation backing the Player, so the verdict can settle the Scouts behind them (§22).
+- A snapshot of every recommendation backing the Player, so the outcome — a FAIL, or the Manager's Squad decision after a PASS — can settle the Scouts behind them (§22, §23).
 
 A Player with an unanswered or confirmed invitation from the same Academy cannot be invited again until that Trial has answered.
 
@@ -401,7 +411,12 @@ The session — title, date, time, location, requirements, status — and the ac
 
 Every Player who **passed** a Trial of the Academy — Global or Private — and has not yet been offered a Squad place appears on the Academy Manager's dashboard as a Squad candidate.
 
-From there the Manager sends the Squad invitation (§25) with one press. The Player accepts or declines it.
+From there the Manager does one of two things, and nothing else:
+
+1. **Invite to Squad** — one press. The Squad invitation (§25) goes out; the Player accepts or declines it. This settles every Scout who recommended the Player as **right** (increase) and clears the Player's `recommendations`.
+2. **Close the candidacy** — the "x" on the card. A dialog asks once, with an optional note for the Player. A Coach's pass can be an accident, and this is the Manager saying so. It settles every Scout who recommended the Player as **wrong** (decrease), clears the Player's `recommendations`, tells the Player, and is written to the audit log with the note.
+
+The dashboard shows the **latest four** candidates and how many there are in all; a "See all" link opens the candidates page, where every waiting Player is listed, paged, with the same two answers on each card.
 
 The Manager is **not notified of the verdict itself**. PASS / FAIL is told to the Player — in-site, and by Telegram when connected — and to nobody else; the dashboard list is how the Manager learns who passed.
 
@@ -488,18 +503,16 @@ Assigned Coach → PASS
      ↓
 Player successfully passed offline examination
      ↓
-Clear Player.recommendations
-     ↓
-Recalculate affected Scouts' Success Ratings
-     ↓
 Player becomes a Squad candidate
      ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 The Player's application to the Global Trial does not automatically add the Player to the Squad.
 
-The Academy Manager performs the actual Squad placement.
+The Academy Manager performs the actual Squad placement, and that decision — not the PASS — settles the Scouts.
 
 ---
 
@@ -512,12 +525,12 @@ Assigned Coach → FAIL
      ↓
 Player failed offline examination
      ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+     ↓
+Recalculate affected Scouts' Success Ratings (decrease)
      ↓
 Player is not added to Squad
 ```
-
-The Player's recommendations array is NOT automatically cleared by the Trial failure.
 
 ---
 
@@ -534,13 +547,11 @@ Player is tested on the pitch
         ↓
 Assigned Coach → PASS
         ↓
-Clear Player.recommendations
-        ↓
-Recalculate affected Scouts' Success Ratings
-        ↓
 Player becomes a Squad candidate
         ↓
-Academy Manager can add Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 ---
@@ -558,12 +569,12 @@ Player is tested on the pitch
         ↓
 Assigned Coach → FAIL
         ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+        ↓
+Recalculate affected Scouts' Success Ratings (decrease)
         ↓
 Player is not added to Squad
 ```
-
-The Player's recommendations array is NOT cleared merely because the Trial failed.
 
 ---
 
@@ -606,13 +617,11 @@ Assigned Coach enters PASS / FAIL
 ```text
 Coach PASS
    ↓
-Clear Player.recommendations
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
 Player becomes a Squad candidate
    ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 ### FAIL
@@ -620,7 +629,9 @@ Academy Manager adds Player to Squad
 ```text
 Coach FAIL
    ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+   ↓
+Recalculate affected Scouts' Success Ratings (decrease)
    ↓
 Player is not added to Squad
 ```
@@ -658,13 +669,11 @@ Assigned Coach enters PASS / FAIL
 ```text
 Coach PASS
    ↓
-Clear Player.recommendations
-   ↓
-Recalculate affected Scouts' Success Ratings
-   ↓
 Player becomes a Squad candidate
    ↓
-Academy Manager adds Player to Squad
+Academy Manager
+   ├── Invite to Squad     → Clear Player.recommendations → Recalculate Scouts (increase)
+   └── Close the candidacy → Clear Player.recommendations → Recalculate Scouts (decrease)
 ```
 
 ### FAIL
@@ -672,7 +681,9 @@ Academy Manager adds Player to Squad
 ```text
 Coach FAIL
    ↓
-Recalculate affected Scouts' Success Ratings
+Clear Player.recommendations
+   ↓
+Recalculate affected Scouts' Success Ratings (decrease)
    ↓
 Player is not added to Squad
 ```
@@ -689,7 +700,7 @@ The recommendation lands in the Academy Inbox, ranked by credibility.
 
 From the Inbox the Academy Manager does one of two things, and nothing else:
 
-1. **Invite to Private Trial** — the same invitation as Case 2, carrying the recommendation it answers. The Trial's verdict settles the Scout.
+1. **Invite to Private Trial** — the same invitation as Case 2, carrying the recommendation it answers. A FAIL, or the Manager's Squad decision after a PASS, settles the Scout.
 2. **Turn down** — the recommendation is rejected; the affected Scouts' Success Ratings are recalculated; nothing is cleared.
 
 There is no step between the Inbox and the invitation.
@@ -758,17 +769,19 @@ The three cases can be represented as:
                  FAIL              PASS
                    │                 │
                    ▼                 ▼
-            Recalculate       Clear recommendations
-            Scout ratings            │
-                   │          Recalculate Scout ratings
+         Clear recommendations   Player is a Squad candidate
                    │                 │
-                   ▼                 ▼
-                  END       Player is a Squad candidate
-                                    │
-                                    ▼
-                            ACADEMY MANAGER
-                            ADDS PLAYER TO
-                                 SQUAD
+         Recalculate Scout           ▼
+         ratings (decrease)    ACADEMY MANAGER
+                   │            /          \
+                   ▼     CLOSE CANDIDACY   INVITE TO SQUAD
+                  END          │                │
+                               ▼                ▼
+                    Clear recommendations   Clear recommendations
+                    Recalculate (decrease)  Recalculate (increase)
+                               │                │
+                               ▼                ▼
+                              END      Player accepts → Reserve
 ```
 
 ---
@@ -797,7 +810,7 @@ Real-life Trial
 PASS / FAIL
 ```
 
-A recommendation is `PENDING` until the Academy answers it. The Academy's answer is a Trial verdict (which settles it as ACCEPTED on PASS or REJECTED on FAIL) or a refusal from the Inbox (REJECTED). Inviting the Player takes the row out of the Inbox queue while the Trial is pending, but does not settle it.
+A recommendation is `PENDING` until the Academy answers it. The Academy's answer is a Trial FAIL (REJECTED), the Manager's Squad decision after a PASS (ACCEPTED on an invitation to the Squad, REJECTED on a closed candidacy), or a refusal from the Inbox (REJECTED). A PASS on its own settles nothing. Inviting the Player to a Trial takes the row out of the Inbox queue while the Trial is pending, but does not settle it.
 
 ---
 
@@ -807,40 +820,54 @@ The Player has a `recommendations` collection/array representing Scouts who have
 
 The recommendation collection is relevant to Scout Success Rating calculations.
 
-When a Player is invited to a Private Trial, or applies to a Global Trial, the recommendations backing them at that moment are snapshotted onto the application. The verdict settles exactly those.
+When a Player is invited to a Private Trial, or applies to a Global Trial, the recommendations backing them at that moment are snapshotted onto the application. The settling event answers exactly those.
 
-### On Trial PASS
+The collection is cleared after exactly **three** events, and only these:
 
-The Player's recommendation collection MUST be cleared:
+### On Trial FAIL
 
 ```text
 Player.recommendations = []
 ```
 
-Then the affected Scouts' Success Ratings MUST be recalculated.
+Then the affected Scouts' Success Ratings MUST be recalculated (decrease).
 
-### On Trial FAIL
+### On the Academy Manager inviting the passed Player to the Squad
 
-The recommendation collection is NOT cleared merely because the Trial failed.
+```text
+Player.recommendations = []
+```
 
-However, affected Scouts' Success Ratings MUST be recalculated.
+Then the affected Scouts' Success Ratings MUST be recalculated (increase).
 
-### On the Academy turning the recommendation down
+### On the Academy Manager closing the passed Player's candidacy
+
+```text
+Player.recommendations = []
+```
+
+Then the affected Scouts' Success Ratings MUST be recalculated (decrease).
+
+### On Trial PASS
+
+Nothing. The collection is NOT cleared and no Scout is recalculated; the Manager's decision that follows does both.
+
+### On the Academy turning the recommendation down from the Inbox
 
 The recommendation collection is NOT cleared.
 
-However, affected Scouts' Success Ratings MUST be recalculated.
+However, the affected Scouts' Success Ratings MUST be recalculated.
 
 ---
 
 # 23. Scout Success Rating Recalculation Rules
 
-The system MUST trigger Scout Success Rating recalculation after each of these finalized outcomes:
+The system MUST trigger Scout Success Rating **and level** recalculation, for every Scout who recommended the Player, after each of these finalized outcomes:
 
 ### Event 1
 
 ```text
-Trial → PASS
+Trial → FAIL                (by an assigned Coach; Global or Private Trial)
 ```
 
 Actions:
@@ -848,35 +875,62 @@ Actions:
 ```text
 Clear Player.recommendations
         ↓
-Recalculate Success Rating
-for affected Scouts
+Recalculate Success Rating and level
+for affected Scouts               (decrease)
 ```
 
 ### Event 2
 
 ```text
-Trial → FAIL
+Academy Manager → Invite to Squad   (after a PASS)
 ```
 
-Action:
+Actions:
 
 ```text
-Recalculate Success Rating
-for Scouts associated with Player recommendations
+Clear Player.recommendations
+        ↓
+Recalculate Success Rating and level
+for affected Scouts               (increase)
 ```
 
 ### Event 3
 
 ```text
-Academy turns the recommendation down
+Academy Manager → Close the candidacy   (after a PASS; the "x" on the card, optional note)
+```
+
+Actions:
+
+```text
+Clear Player.recommendations
+        ↓
+Recalculate Success Rating and level
+for affected Scouts               (decrease)
+```
+
+### Not an event
+
+```text
+Trial → PASS
+```
+
+A PASS changes nothing for any Scout and clears nothing. Coaches pass Players by accident; the Manager's decision that follows is the outcome.
+
+### Also recalculated, but nothing cleared
+
+```text
+Academy turns the recommendation down   (from the Inbox)
 ```
 
 Action:
 
 ```text
-Recalculate Success Rating
-for Scouts associated with Player recommendations
+Recalculate Success Rating and level
+for Scouts associated with Player recommendations   (decrease)
 ```
+
+This is canonical. Where any other document disagrees, this section wins.
 
 ---
 
@@ -895,20 +949,21 @@ Player
 
 The Academy Manager or a Coach may find this Player independently and invite them to a Private Trial.
 
-The existing recommendations remain attached to the Player and are snapshotted onto the application. The Trial's verdict settles them for this Academy:
-
-```text
-Trial PASS
-      ↓
-Clear recommendations
-      ↓
-Recalculate affected Scouts' Success Ratings
-```
+The existing recommendations remain attached to the Player and are snapshotted onto the application. The Trial settles them for this Academy by §23:
 
 ```text
 Trial FAIL
       ↓
-Recalculate affected Scouts' Success Ratings
+Clear recommendations
+      ↓
+Recalculate affected Scouts' Success Ratings (decrease)
+```
+
+```text
+Trial PASS
+      ↓
+Academy Manager invites to Squad      → Clear recommendations → Recalculate (increase)
+Academy Manager closes the candidacy  → Clear recommendations → Recalculate (decrease)
 ```
 
 ---
@@ -937,7 +992,7 @@ PASS
   ↓
 Player appears as a Squad candidate
   ↓
-Academy Manager → Invite to Squad
+Academy Manager → Invite to Squad   (settles the Scouts as right; clears the recommendations)
   ↓
 Player is notified (in-site + Telegram, with a link to the answer page)
   ↓
@@ -951,6 +1006,8 @@ The Academy Manager is responsible for the invitation; the Player's yes is what 
 
 - **Accept** is one press. It is recorded at once and acted on after a short undo window (30 seconds), during which the Player may take it back and nothing has happened. After the window the membership is written into the Reserve — no Group, no manual placement step — and the Manager is notified once, as "a player joined your squad" (in-site and Telegram).
 - **Decline** asks first, in a dialog with an optional note. The invitation is closed, the Player leaves the Manager's candidate list, and the Manager is notified with the note.
+
+When a Player joins an Academy's Squad, the platform operator is also told, by Telegram, which Player joined which Academy.
 
 ### Contacts
 
@@ -1044,10 +1101,10 @@ The Academy Manager is responsible for:
 - Viewing the Academy Inbox
 - Inviting Players to Private Trials, naming the Coach who runs each
 - Turning recommendations down
-- Adding passed Players to Squads
+- Inviting passed Players to the Squad, or closing their candidacy
 - Archiving Trials
 
-The Academy Manager does not record the verdict on any Trial; the assigned Coaches do. The Manager's part after a Trial is to invite the passed Player and add them to the Squad.
+The Academy Manager does not record the verdict on any Trial; the assigned Coaches do. The Manager's part after a PASS is the decision the Scouts are measured by: invite the Player to the Squad, or close the candidacy.
 
 ---
 
@@ -1141,8 +1198,8 @@ REJECTED
 
 ```text
 PENDING  = the Academy has not answered
-ACCEPTED = settled by a Trial PASS
-REJECTED = settled by a Trial FAIL, or turned down from the Inbox
+ACCEPTED = settled by the Manager inviting the passed Player to the Squad
+REJECTED = settled by a Trial FAIL, a closed candidacy, or turned down from the Inbox
 ```
 
 ### Trial application
@@ -1154,7 +1211,7 @@ CONFIRMED   = the Player accepted the invitation and is expected on the day
 PASSED      = tested in person and passed (see TrialResult)
 FAILED      = tested in person and failed
 ACCEPTED    = the Academy offered a Squad place, after a PASS
-REJECTED    = the Academy said no, or the Player declined the invitation
+REJECTED    = the Academy said no (a closed candidacy after a PASS carries the Manager's note), or the Player declined the invitation
 ```
 
 There is no `SCREENING`, `SHORTLISTED`, or `REVIEWING` state. There is no review entity.
@@ -1195,7 +1252,15 @@ A Scout's recommendation of a Player.
 
 ### Scout Success Rating
 
-A reputation metric based on the outcomes of the Scouts' recommendations.
+A reputation metric based on the outcomes of the Scouts' recommendations. Moved by exactly three Trial events — a FAIL, a Squad invitation after a PASS, a closed candidacy after a PASS — and by an Inbox refusal; never by a PASS on its own (§23).
+
+### Squad candidate
+
+A Player who passed one of the Academy's Trials and is waiting for the Manager's answer: an invitation to the Squad, or a closed candidacy (§12).
+
+### Closed candidacy
+
+The Manager's "x" on a Squad candidate: the passed Player will not be invited. Carries an optional note for the Player, settles the Scouts as wrong, clears the Player's recommendations, and is written to the audit log (§12, §23).
 
 
 ### Squad
@@ -1277,23 +1342,23 @@ The following rules are mandatory:
 
 ### Rule 11
 
-**The Academy Manager never records a verdict. After a PASS, the Manager invites the Player and adds them to the Squad.**
+**The Academy Manager never records a verdict. After a PASS, the Manager either invites the Player to the Squad or closes the candidacy.**
 
 ### Rule 12
 
-**Trial → PASS and Trial → FAIL both trigger Scout Success Rating recalculation.**
+**Trial → PASS settles nobody: no Scout's Success Rating moves and nothing is cleared.**
 
 ### Rule 13
 
-**Trial → PASS clears the Player's `recommendations` array.**
+**Exactly three events settle the Scouts who recommended a Player and clear the Player's `recommendations`: Trial → FAIL by the assigned Coach (decrease), the Manager inviting the passed Player to the Squad (increase), and the Manager closing the passed Player's candidacy (decrease). Every affected Scout's Success Rating and level are recalculated.**
 
 ### Rule 14
 
-**An Academy turning a recommendation down triggers Scout Success Rating recalculation and clears nothing.**
+**An Academy turning a recommendation down from the Inbox triggers Scout Success Rating recalculation and clears nothing.**
 
 ### Rule 15
 
-**Trial → FAIL does NOT clear the Player's recommendations merely because of the failure.**
+**A Scout cannot recommend a Player who is on an Academy's books or has an open Trial application; the profile shows the reason instead of the button.**
 
 ### Rule 16
 
@@ -1369,11 +1434,12 @@ Offline Trial
         ↓
 Assigned Coach PASS / FAIL
         ↓
-PASS → Clear recommendations
-     → Recalculate Scout Success Ratings
-     → Squad candidate; Academy Manager can add Player to Squad
+PASS → Squad candidate (nothing settled yet)
+     → Manager invites to Squad     → Clear recommendations → Recalculate Scouts (increase)
+     → Manager closes the candidacy → Clear recommendations → Recalculate Scouts (decrease)
 
-FAIL → Recalculate Scout Success Ratings
+FAIL → Clear recommendations
+     → Recalculate Scout Success Ratings (decrease)
      → No Squad placement
 ```
 
@@ -1391,11 +1457,12 @@ Offline Trial
         ↓
 Assigned Coach PASS / FAIL
 
-PASS → Clear recommendations
-     → Recalculate Scout Success Ratings
-     → Squad candidate; Academy Manager can add Player to Squad
+PASS → Squad candidate (nothing settled yet)
+     → Manager invites to Squad     → Clear recommendations → Recalculate Scouts (increase)
+     → Manager closes the candidacy → Clear recommendations → Recalculate Scouts (decrease)
 
-FAIL → Recalculate Scout Success Ratings
+FAIL → Clear recommendations
+     → Recalculate Scout Success Ratings (decrease)
      → No Squad placement
 ```
 

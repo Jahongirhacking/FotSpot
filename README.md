@@ -196,17 +196,23 @@ An Observer's weight of **1** is correct as an absolute floor: level 1 has _no_ 
 requirement, so an Observer's success rate is unknown and their recommendation carries no
 evidence beyond "somebody looked".
 
-**When reputation is recalculated.** On an outcome, and only on an outcome. Three events
+**When reputation is recalculated.** On an outcome, and only on an outcome. Four events
 settle a recommendation, and each one recomputes `success_rate` — and therefore the level and
 weight — of **every scout who recommended that player**:
 
-| Event                                         | Counts the recommendation as |
-| --------------------------------------------- | ---------------------------- |
-| The academy **turns the player down** (inbox) | rejected                     |
-| The player **fails** a trial                  | rejected                     |
-| The player **passes** a trial                 | accepted                     |
+| Event                                                           | Counts the recommendation as | Player's recommendations |
+| --------------------------------------------------------------- | ---------------------------- | ------------------------ |
+| The academy **turns the player down** (inbox)                   | rejected                     | kept                     |
+| The assigned coach **fails** the player at a trial              | rejected                     | cleared                  |
+| The manager **invites the passed player to the squad**          | accepted                     | cleared                  |
+| The manager **closes the passed player's candidacy** (the "x") | rejected                     | cleared                  |
 
-A player rarely arrives on one scout's word, so a single verdict moves every scout backing
+A trial **pass on its own moves nobody**: a pass is one coach's press on one morning and can
+be an accident, so the outcome the scouts are measured by is what the manager does with the
+passed player next. The three trial events — fail, invite, close — are also the only three
+that clear the player's `recommendations` to `[]`. TRIAL.md §23 is canonical.
+
+A player rarely arrives on one scout's word, so a single outcome moves every scout backing
 them at once: they were all making the same call and the outcome answers all of it.
 
 Two consequences worth stating, because both were once specified the other way:
@@ -220,8 +226,9 @@ Two consequences worth stating, because both were once specified the other way:
   promise across the three separate places an outcome can arrive from.
 
 > Implemented in `RecommendationsService.recalculateScoutStats`, reached from `updateStatus`
-> (the inbox turning a player down) and `settleTrialBackings` (trial pass and fail). The
-> formula and tiers themselves are frozen — see `scout-level.util.ts`.
+> (the inbox turning a player down) and `settleTrialBackings` (a trial fail, a squad
+> invitation, a closed candidacy — see `TrialsService.settleBackers`). The formula and tiers
+> themselves are frozen — see `scout-level.util.ts`.
 
 ### 1.5.1. Aggregating multiple recommendations
 
@@ -376,18 +383,27 @@ kinds). It lands in that academy's inbox.
 `PENDING → ACCEPTED | REJECTED`
 
 **The academy manager never sets `ACCEPTED` by hand.** From the inbox they do one of two
-things: invite the player to a private trial, or turn them down. The trial's verdict moves
-the recommendation:
+things: invite the player to a private trial, or turn them down. The trial, and what the
+manager does after it, moves the recommendation:
 
-| What happens                                    | Effect on the recommendation                              |
-| ----------------------------------------------- | --------------------------------------------------------- |
-| Manager invites the player to a private trial   | stays `PENDING`, leaves the inbox queue until the verdict |
-| Manager **turns the player down**               | `REJECTED`, and the backing scouts' rating recalculates   |
-| Trial → **PASS**                                | `ACCEPTED`, recommendations cleared, ratings recalculated |
-| Trial → **FAIL**                                | `REJECTED`, ratings recalculated                          |
+| What happens                                       | Effect on the recommendation                                   |
+| -------------------------------------------------- | -------------------------------------------------------------- |
+| Manager invites the player to a private trial      | stays `PENDING`, leaves the inbox queue until the outcome      |
+| Manager **turns the player down** (inbox)          | `REJECTED`, and the backing scouts' rating recalculates        |
+| Trial → **FAIL** (assigned coach)                  | `REJECTED`, recommendations cleared, ratings recalculated      |
+| Trial → **PASS**                                   | nothing yet — the player is a squad candidate                  |
+| Manager **invites the passed player to the squad** | `ACCEPTED`, recommendations cleared, ratings recalculated      |
+| Manager **closes the candidacy** (optional note)   | `REJECTED`, recommendations cleared, ratings recalculated      |
 
-A recommendation is therefore settled by a **trial verdict** or a refusal — never by an online
-opinion about the profile. See TRIAL.md Rules 12–17. Outcomes update the scout's reputation,
+A recommendation is therefore settled by a **trial fail**, by the **manager's squad decision
+after a pass**, or by a refusal — never by an online opinion about the profile, and never by
+the pass on its own. See TRIAL.md §23 and Rules 12–15.
+
+**Who can be recommended.** A scout cannot recommend a player who is on an academy's books
+(a local team does not count) or who has an open trial application — applied, invited,
+confirmed, passed and waiting, or offered a squad place. The profile shows the reason in place
+of the button (`GET /recommendations/player/:id/eligibility`), and `POST /recommendations`
+refuses with 409. Outcomes update the scout's reputation,
 level and weight (§1.5) and fire notifications (§1.12).
 
 ### 1.9. Coach assessment
@@ -601,10 +617,14 @@ Rules that hold this apart from anything online:
   its shared cache. Everybody else reads the age band and no address.
 - **Announcing a trial alerts the operator.** The Telegram chat named in `TELEGRAM_ADMIN_CHAT_ID`
   gets one line per trial created: the academy, the title, the day, the place.
+- **A player joining an academy alerts the operator** on the same chat: which player, which
+  academy — the number the platform exists to move.
 
 Only a trial PASS makes a player eligible for a squad, and only the academy manager performs
 the placement (Rules 8–9). Every passed player appears on the manager's dashboard as a squad
-candidate until placed; a failed player never does (TRIAL.md §12).
+candidate — the latest four, with a link to the full paged list — until the manager invites
+them or closes the candidacy with the "x" (an optional note; TRIAL.md §12). A failed player
+never does. The pass itself settles no scout; the manager's decision does (TRIAL.md §23).
 
 ### 1.12. Notification system
 
@@ -900,8 +920,8 @@ source of truth for §5's `total_score`.
 > **Open question, to settle before this is built.** The two retention rows are the only
 > place left in the spec where a scout's standing moves on a timer rather than on somebody's
 > decision. §1.5 and §12.2 now say the opposite: success rate, level and weight are
-> recalculated when a recommendation is _answered_ — an online-review rejection, or a trial
-> pass or fail — and at no other time.
+> recalculated when a recommendation is _answered_ — an inbox refusal, a trial fail, or the
+> manager's squad decision after a pass — and at no other time.
 >
 > The two are reconcilable, because `total_score` here is a separate Phase 2 currency from the
 > §1.5 success rate and does not feed it. But if retention points are ever meant to reach
@@ -1017,8 +1037,9 @@ Rules that surround the frozen §1.5 formula:
   recommendation is open, or within 90 days of a rejection.
 - **Reputation is recalculated on every outcome, never on a timer.** A scout's success rate —
   and through it their level and weight — is recomputed the moment one of their recommendations
-  is answered: the academy turning the player down from its inbox, or the player passing or
-  failing a trial. There is no inactivity decay and no scheduled adjustment; a scout who stops filing
+  is answered: the academy turning the player down from its inbox, the player failing a
+  trial, or the manager inviting the passed player to the squad or closing their candidacy.
+  There is no inactivity decay and no scheduled adjustment; a scout who stops filing
   keeps the record they earned, because the record describes calls they made rather than how
   recently they were active. See §1.5.
 - **Collusion detection:** flag scout↔academy pairs with an anomalously high acceptance rate
@@ -1503,7 +1524,8 @@ a manager has no powers over any other academy.
 | Manager | Recommendation inbox | Review, rank, clear | Cond. | Own academy; ranked by scout trust (§1.5.1) | `GET /recommendations/academy/:id/ranked` |
 | Manager | Player | **Invite to Private Trial** | Cond. | Own academy; names the coach who will run it | `POST /recommendations/players/:playerId/invite` |
 | Manager | Recommendation | **Turn down** | Cond. | Own academy's inbox; recalculates the backing scouts | `PATCH /recommendations/:id/status` |
-| Manager | Player | Add to squad | Cond. | After a **Pass** verdict on the offline trial | `POST /trials/applications/:id/squad` |
+| Manager | Player | **Invite to squad** | Cond. | After a **Pass** verdict on the offline trial; settles the backing scouts as accepted | `POST /trials/applications/:id/squad` |
+| Manager | Trial application | **Close the candidacy** (optional note) | Cond. | After a **Pass**; settles the backing scouts as rejected, audited | `PATCH /trials/applications/:id/status` |
 | Manager | Squad member | Edit membership · Release | Cond. | Own academy | `PATCH`/`POST /academies/:id/members/:memberId[/release]` |
 | Manager | Coach | Create · Assign to trial · Remove | Cond. | Within tariff **D** coaches | `POST /academies/:id/coaches`, `POST /trials/:id/coaches` |
 | Manager | Scout | Add to / remove from academy network | Cond. | Own academy's scout list | `PUT`/`DELETE /follows/academy/:id/scouts[/:scoutId]` |
@@ -1538,16 +1560,20 @@ online review of any kind: nothing is decided about a player from their profile.
 | **Global trial** 1 | Manager | Create the trial, assign coaches | Own academy |
 | 2 | Player | Apply | Age band, gender, deadline, trial open |
 | 3 | Coach | Offline examination → **Pass/Fail** | Coach assigned to that trial |
-| 4 | Manager | Place in squad | Only on **Pass** |
+| 4 | Manager | Invite to squad, or close the candidacy | Only on **Pass** |
 | **Private trial** 1 | Manager or Coach | Invite the player (a manager names the coach) | Own academy |
 | 2 | Player | Accept or decline the invitation | Invited player |
 | 3 | Coach | Offline examination → **Pass/Fail** | Coach assigned to that trial |
-| 4 | Manager | Place in squad | Only on **Pass** |
+| 4 | Manager | Invite to squad, or close the candidacy | Only on **Pass** |
 
-On a **Pass**, the player's outstanding recommendations are cleared and the
-success rate of every scout who recommended them is recalculated, which moves
-their level and weight (§1.5). Reputation is recalculated **only** on the inbox
-turning a player down or a trial Pass/Fail — there is no decay job.
+A **Pass** settles nobody. On a **Fail**, on the manager **inviting** the passed player to
+the squad, and on the manager **closing** the candidacy, the player's outstanding
+recommendations are cleared and the success rate of every scout who recommended them is
+recalculated, which moves their level and weight (§1.5, TRIAL.md §23). Reputation is
+recalculated **only** on those three events and on the inbox turning a player down — there
+is no decay job. The dashboard's "Waiting on you" shows the latest four candidates and
+links to the full, paged list; when a player accepts a squad invitation the operator is told
+by Telegram which player joined which academy.
 
 ### 7. Admin & super admin
 
