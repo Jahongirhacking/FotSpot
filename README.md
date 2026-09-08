@@ -639,14 +639,27 @@ are read very differently.
 | `TRIAL_PUBLISHED`                                                                                | followers of the academy who match the trial's age, position and gender — in-site and by Telegram |
 | `TRIAL_INVITATION`                                                                               | the invited player                                                 |
 | `TRIAL_RESCHEDULED`                                                                              | everyone holding an application, when the exam date moves          |
-| `TRIAL_RESULT`                                                                                   | **the player only** — in-site, and by Telegram when connected. The manager reads passed players off their dashboard instead |
+| `TRIAL_RESULT`                                                                                   | **the player only, never a manager or a coach** — in-site, and by Telegram when connected. The notice carries the result itself (passed, failed, candidacy closed) and the coach's or manager's note. The academy reads where each applicant stands off the trial, by stage |
 | `ACADEMY_JOIN_INVITATION`                                                                        | the player invited to the squad — with a Telegram link straight to the page where it is answered |
 | `ACADEMY_JOIN_ANSWER`                                                                            | the manager, when the invitation is **turned down** — with the player's note, if they left one. A yes arrives once, as `SQUAD_JOINED` |
 | `ACADEMY_INVITATION` · `VERIFICATION_RESULT`                                                     | as named                                                           |
 
 The asymmetries are deliberate: a manager is told what asks something of them, not given a
 running commentary on a morning they did not attend. A verdict is between the coach and the
-player; the manager's part starts when a passed player appears on their dashboard.
+player; the manager's part starts when a passed player appears on their dashboard. The
+player's answer to a private-trial invitation is not a notification either — it is a stage on
+the manager's private-trial list.
+
+**Where an applicant stands** is one of seven stages the API derives for every row on the
+academy's lists (TRIAL.md §32): pending, failed, passed, cancelled candidacy, invited to squad,
+rejected invitation, added to squad. The manager's private trials and a global trial's
+applicants are both read through one tab per stage, pending open by default.
+
+**Outside production, Telegram goes to the operator.** With `NODE_ENV` anything but
+`production`, every Telegram message the worker would send — a user's notification copy, an
+operator alert — goes to the chat in `TELEGRAM_ADMIN_CHAT_ID` instead, tagged `#DEV_ENV` and
+naming the user it was for; with no chat configured it sends nothing. A dev box never messages
+a real family.
 
 ### 1.13. Moderation system
 

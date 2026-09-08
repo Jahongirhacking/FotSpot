@@ -418,7 +418,7 @@ From there the Manager does one of two things, and nothing else:
 
 The dashboard shows the **latest four** candidates and how many there are in all; a "See all" link opens the candidates page, where every waiting Player is listed, paged, with the same two answers on each card.
 
-The Manager is **not notified of the verdict itself**. PASS / FAIL is told to the Player — in-site, and by Telegram when connected — and to nobody else; the dashboard list is how the Manager learns who passed.
+The Manager is **not notified of the verdict itself**. PASS / FAIL is told to the Player — in-site, and by Telegram when connected — and to nobody else: a "trial result" notification is never sent to an Academy Manager or a Coach, and the Player's answer to a Private Trial invitation is not one either. The dashboard list is how the Manager learns who passed; the trial's applicant list, read by stage (§32), is how they learn everything else. The Player's notice carries the result itself — passed, failed, candidacy closed — and the Coach's or Manager's note when one was written.
 
 A Player who **failed** never appears as a candidate. Nothing is owed on a FAIL.
 
@@ -1156,6 +1156,8 @@ It is visible **only** to:
 
 This is enforced by the backend, not only by the UI. A Private Trial never appears in public listings, in the Trials board, in search results, or in announcements. No Player other than the invited one is notified of it, can discover it, or can apply to it.
 
+On the Academy Manager's Trials screen the Private Trials are listed **by stage** (§32), pending first, one row per trial showing the invited Player — photograph, name, age, position — and where they stand. The row offers **no action**: the verdict is the assigned Coach's (§10), and the Squad decision after a PASS is taken on the dashboard beside the candidate (§12).
+
 ---
 
 # 30. Global Trial Visibility
@@ -1215,6 +1217,22 @@ REJECTED    = the Academy said no (a closed candidacy after a PASS carries the M
 ```
 
 There is no `SCREENING`, `SHORTLISTED`, or `REVIEWING` state. There is no review entity.
+
+### Applicant stage
+
+What the Academy reads. Derived by the backend from the application, the verdict, the Squad invitation and the membership — the story after a PASS lives in other tables — and returned on every row of the Academy's lists as `stage`:
+
+```text
+PENDING              = applied, invited or confirmed; waiting on the Coach
+FAILED               = the Coach said no
+PASSED               = the Coach said yes; waiting on the Manager
+CANDIDACY_CLOSED     = the Manager closed the candidacy, or withdrew
+SQUAD_INVITED        = the Manager offered a Squad place; waiting on the Player
+INVITATION_DECLINED  = the Player said no — to the Squad, or to the Private Trial
+SQUAD_JOINED         = the Player accepted and is on the Academy's books
+```
+
+Both the Manager's Private Trial list and a Global Trial's applicant list are read through one tab per stage, in this order, with **pending open by default**.
 
 Do not use `ACCEPTED` / `REJECTED` for Trial verdicts.
 
