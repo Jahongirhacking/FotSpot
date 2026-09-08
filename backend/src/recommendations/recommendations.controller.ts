@@ -69,6 +69,16 @@ export class RecommendationsController {
     return this.recommendationsService.listHistoryForAcademy(user.userId, academyId);
   }
 
+  /**
+   * Whether this player may be recommended at all, and why not — a player an
+   * academy already has, or is already trying on a pitch, cannot be. Asked
+   * before the button is drawn, so the profile says the reason instead.
+   */
+  @Get('player/:playerId/eligibility')
+  recommendEligibility(@Param('playerId') playerId: string) {
+    return this.recommendationsService.recommendEligibility(playerId);
+  }
+
   /** This scout's own recommendation for a player — one per player (§1.5). */
   @Get('player/:playerId/mine')
   myRecommendationFor(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
@@ -91,8 +101,8 @@ export class RecommendationsController {
    * unread notifications — see `pendingManagerActions`.
    */
   @Get('manager/pending-actions')
-  pendingManagerActions(@CurrentUser() user: AuthUser) {
-    return this.recommendationsService.pendingManagerActions(user.userId);
+  pendingManagerActions(@CurrentUser() user: AuthUser, @Query() page: PaginationDto) {
+    return this.recommendationsService.pendingManagerActions(user.userId, page);
   }
 
   /**

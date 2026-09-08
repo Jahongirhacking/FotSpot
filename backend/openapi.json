@@ -4385,6 +4385,35 @@
         ]
       }
     },
+    "/api/v1/recommendations/player/{playerId}/eligibility": {
+      "get": {
+        "operationId": "recommendations_recommendEligibility",
+        "parameters": [
+          {
+            "name": "playerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Whether this player may be recommended at all, and why not — a player an\nacademy already has, or is already trying on a pitch, cannot be. Asked\nbefore the button is drawn, so the profile says the reason instead.",
+        "tags": [
+          "recommendations"
+        ]
+      }
+    },
     "/api/v1/recommendations/player/{playerId}/mine": {
       "get": {
         "operationId": "recommendations_myRecommendationFor",
@@ -4460,7 +4489,29 @@
     "/api/v1/recommendations/manager/pending-actions": {
       "get": {
         "operationId": "recommendations_pendingManagerActions",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -8197,6 +8248,11 @@
             "enum": [
               "REJECTED"
             ]
+          },
+          "note": {
+            "type": "string",
+            "description": "Why, when closing a passed player's candidacy — optional, the manager's record.",
+            "maxLength": 500
           }
         },
         "required": [

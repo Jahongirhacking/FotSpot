@@ -52,6 +52,8 @@ import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 import { SmsService } from '../sms/sms.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.actions';
 import {
   SETTLE_ATTEMPTS,
   SETTLE_BACKOFF_MS,
@@ -92,6 +94,7 @@ export class TrialsService {
     private storage: StorageService,
     @InjectQueue(TRIALS_QUEUE) private queue: Queue<SettleVerdictJob>,
     private adminAlerts: TelegramAdminAlertsService,
+    private audit: AuditService,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -1072,11 +1075,13 @@ export class TrialsService {
    *
    * ## What a verdict settles
    *
-   * Both outcomes move every backing scout's reputation, because both are
-   * finalized outcomes (§23) and a player rarely arrives on one scout's word.
-   * Only a PASS clears the player's recommendations (Rule 13) — a FAIL is an
-   * answer about one morning, not a reason to wipe the record of who spotted
-   * them.
+   * A FAIL is a finalized outcome for every scout who put the player forward:
+   * their backings are settled as rejected and the player's recommendations
+   * are cleared (TRIAL.md §23). A PASS settles nobody. It only makes the
+   * player a squad candidate; the outcome the scouts are measured by is what
+   * the manager does next — invite them to the squad, or close the candidacy
+   * — because a pass is one coach's thumb on one morning and can be an
+   * accident, and a scout's record must not move on an accident.
    */
   async settleVerdict(applicationId: string) {
     const application = await this.prisma.trialApplication.findUnique({
@@ -1108,25 +1113,10 @@ export class TrialsService {
     const verdict = result.verdict;
     const coachUserId = result.coachUserId;
 
-    /*
-     * The scouts, in the order §23 sets out: clear first, then recalculate.
-     *
-     * Clearing does not touch the target rows the success rate is counted from,
-     * so the order is not load-bearing for correctness — but the rule is written
-     * that way, and a reader checking this against §23 should find it in the same
-     * sequence rather than having to work out that it does not matter.
-     */
-    const backings = await this.backings.backingsOf(applicationId, application.recommendationId);
-
-    if (verdict === 'PASS') {
-      await this.recommendations.clearPlayerRecommendations(application.playerId);
+    // A FAIL answers the scouts; a PASS leaves them to the manager (see above).
+    if (verdict === 'FAIL') {
+      await this.settleBackers(application, 'REJECTED', { userId: coachUserId, role: 'coach' });
     }
-    await this.recommendations.settleTrialBackings({
-      recommendationIds: backings,
-      academyId: application.trial.academyId,
-      status: verdict === 'PASS' ? 'ACCEPTED' : 'REJECTED',
-      actor: { userId: coachUserId, role: 'coach' },
-    });
 
     await this.notifications.notify(
       application.player.userId,
@@ -1224,8 +1214,12 @@ export class TrialsService {
    * profile can stand in for it, because nothing is decided from a profile
    * (§1.2).
    *
-   * The scouts are already settled by then: their call was answered by the coach
-   * on the day, not by this administrative step (§28).
+   * ## This is the outcome the scouts are measured by
+   *
+   * A PASS settles nobody (see `settleVerdict`). The invitation is the academy
+   * saying "we want this player", which is exactly what every scout who put
+   * them forward claimed: their backings settle as accepted, and the player's
+   * live recommendations are cleared — they have been found (TRIAL.md §23).
    */
   async addToSquad(userId: string, applicationId: string) {
     const application = await this.prisma.trialApplication.findUnique({
@@ -1250,10 +1244,42 @@ export class TrialsService {
       data: { status: 'ACCEPTED' },
     });
 
+    await this.settleBackers(application, 'ACCEPTED', { userId, role: 'academy_manager' });
+
     // One message, not two: the invitation `invite` just sent carries the
     // trial in its note and links to the page where the player answers.
 
     return invitation;
+  }
+
+  /**
+   * Answers every scout riding on this application, and clears the player's
+   * live recommendations — the one place both happen, for the three outcomes
+   * that count (TRIAL.md §23): a FAIL, a squad invitation, a closed candidacy.
+   *
+   * Clearing comes first, in the order the rule is written. It does not touch
+   * the target rows the success rate is counted from, so the order is not
+   * load-bearing — but a reader checking this against §23 should find it in
+   * the same sequence.
+   */
+  private async settleBackers(
+    application: {
+      id: string;
+      playerId: string;
+      recommendationId: string | null;
+      trial: { academyId: string };
+    },
+    status: 'ACCEPTED' | 'REJECTED',
+    actor: { userId: string; role: string },
+  ) {
+    const backings = await this.backings.backingsOf(application.id, application.recommendationId);
+    await this.recommendations.clearPlayerRecommendations(application.playerId);
+    await this.recommendations.settleTrialBackings({
+      recommendationIds: backings,
+      academyId: application.trial.academyId,
+      status,
+      actor,
+    });
   }
 
   /**
@@ -1558,10 +1584,33 @@ export class TrialsService {
 
     await this.assertAcademyManager(userId, application.trial.academyId);
 
+    // A squad place already offered is the player's to answer, not the
+    // academy's to take back here; the invitation has its own cancel.
+    if (application.status === 'ACCEPTED') {
+      throw new BadRequestException('This player has already been offered a squad place');
+    }
+    if (application.status === 'REJECTED') {
+      throw new BadRequestException('This application is already closed');
+    }
+
+    // A passed player the academy will not take: the candidacy closes, and
+    // that — not the coach's pass — is what answers the scouts.
+    const closingCandidacy = application.status === 'PASSED';
+
     const updated = await this.prisma.trialApplication.update({
       where: { id: applicationId },
-      data: { status: dto.status },
+      data: { status: dto.status, cancelNote: dto.note?.trim() || null },
     });
+
+    if (closingCandidacy) {
+      await this.settleBackers(application, 'REJECTED', { userId, role: 'academy_manager' });
+      await this.audit.record(userId, AuditAction.TRIAL_CANDIDACY_CLOSED, {
+        applicationId,
+        trialId: application.trialId,
+        playerId: application.playerId,
+        note: updated.cancelNote,
+      });
+    }
 
     await this.notifications.notify(
       application.player.userId,
@@ -1570,20 +1619,10 @@ export class TrialsService {
       { userId, role: 'academy_manager' },
     );
 
+    await this.redis.del(RedisKeys.playerProfile(application.playerId));
     return updated;
   }
 
-  /**
-   * Attaches the cover's public URL, the same way the academy gallery does.
-   *
-   * The key is what is stored and the URL is built at read time (storage.keys.ts):
-   * a stored URL outlives every decision that produced it, so changing CDN,
-   * domain or provider would be a migration rather than a config change.
-   *
-   * `coverKey` is left on the object rather than stripped — an academy manager
-   * editing a trial sends it straight back, and hiding it would mean the edit
-   * form could not preserve a cover it did not re-upload.
-   */
   private withCoverUrl<T extends { coverKey: string | null; academy?: AcademySummaryRow }>(
     trial: T,
   ) {

@@ -6,6 +6,7 @@ import { GroupsService } from './groups.service';
 import { InvitationsService } from './invitations.service';
 import { InvitationsProcessor } from './invitations.processor';
 import { INVITATIONS_QUEUE } from './invitations.constants';
+import { TelegramModule } from '../telegram/telegram.module';
 import { SquadNotificationsService } from './squad-notifications.service';
 import { AcademiesController } from './academies.controller';
 import { RbacModule } from '../rbac/rbac.module';
@@ -18,6 +19,8 @@ import { TariffsModule } from '../tariffs/tariffs.module';
     RbacModule,
     NotificationsModule,
     TariffsModule,
+    // The operator's Telegram alert when a player joins a squad.
+    TelegramModule,
     // The delayed settlement of an accepted invitation — see invitations.constants.ts.
     BullModule.registerQueue({ name: INVITATIONS_QUEUE }),
   ],

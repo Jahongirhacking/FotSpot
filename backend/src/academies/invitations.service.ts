@@ -15,6 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SquadNotificationsService } from './squad-notifications.service';
 import { RedisService } from '../redis/redis.service';
 import { RedisKeys } from '../redis/redis.keys';
+import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { InviteMemberDto } from './dto/invitation.dto';
 import { assertNotLocalTeam } from './academy-kind.util';
 import {
@@ -54,6 +55,7 @@ export class InvitationsService {
     private squads: SquadNotificationsService,
     private redis: RedisService,
     @InjectQueue(INVITATIONS_QUEUE) private queue: Queue<SettleAcceptanceJob>,
+    private adminAlerts: TelegramAdminAlertsService,
   ) {}
 
   /**
@@ -416,6 +418,23 @@ export class InvitationsService {
     // the squad service is the news, and it names them. The answer notice is
     // kept for a no, which changes nothing on the squad screen.
     await this.squads.announceJoined(invitation.academyId, userId, userId);
+
+    // The operator hears about every player an academy takes on — the number
+    // the platform exists to move. Not awaited, and it cannot throw.
+    if (invitation.role === 'PLAYER') {
+      const joined = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true, username: true },
+      });
+      void this.adminAlerts.announce({
+        kind: 'PLAYER_JOINED_ACADEMY',
+        name:
+          [joined?.firstName, joined?.lastName].filter(Boolean).join(' ') ||
+          joined?.username ||
+          userId,
+        academy: invitation.academy.name,
+      });
+    }
     if (leaving) {
       await this.squads.announceLeft(leaving.academyId, userId, userId);
     }

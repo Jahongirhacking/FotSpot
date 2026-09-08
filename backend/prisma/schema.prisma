@@ -1640,6 +1640,10 @@ model TrialApplication {
   /// What the academy wrote when inviting — where to be, when, what to bring.
   /// "You are invited" with nothing else is not something a family can act on.
   inviteNote       String?
+  /// Why the manager closed a passed player's candidacy without a squad
+  /// invitation, if they said. Optional; the manager's record, not the
+  /// player's news.
+  cancelNote       String?
   /**
    * The recommendation that prompted this invitation, if one did.
    * The *whole* set of scouts whose reputation rides on the outcome is

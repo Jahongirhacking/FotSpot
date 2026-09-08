@@ -46,6 +46,14 @@ function build(invitation: Record<string, unknown> = INVITATION) {
       updateMany: jest.fn(async () => ({ count: 1 })),
       findMany: jest.fn(async (): Promise<unknown[]> => []),
     },
+    // The operator's alert names the player who joined.
+    user: {
+      findUnique: jest.fn(async (): Promise<unknown> => ({
+        firstName: 'Bobur',
+        lastName: 'Aliyev',
+        username: 'bobur',
+      })),
+    },
     academyMember: {
       findUnique: jest.fn(async (): Promise<unknown> => null),
       findFirst: jest.fn(async (): Promise<unknown> => null),
@@ -59,6 +67,8 @@ function build(invitation: Record<string, unknown> = INVITATION) {
     announceLeft: jest.fn(async () => undefined),
   };
   const audit = { record: jest.fn(async () => undefined) };
+  /** The operator's Telegram chat. Returns its failures, never throws. */
+  const adminAlerts = { announce: jest.fn(async () => undefined) };
   const job = { remove: jest.fn(async () => undefined) };
   const queue = {
     add: jest.fn(async () => undefined),
@@ -73,8 +83,9 @@ function build(invitation: Record<string, unknown> = INVITATION) {
     squads as unknown as SquadNotificationsService,
     { del: jest.fn(async () => undefined) } as unknown as RedisService,
     queue as never,
+    adminAlerts as never,
   );
-  return { service, prisma, tx, notifications, squads, audit, queue, job };
+  return { service, prisma, tx, notifications, squads, audit, queue, job, adminAlerts };
 }
 
 describe('decide — a yes is recorded now and settled later', () => {
@@ -172,6 +183,28 @@ describe('settleAcceptance — what a yes sets in motion', () => {
       'player-user-1',
     );
     expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  /* The operator hears about every player an academy takes on, by name. */
+  it('tells the operator which player joined which academy', async () => {
+    const { service, adminAlerts } = build(accepted);
+
+    await service.settleAcceptance('invite-1');
+
+    expect(adminAlerts.announce).toHaveBeenCalledWith({
+      kind: 'PLAYER_JOINED_ACADEMY',
+      name: 'Bobur Aliyev',
+      academy: 'Yoshlik',
+    });
+  });
+
+  it('does not alert the operator about a coach joining', async () => {
+    const { service, adminAlerts, tx } = build({ ...accepted, role: 'COACH' });
+
+    await service.settleAcceptance('invite-1');
+
+    expect(tx.academyMember.upsert).toHaveBeenCalled();
+    expect(adminAlerts.announce).not.toHaveBeenCalled();
   });
 
   it('claims the row under a guard and settles nothing twice', async () => {

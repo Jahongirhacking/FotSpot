@@ -217,6 +217,9 @@ const APPLICATION_STATUSES = ['REJECTED'] as const;
 
 export class UpdateTrialApplicationStatusDto {
   @IsIn(APPLICATION_STATUSES) status: (typeof APPLICATION_STATUSES)[number];
+
+  /** Why, when closing a passed player's candidacy — optional, the manager's record. */
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
 /**

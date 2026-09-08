@@ -50,6 +50,27 @@ const ALLOWED_SCOUT_VIEWERS = ['player', 'academy_manager', 'admin', 'super_admi
  * Name, age and position — the three facts a manager weighs before deciding
  * whether to invite somebody, and the ones the mock-up in the brief shows.
  */
+/**
+ * Why a player cannot be recommended right now. `IN_ACADEMY` — they are on an
+ * academy's books (a local team does not count); `IN_TRIAL` — an academy is
+ * already looking at them on a pitch, or has just offered them a place.
+ */
+export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL';
+
+const RECOMMEND_BLOCKER_MESSAGE: Record<RecommendBlocker, string> = {
+  IN_ACADEMY: 'This player is already at an academy and cannot be recommended',
+  IN_TRIAL: 'This player is in a trial process and cannot be recommended until it ends',
+};
+
+/** Everything but a closed application: the player is still in an academy's hands. */
+const OPEN_APPLICATION_STATUSES = [
+  'APPLIED',
+  'INVITED',
+  'CONFIRMED',
+  'PASSED',
+  'ACCEPTED',
+] as const;
+
 const PENDING_PLAYER_CARD = {
   id: true,
   firstName: true,
@@ -106,6 +127,10 @@ export class RecommendationsService {
     if (player.userId === scoutId) {
       throw new ForbiddenException('You cannot recommend your own player profile');
     }
+
+    // Nobody to say it to, or nothing to add — see `recommendEligibility`.
+    const blocker = await this.recommendBlocker(player.id, player.userId);
+    if (blocker) throw new ConflictException(RECOMMEND_BLOCKER_MESSAGE[blocker]);
 
     /*
      * One live recommendation per scout per player, and a wait after a rejection.
@@ -319,6 +344,51 @@ export class RecommendationsService {
    * (see `create`), so after the first the profile has to say what became of it
    * rather than offering the same button again.
    */
+  /**
+   * Whether a scout may put this player forward at all, and if not, why.
+   *
+   * A recommendation is a scout saying "look at this player". There is nobody
+   * to say it to about a player an academy already has, and nothing to add
+   * about one an academy is already looking at on a pitch. So a player with an
+   * academy membership (a local team does not count — TRIAL.md §5) or an open
+   * trial application — applied, invited, confirmed, passed and awaiting the
+   * squad decision, or offered a place — cannot be recommended, and the
+   * profile says why instead of drawing a button that would fail.
+   */
+  async recommendEligibility(playerId: string) {
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: playerId },
+      select: { userId: true },
+    });
+    if (!player) throw new NotFoundException('Player not found');
+    const reason = await this.recommendBlocker(playerId, player.userId);
+    return { canRecommend: reason === null, reason };
+  }
+
+  private async recommendBlocker(
+    playerId: string,
+    playerUserId: string,
+  ): Promise<RecommendBlocker | null> {
+    const [member, application] = await Promise.all([
+      this.prisma.academyMember.findFirst({
+        where: {
+          userId: playerUserId,
+          role: 'PLAYER',
+          status: { in: ['ACTIVE', 'INACTIVE'] },
+          academy: { kind: 'ACADEMY' },
+        },
+        select: { id: true },
+      }),
+      this.prisma.trialApplication.findFirst({
+        where: { playerId, status: { in: [...OPEN_APPLICATION_STATUSES] } },
+        select: { id: true },
+      }),
+    ]);
+    if (member) return 'IN_ACADEMY';
+    if (application) return 'IN_TRIAL';
+    return null;
+  }
+
   async myRecommendationFor(scoutId: string, playerId: string) {
     const recommendation = await this.prisma.recommendation.findFirst({
       where: { scoutId, playerId },
@@ -583,7 +653,7 @@ export class RecommendationsService {
    * A FAIL at either stage produces nothing, which is the asymmetry TRIAL.md
    * states: a rejection is complete on its own and asks the manager for nothing.
    */
-  async pendingManagerActions(userId: string) {
+  async pendingManagerActions(userId: string, { page = 1, pageSize = 4 } = {}) {
     const membership = await this.prisma.academyMember.findFirst({
       where: { userId, role: 'MANAGER', status: 'ACTIVE' },
       select: { academyId: true },
@@ -591,17 +661,23 @@ export class RecommendationsService {
     if (!membership) throw new ForbiddenException('Only an academy manager can do that');
     const academyId = membership.academyId;
 
-    const passed = await this.prisma.trialApplication.findMany({
-      where: { status: 'PASSED', trial: { academyId } },
-      orderBy: { updatedAt: 'desc' },
-      take: 50,
-      select: {
-        id: true,
-        updatedAt: true,
-        trial: { select: { id: true, title: true, type: true, date: true } },
-        player: { select: PENDING_PLAYER_CARD },
-      },
-    });
+    // Newest pass first: the dashboard shows the top few and links to the rest.
+    const where = { status: 'PASSED' as const, trial: { academyId } };
+    const [passed, total] = await Promise.all([
+      this.prisma.trialApplication.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          updatedAt: true,
+          trial: { select: { id: true, title: true, type: true, date: true } },
+          player: { select: PENDING_PLAYER_CARD },
+        },
+      }),
+      this.prisma.trialApplication.count({ where }),
+    ]);
 
     return {
       // One kind of item: a player a trial has passed, waiting for a squad place
@@ -616,6 +692,9 @@ export class RecommendationsService {
           passedAt: application.updatedAt,
         })),
       ],
+      total,
+      page,
+      pageSize,
     };
   }
 

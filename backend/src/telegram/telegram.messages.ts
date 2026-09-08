@@ -136,6 +136,12 @@ export type AdminAlert =
   | { kind: 'SCOUT_SIGNED_UP'; name: string; region?: string | null }
   | { kind: 'CLIP_UPLOADED'; name: string; category: string; title?: string | null }
   | {
+      /** A player accepted an academy's squad invitation and is now on its books. */
+      kind: 'PLAYER_JOINED_ACADEMY';
+      name: string;
+      academy: string;
+    }
+  | {
       /** An academy announced a trial. `name` is the academy. */
       kind: 'TRIAL_CREATED';
       name: string;
@@ -183,6 +189,8 @@ export function adminAlertMessage(alert: AdminAlert): string {
       const what = alert.title ? `\n${escapeHtml(alert.title)}` : '';
       return `🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
     }
+    case 'PLAYER_JOINED_ACADEMY':
+      return `🤝 ${name} ${escapeHtml(alert.academy)} akademiyasiga qo'shildi`;
     case 'TRIAL_CREATED': {
       const when = alert.date ? formatAlertDate(alert.date) : 'muddatsiz';
       const kind = alert.type === 'PRIVATE' ? 'yopiq' : 'ochiq';

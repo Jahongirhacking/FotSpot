@@ -53,6 +53,7 @@ function build(kind: 'ACADEMY' | 'LOCAL_TEAM') {
     {} as unknown as SquadNotificationsService,
     { del: jest.fn(async () => undefined) } as unknown as RedisService,
     { add: jest.fn(async () => undefined), getJob: jest.fn(async () => null) } as never,
+    { announce: jest.fn(async () => undefined) } as never,
   );
 
   return { service, prisma, notifications };

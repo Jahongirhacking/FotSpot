@@ -18,6 +18,8 @@ export const AuditAction = {
   ACADEMY_COACH_ADDED: 'academy.coach_added',
   ACADEMY_INVITATION_SENT: 'academy.invitation_sent',
   ACADEMY_INVITATION_ANSWERED: 'academy.invitation_answered',
+  /** A manager closed a passed player's candidacy without a squad invitation. */
+  TRIAL_CANDIDACY_CLOSED: 'trial.candidacy_closed',
   ACADEMY_MEMBER_UPDATED: 'academy.member_updated',
   ACADEMY_MEMBER_RELEASED: 'academy.member_released',
   ACADEMY_MEMBER_IMPORTED: 'academy.member_imported',

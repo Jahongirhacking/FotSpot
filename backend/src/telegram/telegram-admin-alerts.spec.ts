@@ -115,6 +115,18 @@ describe('what each alert says', () => {
     expect(text).toContain('Yunusobod');
   });
 
+  it('announces a player joining an academy by both names', () => {
+    const text = adminAlertMessage({
+      kind: 'PLAYER_JOINED_ACADEMY',
+      name: 'Bobur Aliyev',
+      academy: 'Yoshlik',
+    });
+
+    expect(text).toContain('Bobur Aliyev');
+    expect(text).toContain('Yoshlik');
+    expect(text).toContain("qo'shildi");
+  });
+
   it('says a trial is open-ended when it has no date', () => {
     const text = adminAlertMessage({
       kind: 'TRIAL_CREATED',
