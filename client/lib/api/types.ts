@@ -423,7 +423,7 @@ export interface PlayerMemberships {
   academyHistory: SquadMembership[];
 }
 
-export type AgeBand = 'U12' | 'U14' | 'U16' | 'U18' | 'Senior';
+export type AgeBand = 'U8' | 'U10' | 'U12' | 'U14' | 'U16' | 'U18' | 'U21' | 'Senior';
 
 /** The exact facts about a player — an academy's manager only. */
 export interface PlayerDetails {

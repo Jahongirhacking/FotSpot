@@ -6,28 +6,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AuditAction } from '../audit/audit.actions';
+import { AuditService } from '../audit/audit.service';
+import { ageAt } from '../common/age.util';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
+import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { RbacService } from '../rbac/rbac.service';
+import { CacheTtl, RedisKeys } from '../redis/redis.keys';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
-import { CacheTtl, RedisKeys } from '../redis/redis.keys';
-import { RbacService } from '../rbac/rbac.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
-import { ageAt } from '../common/age.util';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/audit.actions';
 import { normaliseUsername } from '../users/username.util';
 import { computeCardStars } from './card-stars.util';
 import { dominantFootWhere } from './dominant-foot.util';
-import { searchOrderBy } from './search-order.util';
 import {
   CreatePlayerProfileDto,
   SearchPlayersDto,
   UpdatePlayerProfileDto,
   UpdatePlayerStatsDto,
 } from './dto/player.dto';
-import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
+import { searchOrderBy } from './search-order.util';
 
 /**
  * The player's photo lives on `User`, not `PlayerProfile` — one account, one
@@ -40,11 +40,14 @@ import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
 const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
 /** The band a player is compared in — the same thresholds the client uses. */
-function bandFor(age: number): 'U12' | 'U14' | 'U16' | 'U18' | 'Senior' {
+function bandFor(age: number): 'U8' | 'U10' | 'U12' | 'U14' | 'U16' | 'U18' | 'U21' | 'Senior' {
+  if (age < 8) return 'U8';
+  if (age < 10) return 'U10';
   if (age < 12) return 'U12';
   if (age < 14) return 'U14';
   if (age < 16) return 'U16';
   if (age < 18) return 'U18';
+  if (age < 21) return 'U21';
   return 'Senior';
 }
 

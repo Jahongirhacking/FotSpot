@@ -1,6 +1,6 @@
+import type { AgeBand } from '@/lib/api/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { AgeBand } from '@/lib/api/types';
 
 /** Merge conditional classes, letting later Tailwind utilities win over earlier ones. */
 export function cn(...inputs: ClassValue[]) {
@@ -22,10 +22,13 @@ export function ageFrom(birthDate: string | Date, at: Date = new Date()): number
  */
 export function ageBand(birthDate: string | Date): AgeBand {
   const age = ageFrom(birthDate);
+  if (age < 8) return 'U8';
+  if (age < 10) return 'U10';
   if (age < 12) return 'U12';
   if (age < 14) return 'U14';
   if (age < 16) return 'U16';
   if (age < 18) return 'U18';
+  if (age < 21) return 'U21';
   return 'Senior';
 }
 
