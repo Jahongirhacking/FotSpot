@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { APPLICATION_STAGES, type ApplicationStage } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 
@@ -104,6 +106,37 @@ export function StageTabs({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * The next page, on request.
+ *
+ * A button rather than a scroll trigger: the lists this sits under are
+ * worked through — a coach judging, a manager inviting — and a page that
+ * grows under somebody's thumb moves the row they were about to press.
+ * Says how many are left, so "load more" is a known cost.
+ */
+export function LoadMore({
+  shown,
+  total,
+  loading,
+  onLoadMore,
+}: {
+  shown: number;
+  total: number;
+  loading: boolean;
+  onLoadMore: () => void;
+}) {
+  const { t, f } = useI18n();
+  const left = Math.max(0, total - shown);
+  if (left === 0) return null;
+  return (
+    <div className="flex justify-center pt-1">
+      <Button size="sm" variant="outline" loading={loading} onClick={onLoadMore}>
+        <ChevronDown aria-hidden /> {f(t.common.loadMore, { count: left })}
+      </Button>
     </div>
   );
 }

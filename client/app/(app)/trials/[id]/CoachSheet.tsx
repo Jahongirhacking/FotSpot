@@ -4,9 +4,8 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { ParticipantList } from '@/components/trials/ParticipantList';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplicationsPage } from '@/lib/api/types';
-import { useQuery } from '@tanstack/react-query';
+import { useStagePages } from '@/components/trials/useStagePages';
+import type { Trial, TrialApplication } from '@/lib/api/types';
 import { Users } from 'lucide-react';
 
 /**
@@ -23,11 +22,13 @@ import { Users } from 'lucide-react';
 export function CoachSheet({ trial }: { trial: Trial }) {
   const { t } = useI18n();
 
-  const sheet = useQuery({
-    queryKey: ['trial-applications', trial?.id],
-    queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trial?.id}/applications`),
-  });
-  const count = sheet.data?.items.length ?? 0;
+  // The same query the list opens on; only the count is wanted here.
+  const count = useStagePages<TrialApplication>({
+    list: 'trial-applications',
+    id: trial?.id,
+    path: `/trials/${trial?.id}/applications`,
+    stage: null,
+  }).total;
 
   return (
     <Card>

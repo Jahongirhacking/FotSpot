@@ -39,6 +39,7 @@ export const ru: Dictionary = {
     previous: 'Назад',
     next: 'Далее',
     pageOf: 'Страница {page} из {pages}',
+    loadMore: 'Показать ещё (осталось {count})',
     seeAll: 'Показать все',
     open: 'Открыть',
     language: 'Язык',

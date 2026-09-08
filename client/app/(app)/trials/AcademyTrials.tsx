@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyProfile, PrivateTrialRow, Trial } from '@/lib/api/types';
+import type { AcademyProfile, PrivateTrialsPage, Trial } from '@/lib/api/types';
 
 import { formatTrialDates, isTrialUpcoming } from '@/lib/trial-window';
 import { useQuery } from '@tanstack/react-query';
@@ -53,8 +53,8 @@ export function AcademyTrials({
   academyId: string;
   academyName: string;
   initial: Trial[];
-  /** Every private trial, with its player and stage — see `PrivateTrials`. */
-  initialPrivate: PrivateTrialRow[];
+  /** The first page of pending private trials — see `PrivateTrials`. */
+  initialPrivate: PrivateTrialsPage;
   /** Set by `?edit=<id>` on the page. Opens the form on that trial. */
   editTrial?: Trial | null;
 }) {

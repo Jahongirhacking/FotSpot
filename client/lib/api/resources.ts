@@ -54,7 +54,8 @@ import type {
   TransferListing,
   PendingAction,
   RecommendEligibility,
-  PrivateTrialRow,
+  PrivateTrialsPage,
+  ApplicationStage,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -66,6 +67,11 @@ type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' 
  * for more gets a validation error rather than the whole table — see
  * `backend/src/common/dto/pagination.dto.ts`.
  */
+/** A page of one stage — see `useStagePages`. */
+export interface StagePageParams extends PageParams {
+  stage?: ApplicationStage;
+}
+
 export interface PageParams {
   page?: number;
   pageSize?: number;
@@ -1199,12 +1205,21 @@ export const trials = {
    * Manager: every private trial of the academy, open and archived, with the
    * player it is for and where they stand — read by stage, no action on the row.
    */
-  listPrivateForAcademy: (academyId: string, opts: Opts = {}) =>
-    apiFetch<PrivateTrialRow[]>(`/trials/academy/${academyId}/private`, opts),
+  listPrivateForAcademy: (academyId: string, params: StagePageParams = {}, opts: Opts = {}) =>
+    apiFetch<PrivateTrialsPage>(
+      `/trials/academy/${academyId}/private${toQuery({ ...params })}`,
+      opts,
+    ),
 
-  /** Who is on the sheet — every row for the manager, the participants for a coach. */
-  listApplications: (trialId: string, opts: Opts = {}) =>
-    apiFetch<TrialApplicationsPage>(`/trials/${trialId}/applications`, opts),
+  /**
+   * Who is on the sheet — every row for the manager, the participants for a
+   * coach — one page of one stage at a time.
+   */
+  listApplications: (trialId: string, params: StagePageParams = {}, opts: Opts = {}) =>
+    apiFetch<TrialApplicationsPage>(
+      `/trials/${trialId}/applications${toQuery({ ...params })}`,
+      opts,
+    ),
 
   /**
    * The academy withdrawing its interest. On a passed player this closes the

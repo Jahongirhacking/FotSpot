@@ -44,6 +44,7 @@ export const uz = {
     previous: 'Oldingi',
     next: 'Keyingi',
     pageOf: '{page}-sahifa, jami {pages}',
+    loadMore: 'Yana yuklash ({count} ta qoldi)',
     seeAll: 'Hammasini ko‘rish',
     open: 'Ochish',
     language: 'Til',

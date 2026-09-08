@@ -14,8 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
  */
 export function Applicants({ trial }: { trial: Trial }) {
   const { t } = useI18n();
-  // The same query the list reads; only the count is wanted here.
-  const total = useTrialApplicants(trial?.id).data?.items?.length ?? 0;
+  // The same query the list opens on; only the counts are wanted here.
+  const { counts } = useTrialApplicants(trial?.id, 'PENDING');
+  const total = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
 
   return (
     <Card>

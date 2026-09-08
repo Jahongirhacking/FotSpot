@@ -773,8 +773,17 @@ export interface CoachQueuePage extends Paged<PendingTrialApplicant> {
  * participants only, and `pending` says how many invitations are still
  * unanswered.
  */
+/**
+ * One page of one stage of a trial's applicants, with how many sit at every
+ * stage — the list is never read whole (see `useStagePages`).
+ */
 export interface TrialApplicationsPage {
   items: TrialApplication[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<ApplicationStage, number>;
+  /** Invitations still awaiting the player's answer — counted, never named. */
   pending: number;
 }
 
@@ -947,6 +956,15 @@ export interface PrivateTrialRow extends Trial {
         player: PlayerProfile & { avatarUrl?: string | null };
       })
     | null;
+}
+
+/** One page of one stage of the academy's private trials — the same shape as the applicants. */
+export interface PrivateTrialsPage {
+  items: PrivateTrialRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<ApplicationStage, number>;
 }
 
 /** The player card the manager's desk sends with each waiting candidate. */

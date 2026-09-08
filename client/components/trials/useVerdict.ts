@@ -23,31 +23,40 @@ interface ApplicationRow {
   result?: TrialApplication['result'];
 }
 
+type ListPage = { items: ApplicationRow[] };
+type Cached = ListPage | { pages: ListPage[]; pageParams: unknown[] } | undefined;
+
 /**
  * Applies a change to one application wherever it is cached.
  *
- * Every list that shows verdicts is `{ items: [...] }` under one of the keys
- * above, so this walks those and leaves everything else alone. A row that is
- * not in a given list is simply not there — a private-trial queue does not
- * hold a global trial's applicant.
+ * Every list that shows verdicts is `{ items: [...] }` — one page, or the
+ * pages of an infinite query — under one of the keys above, so this walks
+ * those and leaves everything else alone. A row that is not in a given list
+ * is simply not there — a private-trial queue does not hold a global trial's
+ * applicant.
  */
 function patchApplication(
   queryClient: QueryClient,
   applicationId: string,
   patch: Partial<ApplicationRow>,
 ) {
-  queryClient.setQueriesData<{ items: ApplicationRow[] } | undefined>(
+  const patchPage = (page: ListPage) => ({
+    ...page,
+    items: page.items.map((row) => (row.id === applicationId ? { ...row, ...patch } : row)),
+  });
+  queryClient.setQueriesData<Cached>(
     {
       predicate: (query) =>
         APPLICATION_LISTS.includes(query.queryKey[0] as (typeof APPLICATION_LISTS)[number]),
     },
-    (old) =>
-      old && Array.isArray(old.items)
-        ? {
-            ...old,
-            items: old.items.map((row) => (row.id === applicationId ? { ...row, ...patch } : row)),
-          }
-        : old,
+    (old) => {
+      if (!old) return old;
+      if ('pages' in old && Array.isArray(old.pages)) {
+        return { ...old, pages: old.pages.map(patchPage) };
+      }
+      if ('items' in old && Array.isArray(old.items)) return patchPage(old);
+      return old;
+    },
   );
 }
 

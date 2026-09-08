@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/Button';
 
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, trials } from '@/lib/api/resources';
-import type { CoachTrial, PrivateTrialRow } from '@/lib/api/types';
+import type { CoachTrial, PrivateTrialsPage } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { jsonLd } from '@/lib/seo';
 import { itemListLd } from '@/lib/structured-data';
@@ -130,13 +130,32 @@ export default async function TrialsPage({
         .listForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
         .catch(() => [])
     : [];
-  // The private ones separately, open and archived, each with its player and
-  // stage — the list is read by stage, and an ended session is most of it.
+  // The private ones separately — the first page of the pending tab, with
+  // the count at every stage; the rest is fetched as tabs are opened.
+  const emptyPrivate: PrivateTrialsPage = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    counts: {
+      PENDING: 0,
+      FAILED: 0,
+      PASSED: 0,
+      CANDIDACY_CLOSED: 0,
+      SQUAD_INVITED: 0,
+      INVITATION_DECLINED: 0,
+      SQUAD_JOINED: 0,
+    },
+  };
   const privateTrials = managed
     ? await trials
-        .listPrivateForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
-        .catch(() => [] as PrivateTrialRow[])
-    : [];
+        .listPrivateForAcademy(
+          managed.id,
+          { stage: 'PENDING', page: 1, pageSize: 10 },
+          { token: session!.accessToken, cache: 'no-store' },
+        )
+        .catch(() => emptyPrivate)
+    : emptyPrivate;
 
   /*
    * Resolved here rather than in the client component, so a bad `?edit=` is

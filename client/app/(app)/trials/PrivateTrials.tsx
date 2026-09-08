@@ -2,19 +2,18 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, Lock, MapPin, UserCheck } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { PrivateTrialRow } from '@/lib/api/types';
+import type { PrivateTrialRow, PrivateTrialsPage } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
+import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { TrialThumb } from '@/components/trials/TrialThumb';
 import { VerdictResult } from '@/components/trials/VerdictControls';
-import { StageBadge, StageTabs, countStages, useStageTab } from '@/components/trials/StageTabs';
+import { LoadMore, StageBadge, StageTabs, useStageTab } from '@/components/trials/StageTabs';
+import { useStagePages } from '@/components/trials/useStagePages';
 import { formatTrialDates } from '@/lib/trial-window';
 import { ageFrom, formatDate, initials } from '@/lib/utils';
 
@@ -29,31 +28,38 @@ import { ageFrom, formatDate, initials } from '@/lib/utils';
  * decision after a pass lives on the dashboard beside the candidate — a
  * second set of buttons here would be a second place for the same decision.
  *
- * ## Tabs, pending first
+ * ## Tabs, pending first, a page at a time
  *
  * Seven stages, one tab each, with the count on it. Pending opens by
  * default: the trials still waiting on a coach are the ones a manager comes
- * to check, and the rest is the record.
+ * to check, and the rest is the record. The server renders the first page
+ * of pending; every other tab is fetched when it is opened, and every tab
+ * grows a page at a time (`useStagePages`) — a season of private trials is
+ * never read whole.
  */
 export function PrivateTrials({
   academyId,
   initial,
 }: {
   academyId: string;
-  initial: PrivateTrialRow[];
+  /** The first page of the pending tab, from the server. */
+  initial: PrivateTrialsPage;
 }) {
   const { t } = useI18n();
   const [stage, setStage] = useStageTab();
 
-  const list = useQuery({
-    queryKey: ['private-trials', academyId],
-    queryFn: () => browserFetch<PrivateTrialRow[]>(`/trials/academy/${academyId}/private`),
-    initialData: initial,
+  const list = useStagePages<PrivateTrialRow>({
+    list: 'private-trials',
+    id: academyId,
+    path: `/trials/academy/${academyId}/private`,
+    stage,
+    pageSize: 10,
+    initial: stage === 'PENDING' ? initial : undefined,
   });
 
-  const rows = list.data ?? [];
-  const counts = countStages(rows.map((row) => ({ stage: row?.applicant?.stage })));
-  const shown = rows.filter((row) => (row?.applicant?.stage ?? 'PENDING') === stage);
+  const rows = list.rows;
+  const counts = list.counts;
+  const everybody = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
 
   return (
     <Card>
@@ -61,13 +67,13 @@ export function PrivateTrials({
         <CardTitle className="flex items-center gap-2 text-base">
           <Lock className="text-warning size-4" aria-hidden />
           {t.trials.privateTrials}
-          {rows.length > 0 && <Badge variant="neutral">{rows.length}</Badge>}
+          {everybody > 0 && <Badge variant="neutral">{everybody}</Badge>}
         </CardTitle>
         <p className="text-muted text-sm">{t.trials.privateTrialsHint}</p>
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {rows.length === 0 ? (
+        {everybody === 0 ? (
           <EmptyState
             icon={Lock}
             title={t.trials.noPrivateTrials}
@@ -82,17 +88,27 @@ export function PrivateTrials({
           <>
             <StageTabs counts={counts} value={stage} onChange={setStage} />
 
-            {shown.length === 0 ? (
-              <p className="text-muted px-1 py-6 text-center text-sm">
-                {t.trials.noApplicantsAtStage}
-              </p>
+            {rows.length === 0 ? (
+              list.isLoading ? (
+                <Skeleton className="h-20 w-full rounded-lg" />
+              ) : (
+                <p className="text-muted px-1 py-6 text-center text-sm">
+                  {t.trials.noApplicantsAtStage}
+                </p>
+              )
             ) : (
               <ul className="border-border divide-border overflow-hidden rounded-lg border">
-                {shown.map((row) => (
+                {rows.map((row) => (
                   <PrivateTrialRowItem key={row?.id} row={row} />
                 ))}
               </ul>
             )}
+            <LoadMore
+              shown={rows.length}
+              total={list.total}
+              loading={list.isLoadingMore}
+              onLoadMore={list.loadMore}
+            />
           </>
         )}
       </CardContent>

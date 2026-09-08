@@ -1,14 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { ClipboardList } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplication, TrialApplicationsPage } from '@/lib/api/types';
+import type { ApplicationStage, Trial, TrialApplication } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { CandidateActions, useCandidateActions } from '@/components/trials/CandidateCard';
-import { StageTabs, countStages, useStageTab } from '@/components/trials/StageTabs';
+import { LoadMore, StageTabs, useStageTab } from '@/components/trials/StageTabs';
+import { useStagePages } from '@/components/trials/useStagePages';
 import { VerdictResult } from '@/components/trials/VerdictControls';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 
@@ -16,11 +15,17 @@ export interface ManagerApplicant extends TrialApplication {
   player: ApplicantPlayer;
 }
 
-/** The applicants of one trial, as the manager reads them — shared by the card on the trial page and the drawer on the trials list. */
-export function useTrialApplicants(trialId: string) {
-  return useQuery({
-    queryKey: ['trial-applications', trialId],
-    queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trialId}/applications`),
+/**
+ * One stage of one trial's applicants, a page at a time — shared by the
+ * card on the trial page and the drawer on the trials list, which read the
+ * same cache. See `useStagePages` for why nothing is read whole.
+ */
+export function useTrialApplicants(trialId: string, stage: ApplicationStage | null) {
+  return useStagePages<ManagerApplicant>({
+    list: 'trial-applications',
+    id: trialId,
+    path: `/trials/${trialId}/applications`,
+    stage,
   });
 }
 
@@ -34,13 +39,14 @@ export function useTrialApplicants(trialId: string) {
  * leaving the list. Both read the same query, so a squad invitation sent in
  * one place is already gone from the other.
  *
- * ## Read by stage
+ * ## Read by stage, a page at a time
  *
  * One tab per stage with its count, pending first: who is still waiting on
  * the coach is what a manager opens the trial to see; the rest is the record
- * (TRIAL.md §32). The API says which stage each row is at, because the story
- * after a PASS — the squad invitation, the player's answer — lives in other
- * tables.
+ * (TRIAL.md §32). Only the open tab is fetched, and only its first page
+ * until "Load more" is pressed. The API says which stage each row is at,
+ * because the story after a PASS — the squad invitation, the player's
+ * answer — lives in other tables.
  *
  * ## The verdict is never the manager's
  *
@@ -55,15 +61,15 @@ export function ManagerApplicantList({ trial }: { trial: Pick<Trial, 'id'> }) {
   const actions = useCandidateActions();
   const [stage, setStage] = useStageTab();
 
-  const applicants = useTrialApplicants(trial?.id);
-
   // Every row, invitations included: the manager sent them, and can see where
   // each one stands. A coach is handed the participants only — see CoachSheet.
-  const rows = (applicants.data?.items ?? []) as ManagerApplicant[];
-  const counts = countStages(rows);
-  const shown = rows.filter((row) => (row?.stage ?? 'PENDING') === stage);
+  const applicants = useTrialApplicants(trial?.id, stage);
+  const rows = applicants.rows;
+  const anybody = Object.values(applicants.counts).some((n) => (n ?? 0) > 0);
 
-  if (applicants.isLoading) return <Skeleton className="h-24 w-full rounded-lg" />;
+  if (applicants.isLoading && rows.length === 0 && !anybody) {
+    return <Skeleton className="h-24 w-full rounded-lg" />;
+  }
 
   return (
     <div className="space-y-3">
@@ -71,7 +77,7 @@ export function ManagerApplicantList({ trial }: { trial: Pick<Trial, 'id'> }) {
         <Alert tone="danger">{actions.error.message ?? t.common.somethingWrong}</Alert>
       )}
 
-      {rows?.length === 0 ? (
+      {!anybody ? (
         <EmptyState
           icon={ClipboardList}
           title={t.academy.noApplicants}
@@ -79,14 +85,18 @@ export function ManagerApplicantList({ trial }: { trial: Pick<Trial, 'id'> }) {
         />
       ) : (
         <>
-          <StageTabs counts={counts} value={stage} onChange={setStage} />
+          <StageTabs counts={applicants.counts} value={stage} onChange={setStage} />
           <ApplicantGrid
-            applicants={shown}
+            applicants={rows}
             statusFilter={false}
             empty={
-              <p className="text-muted px-1 py-6 text-center text-sm">
-                {t.trials.noApplicantsAtStage}
-              </p>
+              applicants.isLoading ? (
+                <Skeleton className="h-20 w-full rounded-lg" />
+              ) : (
+                <p className="text-muted px-1 py-6 text-center text-sm">
+                  {t.trials.noApplicantsAtStage}
+                </p>
+              )
             }
           >
             {(application) => (
@@ -100,6 +110,12 @@ export function ManagerApplicantList({ trial }: { trial: Pick<Trial, 'id'> }) {
               />
             )}
           </ApplicantGrid>
+          <LoadMore
+            shown={rows.length}
+            total={applicants.total}
+            loading={applicants.isLoadingMore}
+            onLoadMore={applicants.loadMore}
+          />
         </>
       )}
     </div>

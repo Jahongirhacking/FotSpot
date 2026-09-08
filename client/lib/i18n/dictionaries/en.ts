@@ -39,6 +39,7 @@ export const en: Dictionary = {
     previous: 'Previous',
     next: 'Next',
     pageOf: 'Page {page} of {pages}',
+    loadMore: 'Load more ({count} left)',
     seeAll: 'See all',
     open: 'Open',
     language: 'Language',

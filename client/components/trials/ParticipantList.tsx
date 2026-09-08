@@ -3,12 +3,12 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ApplicantCard, type ApplicantPlayer } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
+import { LoadMore } from '@/components/trials/StageTabs';
+import { useStagePages } from '@/components/trials/useStagePages';
 import { useVerdict } from '@/components/trials/useVerdict';
 import { VerdictActions, VerdictResult } from '@/components/trials/VerdictControls';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
-import { browserFetch } from '@/lib/api/browser';
-import type { Trial, TrialApplication, TrialApplicationsPage } from '@/lib/api/types';
-import { useQuery } from '@tanstack/react-query';
+import type { Trial, TrialApplication } from '@/lib/api/types';
 import { Hourglass, Users } from 'lucide-react';
 
 interface Participant extends TrialApplication {
@@ -34,18 +34,27 @@ interface Participant extends TrialApplication {
  * A pass is one press, undoable from the toast for a short window; a fail
  * asks first. The card turns into the verdict in place and the next player
  * stays where it was. See `useVerdict`.
+ *
+ * ## A page at a time
+ *
+ * An open day's sheet is read twenty at a time, the next twenty on request
+ * (`useStagePages`): the coach works from the top, and the rows below the
+ * fold are not fetched until they are wanted. The search box narrows what
+ * has been loaded.
  */
 export function ParticipantList({ trial }: { trial: Pick<Trial, 'id' | 'type'> }) {
   const { t, f } = useI18n();
   const verdict = useVerdict();
 
-  const sheet = useQuery({
-    queryKey: ['trial-applications', trial?.id],
-    queryFn: () => browserFetch<TrialApplicationsPage>(`/trials/${trial?.id}/applications`),
+  const sheet = useStagePages<Participant>({
+    list: 'trial-applications',
+    id: trial?.id,
+    path: `/trials/${trial?.id}/applications`,
+    stage: null,
   });
 
-  const rows = (sheet.data?.items ?? []) as Participant[];
-  const pending = sheet.data?.pending ?? 0;
+  const rows = sheet.rows;
+  const pending = sheet.first?.pending ?? 0;
 
   if (sheet.isLoading) return <Skeleton className="h-48 w-full rounded-lg" />;
   if (sheet.isError) return <Alert tone="danger">{t.trials.sheetForbidden}</Alert>;
@@ -75,6 +84,13 @@ export function ParticipantList({ trial }: { trial: Pick<Trial, 'id' | 'type'> }
           )}
         </ApplicantGrid>
       )}
+
+      <LoadMore
+        shown={rows.length}
+        total={sheet.total}
+        loading={sheet.isLoadingMore}
+        onLoadMore={sheet.loadMore}
+      />
 
       {pending > 0 && (
         <p className="text-muted flex items-center gap-1.5 text-xs">
