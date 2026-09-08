@@ -412,7 +412,9 @@ export class InvitationsService {
       }
     });
 
-    await this.announce(invitation.invitedByUserId, invitation, true);
+    // One notice for the manager, not two: "a player joined your squad" from
+    // the squad service is the news, and it names them. The answer notice is
+    // kept for a no, which changes nothing on the squad screen.
     await this.squads.announceJoined(invitation.academyId, userId, userId);
     if (leaving) {
       await this.squads.announceLeft(leaving.academyId, userId, userId);

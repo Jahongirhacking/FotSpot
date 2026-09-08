@@ -55,8 +55,12 @@ const PENDING_PLAYER_CARD = {
   firstName: true,
   lastName: true,
   birthDate: true,
+  gender: true,
   primaryPosition: true,
   region: true,
+  district: true,
+  // The manager's card wants a face on it.
+  user: { select: { avatarKey: true } },
 } as const;
 
 @Injectable()
@@ -603,11 +607,11 @@ export class RecommendationsService {
       // One kind of item: a player a trial has passed, waiting for a squad place
       // (TRIAL.md Rule 8). `applicationId` is what `addToSquad` acts on.
       items: [
-        ...passed.map((application) => ({
+        ...passed.map(({ player: { user, ...player }, ...application }) => ({
           type: 'ADD_TO_SQUAD' as const,
           applicationId: application.id,
-          playerId: application.player.id,
-          player: application.player,
+          playerId: player.id,
+          player: { ...player, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
           trial: application.trial,
           passedAt: application.updatedAt,
         })),

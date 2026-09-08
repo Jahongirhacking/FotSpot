@@ -164,6 +164,8 @@ function build() {
     add: jest.fn(async () => undefined),
     getJob: jest.fn(async (): Promise<unknown> => job),
   };
+  /** The operator's Telegram chat. Returns its failures, never throws. */
+  const adminAlerts = { announce: jest.fn(async () => undefined) };
 
   const service = new TrialsService(
     prisma as unknown as PrismaService,
@@ -177,6 +179,7 @@ function build() {
     // These tests are about scheduling and eligibility, so no trial has a cover.
     { publicUrlOrNull: () => null } as unknown as StorageService,
     queue as unknown as Queue<SettleVerdictJob>,
+    adminAlerts as never,
   );
 
   return {
@@ -191,6 +194,7 @@ function build() {
     sms,
     queue,
     job,
+    adminAlerts,
   };
 }
 
@@ -872,6 +876,27 @@ describe('TrialsService.create — the coaches on it', () => {
       { data: { coachUserId: string }[] },
     ];
     expect(data.map((row) => row.coachUserId).sort()).toEqual(['coach-1', 'coach-2']);
+  });
+
+  /* The operator's chat hears about every announced trial, with the facts an
+     operator glances at: who, what, when, where. */
+  it('alerts the operator once the trial exists', async () => {
+    const { service, prisma, adminAlerts } = build();
+    prisma.academyEndorsement.findMany.mockResolvedValue([{ userId: 'coach-1' }]);
+    prisma.academyProfile.findUnique.mockResolvedValue({ kind: 'ACADEMY', name: 'Yoshlik' });
+
+    await service.create('manager-1', 'academy-1', validTrial);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(adminAlerts.announce).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'TRIAL_CREATED',
+        name: 'Yoshlik',
+        title: 'U16 open day',
+        type: 'GENERAL',
+        location: 'Tashkent',
+      }),
+    );
   });
 
   /* A refused coach must not leave an announced trial behind with nobody on it. */

@@ -134,7 +134,16 @@ export function startMessage(linked: boolean, connectUrl: string): string {
 export type AdminAlert =
   | { kind: 'PLAYER_SIGNED_UP'; name: string; region?: string | null; age?: number | null }
   | { kind: 'SCOUT_SIGNED_UP'; name: string; region?: string | null }
-  | { kind: 'CLIP_UPLOADED'; name: string; category: string; title?: string | null };
+  | { kind: 'CLIP_UPLOADED'; name: string; category: string; title?: string | null }
+  | {
+      /** An academy announced a trial. `name` is the academy. */
+      kind: 'TRIAL_CREATED';
+      name: string;
+      title: string;
+      type: 'GENERAL' | 'PRIVATE';
+      location: string;
+      date?: Date | string | null;
+    };
 
 /**
  * An operator alert, as one short Telegram message.
@@ -174,5 +183,18 @@ export function adminAlertMessage(alert: AdminAlert): string {
       const what = alert.title ? `\n${escapeHtml(alert.title)}` : '';
       return `🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
     }
+    case 'TRIAL_CREATED': {
+      const when = alert.date ? formatAlertDate(alert.date) : 'muddatsiz';
+      const kind = alert.type === 'PRIVATE' ? 'yopiq' : 'ochiq';
+      return `📅 Yangi ${kind} sinov: ${name}\n${escapeHtml(alert.title)}\n${when} · ${escapeHtml(alert.location)}`;
+    }
   }
+}
+
+/** `2026-09-22`, in the product's own timezone — enough for an operator glancing at a chat. */
+function formatAlertDate(date: Date | string): string {
+  const value = date instanceof Date ? date : new Date(date);
+  return Number.isNaN(value.getTime())
+    ? ''
+    : value.toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' });
 }

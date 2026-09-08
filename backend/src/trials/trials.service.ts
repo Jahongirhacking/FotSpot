@@ -51,6 +51,7 @@ import { regionCentre } from '../common/uzbekistan';
 import { sanitizeRichText } from '../common/rich-text.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
 import { SmsService } from '../sms/sms.service';
+import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import {
   SETTLE_ATTEMPTS,
   SETTLE_BACKOFF_MS,
@@ -90,6 +91,7 @@ export class TrialsService {
     private sms: SmsService,
     private storage: StorageService,
     @InjectQueue(TRIALS_QUEUE) private queue: Queue<SettleVerdictJob>,
+    private adminAlerts: TelegramAdminAlertsService,
   ) {}
 
   async create(userId: string, academyId: string, dto: CreateTrialDto) {
@@ -189,7 +191,35 @@ export class TrialsService {
     // Announced last, once the staff is on it: the message names a session
     // somebody can already open and see the applicants of.
     await this.announceToMatchingPlayers(trial, userId);
+    void this.alertOperator(trial);
     return this.withCoverUrl(trial);
+  }
+
+  /**
+   * Tells the operator a trial was announced — the Telegram chat named in
+   * `TELEGRAM_ADMIN_CHAT_ID`. Not awaited, and it cannot throw: the alert
+   * service returns its failures, and a trial must not fail to be created
+   * because a chat was unreachable.
+   */
+  private async alertOperator(trial: {
+    academyId: string;
+    title: string;
+    type: 'GENERAL' | 'PRIVATE';
+    location: string;
+    date: Date | null;
+  }) {
+    const academy = await this.prisma.academyProfile.findUnique({
+      where: { id: trial.academyId },
+      select: { name: true },
+    });
+    await this.adminAlerts.announce({
+      kind: 'TRIAL_CREATED',
+      name: academy?.name ?? trial.academyId,
+      title: trial.title,
+      type: trial.type,
+      location: trial.location,
+      date: trial.date,
+    });
   }
 
   /**
@@ -605,7 +635,8 @@ export class TrialsService {
     const awaitingOf = new Map(awaiting.map((row) => [row.trialId, row._count._all]));
 
     return rows.map((row) => ({
-      ...row.trial,
+      // The cover too: the coach's card wears it, the same as the board.
+      ...this.withCoverUrl(row.trial),
       applicantCount: applicantOf.get(row.trialId) ?? 0,
       awaitingVerdict: awaitingOf.get(row.trialId) ?? 0,
     }));

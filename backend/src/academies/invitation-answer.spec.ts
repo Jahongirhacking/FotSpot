@@ -154,7 +154,7 @@ describe('decide — a no is final and carries a note', () => {
 describe('settleAcceptance — what a yes sets in motion', () => {
   const accepted = { ...INVITATION, status: 'ACCEPTED', decidedAt: new Date() };
 
-  it('writes the membership in the reserve and tells the manager, once', async () => {
+  it('writes the membership in the reserve and tells the manager once, as a joining', async () => {
     const { service, tx, notifications, squads } = build(accepted);
 
     await expect(service.settleAcceptance('invite-1')).resolves.toEqual({ settled: true });
@@ -165,17 +165,13 @@ describe('settleAcceptance — what a yes sets in motion', () => {
         update: expect.objectContaining({ groupId: null, status: 'ACTIVE' }),
       }),
     );
-    expect(notifications.notify).toHaveBeenCalledWith(
-      'manager-1',
-      'ACADEMY_JOIN_ANSWER',
-      expect.objectContaining({ accepted: true }),
-      { userId: 'player-user-1', role: 'player' },
-    );
+    // "A player joined your squad" is the one notice; no second "accepted" one.
     expect(squads.announceJoined).toHaveBeenCalledWith(
       'academy-1',
       'player-user-1',
       'player-user-1',
     );
+    expect(notifications.notify).not.toHaveBeenCalled();
   });
 
   it('claims the row under a guard and settles nothing twice', async () => {

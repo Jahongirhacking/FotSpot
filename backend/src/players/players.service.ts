@@ -39,6 +39,15 @@ import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
  */
 const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
 
+/** The band a player is compared in — the same thresholds the client uses. */
+function bandFor(age: number): 'U12' | 'U14' | 'U16' | 'U18' | 'Senior' {
+  if (age < 12) return 'U12';
+  if (age < 14) return 'U14';
+  if (age < 16) return 'U16';
+  if (age < 18) return 'U18';
+  return 'Senior';
+}
+
 /** Bounds on an editable date of birth — a plausible playing age, not any date. */
 const MIN_PLAYER_AGE = 5;
 const MAX_PLAYER_AGE = 45;
@@ -399,11 +408,41 @@ export class PlayersService {
       },
     );
     if (!profile) throw new NotFoundException('Player not found');
+
+    /*
+     * What a stranger is told about a child: the band, not the birthday, and
+     * not where they live. The exact date and the address go only to an
+     * academy's manager, in `details`, beside the contacts (README §11,
+     * TRIAL.md Rule 28). Decided here, outside the cache, because the cached
+     * copy is the same bytes for everybody. The band is computed from the real
+     * date before it is withheld, so a profile still sorts into U12–U18.
+     */
+    const manages = await this.managesAnAcademy(viewer);
+    // A Date from Prisma on the first read, a string from Redis after it.
+    const age = ageAt(new Date(profile.birthDate), new Date());
+    const contacts = manages ? await this.contactsFor(owner.userId) : null;
     return {
       ...profile,
+      birthDate: manages ? profile.birthDate : null,
+      region: manages ? profile.region : null,
+      district: manages ? profile.district : null,
+      ageBand: bandFor(age),
+      details: manages
+        ? { birthDate: profile.birthDate, age, region: profile.region, district: profile.district }
+        : null,
+      contacts,
       memberships: await this.membershipsFor(owner.userId),
-      contacts: await this.contactsFor(owner.userId, viewer),
     };
+  }
+
+  /** Whether this viewer runs an academy — the one role told a player's exact facts. */
+  private async managesAnAcademy(viewer?: AuthUser): Promise<boolean> {
+    if (!viewer) return false;
+    const manages = await this.prisma.academyMember.findFirst({
+      where: { userId: viewer.userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { id: true },
+    });
+    return !!manages;
   }
 
   /**
@@ -412,20 +451,14 @@ export class PlayersService {
    * The manager is the one person with a reason to reach a player directly:
    * the invitation they just sent, the trial they are arranging. A scout has
    * no contact channel at all (README §11.2) and a coach judges on the pitch,
-   * so both see nothing here. Resolved outside the cached profile, because the
-   * cached copy is shared with everybody and must never carry a phone number.
+   * so both see nothing here — `getPublicProfile` calls this for a manager
+   * only. Resolved outside the cached profile, because the cached copy is
+   * shared with everybody and must never carry a phone number.
    *
    * Telegram is the account's id, offered as a `tg://user?id=` link — there is
    * no username on file, and the id opens the chat where Telegram allows it.
    */
-  private async contactsFor(playerUserId: string, viewer?: AuthUser) {
-    if (!viewer) return null;
-    const manages = await this.prisma.academyMember.findFirst({
-      where: { userId: viewer.userId, role: 'MANAGER', status: 'ACTIVE' },
-      select: { id: true },
-    });
-    if (!manages) return null;
-
+  private async contactsFor(playerUserId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: playerUserId },
       select: { email: true, phone: true, telegramId: true },

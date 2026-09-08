@@ -98,6 +98,36 @@ describe('what each alert says', () => {
     expect(text).toContain('My sprint');
   });
 
+  it('announces a trial with the academy, the title, the day and the place', () => {
+    const text = adminAlertMessage({
+      kind: 'TRIAL_CREATED',
+      name: 'Yoshlik',
+      title: 'U16 open day',
+      type: 'GENERAL',
+      location: 'Yunusobod',
+      date: new Date('2026-09-22T04:00:00.000Z'),
+    });
+
+    expect(text).toContain('Yangi ochiq sinov');
+    expect(text).toContain('Yoshlik');
+    expect(text).toContain('U16 open day');
+    expect(text).toContain('2026-09-22');
+    expect(text).toContain('Yunusobod');
+  });
+
+  it('says a trial is open-ended when it has no date', () => {
+    const text = adminAlertMessage({
+      kind: 'TRIAL_CREATED',
+      name: 'Yoshlik',
+      title: 'Rolling',
+      type: 'GENERAL',
+      location: 'Chilonzor',
+      date: null,
+    });
+
+    expect(text).toContain('muddatsiz');
+  });
+
   /*
    * All three alerts carry a name somebody typed, and Telegram's HTML mode
    * rejects the whole message on a bare `<`. A player called `Ben & Co <10>`
