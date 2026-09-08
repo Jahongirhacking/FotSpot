@@ -335,8 +335,16 @@ A Manager's attempt to record a verdict, on either kind of Trial, MUST be refuse
 ### Applies to both
 
 - One verdict per application. A Trial answers once.
-- The verdict is recorded from the Coach's applicant sheet — quick PASS / FAIL inline, with an optional note — never from a separate review screen.
-- The applicant list shows, for each Player: avatar, name, age, position, gender, and where the application stands. The Manager and the assigned Coaches see it; only the Coaches act on it.
+- The verdict is recorded from the Coach's participant list — quick PASS / FAIL inline — never from a separate review screen. **PASS is one press** and is recorded at once; **FAIL asks first**, in a small dialog with an optional note.
+- The participant list shows, for each Player: avatar, name, age, position, gender, and where the application stands. The Manager and the assigned Coaches see it; only the Coaches act on it.
+
+### The undo window
+
+A verdict is written the moment the Coach presses, and **acted on** — Scouts settled, recommendations cleared, the Player and Manager told, the SMS sent — only after a short window (30 seconds). Inside that window the deciding Coach may **undo** the verdict: the row is removed, the application returns to where it was, and nothing has gone out. After the window the verdict has gone out and stands; a Manager who has already offered a squad place also closes the window. Undo is a backend operation, never a screen pretending.
+
+### Private Trials on the Coach's dashboard
+
+A Private Trial has exactly one Player, so the Coach's dashboard lists the **Players** of their Private Trials, each with PASS / FAIL on the row — there is no "open trial" step. Global Trials have many Players and are listed as **sessions**, each opened to judge the group.
 
 ---
 
@@ -371,6 +379,21 @@ A Private Trial is **an invitation to one specific Player**. Sending the invitat
 A Player with an unanswered or confirmed invitation from the same Academy cannot be invited again until that Trial has answered.
 
 The Player answers from their invitations. Accepting moves the application to `CONFIRMED`; declining moves it to `REJECTED`.
+
+### Nothing reaches the Coach until the Player accepts
+
+An invitation that has not been answered is between the Academy and the family. Until the Player accepts:
+
+- the Player is **not** in the assigned Coach's participant list, on the dashboard or on the Trial page — only counted ("1 invitation pending"), never named;
+- there are no PASS / FAIL controls for them;
+- a verdict on the application is refused by the backend;
+- the Coach is not shown any player-specific invitation information.
+
+`INVITED` is not `CONFIRMED`. Only a `CONFIRMED` invitee is a participant. This is enforced in the queries and the verdict endpoint, not by a screen hiding a row.
+
+### What the Coach is shown of a Private Trial
+
+The session — title, date, time, location, requirements, status — and the accepted participant. **Not** the note the Manager wrote to the Player (where to come, who to ask for, a phone number): that is for the Player and the Manager, and the backend removes it from the Trial and the application before a Coach reads them.
 
 ---
 
@@ -1290,6 +1313,14 @@ PASS / FAIL, and nothing else.**
 
 **The Reserve is the absence of a Group. A Player in the Reserve shares a Group with nobody and
 is therefore assessable by nobody.**
+
+### Rule 24
+
+**A Private Trial's Player reaches the assigned Coach only after accepting the invitation. Until then the Coach is not shown them, cannot record a verdict, and never sees the invitation note.**
+
+### Rule 25
+
+**A verdict is written at once and acted on after a short undo window. Inside the window the deciding Coach may take it back, and nothing has gone out; after it, the verdict stands.**
 
 ---
 

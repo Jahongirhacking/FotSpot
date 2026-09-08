@@ -587,6 +587,12 @@ Rules that hold this apart from anything online:
   (§1.9, TRIAL.md Rules 21–22) — and a player being trialled is in none.
 - **Visible to three people** (Rule 18): the player, the manager, the assigned coach. Never
   listed, never announced.
+- **The coach waits for the yes** (Rule 24). Until the player accepts, the coach's lists do not
+  contain them — a pending invitation is only a count — the verdict endpoint refuses them, and
+  the note the manager wrote to the family is stripped from everything the coach reads.
+- **Pass is one press, fail asks first, both can be undone for 30 seconds** (Rule 25). The
+  verdict is written at once and its consequences (scouts, notifications, the SMS) run from a
+  delayed job; `DELETE /trials/applications/:id/verdict` inside the window removes both.
 
 Only a trial PASS makes a player eligible for a squad, and only the academy manager performs
 the placement (Rules 8–9). Every passed player appears on the manager's dashboard as a squad
@@ -1504,7 +1510,8 @@ a manager has no powers over any other academy.
 | Actor | Target | Action | Allowed? | Own profile | Conditions | Endpoint |
 |---|---|---|---|---|---|---|
 | Coach | Player | **Invite to Private Trial** | Cond. | **No** | Endorsed coach of the academy; they run the trial themselves | `POST /recommendations/players/:playerId/invite` |
-| Coach | Trial application | **Pass · Fail** (offline verdict) | Cond. | **No** | Only a coach **assigned to that trial**, global or private; recorded after the real-life examination | `POST /trials/applications/:id/verdict` |
+| Coach | Trial application | **Pass · Fail** (offline verdict) | Cond. | **No** | Only a coach **assigned to that trial**, global or private; a private invitee only once they have **accepted**; recorded after the real-life examination | `POST /trials/applications/:id/verdict` |
+| Coach | Trial application | **Undo** a verdict | Cond. | **No** | Their own verdict, inside the 30-second window, before the manager acts on it | `DELETE /trials/applications/:id/verdict` |
 | Coach | Player | Submit assessment | Cond. | **No** | Coach profile **VERIFIED**; self-assessment refused (`CoachesService.createAssessment`) | `POST /coaches/assessments` |
 | Coach | Player clip | Rate (overrule the player's claim) | Cond. | **No** | Verified coach | `PATCH /media/:id/rating` |
 | Coach | Own coach profile | Create · Edit | Yes | Yes | Verification is an admin act | `POST /coaches/me` |
