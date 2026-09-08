@@ -349,11 +349,13 @@ function AcademyAction({ playerId, playerName }: { playerId: string; playerName:
     return <LocalTeamAction academyId={state.academy.id} squad={state.squad} onDone={refresh} />;
   }
 
-  // Already one of ours, or asked to be: the trial has done its work.
+  // Already one of ours, or asked to be: the trial has done its work. Said
+  // for the manager and the coach alike, and the API refuses the invitation
+  // too — a trial is how an academy decides on a player it does not have.
   if (state.squad?.status) {
     return (
       <p className="text-success flex items-center gap-1.5 text-sm">
-        <Check className="size-4" aria-hidden /> {t.player.alreadyInSquad}
+        <Check className="size-4" aria-hidden /> {t.player.fromYourAcademy}
       </p>
     );
   }

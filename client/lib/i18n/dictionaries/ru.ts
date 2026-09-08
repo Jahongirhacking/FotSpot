@@ -821,6 +821,8 @@ export const ru: Dictionary = {
     cannotRecommendInAcademy: 'Этот игрок уже в академии, его нельзя рекомендовать.',
     cannotRecommendInTrial:
       'Этот игрок проходит просмотр, его нельзя рекомендовать, пока он не завершится.',
+    /* The academy's own player, on their profile — no trial to invite them to. */
+    fromYourAcademy: 'Этот игрок из вашей академии.',
     alreadyInSquad: 'Этот игрок уже в вашем составе.',
     searchSubtitle: '{count} игроков на FotSpot. Ищите по роли, а не только по позиции.',
     cleanSheets: 'Сухие матчи',

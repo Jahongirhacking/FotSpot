@@ -853,6 +853,8 @@ export const uz = {
     /* Why a scout sees no "Recommend" button — see PlayerActions. */
     cannotRecommendInAcademy: 'Bu o‘yinchi allaqachon akademiyada, uni tavsiya qilib bo‘lmaydi.',
     cannotRecommendInTrial: 'Bu o‘yinchi sinov jarayonida, u tugamaguncha tavsiya qilib bo‘lmaydi.',
+    /* The academy's own player, on their profile — no trial to invite them to. */
+    fromYourAcademy: 'Bu o‘yinchi sizning akademiyangizdan.',
     alreadyInSquad: 'Bu o‘yinchi allaqachon tarkibingizda.',
     searchSubtitle:
       'FotSpot’da {count} nafar futbolchini nafaqat pozitsiyasi, balki o‘yin uslubi bo‘yicha ham qidiring.',

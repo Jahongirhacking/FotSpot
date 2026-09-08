@@ -44,6 +44,8 @@ function build(caller: 'manager' | 'coach' | 'nobody') {
         if (where.role === 'COACH') return caller === 'coach' ? academy : null;
         return null;
       }),
+      // Whether the player is on this academy's books already. Not, by default.
+      findUnique: jest.fn(async (): Promise<{ status: string } | null> => null),
     },
     academyProfile: { findUnique: jest.fn(async () => ({ kind: 'ACADEMY' })) },
     playerProfile: { findUnique: jest.fn(async () => PLAYER) },
@@ -150,6 +152,34 @@ describe('invitePlayer — who may, and who runs it', () => {
       service.invitePlayer('manager-1', 'player-1', { ...INVITE, coachUserId: 'coach-1' }),
     ).rejects.toThrow(ConflictException);
     expect(tx.trial.create).not.toHaveBeenCalled();
+  });
+
+  /*
+   * A trial is how an academy decides whether to take a player on; one of
+   * its own has been decided. Refused for the manager and the coach alike,
+   * whatever the screen offered.
+   */
+  it.each([
+    ['manager', 'ACTIVE'],
+    ['manager', 'INACTIVE'],
+    ['coach', 'ACTIVE'],
+  ] as const)('a %s cannot invite a player from their own academy (%s)', async (caller, status) => {
+    const { service, prisma, tx } = build(caller);
+    prisma.academyMember.findUnique.mockResolvedValue({ status });
+
+    await expect(
+      service.invitePlayer(`${caller}-1`, 'player-1', { ...INVITE, coachUserId: 'coach-1' }),
+    ).rejects.toThrow(/from your academy/);
+    expect(tx.trial.create).not.toHaveBeenCalled();
+  });
+
+  it('a released player may be invited back', async () => {
+    const { service, prisma, tx } = build('manager');
+    prisma.academyMember.findUnique.mockResolvedValue({ status: 'RELEASED' });
+
+    await service.invitePlayer('manager-1', 'player-1', { ...INVITE, coachUserId: 'coach-1' });
+
+    expect(tx.trial.create).toHaveBeenCalled();
   });
 });
 

@@ -822,6 +822,8 @@ export const en: Dictionary = {
     cannotRecommendInAcademy: 'This player is already at an academy and cannot be recommended.',
     cannotRecommendInTrial:
       'This player is in a trial process and cannot be recommended until it ends.',
+    /* The academy's own player, on their profile — no trial to invite them to. */
+    fromYourAcademy: 'This player is from your academy.',
     alreadyInSquad: 'This player is already in your squad.',
     searchSubtitle: '{count} players on FotSpot. Search by role, not just position.',
     cleanSheets: 'Clean sheets',

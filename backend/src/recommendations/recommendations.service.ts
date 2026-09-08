@@ -739,6 +739,20 @@ export class RecommendationsService {
     if (!player) throw new NotFoundException('Player not found');
 
     /*
+     * One of ours already. A trial is how an academy decides whether to take a
+     * player on; a player on its books has been decided. Refused here, not
+     * only hidden on the profile: the inbox row and a direct request reach
+     * this too. RELEASED is "was here, is not now" and may be invited back.
+     */
+    const member = await this.prisma.academyMember.findUnique({
+      where: { academyId_userId: { academyId, userId: player.userId } },
+      select: { status: true },
+    });
+    if (member && member.status !== 'RELEASED') {
+      throw new ConflictException('This player is from your academy');
+    }
+
+    /*
      * The private trial is created for this one player, so it is for their
      * gender — not the column's default. The same rule that refuses a
      * mismatched applicant on the open board is asserted here, before anything
