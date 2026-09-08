@@ -179,22 +179,22 @@ export function adminAlertMessage(alert: AdminAlert): string {
       ]
         .filter(Boolean)
         .join(' · ');
-      return `🆕 Yangi futbolchi: ${name}${about ? `\n${about}` : ''}`;
+      return `#new_player\n🆕 Yangi futbolchi: ${name}${about ? `\n${about}` : ''}`;
     }
     case 'SCOUT_SIGNED_UP': {
       const where = alert.region ? `\n${escapeHtml(alert.region)}` : '';
-      return `🔎 Yangi skaut: ${name}${where}`;
+      return `#new_scout\n🔎 Yangi skaut: ${name}${where}`;
     }
     case 'CLIP_UPLOADED': {
       const what = alert.title ? `\n${escapeHtml(alert.title)}` : '';
-      return `🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
+      return `#new_clip\n🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
     }
     case 'PLAYER_JOINED_ACADEMY':
-      return `🤝 ${name} ${escapeHtml(alert.academy)} akademiyasiga qo'shildi`;
+      return `#new_signing\n🤝 ${name} ${escapeHtml(alert.academy)} akademiyasiga qo'shildi`;
     case 'TRIAL_CREATED': {
       const when = alert.date ? formatAlertDate(alert.date) : 'muddatsiz';
       const kind = alert.type === 'PRIVATE' ? 'yopiq' : 'ochiq';
-      return `📅 Yangi ${kind} sinov: ${name}\n${escapeHtml(alert.title)}\n${when} · ${escapeHtml(alert.location)}`;
+      return `#new_trial\n📅 Yangi ${kind} sinov: ${name}\n${escapeHtml(alert.title)}\n${when} · ${escapeHtml(alert.location)}`;
     }
   }
 }

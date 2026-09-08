@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { useImageLoad } from './LoadingImage';
 
@@ -60,7 +59,14 @@ export function Avatar({
   }
 
   return (
-    <span className={cn(base, 'bg-primary/15 text-primary size-10 text-sm', className)} aria-hidden>
+    <span
+      className={cn(
+        base,
+        'bg-primary/15 text-primary flex size-10 items-center justify-center !p-3 text-sm text-[11px]',
+        className,
+      )}
+      aria-hidden
+    >
       {fallback}
     </span>
   );

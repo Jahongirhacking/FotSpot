@@ -1,16 +1,8 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, UserPlus, X } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { PendingAction } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Field, Textarea } from '@/components/ui/Field';
 import {
   Dialog,
   DialogBody,
@@ -20,7 +12,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog';
+import { Field, Textarea } from '@/components/ui/Field';
+import { browserFetch } from '@/lib/api/browser';
+import type { PendingAction } from '@/lib/api/types';
 import { ageFrom, formatDate, initials } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Check, UserPlus, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
 
 /**
  * A passed player waiting on the manager, and the two things to do about them.
@@ -66,12 +66,14 @@ export function CandidateCard({
   return (
     <li className="border-border bg-surface-2 flex min-w-0 flex-col gap-3 rounded-xl border p-4">
       <div className="flex min-w-0 items-start gap-3">
-        <Avatar
-          src={player?.avatarUrl ?? null}
-          fallback={initials(player?.firstName, player?.lastName)}
-          alt=""
-          className="size-14 shrink-0 rounded-lg text-base"
-        />
+        <Link href={`/players/${item?.playerId}`}>
+          <Avatar
+            src={player?.avatarUrl ?? null}
+            fallback={initials(player?.firstName, player?.lastName)}
+            alt=""
+            className="size-14 shrink-0 rounded-lg text-base"
+          />
+        </Link>
         <div className="min-w-0 flex-1">
           <Link
             href={`/players/${item?.playerId}`}
