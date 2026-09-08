@@ -662,6 +662,13 @@ academy's lists (TRIAL.md §32): pending, failed, passed, cancelled candidacy, i
 rejected invitation, added to squad. The manager's private trials and a global trial's
 applicants are both read through one tab per stage, pending open by default.
 
+**Those lists are never read whole.** `GET /trials/:id/applications` and
+`GET /trials/academy/:id/private` take `stage`, `page` and `pageSize` and answer one page of
+one stage with the count at every stage; the screens fetch a tab only when it is opened and a
+page only when "Load more" is pressed. A status stage is cut in the database; a stage that
+depends on the squad invitation is cut from a light read of the decided rows. The same rule
+already applies to the dashboard's candidates, the coach's queues and the trial history.
+
 **Outside production, Telegram goes to the operator.** With `NODE_ENV` anything but
 `production`, every Telegram message the worker would send — a user's notification copy, an
 operator alert — goes to the chat in `TELEGRAM_ADMIN_CHAT_ID` instead, tagged `#DEV_ENV` and
