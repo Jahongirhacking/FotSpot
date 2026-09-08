@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Feedback';
 import type { Dictionary } from '@/lib/i18n';
 import { Building2, Flag, Gauge, KeyRound, ScrollText, Users, Video, ZapIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -33,11 +32,6 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
           {isSuperAdmin ? t.dashboard.superAdminSubtitle : t.dashboard.adminSubtitle}
         </p>
       </div>
-
-      {/* README §11.5 — child-safety reports bypass every other queue. */}
-      <Alert tone="danger" title={t.dashboard.childSafetyFirst}>
-        {t.dashboard.childSafetyBody}
-      </Alert>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <AdminTile

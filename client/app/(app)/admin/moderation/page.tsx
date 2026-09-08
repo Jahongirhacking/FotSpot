@@ -1,13 +1,13 @@
+import { Alert } from '@/components/ui/Feedback';
+import { admin, type Report } from '@/lib/api/resources';
+import { getServerT } from '@/lib/i18n/server';
+import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
+import { getSession } from '@/lib/session';
+import { Flag } from 'lucide-react';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Flag } from 'lucide-react';
-import { getSession } from '@/lib/session';
-import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
-import { getServerT } from '@/lib/i18n/server';
-import { admin, type Report } from '@/lib/api/resources';
 import { ModerationQueue } from './ModerationQueue';
 import { ModerationTabs } from './ModerationTabs';
-import { Alert } from '@/components/ui/Feedback';
 
 export const metadata: Metadata = { title: 'Moderation' };
 
@@ -39,13 +39,6 @@ export default async function ModerationPage() {
             share. It sits beside the reports rather than behind a menu. */}
         <ModerationTabs canSeeBlocked={isSuperAdminActing(session?.activeRole ?? null)} />
       </header>
-
-      {/* README §11.5: a child-safety report is a sub-one-hour target and jumps
-          every other queue. Stated where the queue is worked. */}
-      <Alert tone="danger" title={t.dashboard.childSafetyFirst}>
-        {t.dashboard.childSafetyBody}
-      </Alert>
-
       <ModerationQueue initial={reports} />
     </div>
   );
