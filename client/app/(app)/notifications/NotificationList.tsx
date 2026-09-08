@@ -16,7 +16,6 @@ import {
   Building2,
   CalendarCheck,
   CheckCheck,
-  PartyPopper,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -86,6 +85,15 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       title: t.notifications.joinAnswer,
       tone: 'text-info',
       href: '/academies/mine/squad',
+      // A yes and a no read differently at a glance; the note they left, if
+      // any, is on the detail line below.
+      titleFor: (payload) =>
+        payload?.accepted === true
+          ? t.notifications.joinAnswerAccepted
+          : payload?.accepted === false
+            ? t.notifications.joinAnswerDeclined
+            : undefined,
+      iconFor: (payload) => (payload?.accepted === false ? UserMinus : undefined),
       hrefFor: (payload) =>
         payload?.role === 'SCOUT' && typeof payload.userId === 'string'
           ? `/scouts/${payload?.userId}`
@@ -123,14 +131,6 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       idKey: 'trialId',
     },
     TRIAL_RESULT: { icon: Building2, title: t.notifications.trialResult, tone: 'text-info' },
-    // The good news, and it goes to the squad screen where the invitation to
-    // join is waiting to be answered.
-    SQUAD_PLACEMENT: {
-      icon: PartyPopper,
-      title: t.notifications.squadPlacement,
-      tone: 'text-success',
-      href: '/invitations?action=JOIN_ACADEMY',
-    },
     /*
      * The squad changed. Straight to the squad screen, which is where the
      * manager either welcomes somebody or notices a gap to fill.

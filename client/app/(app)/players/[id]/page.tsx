@@ -19,6 +19,7 @@ import { ageBand, formatDate } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PlayerActions } from './PlayerActions';
+import { ContactCard } from './ContactCard';
 
 /**
  * One segment serves both `/players/<uuid>` and `/players/@handle`.
@@ -265,12 +266,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <aside>
+      <aside className="space-y-4">
         <PlayerActions
           playerId={player?.id}
           playerName={player?.firstName}
           playerUserId={player?.userId}
         />
+        {/* Only ever present for an academy's manager — the API decides. */}
+        {player?.contacts && <ContactCard contacts={player.contacts} />}
       </aside>
     </div>
   );

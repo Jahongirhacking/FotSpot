@@ -341,9 +341,13 @@ export interface AcademyInvitation {
   role: AcademyMemberRole;
   status: InvitationStatus;
   note: string | null;
+  /** What the person said when turning it down, if anything. */
+  answerNote?: string | null;
   invitedByUserId: string;
   createdAt: string;
   decidedAt: string | null;
+  /** When an acceptance was acted on. Null while it may still be undone. */
+  settledAt?: string | null;
 }
 
 /** The invitee's view — they need to know which academy is asking. */
@@ -419,10 +423,23 @@ export interface PlayerMemberships {
   academyHistory: SquadMembership[];
 }
 
+/**
+ * How to reach a player. Sent only to an academy's manager — null for every
+ * other viewer, and never inside the cached profile.
+ */
+export interface PlayerContacts {
+  email: string | null;
+  phone: string | null;
+  /** A `tg://user?id=` link, when the account is connected to Telegram. */
+  telegram: string | null;
+}
+
 export interface PlayerProfile {
   id: string;
   /** Absent on responses that predate the field; never null once present. */
   memberships?: PlayerMemberships;
+  /** For an academy's manager only; null or absent for everybody else. */
+  contacts?: PlayerContacts | null;
   /**
    * 0–5 for the card's star row, computed by the server
    * (`backend/src/players/card-stars.util.ts`).
@@ -888,7 +905,6 @@ export type NotificationEvent =
   | 'TRIAL_INVITATION'
   | 'TRIAL_RESCHEDULED'
   | 'TRIAL_RESULT'
-  | 'SQUAD_PLACEMENT'
   | 'SQUAD_JOINED'
   | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT';
