@@ -377,6 +377,10 @@ export const uz = {
     passwordChanged: 'Parol almashtirildi.',
     otherSessionsRevoked:
       'Parolni almashtirganingizda boshqa barcha qurilmalardagi seanslar yakunlanadi.',
+    /* An account that signed in with Google, Telegram or a code and has no password yet. */
+    setPasswordTitle: 'Hisobingiz uchun parol o‘rnating',
+    setPasswordHint:
+      'Siz Google, Telegram yoki bir martalik kod orqali kirdingiz, shuning uchun hisobingizda hali parol yo‘q. Keyingi safar foydalanuvchi nomi yoki email bilan kirish uchun hozir parol o‘rnating.',
     mustChangeTitle: 'Avval parolni almashtiring',
     mustChangeHint:
       'Hisobingiz administrator yaratgan parol bilan ishlamoqda va uni administrator ham biladi. Davom etishdan oldin o‘zingiznikini o‘rnating.',

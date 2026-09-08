@@ -350,6 +350,10 @@ export const ru: Dictionary = {
     setPassword: 'Установить пароль',
     passwordChanged: 'Пароль изменён.',
     otherSessionsRevoked: 'После смены пароля сеансы на всех остальных устройствах завершаются.',
+    /* An account that signed in with Google, Telegram or a code and has no password yet. */
+    setPasswordTitle: 'Задайте пароль для аккаунта',
+    setPasswordHint:
+      'Вы вошли через Google, Telegram или одноразовый код, поэтому у аккаунта ещё нет пароля. Задайте его сейчас, чтобы в следующий раз входить по имени пользователя или email.',
     mustChangeTitle: 'Сначала смените пароль',
     mustChangeHint:
       'Ваш аккаунт использует пароль, созданный администратором, — он известен и ему. Установите свой, прежде чем продолжить.',

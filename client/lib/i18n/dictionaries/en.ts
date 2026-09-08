@@ -353,6 +353,10 @@ export const en: Dictionary = {
     setPassword: 'Set password',
     passwordChanged: 'Password changed.',
     otherSessionsRevoked: 'Changing your password signs you out on every other device.',
+    /* An account that signed in with Google, Telegram or a code and has no password yet. */
+    setPasswordTitle: 'Set a password for your account',
+    setPasswordHint:
+      'You signed in with Google, Telegram or a one-time code, so your account has no password yet. Set one now to sign in with your username or email next time.',
     mustChangeTitle: 'Change your password first',
     mustChangeHint:
       'Your account still uses the password an admin generated, which they also know. Set your own before continuing.',

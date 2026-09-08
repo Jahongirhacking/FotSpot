@@ -210,8 +210,14 @@ export interface MeResponse {
   phone?: string | null;
   /** Set only on accounts an admin created — academy managers (§1.10). */
   username?: string | null;
-  /** True while the account still holds its admin-generated password. */
+  /**
+   * True while the account is held on the password screen: it still holds
+   * its admin-generated password, or — after a Google, Telegram or code
+   * sign-in — has none at all. `hasPassword` says which.
+   */
   mustChangePassword?: boolean;
+  /** False for an account that only ever signed in with Google, Telegram or a code. */
+  hasPassword?: boolean;
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
