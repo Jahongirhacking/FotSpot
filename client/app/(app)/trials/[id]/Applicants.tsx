@@ -12,6 +12,7 @@ import {
 } from '@/components/trials/ApplicantCard';
 import { ApplicantGrid } from '@/components/trials/ApplicantGrid';
 import { CandidateActions, useCandidateActions } from '@/components/trials/CandidateCard';
+import { StageTabs, countStages, useStageTab } from '@/components/trials/StageTabs';
 import { VerdictResult } from '@/components/trials/VerdictControls';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
@@ -43,6 +44,14 @@ interface Applicant extends TrialApplication {
  * - passed → **Invite to squad**, or close the candidacy (the "x")
  * - failed → nothing; the answer is final
  *
+ * ## Read by stage
+ *
+ * One tab per stage with its count, pending first: who is still waiting on
+ * the coach is what a manager opens the trial to see; the rest is the record
+ * (TRIAL.md §32). The API says which stage each row is at, because the story
+ * after a PASS — the squad invitation, the player's answer — lives in other
+ * tables.
+ *
  * ## The verdict is never the manager's
  *
  * On either kind of trial, only a coach assigned to it records PASS or FAIL
@@ -55,6 +64,7 @@ export function Applicants({ trial }: { trial: Trial }) {
   const { t } = useI18n();
   // The same two answers as the dashboard, on the same endpoints.
   const actions = useCandidateActions();
+  const [stage, setStage] = useStageTab();
 
   const applicants = useQuery({
     queryKey: ['trial-applications', trial?.id],
@@ -64,6 +74,8 @@ export function Applicants({ trial }: { trial: Trial }) {
   // Every row, invitations included: the manager sent them, and can see where
   // each one stands. A coach is handed the participants only — see CoachSheet.
   const rows = (applicants.data?.items ?? []) as Applicant[];
+  const counts = countStages(rows);
+  const shown = rows.filter((row) => (row?.stage ?? 'PENDING') === stage);
 
   return (
     <Card>
@@ -88,18 +100,31 @@ export function Applicants({ trial }: { trial: Trial }) {
             description={t.admin.noApplicantsHint}
           />
         ) : (
-          <ApplicantGrid applicants={rows}>
-            {(application) => (
-              <ApplicantEntry
-                key={application?.id}
-                application={application}
-                inviting={actions.inviting(application?.id)}
-                cancelling={actions.cancelling(application?.id)}
-                onInvite={() => actions.invite.mutate(application?.id)}
-                onCancel={(note) => actions.cancel.mutate({ applicationId: application?.id, note })}
-              />
-            )}
-          </ApplicantGrid>
+          <div className="space-y-3">
+            <StageTabs counts={counts} value={stage} onChange={setStage} />
+            <ApplicantGrid
+              applicants={shown}
+              statusFilter={false}
+              empty={
+                <p className="text-muted px-1 py-6 text-center text-sm">
+                  {t.trials.noApplicantsAtStage}
+                </p>
+              }
+            >
+              {(application) => (
+                <ApplicantEntry
+                  key={application?.id}
+                  application={application}
+                  inviting={actions.inviting(application?.id)}
+                  cancelling={actions.cancelling(application?.id)}
+                  onInvite={() => actions.invite.mutate(application?.id)}
+                  onCancel={(note) =>
+                    actions.cancel.mutate({ applicationId: application?.id, note })
+                  }
+                />
+              )}
+            </ApplicantGrid>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -132,6 +157,7 @@ function ApplicantEntry({
     <ApplicantCard
       player={application?.player}
       status={status}
+      stage={application?.stage}
       detail={
         <div className="space-y-1.5">
           {/* The verdict, with the coach who gave it. A manager acting on "Add

@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/Button';
 
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { academies, trials } from '@/lib/api/resources';
-import type { CoachTrial } from '@/lib/api/types';
+import type { CoachTrial, PrivateTrialRow } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { jsonLd } from '@/lib/seo';
 import { itemListLd } from '@/lib/structured-data';
@@ -130,6 +130,13 @@ export default async function TrialsPage({
         .listForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
         .catch(() => [])
     : [];
+  // The private ones separately, open and archived, each with its player and
+  // stage — the list is read by stage, and an ended session is most of it.
+  const privateTrials = managed
+    ? await trials
+        .listPrivateForAcademy(managed.id, { token: session!.accessToken, cache: 'no-store' })
+        .catch(() => [] as PrivateTrialRow[])
+    : [];
 
   /*
    * Resolved here rather than in the client component, so a bad `?edit=` is
@@ -197,6 +204,7 @@ export default async function TrialsPage({
           academyId={managed.id}
           academyName={managed.name}
           initial={managedTrials}
+          initialPrivate={privateTrials}
           editTrial={editTrial}
         />
       )}

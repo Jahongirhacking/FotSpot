@@ -3,9 +3,15 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
-import type { DominantFoot, PlayerProfile, TrialApplicationStatus } from '@/lib/api/types';
+import type {
+  ApplicationStage,
+  DominantFoot,
+  PlayerProfile,
+  TrialApplicationStatus,
+} from '@/lib/api/types';
 import { ageFrom, initials } from '@/lib/utils';
 import * as React from 'react';
+import { StageBadge } from './StageTabs';
 
 /** The player as an applicant list returns them, photograph included. */
 export interface ApplicantPlayer extends PlayerProfile {
@@ -36,11 +42,14 @@ export interface ApplicantPlayer extends PlayerProfile {
 export function ApplicantCard({
   player,
   status,
+  stage,
   detail,
   actions,
 }: {
   player: ApplicantPlayer;
   status: TrialApplicationStatus;
+  /** Where they stand in the academy's words, when the list knows it — drawn instead of the raw status. */
+  stage?: ApplicationStage;
   /** One line under the identity — the verdict, or what is being waited on. */
   detail?: React.ReactNode;
   /** Whatever this viewer may do about this applicant, or nothing. */
@@ -90,7 +99,7 @@ export function ApplicantCard({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <StatusBadge status={status} />
+        {stage ? <StageBadge stage={stage} /> : <StatusBadge status={status} />}
       </div>
 
       {/*

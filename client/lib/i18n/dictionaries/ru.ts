@@ -1091,6 +1091,15 @@ export const ru: Dictionary = {
     verdictFailed: 'Не прошёл просмотр',
     /* The manager's "x" beside the squad invitation — see CandidateCard. */
     closeCandidacy: 'Закрыть кандидатуру',
+    /* Where an applicant stands, one tab each — see StageTabs. */
+    stagePending: 'Ожидают',
+    stageFailed: 'Не прошли',
+    stagePassed: 'Прошли',
+    stageCandidacyClosed: 'Кандидатура закрыта',
+    stageSquadInvited: 'Приглашены в состав',
+    stageInvitationDeclined: 'Отклонили приглашение',
+    stageSquadJoined: 'Добавлены в состав',
+    noApplicantsAtStage: 'На этом этапе никого нет.',
     closeCandidacyTitle: 'Закрыть эту кандидатуру?',
     closeCandidacyBody:
       '{name} прошёл просмотр, но в состав приглашён не будет. Скауты, которые его рекомендовали, будут отмечены как отклонённые, а игрок получит уведомление.',
@@ -1250,6 +1259,11 @@ export const ru: Dictionary = {
     recommendationRejected: 'Рекомендация отклонена',
     trialInvitation: 'Вас пригласили на просмотр',
     trialResult: 'Результат просмотра',
+    /* The result itself, read from the payload — see NotificationList. */
+    trialPassed: 'Результат просмотра: прошли',
+    trialFailed: 'Результат просмотра: не прошли',
+    candidacyClosed: 'Кандидатура в состав закрыта',
+    applicationClosed: 'Академия закрыла вашу заявку',
     verificationResult: 'Обновление верификации',
   },
 

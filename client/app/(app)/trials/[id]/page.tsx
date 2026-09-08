@@ -14,7 +14,6 @@ import { ApplyToTrialButton } from './ApplyToTrialButton';
 import { Applicants } from './Applicants';
 import { CoachSheet } from './CoachSheet';
 import { TrialAdmin } from './TrialAdmin';
-import { TrialStaff } from './TrialStaff';
 import { formatDate } from '@/lib/utils';
 import { TrialNote } from '@/components/trials/TrialNote';
 import { formatTrialDates, formatTrialTimes } from '@/lib/trial-window';
@@ -171,8 +170,51 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
    */
   const event = trialEventLd(trial);
 
+  /*
+   * The academy's own note, positions and requirements — what a player reads
+   * before deciding to come. A host has read it already (they wrote it), so
+   * for them it goes under the work: the manage panel and the applicants are
+   * why they opened the page.
+   */
+  const details = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ClipboardList className="text-primary size-4" aria-hidden />
+          {trial?.positions.length > 0 ? t.trials.positionsWanted : t.trials.aboutThisTrial}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {trial?.positions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {trial?.positions.map((position) => (
+              <Badge key={position} variant="neutral" className="font-mono">
+                {position}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {trial?.requirements && (
+          <div>
+            <h2 className="mb-1 text-sm font-medium">{t.trials.whatToBring}</h2>
+            <p className="text-muted text-sm">{trial?.requirements}</p>
+          </div>
+        )}
+
+        {/* The academy's note, rendered through the one component allowed to
+            hand HTML to the DOM — see TrialNote for what guards it. */}
+        {trial?.note && (
+          <div>
+            <h2 className="mb-1 text-sm font-medium">{t.notes.playerNote}</h2>
+            <TrialNote html={trial?.note} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className={hosts ? 'mx-auto max-w-3xl space-y-6' : 'mx-auto max-w-2xl space-y-6'}>
       {event && <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(event)} />}
       {/* The trail a result shows instead of the raw URL. */}
       <script
@@ -321,40 +363,8 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="text-primary size-4" aria-hidden />
-            {trial?.positions.length > 0 ? t.trials.positionsWanted : t.trials.aboutThisTrial}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {trial?.positions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {trial?.positions.map((position) => (
-                <Badge key={position} variant="neutral" className="font-mono">
-                  {position}
-                </Badge>
-              ))}
-            </div>
-          )}
-          {trial?.requirements && (
-            <div>
-              <h2 className="mb-1 text-sm font-medium">{t.trials.whatToBring}</h2>
-              <p className="text-muted text-sm">{trial?.requirements}</p>
-            </div>
-          )}
-
-          {/* The academy's note, rendered through the one component allowed to
-              hand HTML to the DOM — see TrialNote for what guards it. */}
-          {trial?.note && (
-            <div>
-              <h2 className="mb-1 text-sm font-medium">{t.notes.playerNote}</h2>
-              <TrialNote html={trial?.note} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* A player reads the details before the button; a host reads them last. */}
+      {!hosts && details}
 
       {/*
         The two roles are not exclusive, and this used to treat them as if they
@@ -372,12 +382,13 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
       {hosts && (
         <>
           <TrialAdmin trial={trial} />
-          <TrialStaff trial={trial} academyId={trial?.academyId} />
           <Applicants trial={trial} />
         </>
       )}
 
       {works && <CoachSheet trial={trial} />}
+
+      {hosts && details}
 
       {!hosts &&
         !works &&

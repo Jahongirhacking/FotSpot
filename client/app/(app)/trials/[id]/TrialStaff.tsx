@@ -35,7 +35,16 @@ const coachName = (coach: Coach) =>
  * "nominate" here: that would be the one way a second player could be put
  * into a session that is for one.
  */
-export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: string }) {
+export function TrialStaff({
+  trial,
+  academyId,
+  embedded = false,
+}: {
+  trial: Trial;
+  academyId: string;
+  /** Drawn inside the manage panel, as a section rather than a card of its own. */
+  embedded?: boolean;
+}) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
@@ -94,6 +103,47 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
     </ul>
   );
 
+  const body = (
+    <>
+      {coaches?.length === 0 ? (
+        <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
+      ) : current.length === 0 ? (
+        /*
+         * The academy has coaches; this session has none of them.
+         *
+         * The warning above only fired when the *academy* had nobody, so a
+         * club with staff saw an ordinary picker and no hint that leaving it
+         * untouched meant nobody could record a verdict. Applications then
+         * arrived against a session no one could answer, and the coach's
+         * dashboard was correctly empty because they had never been given the
+         * work. New trials attach their coaches on creation; this is for the
+         * ones that already exist, and for a session whose staff were all
+         * released.
+         */
+        <>
+          <Alert tone="warning">{t.trials.trialHasNoCoaches}</Alert>
+          {coachPicker}
+        </>
+      ) : (
+        coachPicker
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3 className="flex items-center gap-1.5 text-sm font-medium">
+            <UserCheck className="text-primary size-4" aria-hidden /> {t.trials.assignedCoaches}
+          </h3>
+          <p className="text-muted text-xs">{t.trials.assignedCoachesHint}</p>
+        </div>
+        {body}
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -103,30 +153,7 @@ export function TrialStaff({ trial, academyId }: { trial: Trial; academyId: stri
         <p className="text-muted text-sm">{t.trials.assignedCoachesHint}</p>
       </CardHeader>
 
-      <CardContent className="space-y-3">
-        {coaches?.length === 0 ? (
-          <Alert tone="warning">{t.trials.noCoachesYet}</Alert>
-        ) : current.length === 0 ? (
-          /*
-           * The academy has coaches; this session has none of them.
-           *
-           * The warning above only fired when the *academy* had nobody, so a
-           * club with staff saw an ordinary picker and no hint that leaving it
-           * untouched meant nobody could record a verdict. Applications then
-           * arrived against a session no one could answer, and the coach's
-           * dashboard was correctly empty because they had never been given the
-           * work. New trials attach their coaches on creation; this is for the
-           * ones that already exist, and for a session whose staff were all
-           * released.
-           */
-          <>
-            <Alert tone="warning">{t.trials.trialHasNoCoaches}</Alert>
-            {coachPicker}
-          </>
-        ) : (
-          coachPicker
-        )}
-      </CardContent>
+      <CardContent className="space-y-3">{body}</CardContent>
     </Card>
   );
 }

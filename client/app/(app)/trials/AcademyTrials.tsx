@@ -10,14 +10,15 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { browserFetch } from '@/lib/api/browser';
-import type { AcademyProfile, Trial } from '@/lib/api/types';
+import type { AcademyProfile, PrivateTrialRow, Trial } from '@/lib/api/types';
 
 import { formatTrialDates, isTrialUpcoming } from '@/lib/trial-window';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, Lock, MapPin, Plus, Users } from 'lucide-react';
+import { CalendarDays, MapPin, Plus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { PrivateTrials } from './PrivateTrials';
 import { TrialHistory } from './TrialHistory';
 
 /**
@@ -45,11 +46,14 @@ export function AcademyTrials({
   academyId,
   academyName,
   initial,
+  initialPrivate,
   editTrial,
 }: {
   academyId: string;
   academyName: string;
   initial: Trial[];
+  /** Every private trial, with its player and stage — see `PrivateTrials`. */
+  initialPrivate: PrivateTrialRow[];
   /** Set by `?edit=<id>` on the page. Opens the form on that trial. */
   editTrial?: Trial | null;
 }) {
@@ -82,7 +86,6 @@ export function AcademyTrials({
   });
 
   const globalTrials = trials?.filter((trial) => trial?.type === 'GENERAL');
-  const privateTrials = trials?.filter((trial) => trial?.type === 'PRIVATE');
 
   return (
     <div className="space-y-6">
@@ -149,32 +152,8 @@ export function AcademyTrials({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Lock className="text-warning size-4" aria-hidden />
-            {t.trials.privateTrials}
-          </CardTitle>
-          <p className="text-muted text-sm">{t.trials.privateTrialsHint}</p>
-        </CardHeader>
-
-        <CardContent className="space-y-3">
-          {privateTrials.length === 0 ? (
-            <EmptyState
-              icon={Lock}
-              title={t.trials.noPrivateTrials}
-              description={t.trials.noPrivateTrialsHint}
-              action={
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/recommendations/inbox">{t.nav.inbox}</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <TrialList trials={privateTrials} />
-          )}
-        </CardContent>
-      </Card>
+      {/* Read by stage, one player per row, nothing to press — see PrivateTrials. */}
+      <PrivateTrials academyId={academyId} initial={initialPrivate} />
 
       <TrialHistory academyId={academyId} />
     </div>

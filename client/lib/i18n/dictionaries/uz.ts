@@ -1127,6 +1127,15 @@ export const uz = {
     verdictFailed: 'Sinovdan o‘tmadi',
     /* The manager's "x" beside the squad invitation — see CandidateCard. */
     closeCandidacy: 'Nomzodlikni yopish',
+    /* Where an applicant stands, one tab each — see StageTabs. */
+    stagePending: 'Kutilmoqda',
+    stageFailed: 'O‘tmadi',
+    stagePassed: 'O‘tdi',
+    stageCandidacyClosed: 'Nomzodlik yopilgan',
+    stageSquadInvited: 'Tarkibga taklif qilingan',
+    stageInvitationDeclined: 'Taklifni rad etgan',
+    stageSquadJoined: 'Tarkibga qo‘shilgan',
+    noApplicantsAtStage: 'Bu bosqichda hech kim yo‘q.',
     closeCandidacyTitle: 'Bu nomzodlik yopilsinmi?',
     closeCandidacyBody:
       '{name} sinovdan o‘tgan, lekin tarkibga taklif qilinmaydi. Uni tavsiya qilgan skautlar rad etilgan deb belgilanadi va o‘yinchiga xabar beriladi.',
@@ -1289,6 +1298,11 @@ export const uz = {
     recommendationRejected: 'Tavsiya rad etildi',
     trialInvitation: 'Sizni sinovga taklif qilishdi',
     trialResult: 'Sinov natijasi',
+    /* The result itself, read from the payload — see NotificationList. */
+    trialPassed: 'Sinov natijasi: o‘tdingiz',
+    trialFailed: 'Sinov natijasi: o‘tmadingiz',
+    candidacyClosed: 'Tarkibga nomzodlik yopildi',
+    applicationClosed: 'Akademiya arizangizni yopdi',
     verificationResult: 'Tasdiqlash yangiligi',
   },
 

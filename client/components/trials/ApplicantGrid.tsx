@@ -48,12 +48,15 @@ export function ApplicantGrid<T extends Filterable>({
   applicants,
   children,
   empty,
+  statusFilter = true,
 }: {
   applicants: T[];
   /** Renders one card. Given the filtered list, in the order shown. */
   children: (applicant: T) => React.ReactNode;
   /** Shown when the filters exclude everything — not when there are none. */
   empty?: React.ReactNode;
+  /** Off where stage tabs above the list already narrow it — see `StageTabs`. */
+  statusFilter?: boolean;
 }) {
   const { t } = useI18n();
   const [query, setQuery] = React.useState('');
@@ -97,7 +100,7 @@ export function ApplicantGrid<T extends Filterable>({
             />
           </div>
 
-          {present.length > 1 && (
+          {statusFilter && present.length > 1 && (
             <Select
               value={status}
               aria-label={t.trials.filterByStatus}

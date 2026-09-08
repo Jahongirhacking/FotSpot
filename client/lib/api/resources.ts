@@ -54,6 +54,7 @@ import type {
   TransferListing,
   PendingAction,
   RecommendEligibility,
+  PrivateTrialRow,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -1187,6 +1188,13 @@ export const trials = {
 
   myApplications: (opts: Opts = {}) =>
     apiFetch<TrialApplication[]>('/trials/applications/mine', opts),
+
+  /**
+   * Manager: every private trial of the academy, open and archived, with the
+   * player it is for and where they stand — read by stage, no action on the row.
+   */
+  listPrivateForAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<PrivateTrialRow[]>(`/trials/academy/${academyId}/private`, opts),
 
   /** Who is on the sheet — every row for the manager, the participants for a coach. */
   listApplications: (trialId: string, opts: Opts = {}) =>

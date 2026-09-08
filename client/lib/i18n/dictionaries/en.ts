@@ -1086,6 +1086,15 @@ export const en: Dictionary = {
     verdictFailed: 'Did not pass the trial',
     /* The manager's "x" beside the squad invitation — see CandidateCard. */
     closeCandidacy: 'Close candidacy',
+    /* Where an applicant stands, one tab each — see StageTabs. */
+    stagePending: 'Pending',
+    stageFailed: 'Failed',
+    stagePassed: 'Passed',
+    stageCandidacyClosed: 'Cancelled candidacy',
+    stageSquadInvited: 'Invited to squad',
+    stageInvitationDeclined: 'Rejected invitation',
+    stageSquadJoined: 'Added to squad',
+    noApplicantsAtStage: 'Nobody at this stage.',
     closeCandidacyTitle: 'Close this candidacy?',
     closeCandidacyBody:
       '{name} passed the trial but will not be invited to the squad. The scouts who recommended them are marked as turned down, and the player is told.',
@@ -1246,6 +1255,11 @@ export const en: Dictionary = {
     recommendationRejected: 'A recommendation was declined',
     trialInvitation: "You're invited to a trial",
     trialResult: 'Trial result',
+    /* The result itself, read from the payload — see NotificationList. */
+    trialPassed: 'Trial result: passed',
+    trialFailed: 'Trial result: failed',
+    candidacyClosed: 'Squad candidacy closed',
+    applicationClosed: 'The academy closed your application',
     verificationResult: 'Verification update',
   },
 

@@ -882,11 +882,39 @@ export interface CoachTrial extends Trial {
   awaitingVerdict: number;
 }
 
+/**
+ * Where an applicant stands, in the seven words the academy reads
+ * (TRIAL.md §32). Derived by the API from the application, the verdict, the
+ * squad invitation and the membership — the story after a PASS lives in other
+ * tables, which is why the screens do not derive it themselves.
+ */
+export type ApplicationStage =
+  | 'PENDING'
+  | 'FAILED'
+  | 'PASSED'
+  | 'CANDIDACY_CLOSED'
+  | 'SQUAD_INVITED'
+  | 'INVITATION_DECLINED'
+  | 'SQUAD_JOINED';
+
+/** The tabs' order, as the brief lists them. */
+export const APPLICATION_STAGES: readonly ApplicationStage[] = [
+  'PENDING',
+  'FAILED',
+  'PASSED',
+  'CANDIDACY_CLOSED',
+  'SQUAD_INVITED',
+  'INVITATION_DECLINED',
+  'SQUAD_JOINED',
+];
+
 export interface TrialApplication {
   id: string;
   trialId: string;
   playerId: string;
   status: TrialApplicationStatus;
+  /** On the academy's lists: see `ApplicationStage`. */
+  stage?: ApplicationStage;
   /** What the academy wrote when inviting — private trials only. */
   inviteNote?: string | null;
   /** Why the manager closed a passed player's candidacy, when they said. */
@@ -907,6 +935,18 @@ export interface TrialApplication {
   /** Joined on the player's own list so they can read what they were invited to. */
   trial?: Trial;
   createdAt: string;
+}
+
+/**
+ * A private trial on the manager's list, with the one player it was created
+ * for. `applicant` is null only for a row whose application was removed.
+ */
+export interface PrivateTrialRow extends Trial {
+  applicant:
+    | (TrialApplication & {
+        player: PlayerProfile & { avatarUrl?: string | null };
+      })
+    | null;
 }
 
 /** The player card the manager's desk sends with each waiting candidate. */
