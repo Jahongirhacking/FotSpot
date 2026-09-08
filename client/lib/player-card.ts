@@ -16,13 +16,7 @@ import type { Dictionary } from '@/lib/i18n';
 export type Provenance = 'combine' | 'coach' | 'self' | 'none';
 
 export type AttributeKey =
-  | 'pace'
-  | 'dribbling'
-  | 'passing'
-  | 'finishing'
-  | 'physical'
-  | 'technique'
-  | 'goalkeeping';
+  'pace' | 'dribbling' | 'passing' | 'finishing' | 'physical' | 'technique' | 'goalkeeping';
 
 /**
  * An attribute and the clip category that evidences it.
@@ -58,18 +52,47 @@ export interface Attribute {
 }
 
 /**
- * Every claim the player has made for one attribute, oldest first.
+ * When a clip's claim is dated: the day it was filmed, as the player says, or
+ * the upload when they did not say. The bar and the chart read time this way
+ * — a clip filmed in May and uploaded in September is a May claim.
+ */
+export function claimDate(clip: Media): string {
+  return clip.recordedAt ?? clip.createdAt;
+}
+
+/**
+ * Whether a clip's rating counts towards the bar.
+ *
+ * The same rule the API serves the public by: a moderator has verified it,
+ * and the bytes are there — confirmed (ACTIVE) or still being optimised
+ * (PROCESSING, which plays as the original until the optimised copy replaces
+ * it under the same key). An unverified or blocked clip never moves a number,
+ * even on the uploader's own card: the bar is what a scout is shown, and it
+ * must not read higher for the owner than for everybody else. `moderationStatus`
+ * is absent only on an older cached response, which the API already filtered.
+ */
+export function countsTowardsRating(clip: Media): boolean {
+  return (
+    clip.rating != null &&
+    (clip.status === 'ACTIVE' || clip.status === 'PROCESSING') &&
+    (clip.moderationStatus === undefined || clip.moderationStatus === 'VERIFIED')
+  );
+}
+
+/**
+ * Every verified claim the player has made for one attribute, oldest first
+ * by the day it was filmed.
  *
  * Nothing is overwritten on upload, so this is the whole story — "pace 70 in
- * July, 85 in September" — and it is what the history chart draws. Only ACTIVE
- * clips count: removing one steps the bar back to the claim before it, which
- * falls out of this filter rather than needing bookkeeping.
+ * July, 85 in September" — and it is what the history chart draws. Removing a
+ * clip steps the bar back to the claim before it, which falls out of this
+ * filter rather than needing bookkeeping.
  */
 export function attributeHistory(clips: Media[], key: AttributeKey) {
   const category = ATTRIBUTE_CATEGORY[key];
   return clips
-    .filter((clip) => clip.category === category && clip.status === 'ACTIVE' && clip.rating != null)
-    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    .filter((clip) => clip.category === category && countsTowardsRating(clip))
+    .sort((a, b) => Date.parse(claimDate(a)) - Date.parse(claimDate(b)));
 }
 
 /** The newest claim — the one the bar currently shows. */

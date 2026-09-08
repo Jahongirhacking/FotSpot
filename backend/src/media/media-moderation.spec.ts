@@ -262,7 +262,7 @@ describe('the ranked feed', () => {
    * could be forgotten without any type error, which is why it is asserted on the
    * statement text itself.
    */
-  it('demands both ACTIVE and VERIFIED in the SQL', async () => {
+  it('demands a watchable status and VERIFIED in the SQL — the same population the count uses', async () => {
     const { service, prisma } = build();
     const queryRaw = jest.fn(async () => []);
     (prisma as Record<string, unknown>).$queryRaw = queryRaw;
@@ -271,7 +271,7 @@ describe('the ranked feed', () => {
 
     const [statement] = queryRaw.mock.calls[0] as unknown as [{ strings: string[] }];
     const sql = statement.strings.join('?');
-    expect(sql).toContain("m.status = 'ACTIVE'");
+    expect(sql).toContain("m.status IN ('ACTIVE', 'PROCESSING')");
     expect(sql).toContain(`m."moderationStatus" = 'VERIFIED'`);
   });
 

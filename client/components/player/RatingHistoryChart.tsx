@@ -1,4 +1,5 @@
 import type { Media } from '@/lib/api/types';
+import { claimDate } from '@/lib/player-card';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -12,6 +13,10 @@ import { formatDate } from '@/lib/utils';
  * The y-axis is pinned to 0–100 rather than fitted to the data. An auto-fitted
  * axis makes 70 → 72 look like a leap, and a child reading their own progress is
  * the last person who should be shown a flattering scale.
+ *
+ * The x-axis is the day each clip was filmed (`claimDate`), not the upload:
+ * progress is measured between recordings, and the history arrives already in
+ * that order.
  */
 export function RatingHistoryChart({ history }: { history: Media[] }) {
   const points = history.filter((clip) => clip?.rating != null);
@@ -38,7 +43,7 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
         className="w-full"
         role="img"
         aria-label={points
-          .map((clip) => `${formatDate(clip?.createdAt)}: ${clip?.rating}`)
+          .map((clip) => `${formatDate(claimDate(clip))}: ${clip?.rating}`)
           .join('; ')}
       >
         {[0, 50, 100].map((tick) => (
@@ -81,14 +86,14 @@ export function RatingHistoryChart({ history }: { history: Media[] }) {
       </svg>
 
       <div className="text-muted flex items-center justify-between text-[11px]">
-        <span>{formatDate(points[0].createdAt)}</span>
+        <span>{formatDate(claimDate(points[0]))}</span>
         {points?.length > 1 && (
           <span className={change > 0 ? 'text-success' : change < 0 ? 'text-danger' : ''}>
             {change > 0 ? '+' : ''}
             {change}
           </span>
         )}
-        <span>{formatDate(points[points?.length - 1].createdAt)}</span>
+        <span>{formatDate(claimDate(points[points?.length - 1]))}</span>
       </div>
     </div>
   );

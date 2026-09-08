@@ -773,10 +773,12 @@ export class MediaService {
         GROUP BY lm.category
       ) aff ON aff.category = m.category
       -- The moderation gate, in the one query that cannot express it in Prisma.
-      -- Kept alongside the ACTIVE check rather than folded into it: they are two
-      -- different verdicts (the bytes arrived / a person watched them) and a
-      -- reader of this SQL should see both being demanded.
-      WHERE m.status = 'ACTIVE' AND m."moderationStatus" = 'VERIFIED'
+      -- Kept alongside the status check rather than folded into it: they are
+      -- two different verdicts (the bytes arrived / a person watched them) and
+      -- a reader of this SQL should see both being demanded. PROCESSING counts
+      -- for the same reason it does in PUBLIC_MEDIA_WHERE — the optimised copy
+      -- overwrites the same key — and this must list what the count below counts.
+      WHERE m.status IN ('ACTIVE', 'PROCESSING') AND m."moderationStatus" = 'VERIFIED'
         AND m.type = 'VIDEO' AND u."isPrivate" = false
       ORDER BY
         ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
