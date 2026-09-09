@@ -282,6 +282,17 @@ export const uz = {
   },
 
   profile: {
+    /* The player's own social links — see profile/SocialLinksCard. */
+    socialLinks: 'Ijtimoiy tarmoqlar',
+    socialLinksHint:
+      'Instagram, Telegram, YouTube va Transfermarkt — qo‘shish, o‘zgartirish va o‘chirish sizning qo‘lingizda.',
+    socialNotSet: 'Hali qo‘shilmagan',
+    socialAdd: 'Qo‘shish',
+    socialRemove: 'Havolani o‘chirish',
+    socialSaved: 'Saqlandi.',
+    socialPrivacy:
+      'Telefon raqamingiz kabi maxfiy: bularni faqat siz tarkibida bo‘lgan yoki sinovda qatnashayotgan akademiyaning menejeri ko‘radi.',
+
     birthDateHint: 'Yosh toifangiz va qaysi sinovlarga ariza bera olishingiz shu sanaga bog‘liq.',
     network: 'Tarmoq',
     networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
@@ -839,6 +850,8 @@ export const uz = {
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
     openInTelegram: 'Chatni ochish',
+    inviteToSeeContacts:
+      'Aloqa ma’lumotlarini ko‘rish uchun bu o‘yinchini yopiq sinovga taklif qiling.',
     noContacts: 'Aloqa ma’lumotlari kiritilmagan.',
     followPlayer: 'Kuzatish',
     coachAssessHint:

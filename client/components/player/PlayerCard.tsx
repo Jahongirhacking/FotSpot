@@ -157,7 +157,12 @@ export function PlayerCard({
             </p>
           )}
 
-          <EvidenceStars filled={stars} tier={starTier(stars)} small={small} />
+          <EvidenceStars
+            filled={stars}
+            tier={starTier(stars)}
+            small={small}
+            clipId={`stars-${player?.id ?? 'card'}`}
+          />
         </div>
       </div>
     </article>
@@ -179,9 +184,32 @@ const TIER_COLOR: Record<string, string> = {
   unrated: 'rgba(255,255,255,.28)',
 };
 
-/** Five stars, filled by the rating evidence behind the card. */
-function EvidenceStars({ filled, tier, small }: { filled: number; tier: string; small: boolean }) {
+const STAR_PATH =
+  'm12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z';
+const EMPTY_STAR = 'rgba(255,255,255,.22)';
+
+/**
+ * Five stars, filled by the rating evidence behind the card — in halves.
+ *
+ * The API answers a multiple of 0.5 (`card-stars.util.ts`), so the row has to
+ * draw "three and a half": the half star is the empty glyph with the filled
+ * one clipped to its left half over it, which reads the same at ten pixels
+ * as at fourteen.
+ */
+function EvidenceStars({
+  filled,
+  tier,
+  small,
+  clipId,
+}: {
+  filled: number;
+  tier: string;
+  small: boolean;
+  /** Unique per card on the page — the half star's clip path needs an id. */
+  clipId: string;
+}) {
   const label = `${filled} of 5 stars`;
+  const fill = TIER_COLOR[tier];
   return (
     <div
       className={cn('flex items-center gap-0.5', small ? 'mt-1' : 'mt-1.5')}
@@ -189,17 +217,27 @@ function EvidenceStars({ filled, tier, small }: { filled: number; tier: string; 
       aria-label={label}
       title={label}
     >
-      {Array.from({ length: 5 }, (_, index) => (
-        <svg
-          key={index}
-          viewBox="0 0 24 24"
-          className={cn(small ? 'size-2.5' : 'size-3.5')}
-          fill={index < filled ? TIER_COLOR[tier] : 'rgba(255,255,255,.22)'}
-          aria-hidden
-        >
-          <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />
-        </svg>
-      ))}
+      {Array.from({ length: 5 }, (_, index) => {
+        const portion = Math.max(0, Math.min(1, filled - index));
+        return (
+          <svg
+            key={index}
+            viewBox="0 0 24 24"
+            className={cn(small ? 'size-2.5' : 'size-3.5')}
+            aria-hidden
+          >
+            {portion > 0 && portion < 1 && (
+              <clipPath id={`${clipId}-${index}`}>
+                <rect x="0" y="0" width={24 * portion} height="24" />
+              </clipPath>
+            )}
+            <path d={STAR_PATH} fill={portion >= 1 ? fill : EMPTY_STAR} />
+            {portion > 0 && portion < 1 && (
+              <path d={STAR_PATH} fill={fill} clipPath={`url(#${clipId}-${index})`} />
+            )}
+          </svg>
+        );
+      })}
     </div>
   );
 }

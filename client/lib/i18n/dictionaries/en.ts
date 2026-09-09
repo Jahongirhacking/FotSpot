@@ -261,6 +261,17 @@ export const en: Dictionary = {
   },
 
   profile: {
+    /* The player's own social links — see profile/SocialLinksCard. */
+    socialLinks: 'Social links',
+    socialLinksHint:
+      'Instagram, Telegram, YouTube and Transfermarkt — yours to add, change or remove.',
+    socialNotSet: 'Not added yet',
+    socialAdd: 'Add',
+    socialRemove: 'Remove link',
+    socialSaved: 'Saved.',
+    socialPrivacy:
+      'Private, like your phone number: only the manager of an academy you are in the squad of, or in a trial with, can see these.',
+
     birthDateHint: 'Your age band and which trials will accept you both follow from this.',
     network: 'Network',
     networkHint: 'Who you follow, and how many follow you.',
@@ -808,6 +819,7 @@ export const en: Dictionary = {
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
     openInTelegram: 'Open chat',
+    inviteToSeeContacts: 'Invite this player to a private trial to see contact details.',
     noContacts: 'No contact details on file.',
     followPlayer: 'Follow this player',
     coachAssessHint: 'A coach-verified rating replaces the self-reported bars on their card.',

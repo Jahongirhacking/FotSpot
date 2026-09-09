@@ -437,19 +437,51 @@ export interface PlayerDetails {
  * How to reach a player. Sent only to an academy's manager — null for every
  * other viewer, and never inside the cached profile.
  */
+/** Where the player is off the platform — their own to set, private like a phone number. */
+export interface PlayerSocialLinks {
+  instagramUrl: string | null;
+  telegramUrl: string | null;
+  youtubeUrl: string | null;
+  transfermarktUrl: string | null;
+}
+
+export const PLAYER_SOCIAL_FIELDS = [
+  'instagramUrl',
+  'telegramUrl',
+  'youtubeUrl',
+  'transfermarktUrl',
+] as const satisfies readonly (keyof PlayerSocialLinks)[];
+
 export interface PlayerContacts {
   email: string | null;
   phone: string | null;
   /** A `tg://user?id=` link, when the account is connected to Telegram. */
   telegram: string | null;
+  /** The player's social links — present with the rest, or absent on an older response. */
+  social?: PlayerSocialLinks;
 }
+
+/**
+ * Whether the viewer may read the contacts: an academy manager the player is
+ * in a squad or an open trial with (`GRANTED`), one with no such tie yet
+ * (`INVITE_TO_UNLOCK` — inviting them to a private trial is what creates one),
+ * or anybody else (null).
+ */
+export type ContactAccess = 'GRANTED' | 'INVITE_TO_UNLOCK' | null;
 
 export interface PlayerProfile {
   id: string;
   /** Absent on responses that predate the field; never null once present. */
   memberships?: PlayerMemberships;
-  /** For an academy's manager only; null or absent for everybody else. */
+  /** For the manager of an academy the player is with; null for everybody else. */
   contacts?: PlayerContacts | null;
+  /** Why `contacts` is or is not there — see `ContactAccess`. */
+  contactAccess?: ContactAccess;
+  /** On the player's own profile only (`GET /players/me`); never on the public read. */
+  instagramUrl?: string | null;
+  telegramUrl?: string | null;
+  youtubeUrl?: string | null;
+  transfermarktUrl?: string | null;
   /**
    * The exact date of birth, the age it makes, and where the player lives —
    * for an academy's manager only. Everybody else gets the age band and no

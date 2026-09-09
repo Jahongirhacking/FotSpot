@@ -259,6 +259,17 @@ export const ru: Dictionary = {
   },
 
   profile: {
+    /* The player's own social links — see profile/SocialLinksCard. */
+    socialLinks: 'Соцсети',
+    socialLinksHint:
+      'Instagram, Telegram, YouTube и Transfermarkt — добавляйте, меняйте и удаляйте сами.',
+    socialNotSet: 'Пока не добавлено',
+    socialAdd: 'Добавить',
+    socialRemove: 'Удалить ссылку',
+    socialSaved: 'Сохранено.',
+    socialPrivacy:
+      'Приватно, как номер телефона: их видит только менеджер академии, в составе которой вы состоите или где проходите просмотр.',
+
     birthDateHint: 'От этой даты зависит ваша возрастная группа и доступные просмотры.',
     network: 'Связи',
     networkHint: 'На кого вы подписаны и сколько подписано на вас.',
@@ -807,6 +818,7 @@ export const ru: Dictionary = {
     contactEmail: 'Эл. почта',
     contactTelegram: 'Telegram',
     openInTelegram: 'Открыть чат',
+    inviteToSeeContacts: 'Пригласите этого игрока на закрытый просмотр, чтобы увидеть контакты.',
     noContacts: 'Контактные данные не указаны.',
     followPlayer: 'Подписаться',
     coachAssessHint: 'Оценка тренера заменяет самооценку на карточке подтверждённой.',
