@@ -778,7 +778,7 @@ export class MediaService {
       -- a reader of this SQL should see both being demanded. PROCESSING counts
       -- for the same reason it does in PUBLIC_MEDIA_WHERE — the optimised copy
       -- overwrites the same key — and this must list what the count below counts.
-      WHERE m.status IN ('ACTIVE', 'PROCESSING') AND m."moderationStatus" = 'VERIFIED'
+      WHERE m.status IN ('ACTIVE', 'PROCESSING', 'FAILED') AND m."moderationStatus" = 'VERIFIED'
         AND m.type = 'VIDEO' AND u."isPrivate" = false
       ORDER BY
         ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))

@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
@@ -408,6 +409,25 @@ export class StorageService implements OnModuleInit {
         Key: storageKey,
         Body: body,
         ContentType: contentType,
+      }),
+    );
+  }
+
+  /**
+   * Server-side copy of one object over another key, in the same bucket.
+   *
+   * The transcoder writes its result to a temporary key and then copies it
+   * over the clip's real key: a copy is one request that either replaces the
+   * whole object or leaves it as it was, so a run that dies half way never
+   * leaves a half-written clip under the key everybody plays.
+   */
+  async copyObject(fromKey: string, toKey: string): Promise<void> {
+    const client = this.require();
+    await client.send(
+      new CopyObjectCommand({
+        Bucket: this.bucketFor(toKey),
+        Key: toKey,
+        CopySource: `${this.bucketFor(fromKey)}/${encodeURIComponent(fromKey).replace(/%2F/g, '/')}`,
       }),
     );
   }

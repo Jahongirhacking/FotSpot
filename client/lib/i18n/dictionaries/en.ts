@@ -1620,6 +1620,8 @@ export const en: Dictionary = {
     failedBadge: 'Failed',
     processingReviewHint:
       'Still being optimised. This is the original as uploaded; verifying publishes it now, and the optimised copy replaces it automatically when processing finishes.',
+    failedReviewHint:
+      'This is the file as uploaded; verifying publishes it now. Use "Retry processing" in the status list to run the worker again — the decision is not affected.',
     retryProcessing: 'Retry processing',
     retryNowInQueue: 'The file was found. The clip is now in the review queue.',
     retryStillFailed: 'Still could not process this upload.',

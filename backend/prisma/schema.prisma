@@ -972,11 +972,14 @@ model Media {
   /**
    * Starts at UNVERIFIED, and only an admin moves it — see the enum.
    * Public visibility is `moderationStatus = VERIFIED AND status IN (ACTIVE,
-   * PROCESSING)`, expressed once in `media-visibility.util.ts` rather than
-   * spelled out per query: a visibility rule copied into eleven `where` clauses
-   * is a rule that holds in ten of them. PROCESSING counts because the worker
-   * overwrites the same `storageKey` with the optimised copy — a verified clip
-   * plays as the original until then, and switches by itself.
+   * PROCESSING, FAILED)`, expressed once in `media-visibility.util.ts` rather
+   * than spelled out per query: a visibility rule copied into eleven `where`
+   * clauses is a rule that holds in ten of them. PROCESSING and FAILED count
+   * because the worker replaces the object under the same `storageKey` only
+   * once a transcode has fully succeeded — a verified clip plays as the file
+   * it has until then, switches by itself, and a failed attempt changes
+   * nothing anybody can watch. `moderationStatus` decides who may see a clip;
+   * `status` only says how far processing got.
    */
   moderationStatus MediaModerationStatus @default(UNVERIFIED)
 

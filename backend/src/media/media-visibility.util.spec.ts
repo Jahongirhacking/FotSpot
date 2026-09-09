@@ -36,10 +36,18 @@ describe('isPubliclyVisible — both columns must agree', () => {
     expect(isPubliclyVisible({ status: 'PROCESSING', moderationStatus: 'VERIFIED' })).toBe(true);
   });
 
-  it('never publishes an UNVERIFIED clip, processed or not', () => {
-    expect(isPubliclyVisible({ status: 'PROCESSING', moderationStatus: 'UNVERIFIED' })).toBe(false);
-    expect(isPubliclyVisible({ status: 'ACTIVE', moderationStatus: 'UNVERIFIED' })).toBe(false);
+  /* A failed attempt leaves the original under the key; the verdict on who
+     may watch it is the moderator's, and it stands. */
+  it('publishes a VERIFIED clip the worker gave up on, as the file it has', () => {
+    expect(isPubliclyVisible({ status: 'FAILED', moderationStatus: 'VERIFIED' })).toBe(true);
   });
+
+  it.each(['PROCESSING', 'FAILED', 'ACTIVE'] as const)(
+    'never publishes an UNVERIFIED clip at %s',
+    (status) => {
+      expect(isPubliclyVisible({ status, moderationStatus: 'UNVERIFIED' })).toBe(false);
+    },
+  );
 
   it.each(['UNVERIFIED', 'BLOCKED'] as const)(
     'hides an ACTIVE clip whose moderation status is %s',
@@ -48,7 +56,7 @@ describe('isPubliclyVisible — both columns must agree', () => {
     },
   );
 
-  it.each(['FAILED', 'FLAGGED', 'REMOVED'] as const)(
+  it.each(['FLAGGED', 'REMOVED'] as const)(
     'hides a VERIFIED clip whose lifecycle status is %s',
     (status) => {
       expect(isPubliclyVisible({ status, moderationStatus: 'VERIFIED' })).toBe(false);
@@ -62,16 +70,16 @@ describe('isPubliclyVisible — both columns must agree', () => {
 });
 
 describe('the where clauses every query is built from', () => {
-  it('serves the public VERIFIED clips that are ACTIVE or still PROCESSING', () => {
+  it('serves the public VERIFIED clips that are ACTIVE, PROCESSING or FAILED', () => {
     expect(PUBLIC_MEDIA_WHERE).toEqual({
-      status: { in: ['ACTIVE', 'PROCESSING'] },
+      status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] },
       moderationStatus: 'VERIFIED',
     });
   });
 
-  it('offers moderators only the clips nobody has judged, processed or not', () => {
+  it('offers moderators only the clips nobody has judged, whatever the worker said', () => {
     expect(MODERATION_QUEUE_WHERE).toEqual({
-      status: { in: ['ACTIVE', 'PROCESSING'] },
+      status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] },
       moderationStatus: 'UNVERIFIED',
     });
   });

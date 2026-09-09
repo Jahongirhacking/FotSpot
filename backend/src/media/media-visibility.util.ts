@@ -30,26 +30,34 @@ export type OwnedMediaRow = MediaVisibilityRow & { playerId: string };
 
 /**
  * The lifecycle states a clip may be watched in: the worker has confirmed the
- * bytes (ACTIVE), or is still working on them (PROCESSING).
+ * bytes (ACTIVE), is still working on them (PROCESSING), or gave up on them
+ * (FAILED). `moderationStatus` decides who may watch; `status` only says how
+ * far processing got.
  *
- * ## Why PROCESSING is watchable
+ * ## Why PROCESSING and FAILED are watchable
  *
  * Processing is an optimisation of a file that is already in the bucket: the
- * transcoder reads the object at `storageKey`, re-encodes it, and writes the
- * result back over the *same key*. There is no second object and no "which
- * version" column — whatever sits under the key is what plays. So a clip a
- * moderator has watched and approved is playable now, as the original, and
- * becomes the optimised copy the moment the worker overwrites it, with no
- * re-upload and no second approval. The moderation decision and the worker's
- * progress are two facts about one row, and neither waits for the other.
+ * transcoder reads the object at `storageKey`, re-encodes it, and — only once
+ * that has succeeded — replaces the object under the *same key*. There is no
+ * second object and no "which version" column: whatever sits under the key
+ * is what plays. So a clip a moderator has watched and approved is playable
+ * now, as the original, and becomes the optimised copy the moment the worker
+ * replaces it, with no re-upload and no second approval. A failed attempt
+ * leaves the original exactly where it was, so a verified clip that failed
+ * processing keeps playing too, and "Process again" can be pressed as often
+ * as needed without the clip ever leaving view. The moderation decision and
+ * the worker's progress are two facts about one row, and neither waits for
+ * the other.
  *
- * What PROCESSING must not mean is "not there yet". Verifying a PROCESSING
- * clip is therefore gated on the object existing (`ModerationService.decide`
- * asks the bucket), so VERIFIED + PROCESSING is always a file that arrived.
+ * What neither must mean is "not there". Verifying a clip the worker has not
+ * confirmed is gated on the object existing (`ModerationService.decide` asks
+ * the bucket), so VERIFIED + PROCESSING or VERIFIED + FAILED is always a
+ * file that arrived.
  */
 export const WATCHABLE_STATUSES = [
   'ACTIVE',
   'PROCESSING',
+  'FAILED',
 ] as const satisfies readonly MediaStatus[];
 
 /**
@@ -64,12 +72,12 @@ export const PUBLIC_MEDIA_WHERE = {
 
 /**
  * The admin moderation queue: clips nobody has judged yet, whether the
- * worker has finished with them or not.
+ * worker has finished with them, is still at them, or gave up.
  *
- * A clip still PROCESSING is on the card as the original the player uploaded
- * — see `WATCHABLE_STATUSES` — so a moderator can review it before the
- * optimised copy exists, and a verified clip goes live at once rather than
- * waiting on a transcode. One that has not actually arrived cannot be
+ * A clip still PROCESSING, or FAILED, is on the card as the file the player
+ * uploaded — see `WATCHABLE_STATUSES` — so a moderator can review it before
+ * the optimised copy exists, and a verified clip goes live at once rather
+ * than waiting on a transcode. One that has not actually arrived cannot be
  * verified; the decision checks the bucket first.
  */
 export const MODERATION_QUEUE_WHERE = {

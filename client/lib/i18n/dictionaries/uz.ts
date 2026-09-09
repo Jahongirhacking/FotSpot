@@ -1684,6 +1684,8 @@ export const uz = {
     failedBadge: 'Xato',
     processingReviewHint:
       'Hali optimallashtirilmoqda. Bu o‘yinchi yuklagan asl nusxa; tasdiqlasangiz u hozir chop etiladi, ishlov tugagach optimallashtirilgan nusxa uni avtomatik almashtiradi.',
+    failedReviewHint:
+      'Bu yuklangan fayl; tasdiqlasangiz u hozir chop etiladi. Ishlovni qayta ishga tushirish uchun holatlar ro‘yxatidagi "Qayta ishlov berish" tugmasidan foydalaning — qaror o‘zgarmaydi.',
     retryProcessing: 'Qayta ishlov berish',
     retryNowInQueue: 'Fayl topildi. Klip endi ko‘rik navbatida.',
     retryStillFailed: 'Bu yuklashga hali ham ishlov berib bo‘lmadi.',

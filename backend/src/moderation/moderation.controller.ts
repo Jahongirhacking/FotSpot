@@ -95,11 +95,15 @@ export class ModerationController {
   }
 
   /**
-   * Re-run processing. Not a status override — a FAILED clip is re-checked in
-   * the bucket and becomes ACTIVE only if it is really there; a PROCESSING clip
-   * with no live job is queued again, exactly as the stale sweep would queue it.
+   * Process again. Not a status override — a FAILED clip, or a PROCESSING one
+   * with no live job, is queued again through the same worker every upload
+   * goes through, and becomes ACTIVE only when that worker says so. The
+   * moderation status is untouched: a verified clip stays visible throughout.
+   *
+   * Both admin roles, like verify and block: it is part of working the queue,
+   * not destruction.
    */
-  @Roles('super_admin')
+  @Roles('admin', 'super_admin')
   @Patch('media/:id/retry')
   retryFailedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.moderationService.retryFailedMedia(user.userId, id);

@@ -271,7 +271,7 @@ describe('the ranked feed', () => {
 
     const [statement] = queryRaw.mock.calls[0] as unknown as [{ strings: string[] }];
     const sql = statement.strings.join('?');
-    expect(sql).toContain("m.status IN ('ACTIVE', 'PROCESSING')");
+    expect(sql).toContain("m.status IN ('ACTIVE', 'PROCESSING', 'FAILED')");
     expect(sql).toContain(`m."moderationStatus" = 'VERIFIED'`);
   });
 
@@ -296,6 +296,35 @@ describe('interacting with a clip you were never shown', () => {
   // UNVERIFIED is "nobody has watched it yet"; BLOCKED is "somebody watched it
   // and said no". Different reasons, identical consequences for everyone who is
   // not the uploader — which is what makes them one table.
+  /*
+   * The processing state buys nobody a look at an unreviewed clip: a stranger
+   * asking after one that is still processing, or that failed, gets the same
+   * 404 as for one the worker confirmed.
+   */
+  describe.each(['PROCESSING', 'FAILED', 'ACTIVE'] as const)(
+    'an UNVERIFIED clip at %s, to a stranger',
+    (status) => {
+      it('is not there', async () => {
+        const { service } = build({ status, moderationStatus: 'UNVERIFIED' });
+
+        await expect(service.ratingHistory('clip-1', 'stranger-user')).rejects.toBeInstanceOf(
+          NotFoundException,
+        );
+      });
+    },
+  );
+
+  describe.each(['PROCESSING', 'FAILED'] as const)(
+    'a VERIFIED clip at %s, to a stranger',
+    (status) => {
+      it('is served — the file under the key is what plays', async () => {
+        const { service, prisma } = build({ status, moderationStatus: 'VERIFIED' });
+
+        await expect(service.ratingHistory('clip-1', 'stranger-user')).resolves.toEqual([]);
+      });
+    },
+  );
+
   describe.each(['UNVERIFIED', 'BLOCKED'] as const)('a clip that is %s', (moderationStatus) => {
     it('cannot be liked', async () => {
       const { service } = build({ moderationStatus });
