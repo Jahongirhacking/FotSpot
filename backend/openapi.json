@@ -7824,6 +7824,23 @@
           },
           "district": {
             "type": "string"
+          },
+          "instagramUrl": {
+            "type": "string",
+            "description": "Where to find the player off the platform — Instagram, Telegram, YouTube,\nTransfermarkt. Host-checked on write (`normalisePlayerSocialUrl`); an\nempty string clears one. Private: served only inside `contacts`.",
+            "maxLength": 300
+          },
+          "telegramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "youtubeUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "transfermarktUrl": {
+            "type": "string",
+            "maxLength": 300
           }
         }
       },

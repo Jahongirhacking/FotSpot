@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { PlayingStyle } from '@prisma/client';
@@ -59,6 +60,15 @@ export class UpdatePlayerProfileDto {
   playingStyle?: PlayingStyle;
   @IsOptional() @IsString() @IsRegionDistrictPair() region?: string;
   @IsOptional() @IsString() @IsRegionDistrictPair() district?: string;
+  /**
+   * Where to find the player off the platform — Instagram, Telegram, YouTube,
+   * Transfermarkt. Host-checked on write (`normalisePlayerSocialUrl`); an
+   * empty string clears one. Private: served only inside `contacts`.
+   */
+  @IsOptional() @IsString() @MaxLength(300) instagramUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) telegramUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) youtubeUrl?: string;
+  @IsOptional() @IsString() @MaxLength(300) transfermarktUrl?: string;
 }
 
 export class UpdatePlayerStatsDto {

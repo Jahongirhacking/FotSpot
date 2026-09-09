@@ -80,7 +80,20 @@ function latestAssessed(assessments: StarAssessment[], columns: readonly string[
   return null;
 }
 
-/** 0–5, rounded. Clamped: the two halves can exceed the denominator together. */
+/**
+ * Rounds to the nearest half star, halves rounding up: 1.25 → 1.5, 1.2 → 1,
+ * 0.3 → 0.5, 0.2 → 0, 4.4 → 4.5. The row draws half stars, so a card can say
+ * "three and a half" rather than rounding a whole star away.
+ */
+export function roundToNearestHalf(value: number): number {
+  return Math.round(value * 2) / 2;
+}
+
+/**
+ * 0–5 in halves. `sum / (attributes × 100)` scaled to five stars and rounded
+ * to the nearest half; clamped, since the two halves can exceed the
+ * denominator together.
+ */
 export function computeCardStars(clips: StarClip[] = [], assessments: StarAssessment[] = []) {
   let selfSum = 0;
   let coachSum = 0;
@@ -99,5 +112,6 @@ export function computeCardStars(clips: StarClip[] = [], assessments: StarAssess
   }
 
   const score = selfSum / 2 + coachSum;
-  return Math.max(0, Math.min(STARS, Math.round((score / STARS_MAX_SCORE) * STARS)));
+  const raw = (score / STARS_MAX_SCORE) * STARS;
+  return Math.max(0, Math.min(STARS, roundToNearestHalf(raw)));
 }

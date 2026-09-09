@@ -33,6 +33,29 @@ export type SocialField = keyof typeof SOCIAL_HOSTS;
 export const SOCIAL_FIELDS = Object.keys(SOCIAL_HOSTS) as SocialField[];
 
 /**
+ * The four a player may link to. Not Facebook — the product names Instagram,
+ * Telegram, YouTube and Transfermarkt for a player — and Transfermarkt's
+ * country sites are one platform under several hosts.
+ */
+export const PLAYER_SOCIAL_HOSTS = {
+  instagramUrl: SOCIAL_HOSTS.instagramUrl,
+  telegramUrl: SOCIAL_HOSTS.telegramUrl,
+  youtubeUrl: SOCIAL_HOSTS.youtubeUrl,
+  transfermarktUrl: [
+    'transfermarkt.com',
+    'transfermarkt.co.uk',
+    'transfermarkt.de',
+    'transfermarkt.us',
+    'transfermarkt.com.tr',
+    'transfermarkt.ru',
+  ],
+} as const;
+
+export type PlayerSocialField = keyof typeof PLAYER_SOCIAL_HOSTS;
+
+export const PLAYER_SOCIAL_FIELDS = Object.keys(PLAYER_SOCIAL_HOSTS) as PlayerSocialField[];
+
+/**
  * Normalises one link, or throws with the platform named.
  *
  * An empty string clears the field — that is how a manager removes a link, and
@@ -43,6 +66,19 @@ export const SOCIAL_FIELDS = Object.keys(SOCIAL_HOSTS) as SocialField[];
  * the one place it cannot be forgotten later.
  */
 export function normaliseSocialUrl(field: SocialField, value: string): string | null {
+  return normaliseLink(field, SOCIAL_HOSTS[field], value);
+}
+
+/** The player's four, by the same rule. */
+export function normalisePlayerSocialUrl(field: PlayerSocialField, value: string): string | null {
+  return normaliseLink(field, PLAYER_SOCIAL_HOSTS[field], value);
+}
+
+function normaliseLink(
+  field: SocialField | PlayerSocialField,
+  allowed: readonly string[],
+  value: string,
+): string | null {
   const trimmed = value.trim();
   if (trimmed === '') return null;
 
@@ -62,7 +98,6 @@ export function normaliseSocialUrl(field: SocialField, value: string): string | 
   }
 
   const host = url.hostname.toLowerCase().replace(/^www\./, '');
-  const allowed = SOCIAL_HOSTS[field];
   const matches = allowed.some((domain) => host === domain || host.endsWith(`.${domain}`));
 
   if (!matches) {
@@ -77,6 +112,6 @@ export function normaliseSocialUrl(field: SocialField, value: string): string | 
   return `https://${host}${url.pathname === '/' ? '' : url.pathname}${url.search}`;
 }
 
-function platformName(field: SocialField): string {
+function platformName(field: SocialField | PlayerSocialField): string {
   return field.replace(/Url$/, '').replace(/^./, (char) => char.toUpperCase());
 }

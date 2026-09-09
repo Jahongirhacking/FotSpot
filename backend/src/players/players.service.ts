@@ -20,6 +20,12 @@ import { StorageService } from '../storage/storage.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { normaliseUsername } from '../users/username.util';
 import { computeCardStars } from './card-stars.util';
+import {
+  PLAYER_SOCIAL_FIELDS,
+  normalisePlayerSocialUrl,
+  type PlayerSocialField,
+} from '../academies/social-links.util';
+import { OPEN_APPLICATION_STATUSES } from '../trials/application-stage.util';
 import { dominantFootWhere } from './dominant-foot.util';
 import {
   CreatePlayerProfileDto,
@@ -423,9 +429,28 @@ export class PlayersService {
     const manages = await this.managesAnAcademy(viewer);
     // A Date from Prisma on the first read, a string from Redis after it.
     const age = ageAt(new Date(profile.birthDate), new Date());
-    const contacts = manages ? await this.contactsFor(owner.userId) : null;
+
+    /*
+     * How to reach the player is not every manager's to read. It opens to
+     * the manager of an academy the player is already with — in its squad,
+     * or in one of its trials right now — and to nobody else; a manager with
+     * no such tie is told what would open it (the invitation), not the
+     * number. Read here, outside the cache, for the same reason the contacts
+     * always were: the cached row is the same bytes for everybody.
+     */
+    const contactAccess = manages
+      ? await this.contactAccessFor(viewer!, profile.id, owner.userId)
+      : null;
+    const { instagramUrl, telegramUrl, youtubeUrl, transfermarktUrl, ...shared } = profile;
+    const contacts =
+      contactAccess === 'GRANTED'
+        ? {
+            ...(await this.contactsFor(owner.userId)),
+            social: { instagramUrl, telegramUrl, youtubeUrl, transfermarktUrl },
+          }
+        : null;
     return {
-      ...profile,
+      ...shared,
       birthDate: manages ? profile.birthDate : null,
       region: manages ? profile.region : null,
       district: manages ? profile.district : null,
@@ -434,8 +459,55 @@ export class PlayersService {
         ? { birthDate: profile.birthDate, age, region: profile.region, district: profile.district }
         : null,
       contacts,
+      contactAccess,
       memberships: await this.membershipsFor(owner.userId),
     };
+  }
+
+  /**
+   * Whether this manager's academy is one the player is with — README §11,
+   * and the rule the contact card enforces: phone, email and social links
+   * open only to the academy a player is in the squad of, or currently in a
+   * trial with. `INVITE_TO_UNLOCK` is the answer for a manager with no such
+   * tie: inviting the player to a private trial is what creates one.
+   *
+   * A trial ties the player while the application is open (applied, invited,
+   * confirmed, passed and waiting, or offered a place) and the trial itself
+   * is still open — a closed application or an archived session is history,
+   * and history is not a reason to hold a child's phone number.
+   */
+  private async contactAccessFor(
+    viewer: AuthUser,
+    playerId: string,
+    playerUserId: string,
+  ): Promise<'GRANTED' | 'INVITE_TO_UNLOCK'> {
+    const managed = await this.prisma.academyMember.findMany({
+      where: { userId: viewer.userId, role: 'MANAGER', status: 'ACTIVE' },
+      select: { academyId: true },
+    });
+    const academyIds = managed.map((row) => row.academyId);
+    if (academyIds.length === 0) return 'INVITE_TO_UNLOCK';
+
+    const [inSquad, inTrial] = await Promise.all([
+      this.prisma.academyMember.findFirst({
+        where: {
+          academyId: { in: academyIds },
+          userId: playerUserId,
+          role: 'PLAYER',
+          status: { in: ['ACTIVE', 'INACTIVE'] },
+        },
+        select: { id: true },
+      }),
+      this.prisma.trialApplication.findFirst({
+        where: {
+          playerId,
+          status: { in: [...OPEN_APPLICATION_STATUSES] },
+          trial: { academyId: { in: academyIds }, status: 'OPEN' },
+        },
+        select: { id: true },
+      }),
+    ]);
+    return inSquad || inTrial ? 'GRANTED' : 'INVITE_TO_UNLOCK';
   }
 
   /** Whether this viewer runs an academy — the one role told a player's exact facts. */
@@ -547,6 +619,14 @@ export class PlayersService {
       }
     }
 
+    // Host-checked and normalised, or cleared by an empty string — the same
+    // rule an academy's links follow.
+    const socials: Partial<Record<PlayerSocialField, string | null>> = {};
+    for (const field of PLAYER_SOCIAL_FIELDS) {
+      const value = dto[field];
+      if (value !== undefined) socials[field] = normalisePlayerSocialUrl(field, value);
+    }
+
     const updated = await this.prisma.playerProfile.update({
       where: { userId },
       data: {
@@ -554,6 +634,7 @@ export class PlayersService {
         ...(dto.birthDate ? { birthDate: new Date(dto.birthDate) } : {}),
         // Canonical spellings, after the merged pair was checked.
         ...location,
+        ...socials,
       },
     });
     await this.redis.del(RedisKeys.playerProfile(updated.id));

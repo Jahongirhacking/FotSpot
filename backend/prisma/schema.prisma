@@ -398,6 +398,19 @@ model PlayerProfile {
   region   String?
   district String?
 
+  /**
+   * Where to find the player off the platform — their own to set, no
+   * verification. Four nullable columns for the same reason the academy's
+   * are (see AcademyProfile): a fixed set the validator can check the host
+   * of. Private like a phone number: served only inside `contacts`, to an
+   * academy manager the player is in a squad or a trial with, and never in
+   * the cached public profile.
+   */
+  instagramUrl     String?
+  telegramUrl      String?
+  youtubeUrl       String?
+  transfermarktUrl String?
+
   matches        Int    @default(0)
   goals          Int    @default(0)
   assists        Int    @default(0)

@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { SOCIAL_FIELDS, normaliseSocialUrl } from './social-links.util';
+import { SOCIAL_FIELDS, normalisePlayerSocialUrl, normaliseSocialUrl } from './social-links.util';
 
 /**
  * These values become an `href` on a public academy page, under an icon that
@@ -77,5 +77,32 @@ describe('normaliseSocialUrl', () => {
     expect(normaliseSocialUrl('instagramUrl', 'https://instagram.com/fotspot#about')).toBe(
       'https://instagram.com/fotspot',
     );
+  });
+});
+
+describe('normalisePlayerSocialUrl — the player’s four', () => {
+  it('accepts Transfermarkt on its country sites', () => {
+    expect(
+      normalisePlayerSocialUrl(
+        'transfermarktUrl',
+        'https://www.transfermarkt.com/x/profil/spieler/1',
+      ),
+    ).toBe('https://transfermarkt.com/x/profil/spieler/1');
+    expect(
+      normalisePlayerSocialUrl('transfermarktUrl', 'transfermarkt.de/x/profil/spieler/1'),
+    ).toBe('https://transfermarkt.de/x/profil/spieler/1');
+  });
+
+  it('refuses a link to the wrong platform', () => {
+    expect(() => normalisePlayerSocialUrl('transfermarktUrl', 'https://instagram.com/x')).toThrow(
+      /Transfermarkt/,
+    );
+    expect(() => normalisePlayerSocialUrl('instagramUrl', 'https://transfermarkt.com/x')).toThrow(
+      /Instagram/,
+    );
+  });
+
+  it('treats an empty value as clearing the link', () => {
+    expect(normalisePlayerSocialUrl('youtubeUrl', '  ')).toBeNull();
   });
 });
