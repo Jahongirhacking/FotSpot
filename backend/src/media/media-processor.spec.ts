@@ -7,7 +7,8 @@ import {
   TRANSCODE_CLIP_JOB,
 } from './media-processing.constants';
 import type { MediaRecoveryService } from './media-recovery.service';
-import { VideoTranscoderService } from './video-transcoder.service';
+import { VideoTranscoderService, temporaryKeyFor } from './video-transcoder.service';
+import { writeFile } from 'node:fs/promises';
 import type { MediaFinaliserService } from './media-finaliser.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { StorageService } from '../storage/storage.service';
@@ -257,5 +258,125 @@ describe('MediaProcessor.process — the sweep and the clock', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Replacing the object — the original is never at risk                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The key is what everybody plays, so the replacement happens last and only
+ * after everything else succeeded: result to a temporary key, one copy over
+ * the original, temporary removed. A failure before the copy leaves the
+ * original as it was — and the temporary object gone.
+ */
+function replacing(run: (binary: string, args: string[]) => Promise<{ stdout: string }>) {
+  const prisma = { media: { updateMany: jest.fn(async () => ({ count: 1 })) } };
+  const calls: string[] = [];
+  const storage = {
+    getObject: jest.fn(async () => Buffer.alloc(10_000, 1)),
+    putObject: jest.fn(async (key: string) => {
+      calls.push(`putObject:${key}`);
+    }),
+    copyObject: jest.fn(async (from: string, to: string) => {
+      calls.push(`copyObject:${from}→${to}`);
+    }),
+    deleteObject: jest.fn(async (key: string) => {
+      calls.push(`deleteObject:${key}`);
+    }),
+  };
+  const service = new VideoTranscoderService(
+    prisma as unknown as PrismaService,
+    storage as unknown as StorageService,
+    { get: () => undefined } as unknown as ConfigService,
+  );
+  jest.spyOn(service, 'isAvailable').mockResolvedValue(true);
+  jest.spyOn(service as unknown as { run: typeof run }, 'run').mockImplementation(run);
+  return { service, storage, prisma, calls };
+}
+
+/** An ffmpeg that writes a small result to the output path it was given. */
+const ffmpegThatWorks = async (binary: string, args: string[]) => {
+  if (binary.includes('ffprobe')) return { stdout: '' };
+  await writeFile(args[args.length - 1], Buffer.alloc(100, 2));
+  return { stdout: '' };
+};
+
+describe('VideoTranscoderService.transcodeInPlace — replacing the object', () => {
+  it('writes the result to a temporary key, copies it over the original, and removes the temporary', async () => {
+    const { service, storage } = replacing(ffmpegThatWorks);
+
+    await expect(service.transcodeInPlace('clip-1', JOB.storageKey)).resolves.toBe('OPTIMISED');
+
+    const tempKey = temporaryKeyFor(JOB.storageKey);
+    expect(storage.putObject).toHaveBeenCalledTimes(1);
+    expect(storage.putObject).toHaveBeenCalledWith(tempKey, expect.any(Buffer), 'video/mp4');
+    expect(storage.copyObject).toHaveBeenCalledWith(tempKey, JOB.storageKey);
+    expect(storage.deleteObject).toHaveBeenCalledWith(tempKey);
+    expect(storage.deleteObject).not.toHaveBeenCalledWith(JOB.storageKey);
+  });
+
+  it('never writes straight onto the original key', async () => {
+    const { service, calls } = replacing(ffmpegThatWorks);
+
+    await service.transcodeInPlace('clip-1', JOB.storageKey);
+
+    expect(calls).toEqual([
+      `putObject:${temporaryKeyFor(JOB.storageKey)}`,
+      `copyObject:${temporaryKeyFor(JOB.storageKey)}→${JOB.storageKey}`,
+      `deleteObject:${temporaryKeyFor(JOB.storageKey)}`,
+    ]);
+  });
+
+  it('touches nothing in the bucket when ffmpeg fails, and marks the clip failed', async () => {
+    const { service, storage, prisma } = replacing(async (binary) => {
+      if (binary.includes('ffprobe')) return { stdout: '' };
+      throw new Error('ffmpeg: Invalid data found when processing input');
+    });
+
+    await expect(service.transcodeInPlace('clip-1', JOB.storageKey)).resolves.toBe('FAILED');
+
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(storage.copyObject).not.toHaveBeenCalled();
+    expect(storage.deleteObject).not.toHaveBeenCalled();
+    expect(prisma.media.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+  });
+
+  it('leaves the original untouched and removes the temporary when the copy fails', async () => {
+    const { service, storage } = replacing(ffmpegThatWorks);
+    storage.copyObject.mockRejectedValue(new Error('R2: InternalError'));
+
+    await expect(service.transcodeInPlace('clip-1', JOB.storageKey)).resolves.toBe('FAILED');
+
+    expect(storage.deleteObject).toHaveBeenCalledWith(temporaryKeyFor(JOB.storageKey));
+    expect(storage.deleteObject).not.toHaveBeenCalledWith(JOB.storageKey);
+  });
+
+  it('keeps the original, and writes nothing, when the re-encode is no smaller', async () => {
+    const { service, storage } = replacing(async (binary, args) => {
+      if (binary.includes('ffprobe')) return { stdout: '' };
+      await writeFile(args[args.length - 1], Buffer.alloc(20_000, 2));
+      return { stdout: '' };
+    });
+
+    await expect(service.transcodeInPlace('clip-1', JOB.storageKey)).resolves.toBe('ORIGINAL_KEPT');
+
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(storage.copyObject).not.toHaveBeenCalled();
+  });
+
+  /* Whatever the transcoder does to the bytes, it never touches who may watch them. */
+  it('never writes a moderation status', async () => {
+    const { service, prisma } = replacing(ffmpegThatWorks);
+
+    await service.transcodeInPlace('clip-1', JOB.storageKey);
+
+    const touched = (
+      prisma.media.updateMany.mock.calls as unknown as [{ data: Record<string, unknown> }][]
+    ).some(([args]) => 'moderationStatus' in args.data);
+    expect(touched).toBe(false);
   });
 });

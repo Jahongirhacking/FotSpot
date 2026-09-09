@@ -398,6 +398,19 @@ model PlayerProfile {
   region   String?
   district String?
 
+  /**
+   * Where to find the player off the platform — their own to set, no
+   * verification. Four nullable columns for the same reason the academy's
+   * are (see AcademyProfile): a fixed set the validator can check the host
+   * of. Private like a phone number: served only inside `contacts`, to an
+   * academy manager the player is in a squad or a trial with, and never in
+   * the cached public profile.
+   */
+  instagramUrl     String?
+  telegramUrl      String?
+  youtubeUrl       String?
+  transfermarktUrl String?
+
   matches        Int    @default(0)
   goals          Int    @default(0)
   assists        Int    @default(0)
@@ -959,11 +972,14 @@ model Media {
   /**
    * Starts at UNVERIFIED, and only an admin moves it — see the enum.
    * Public visibility is `moderationStatus = VERIFIED AND status IN (ACTIVE,
-   * PROCESSING)`, expressed once in `media-visibility.util.ts` rather than
-   * spelled out per query: a visibility rule copied into eleven `where` clauses
-   * is a rule that holds in ten of them. PROCESSING counts because the worker
-   * overwrites the same `storageKey` with the optimised copy — a verified clip
-   * plays as the original until then, and switches by itself.
+   * PROCESSING, FAILED)`, expressed once in `media-visibility.util.ts` rather
+   * than spelled out per query: a visibility rule copied into eleven `where`
+   * clauses is a rule that holds in ten of them. PROCESSING and FAILED count
+   * because the worker replaces the object under the same `storageKey` only
+   * once a transcode has fully succeeded — a verified clip plays as the file
+   * it has until then, switches by itself, and a failed attempt changes
+   * nothing anybody can watch. `moderationStatus` decides who may see a clip;
+   * `status` only says how far processing got.
    */
   moderationStatus MediaModerationStatus @default(UNVERIFIED)
 

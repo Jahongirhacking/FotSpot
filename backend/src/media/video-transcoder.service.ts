@@ -104,7 +104,19 @@ export class VideoTranscoderService {
   }
 
   /**
-   * Downloads, transcodes, and writes the result back over the same key.
+   * Downloads, transcodes, and replaces the object under the same key.
+   *
+   * ## The original is never at risk
+   *
+   * The key is what everybody plays — a verified clip is visible while this
+   * runs — so the replacement is the last thing that happens, and only after
+   * everything before it succeeded: ffmpeg finished, the result read back
+   * non-empty and smaller, and the result reached the bucket under a
+   * temporary key beside the original. Then one server-side copy replaces
+   * the original in a single request, and the temporary object is removed.
+   * Anything failing before the copy leaves the original untouched; the
+   * temporary object is removed on that path too. The row's `storageKey`
+   * never changes.
    *
    * Returns what happened — see `TranscodeOutcome`. Only `FAILED` means the
    * caller must stop; the row is already marked. The other two mean "finalise".
@@ -161,7 +173,7 @@ export class VideoTranscoderService {
         return 'ORIGINAL_KEPT';
       }
 
-      await this.storage.putObject(storageKey, optimised, 'video/mp4');
+      await this.replaceObject(storageKey, optimised);
       this.logger.log(
         `[TRANSCODE] ${mediaId}: ${bytes(original.length)} → ${bytes(optimised.length)}`,
       );
@@ -169,13 +181,33 @@ export class VideoTranscoderService {
     } catch (error) {
       this.logger.error(`[TRANSCODE] ${mediaId} failed: ${(error as Error).message}`);
       // A verdict about this file, unlike the branch at the top: ffmpeg was here
-      // and could not make sense of what was uploaded.
+      // and could not make sense of what was uploaded. The original is still
+      // under the key, exactly as it was.
       await this.fail(mediaId, 'We could not process this video. Please try uploading it again.');
       return 'FAILED';
     } finally {
       // The source of a minute of 1080p is not something to leave on a worker's
       // disk, whichever way the run went.
       await rm(directory, { recursive: true, force: true }).catch(() => undefined);
+    }
+  }
+
+  /**
+   * Puts the result under a temporary key beside the original, copies it over
+   * the original in one request, and removes the temporary object — on
+   * success and on failure alike. See `transcodeInPlace`.
+   */
+  private async replaceObject(storageKey: string, optimised: Buffer): Promise<void> {
+    const tempKey = temporaryKeyFor(storageKey);
+    try {
+      await this.storage.putObject(tempKey, optimised, 'video/mp4');
+      await this.storage.copyObject(tempKey, storageKey);
+    } finally {
+      await this.storage
+        .deleteObject(tempKey)
+        .catch((error: Error) =>
+          this.logger.warn(`Could not remove the temporary object ${tempKey}: ${error.message}`),
+        );
     }
   }
 
@@ -254,3 +286,12 @@ export class VideoTranscoderService {
 }
 
 const bytes = (value: number) => `${(value / (1024 * 1024)).toFixed(1)} MB`;
+
+/**
+ * Where the transcoded result waits before it replaces the original: beside
+ * it, under the same prefix, so the same bucket rules apply, and named for
+ * what it is so a stray one is recognisable in a listing.
+ */
+export function temporaryKeyFor(storageKey: string): string {
+  return `${storageKey}.optimising.tmp`;
+}

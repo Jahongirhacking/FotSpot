@@ -10,6 +10,7 @@ import { Prisma, type MediaModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaFinaliserService } from '../media/media-finaliser.service';
 import { MediaRecoveryService } from '../media/media-recovery.service';
+import { PROCESSING_GAVE_UP_REASON } from '../media/media-processing.constants';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import { RedisKeys } from '../redis/redis.keys';
@@ -329,29 +330,38 @@ export class ModerationService {
     }
 
     /*
-     * Back to PROCESSING, conditionally — the same shape `decide` uses. Two
-     * admins pressing retry on the same row must produce one retry, not two
-     * finalisations racing to write the same verdict.
+     * "Process again" for a clip the worker gave up on: back to PROCESSING,
+     * conditionally — the same shape `decide` uses, so two admins pressing
+     * retry on the same row produce one retry — and then through the same
+     * queue and worker every upload goes through (`restart`: the transcode
+     * job, then the finaliser). Not finalised inline: an unoptimised original
+     * would be promoted without ever being transcoded.
+     *
+     * The restart counter is reset: it bounds the *automatic* sweep, and an
+     * admin's deliberate press is a fresh start, not the fourth automatic try.
+     * The moderation status is not touched, here or by the worker — a clip
+     * that was VERIFIED stays visible, as the file it has, until the worker
+     * replaces it and marks it ACTIVE.
      */
     const { count } = await this.prisma.media.updateMany({
       where: { id: mediaId, status: 'FAILED' },
-      data: { status: 'PROCESSING', failureReason: null, processedAt: null },
+      data: { status: 'PROCESSING', failureReason: null, processedAt: null, processingAttempts: 0 },
     });
     if (count === 0) {
       throw new ConflictException('This upload is already being retried.');
     }
 
-    const outcome = await this.finaliser.finalise({
-      mediaId,
-      storageKey: media.storageKey,
-      posterKey: media.posterKey,
-    });
-
-    if (outcome === 'NOT_ARRIVED') {
-      // The worker would retry for two minutes; an admin's click gets one look.
-      // Leaving the row at PROCESSING would strand it for good, so it is failed
-      // again with the reason that is true now rather than the one from before.
-      await this.finaliser.fail(mediaId, 'The uploaded file is not in storage.');
+    const outcome = await this.recovery.restart(
+      { ...media, processingAttempts: 0 },
+      `admin ${actorId}`,
+    );
+    if (outcome === 'UNAVAILABLE') {
+      // The row went back to PROCESSING and nothing is queued for it: say so
+      // now, in the words the sweep would otherwise leave for half an hour.
+      await this.finaliser.fail(mediaId, media.failureReason ?? PROCESSING_GAVE_UP_REASON);
+      throw new ServiceUnavailableException(
+        'The processing queue is unreachable right now. Try again shortly.',
+      );
     }
 
     await this.audit.record(actorId, AuditAction.MEDIA_RETRIED, {
@@ -464,15 +474,15 @@ export class ModerationService {
     }
 
     /*
-     * A clip the worker has not finished with is verified as the original the
-     * player uploaded, and goes live as that — the optimised copy overwrites
-     * the same key later (`WATCHABLE_STATUSES`). What must never go live is a
-     * key with nothing under it: the API never saw the bytes, so before the
-     * one write that publishes a PROCESSING clip, the bucket is asked whether
-     * the file is there. "Not yet" is a 409 the moderator can retry in a
-     * minute; "could not ask" is a 503, not a guess.
+     * A clip the worker has not confirmed — still at it, or gave up — is
+     * verified as the file the player uploaded, and goes live as that; the
+     * optimised copy replaces the same key later (`WATCHABLE_STATUSES`). What
+     * must never go live is a key with nothing under it: the API never saw
+     * the bytes, so before the one write that publishes such a clip, the
+     * bucket is asked whether the file is there. "Not there" is a 409 the
+     * moderator can retry in a minute; "could not ask" is a 503, not a guess.
      */
-    if (to === 'VERIFIED' && media.status === 'PROCESSING') {
+    if (to === 'VERIFIED' && media.status !== 'ACTIVE') {
       let present: boolean;
       try {
         present = (await this.storage.describeObject(media.storageKey)) !== null;

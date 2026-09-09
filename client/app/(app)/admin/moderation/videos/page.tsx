@@ -141,9 +141,9 @@ export default async function VideoModerationPage({
 
       {status ? (
         <>
-          {/* Retry is the super admin's, like the failed-uploads section: the
-              API refuses a plain admin regardless (`@Roles('super_admin')`). */}
-          <StatusVideoList clips={list.items} canRetry={isSuperAdmin} />
+          {/* "Process again" is part of working the queue, so both admin roles
+              have it — the API gates it the same way as verify and block. */}
+          <StatusVideoList clips={list.items} canRetry />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} />
         </>
       ) : (

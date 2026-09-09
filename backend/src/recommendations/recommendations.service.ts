@@ -33,6 +33,7 @@ import {
   computeSuccessRate,
 } from './scout-level.util';
 import { assertNotLocalTeam, isLocalTeam } from '../academies/academy-kind.util';
+import { OPEN_APPLICATION_STATUSES } from '../trials/application-stage.util';
 
 /**
  * Roles that may read a scout's profile.
@@ -61,15 +62,6 @@ const RECOMMEND_BLOCKER_MESSAGE: Record<RecommendBlocker, string> = {
   IN_ACADEMY: 'This player is already at an academy and cannot be recommended',
   IN_TRIAL: 'This player is in a trial process and cannot be recommended until it ends',
 };
-
-/** Everything but a closed application: the player is still in an academy's hands. */
-const OPEN_APPLICATION_STATUSES = [
-  'APPLIED',
-  'INVITED',
-  'CONFIRMED',
-  'PASSED',
-  'ACCEPTED',
-] as const;
 
 const PENDING_PLAYER_CARD = {
   id: true,

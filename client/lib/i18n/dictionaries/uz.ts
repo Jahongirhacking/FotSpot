@@ -282,6 +282,17 @@ export const uz = {
   },
 
   profile: {
+    /* The player's own social links — see profile/SocialLinksCard. */
+    socialLinks: 'Ijtimoiy tarmoqlar',
+    socialLinksHint:
+      'Instagram, Telegram, YouTube va Transfermarkt — qo‘shish, o‘zgartirish va o‘chirish sizning qo‘lingizda.',
+    socialNotSet: 'Hali qo‘shilmagan',
+    socialAdd: 'Qo‘shish',
+    socialRemove: 'Havolani o‘chirish',
+    socialSaved: 'Saqlandi.',
+    socialPrivacy:
+      'Telefon raqamingiz kabi maxfiy: bularni faqat siz tarkibida bo‘lgan yoki sinovda qatnashayotgan akademiyaning menejeri ko‘radi.',
+
     birthDateHint: 'Yosh toifangiz va qaysi sinovlarga ariza bera olishingiz shu sanaga bog‘liq.',
     network: 'Tarmoq',
     networkHint: 'Siz kuzatayotganlar va sizni kuzatayotganlar.',
@@ -839,6 +850,8 @@ export const uz = {
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
     openInTelegram: 'Chatni ochish',
+    inviteToSeeContacts:
+      'Aloqa ma’lumotlarini ko‘rish uchun bu o‘yinchini yopiq sinovga taklif qiling.',
     noContacts: 'Aloqa ma’lumotlari kiritilmagan.',
     followPlayer: 'Kuzatish',
     coachAssessHint:
@@ -1671,6 +1684,8 @@ export const uz = {
     failedBadge: 'Xato',
     processingReviewHint:
       'Hali optimallashtirilmoqda. Bu o‘yinchi yuklagan asl nusxa; tasdiqlasangiz u hozir chop etiladi, ishlov tugagach optimallashtirilgan nusxa uni avtomatik almashtiradi.',
+    failedReviewHint:
+      'Bu yuklangan fayl; tasdiqlasangiz u hozir chop etiladi. Ishlovni qayta ishga tushirish uchun holatlar ro‘yxatidagi "Qayta ishlov berish" tugmasidan foydalaning — qaror o‘zgarmaydi.',
     retryProcessing: 'Qayta ishlov berish',
     retryNowInQueue: 'Fayl topildi. Klip endi ko‘rik navbatida.',
     retryStillFailed: 'Bu yuklashga hali ham ishlov berib bo‘lmadi.',

@@ -344,7 +344,13 @@ export interface CreatePlayerProfileBody {
 
 export type UpdatePlayerProfileBody = Partial<
   Omit<CreatePlayerProfileBody, 'firstName' | 'lastName' | 'birthDate' | 'gender'>
->;
+> & {
+  /** Social links; an empty string clears one. Host-checked by the API. */
+  instagramUrl?: string;
+  telegramUrl?: string;
+  youtubeUrl?: string;
+  transfermarktUrl?: string;
+};
 
 export interface UpdatePlayerStatsBody {
   matches?: number;

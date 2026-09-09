@@ -1,4 +1,4 @@
-import { computeCardStars, STARS_MAX_SCORE } from './card-stars.util';
+import { computeCardStars, roundToNearestHalf, STARS_MAX_SCORE } from './card-stars.util';
 
 const clip = (
   category: string,
@@ -15,10 +15,11 @@ describe('computeCardStars', () => {
     expect(computeCardStars()).toBe(0);
   });
 
-  it('caps a perfect self-assessment at three stars', () => {
-    // The gap that makes the row mean something: only a coach fills the last two.
+  it('caps a perfect self-assessment at two and a half stars', () => {
+    // The gap that makes the row mean something: only a coach fills the rest.
+    // Six self-rated 100s are 300 of 600 — exactly half the row.
     const clips = ALL.map((category) => clip(category, 100));
-    expect(computeCardStars(clips, [])).toBe(3);
+    expect(computeCardStars(clips, [])).toBe(2.5);
   });
 
   it('gives five stars for a full set of coach ratings', () => {
@@ -27,9 +28,11 @@ describe('computeCardStars', () => {
   });
 
   it("counts a coach's correction in full, not halved", () => {
-    const own = computeCardStars([clip('PACE', 80, 'SELF')], []);
-    const corrected = computeCardStars([clip('PACE', 80, 'COACH')], []);
-    expect(corrected).toBeGreaterThan(own);
+    // 100/2 = 50 → 0.42 → half a star; 100 → 0.83 → one star.
+    const own = computeCardStars([clip('PACE', 100, 'SELF')], []);
+    const corrected = computeCardStars([clip('PACE', 100, 'COACH')], []);
+    expect(own).toBe(0.5);
+    expect(corrected).toBe(1);
   });
 
   it('uses the newest rating for an attribute, not the first or the best', () => {
@@ -79,5 +82,48 @@ describe('computeCardStars', () => {
   it('scores the documented maximum on coach ratings alone', () => {
     const clips = ALL.map((category) => clip(category, STARS_MAX_SCORE / 6, 'COACH'));
     expect(computeCardStars(clips, [])).toBe(5);
+  });
+});
+
+/**
+ * The row is drawn in halves, so the number is one of 0, 0.5, …, 5 — the
+ * scaled score rounded to the nearest half, halves rounding up, and clamped.
+ */
+describe('roundToNearestHalf', () => {
+  it.each([
+    [1.25, 1.5],
+    [1.2, 1],
+    [0.2, 0],
+    [0.3, 0.5],
+    [0.6, 0.5],
+    [4.4, 4.5],
+    [4.75, 5],
+    [0, 0],
+    [5, 5],
+  ])('%s → %s', (value, expected) => {
+    expect(roundToNearestHalf(value)).toBe(expected);
+  });
+});
+
+describe('computeCardStars — half stars', () => {
+  it('reads half a star from a single self-rated clip', () => {
+    // 100/2 = 50 → 50/600 × 5 = 0.42 → 0.5
+    expect(computeCardStars([clip('PACE', 100)], [])).toBe(0.5);
+  });
+
+  it('says "two and a half" rather than rounding a whole star away', () => {
+    // Three coach-rated attributes at 100 → 300/600 × 5 = 2.5
+    const clips = ['PACE', 'DRIBBLING', 'PASSING'].map((c) => clip(c, 100, 'COACH'));
+    expect(computeCardStars(clips, [])).toBe(2.5);
+  });
+
+  it('only ever answers a multiple of a half, within 0–5', () => {
+    for (const rating of [3, 17, 33, 51, 66, 81, 99, 100]) {
+      const clips = ALL.map((c) => clip(c, rating, 'COACH'));
+      const stars = computeCardStars(clips, []);
+      expect(stars * 2).toBe(Math.round(stars * 2));
+      expect(stars).toBeGreaterThanOrEqual(0);
+      expect(stars).toBeLessThanOrEqual(5);
+    }
   });
 });

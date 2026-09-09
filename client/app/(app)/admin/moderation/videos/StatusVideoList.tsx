@@ -120,7 +120,9 @@ function StatusCard({
 
   // A stuck clip is one nothing is working on; a slow one still has a live job.
   const stuck = clip.status === 'PROCESSING' && clip.processing?.live === false;
-  const retryable = canRetry && (clip.status === 'FAILED' || stuck);
+  // Offered for anything not yet confirmed: the API answers a live job with a
+  // "still processing" 409, which is a better answer than a hidden button.
+  const retryable = canRetry && (clip.status === 'FAILED' || clip.status === 'PROCESSING');
 
   return (
     <Card className={stuck || clip.status === 'FAILED' ? 'border-warning/40' : undefined}>

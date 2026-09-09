@@ -52,6 +52,20 @@ export const STAGE_STATUSES: Record<ApplicationStage, readonly TrialApplicationS
   SQUAD_JOINED: ['ACCEPTED'],
 };
 
+/**
+ * Everything but a closed application: the player is still in an academy's
+ * hands — applied, invited, confirmed, passed and waiting, or offered a place.
+ * What blocks a scout's recommendation, and what opens a player's contacts to
+ * that academy's manager.
+ */
+export const OPEN_APPLICATION_STATUSES: readonly TrialApplicationStatus[] = [
+  'APPLIED',
+  'INVITED',
+  'CONFIRMED',
+  'PASSED',
+  'ACCEPTED',
+];
+
 /** The stages a status decides on its own — pageable in the database. */
 export const STATUS_STAGES: ReadonlySet<ApplicationStage> = new Set([
   'PENDING',

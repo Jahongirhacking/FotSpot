@@ -5930,7 +5930,7 @@
             "bearer": []
           }
         ],
-        "summary": "Re-run processing. Not a status override — a FAILED clip is re-checked in\nthe bucket and becomes ACTIVE only if it is really there; a PROCESSING clip\nwith no live job is queued again, exactly as the stale sweep would queue it.",
+        "summary": "Process again. Not a status override — a FAILED clip, or a PROCESSING one\nwith no live job, is queued again through the same worker every upload\ngoes through, and becomes ACTIVE only when that worker says so. The\nmoderation status is untouched: a verified clip stays visible throughout.\n\nBoth admin roles, like verify and block: it is part of working the queue,\nnot destruction.",
         "tags": [
           "moderation"
         ]
@@ -7824,6 +7824,23 @@
           },
           "district": {
             "type": "string"
+          },
+          "instagramUrl": {
+            "type": "string",
+            "description": "Where to find the player off the platform — Instagram, Telegram, YouTube,\nTransfermarkt. Host-checked on write (`normalisePlayerSocialUrl`); an\nempty string clears one. Private: served only inside `contacts`.",
+            "maxLength": 300
+          },
+          "telegramUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "youtubeUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "transfermarktUrl": {
+            "type": "string",
+            "maxLength": 300
           }
         }
       },

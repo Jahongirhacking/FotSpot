@@ -250,6 +250,18 @@ function ReviewCard({
         {clip.status === 'PROCESSING' && (
           <p className="text-muted text-xs">{t.admin.processingReviewHint}</p>
         )}
+        {/* The worker gave up; the uploaded file is still under the key and is
+            what plays here. Verifying publishes it as that; "Process again" on
+            the status list re-runs the worker without touching the decision. */}
+        {clip.status === 'FAILED' && (
+          <p className="text-warning flex items-start gap-1.5 text-xs">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>
+              {t.admin.statusLabels.FAILED}
+              {clip.failureReason ? ` — ${clip.failureReason}` : ''}. {t.admin.failedReviewHint}
+            </span>
+          </p>
+        )}
 
         {clip.url ? (
           <video

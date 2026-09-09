@@ -270,7 +270,15 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           playerUserId={player?.userId}
         />
         {/* Only ever present for an academy's manager — the API decides. */}
-        {player?.contacts && <ContactCard contacts={player.contacts} details={player?.details} />}
+        {/* Drawn for a manager either way: with the contacts, or with what
+            would open them. Nobody else is sent `contactAccess` at all. */}
+        {(player?.contacts || player?.contactAccess) && (
+          <ContactCard
+            contacts={player?.contacts ?? null}
+            details={player?.details}
+            access={player?.contactAccess ?? null}
+          />
+        )}
       </aside>
     </div>
   );

@@ -12,6 +12,7 @@ import { ProfileSummaryCard } from './ProfileSummaryCard';
 import { SyncRoles } from './SyncRoles';
 import { EditProfileButton } from './EditProfileButton';
 import { BecomeScoutCard } from './BecomeScoutCard';
+import { SocialLinksCard } from './SocialLinksCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -104,6 +105,8 @@ export default async function ProfilePage() {
               {playerCard && <PlayerCard player={playerCard} selfLabel={t.relation.you} />}
               <PlayerDetails stats={profile?.stats.player} t={t} />
             </div>
+            {/* The player's own links, theirs to add, change and remove. */}
+            {playerCard && <SocialLinksCard player={playerCard} />}
           </>
         )}
 
@@ -333,7 +336,10 @@ function AcademyList({
                 key={academy?.academyId}
                 className="flex items-center justify-between gap-3 py-2.5"
               >
-                <Link href={`/academies/${academy?.academyId}`} className="truncate hover:underline">
+                <Link
+                  href={`/academies/${academy?.academyId}`}
+                  className="truncate hover:underline"
+                >
                   {academy?.name}
                 </Link>
                 <div className="flex shrink-0 gap-1.5">
