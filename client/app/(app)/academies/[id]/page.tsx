@@ -7,6 +7,7 @@ import { RelationBadge } from '@/components/shared/RelationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
 import { ApiError } from '@/lib/api/client';
 import { academies, academyRoster, trials } from '@/lib/api/resources';
 import type {
@@ -203,7 +204,7 @@ export default async function AcademyDetailPage({
     throw error;
   }
 
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
 
   /*
    * Everything below asks the API by **this** id, never by the route param.
@@ -544,7 +545,11 @@ export default async function AcademyDetailPage({
 
           {/* ---------- Trials, and where to find them ---------- */}
           <div
-            className={isLocalTeam ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'}
+            className={
+              isLocalTeam
+                ? 'grid gap-6'
+                : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start'
+            }
           >
             {!isLocalTeam && (
               <Card>
@@ -556,7 +561,24 @@ export default async function AcademyDetailPage({
                 </CardHeader>
                 <CardContent>
                   {academyTrials?.length === 0 ? (
-                    <p className="text-muted text-sm">{t.academy?.noTrialsNow}</p>
+                    /* A card that says so, not a line that reads like a
+                       loading state: the academy exists and is between
+                       trials, and each reader is told what to do about it. */
+                    <EmptyState
+                      icon={CalendarDays}
+                      title={t.academy.noTrialsNow}
+                      description={
+                        isManager ? t.academy.noTrialsNowManagerHint : t.academy.noTrialsNowHint
+                      }
+                      className="py-8"
+                      action={
+                        isManager ? (
+                          <Button asChild size="sm">
+                            <Link href="/trials">{t.trials.createGlobalTrial}</Link>
+                          </Button>
+                        ) : undefined
+                      }
+                    />
                   ) : (
                     <ul className="divide-border divide-y">
                       {academyTrials?.map((trial) => (
@@ -605,6 +627,8 @@ export default async function AcademyDetailPage({
                       latitude={academy?.latitude}
                       longitude={academy?.longitude}
                       name={academy?.name}
+                      locale={locale}
+                      openLabel={t.academy.openInMaps}
                     />
                   </CardContent>
                 </Card>

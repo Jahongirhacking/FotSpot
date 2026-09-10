@@ -8,7 +8,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { AuditAction } from '../audit/audit.actions';
 import { AuditService } from '../audit/audit.service';
-import { ageAt } from '../common/age.util';
+import { ageAt, ageBandFor } from '../common/age.util';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
 import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
@@ -44,18 +44,6 @@ import { searchOrderBy } from './search-order.util';
  * built from the stored key at read time — see StorageService.
  */
 const AVATAR_INCLUDE = { user: { select: { avatarKey: true, username: true } } } as const;
-
-/** The band a player is compared in — the same thresholds the client uses. */
-function bandFor(age: number): 'U8' | 'U10' | 'U12' | 'U14' | 'U16' | 'U18' | 'U21' | 'Senior' {
-  if (age < 8) return 'U8';
-  if (age < 10) return 'U10';
-  if (age < 12) return 'U12';
-  if (age < 14) return 'U14';
-  if (age < 16) return 'U16';
-  if (age < 18) return 'U18';
-  if (age < 21) return 'U21';
-  return 'Senior';
-}
 
 /** Bounds on an editable date of birth — a plausible playing age, not any date. */
 const MIN_PLAYER_AGE = 5;
@@ -454,7 +442,7 @@ export class PlayersService {
       birthDate: manages ? profile.birthDate : null,
       region: manages ? profile.region : null,
       district: manages ? profile.district : null,
-      ageBand: bandFor(age),
+      ageBand: ageBandFor(age),
       details: manages
         ? { birthDate: profile.birthDate, age, region: profile.region, district: profile.district }
         : null,

@@ -341,6 +341,124 @@
   }
 }
 
+/*
+ * Blog article typography — the one long-form reading surface on the site.
+ *
+ * The markup arrives from the API with no classes of its own (the sanitiser
+ * strips them), so the reading experience is set here, once: a measure of
+ * about 70 characters, leading a reader on a phone can follow, headings that
+ * step down from the page's H1, and pictures that never overflow the column.
+ */
+.article-body {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+.article-body > * + * {
+  margin-top: 1.1em;
+}
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin-top: 1.8em;
+}
+.article-body h2 {
+  font-size: 1.5rem;
+}
+.article-body h3 {
+  font-size: 1.25rem;
+}
+.article-body h4 {
+  font-size: 1.05rem;
+}
+.article-body p,
+.article-body li {
+  color: var(--foreground);
+}
+.article-body a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.article-body a:hover {
+  color: var(--primary-strong, var(--primary));
+}
+.article-body ul,
+.article-body ol {
+  padding-left: 1.4em;
+}
+.article-body ul {
+  list-style: disc;
+}
+.article-body ol {
+  list-style: decimal;
+}
+.article-body li + li {
+  margin-top: 0.35em;
+}
+.article-body blockquote {
+  border-left: 3px solid var(--primary);
+  padding: 0.25em 0 0.25em 1.1em;
+  color: var(--muted);
+  font-style: italic;
+}
+.article-body blockquote p {
+  color: inherit;
+}
+.article-body code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  padding: 0.1em 0.4em;
+  border-radius: 0.35em;
+}
+.article-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2.2em auto;
+  width: 40%;
+}
+.article-body figure {
+  margin: 1.6em 0;
+}
+/* A YouTube player pasted as a bare link: full article width, 16:9, no border. */
+.article-body figure.video {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+}
+.article-body figure.video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.article-body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+}
+.article-body figcaption {
+  margin-top: 0.5em;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  text-align: center;
+}
+.article-body > :first-child {
+  margin-top: 0;
+}
+
 @layer utilities {
   /*
    * A pair of elements where exactly one is shown per theme.

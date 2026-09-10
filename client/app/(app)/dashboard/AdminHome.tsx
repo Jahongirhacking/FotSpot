@@ -2,7 +2,17 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { Dictionary } from '@/lib/i18n';
-import { Building2, Flag, Gauge, KeyRound, ScrollText, Users, Video, ZapIcon } from 'lucide-react';
+import {
+  Building2,
+  Flag,
+  Gauge,
+  KeyRound,
+  Newspaper,
+  ScrollText,
+  Users,
+  Video,
+  ZapIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 
 /**
@@ -54,6 +64,13 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
           title={t.admin.moderation}
           description={t.admin.moderationHint}
           href="/admin/moderation"
+          cta={t.common.open}
+        />
+        <AdminTile
+          icon={Newspaper}
+          title={t.blog.manage}
+          description={t.blog.manageHint}
+          href="/admin/blog"
           cta={t.common.open}
         />
         {/* Its own tile rather than a line inside the one above. Nothing a player

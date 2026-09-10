@@ -6559,6 +6559,712 @@
           "insights"
         ]
       }
+    },
+    "/api/v1/blog/home": {
+      "get": {
+        "operationId": "blog_home",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/posts": {
+      "get": {
+        "operationId": "blog_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "description": "A category slug.",
+            "schema": {
+              "maxLength": 90,
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Free text over title and excerpt.",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "`latest` (default) or `top` — most liked first.",
+            "schema": {
+              "enum": [
+                "latest",
+                "top"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One page of published posts — by category, by search, newest or most liked.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/categories": {
+      "get": {
+        "operationId": "blog_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The categories, each with how many published posts it holds.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/sitemap": {
+      "get": {
+        "operationId": "blog_sitemap",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every published post's address and dates, for the sitemap. Drafts never appear.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/spotlight": {
+      "get": {
+        "operationId": "blog_spotlight",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The article sidebar: six players and six academies picked at random from\nwhat the public directory already shows. A different six on every call.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/posts/{slug}": {
+      "get": {
+        "operationId": "blog_bySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A published post, rendered, with related posts. A guest reads the same page.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/posts/{slug}/like": {
+      "post": {
+        "operationId": "blog_like",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Like a post — one per person; a second press changes nothing.",
+        "tags": [
+          "blog"
+        ]
+      },
+      "delete": {
+        "operationId": "blog_unlike",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts": {
+      "get": {
+        "operationId": "blog_adminList",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/BlogPostStatus"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      },
+      "post": {
+        "operationId": "blog_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Creates a draft. The slug is made from the title unless one is sent.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}": {
+      "get": {
+        "operationId": "blog_adminGet",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      },
+      "patch": {
+        "operationId": "blog_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edits any field. A title change never rewrites the slug; send one to change it.",
+        "tags": [
+          "blog"
+        ]
+      },
+      "delete": {
+        "operationId": "blog_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/publish": {
+      "post": {
+        "operationId": "blog_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/unpublish": {
+      "post": {
+        "operationId": "blog_unpublish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/images/upload-url": {
+      "post": {
+        "operationId": "blog_imageUploadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlogImageUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A presigned PUT for a post image (cover, share or body), under `public/blog/<post>/`.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/images": {
+      "get": {
+        "operationId": "blog_listImages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The post's body images with their public URLs, newest first.",
+        "tags": [
+          "blog"
+        ]
+      },
+      "post": {
+        "operationId": "blog_confirmImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmBlogImageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "After the PUT: checks the object is there and is an image, then lists it with the post.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/images/{imageId}": {
+      "delete": {
+        "operationId": "blog_deleteImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "imageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Removes the image from storage and from the post.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/categories": {
+      "post": {
+        "operationId": "blog_createCategory",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/categories/{id}": {
+      "patch": {
+        "operationId": "blog_updateCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      },
+      "delete": {
+        "operationId": "blog_removeCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "blog"
+        ]
+      }
     }
   },
   "info": {
@@ -6623,6 +7329,10 @@
     {
       "name": "tariffs",
       "description": "The three plan tiers and their limits. Reading is open to any account; editing a tier, and moving an account between tiers, are super-admin only."
+    },
+    {
+      "name": "blog",
+      "description": "The editorial blog — news, young players, academies, signings, trials, FotSpot updates. Reading is public; writing is admin-only."
     },
     {
       "name": "insights",
@@ -8543,6 +9253,160 @@
           "roleId",
           "permissionId"
         ]
+      },
+      "BlogPostStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "PUBLISHED"
+        ]
+      },
+      "SavePostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 160
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 90,
+            "pattern": "SLUG_PATTERN"
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 60000
+          },
+          "coverKey": {
+            "type": "string",
+            "description": "An R2 key under `public/blog/`, from `cover/upload-url`; empty string clears.",
+            "maxLength": 300
+          },
+          "coverAlt": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "A category id; empty string clears.",
+            "maxLength": 60
+          },
+          "authorName": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "readingMinutes": {
+            "type": "number",
+            "description": "Overrides the computed reading time; 0 or absent recomputes.",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "seoTitle": {
+            "type": "string",
+            "maxLength": 70
+          },
+          "metaDescription": {
+            "type": "string",
+            "maxLength": 170
+          },
+          "seoKeywords": {
+            "maxItems": 15,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "canonicalUrl": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "ogTitle": {
+            "type": "string",
+            "maxLength": 90
+          },
+          "ogDescription": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "ogImageKey": {
+            "type": "string",
+            "description": "An R2 key under `public/blog/`; empty string clears.",
+            "maxLength": 300
+          }
+        }
+      },
+      "BlogImageUploadDto": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Which picture: the post's cover (default), its share image, or one for the body.",
+            "enum": [
+              "cover",
+              "og",
+              "body"
+            ]
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The browser's MIME type, so the presigned PUT is bound to an image.",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "filename"
+        ]
+      },
+      "ConfirmBlogImageDto": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "storageKey"
+        ]
+      },
+      "SaveCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 60,
+            "pattern": "SLUG_PATTERN"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "sortOrder": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        }
       }
     }
   },

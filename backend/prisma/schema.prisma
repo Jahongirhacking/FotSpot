@@ -225,6 +225,8 @@ model User {
   notificationsTriggered Notification[]       @relation("NotificationActors")
   otpCodes               OtpCode[]
   verificationCodes      VerificationCode[]
+  blogPosts              BlogPost[]           @relation("BlogAuthors")
+  blogLikes              BlogPostLike[]
   passwordResetCodes     PasswordResetCode[]
   auditLogs              AuditLog[]
   reportsFiled           Report[]             @relation("ReportsFiled")
@@ -1900,4 +1902,119 @@ model SupportRequest {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Blog — the editorial side of the platform: news, young players, academies,
+// signings, trials, and what changed on FotSpot. Public to everyone including
+// guests; written by admins. README §1.16 (SEO) is the reason it exists.
+// ---------------------------------------------------------------------------
+
+model BlogCategory {
+  id          String  @id @default(uuid())
+  /// The address segment, `/blog?category=<slug>`: lowercase Latin, hyphens.
+  slug        String  @unique
+  name        String
+  description String?
+  sortOrder   Int     @default(0)
+
+  posts BlogPost[]
+
+  createdAt DateTime @default(now())
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model BlogPost {
+  id String @id @default(uuid())
+
+  /// The address, `/blog/<slug>`: made from the title on creation, editable
+  /// by an admin, and never rewritten by a later title change — a URL that
+  /// was shared or indexed must keep resolving.
+  slug        String @unique
+  title       String
+  /// The standfirst: the card's summary and the default meta description.
+  excerpt     String
+  /// Markdown, as the author wrote it.
+  content     String
+  /// `content` rendered and sanitised at write time — what every reader gets,
+  /// so a page render never parses Markdown and never trusts stored HTML.
+  contentHtml String
+
+  /// R2 object key under `public/blog/`, never a URL — see storage.keys.ts.
+  coverKey String?
+  coverAlt String?
+
+  categoryId String?
+  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  authorUserId String
+  author       User    @relation("BlogAuthors", fields: [authorUserId], references: [id], onDelete: Restrict)
+  /// A byline other than the author's account name — "FotSpot Team", say.
+  authorName   String?
+
+  status         BlogPostStatus @default(DRAFT)
+  /// Set the first time the post is published and kept across unpublish /
+  /// republish, so `datePublished` in the markup stays the first date.
+  publishedAt    DateTime?
+  /// Words over two hundred, rounded up, computed on write; an admin may set it.
+  readingMinutes Int            @default(1)
+  /// The one post the listing opens on. Cleared when another is featured.
+  featured       Boolean        @default(false)
+
+  // SEO — each falls back to the post's own field when null.
+  seoTitle        String?
+  metaDescription String?
+  seoKeywords     String[] @default([])
+  canonicalUrl    String?
+  ogTitle         String?
+  ogDescription   String?
+  ogImageKey      String?
+
+  /// Denormalised from BlogPostLike so a list never counts per card.
+  likeCount Int @default(0)
+
+  likes  BlogPostLike[]
+  images BlogPostImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([categoryId, status, publishedAt])
+  @@index([status, likeCount])
+}
+
+/// A picture uploaded for a post's body, kept under `public/blog/<post>/` and
+/// pasted into the Markdown by its public URL. Rows exist so the editor can
+/// list and delete what was uploaded, and so deleting the post removes them.
+model BlogPostImage {
+  id     String   @id @default(uuid())
+  postId String
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  storageKey  String  @unique
+  filename    String
+  contentType String?
+  size        Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+}
+
+/// One like per person per post — the pair is the key.
+model BlogPostLike {
+  postId String
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([postId, userId])
+  @@index([userId])
 }

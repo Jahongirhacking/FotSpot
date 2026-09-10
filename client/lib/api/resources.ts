@@ -56,6 +56,15 @@ import type {
   RecommendEligibility,
   PrivateTrialsPage,
   ApplicationStage,
+  AdminBlogPost,
+  BlogCategory,
+  BlogHome,
+  BlogPost,
+  BlogPostCard,
+  BlogPostStatus,
+  BlogSitemapEntry,
+  BlogPostImage,
+  BlogSpotlight,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -1629,4 +1638,136 @@ export const auth = {
    */
   changePassword: (body: { currentPassword?: string; newPassword: string }, opts: Opts = {}) =>
     apiFetch<{ changed: boolean }>('/auth/password', { method: 'POST', body, ...opts }),
+};
+
+// ---------- Blog ----------
+
+export interface SaveBlogPostBody {
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  content?: string;
+  /** An R2 key from `imageUploadUrl`; empty string clears. */
+  coverKey?: string;
+  coverAlt?: string;
+  /** A category id; empty string clears. */
+  categoryId?: string;
+  authorName?: string;
+  /** 0 or absent recomputes from the content. */
+  readingMinutes?: number;
+  featured?: boolean;
+  seoTitle?: string;
+  metaDescription?: string;
+  seoKeywords?: string[];
+  canonicalUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImageKey?: string;
+}
+
+export interface SaveBlogCategoryBody {
+  name?: string;
+  slug?: string;
+  description?: string;
+  sortOrder?: number;
+}
+
+export const blog = {
+  /** The listing page in one request. Public. */
+  home: (opts: Opts = {}) => apiFetch<BlogHome>('/blog/home', opts),
+
+  /** One page of published posts — by category, search, newest or most liked. Public. */
+  list: (
+    params: PageParams & { category?: string; q?: string; sort?: 'latest' | 'top' } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<BlogPostCard>>(`/blog/posts${toQuery({ ...params })}`, opts),
+
+  categories: (opts: Opts = {}) => apiFetch<BlogCategory[]>('/blog/categories', opts),
+
+  /** A published post with its related posts. 404 for a draft, whoever asks. */
+  bySlug: (slug: string, opts: Opts = {}) =>
+    apiFetch<BlogPost>(`/blog/posts/${encodeURIComponent(slug)}`, opts),
+
+  /** Every published post's address and dates — the sitemap's input. */
+  sitemap: (opts: Opts = {}) => apiFetch<BlogSitemapEntry[]>('/blog/sitemap', opts),
+
+  /** Six random players and six random academies for an article's sidebar. */
+  spotlight: (opts: Opts = {}) => apiFetch<BlogSpotlight>('/blog/spotlight', opts),
+
+  like: (slug: string, liked: boolean, opts: Opts = {}) =>
+    apiFetch<{ liked: boolean; likeCount: number }>(
+      `/blog/posts/${encodeURIComponent(slug)}/like`,
+      { method: liked ? 'POST' : 'DELETE', ...opts },
+    ),
+
+  // ---- Admin ----
+
+  adminList: (params: PageParams & { status?: BlogPostStatus; q?: string } = {}, opts: Opts = {}) =>
+    apiFetch<Page<BlogPostCard & { status: BlogPostStatus; createdAt: string }>>(
+      `/blog/admin/posts${toQuery({ ...params })}`,
+      opts,
+    ),
+
+  adminGet: (id: string, opts: Opts = {}) =>
+    apiFetch<AdminBlogPost>(`/blog/admin/posts/${id}`, opts),
+
+  create: (body: SaveBlogPostBody, opts: Opts = {}) =>
+    apiFetch<AdminBlogPost>('/blog/admin/posts', { method: 'POST', body, ...opts }),
+
+  update: (id: string, body: SaveBlogPostBody, opts: Opts = {}) =>
+    apiFetch<AdminBlogPost>(`/blog/admin/posts/${id}`, { method: 'PATCH', body, ...opts }),
+
+  publish: (id: string, opts: Opts = {}) =>
+    apiFetch<AdminBlogPost>(`/blog/admin/posts/${id}/publish`, { method: 'POST', ...opts }),
+
+  unpublish: (id: string, opts: Opts = {}) =>
+    apiFetch<AdminBlogPost>(`/blog/admin/posts/${id}/unpublish`, { method: 'POST', ...opts }),
+
+  remove: (id: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: true }>(`/blog/admin/posts/${id}`, { method: 'DELETE', ...opts }),
+
+  /** A presigned PUT for the post's cover or share image. */
+  imageUploadUrl: (
+    id: string,
+    filename: string,
+    purpose: 'cover' | 'og' | 'body' = 'cover',
+    opts: Opts = {},
+  ) =>
+    apiFetch<{
+      uploadUrl: string;
+      storageKey: string;
+      expiresIn: number;
+      publicUrl: string | null;
+    }>(`/blog/admin/posts/${id}/images/upload-url`, {
+      method: 'POST',
+      body: { filename, purpose },
+      ...opts,
+    }),
+
+  /** The post's body images, newest first. */
+  listImages: (id: string, opts: Opts = {}) =>
+    apiFetch<BlogPostImage[]>(`/blog/admin/posts/${id}/images`, opts),
+
+  /** After the PUT: the API checks the object and lists it with the post. */
+  confirmImage: (id: string, storageKey: string, opts: Opts = {}) =>
+    apiFetch<BlogPostImage>(`/blog/admin/posts/${id}/images`, {
+      method: 'POST',
+      body: { storageKey },
+      ...opts,
+    }),
+
+  deleteImage: (id: string, imageId: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: boolean }>(`/blog/admin/posts/${id}/images/${imageId}`, {
+      method: 'DELETE',
+      ...opts,
+    }),
+
+  createCategory: (body: SaveBlogCategoryBody, opts: Opts = {}) =>
+    apiFetch<BlogCategory>('/blog/admin/categories', { method: 'POST', body, ...opts }),
+
+  updateCategory: (id: string, body: SaveBlogCategoryBody, opts: Opts = {}) =>
+    apiFetch<BlogCategory>(`/blog/admin/categories/${id}`, { method: 'PATCH', body, ...opts }),
+
+  removeCategory: (id: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: true }>(`/blog/admin/categories/${id}`, { method: 'DELETE', ...opts }),
 };

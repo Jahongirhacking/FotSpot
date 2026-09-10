@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { academies as academiesApi, players, trials } from '@/lib/api/resources';
+import { academies as academiesApi, blog, players, trials } from '@/lib/api/resources';
 import { absoluteUrl } from '@/lib/seo';
 
 /** Recomputed hourly rather than per request — a crawler is not worth a database sweep each visit. */
@@ -23,6 +23,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/players'), changeFrequency: 'daily', priority: 0.8 },
     { url: absoluteUrl('/academies'), changeFrequency: 'weekly', priority: 0.7 },
     { url: absoluteUrl('/trials'), changeFrequency: 'daily', priority: 0.7 },
+    // The blog's front: the pages most worth indexing after the profiles, and
+    // the one place new stories appear.
+    { url: absoluteUrl('/blog'), changeFrequency: 'daily', priority: 0.8 },
     // The one page for every style; the `?showPlayingStyle=` views canonicalise
     // to it, so this is the only playing-styles URL a crawler should be handed.
     { url: absoluteUrl('/playing-styles'), changeFrequency: 'monthly', priority: 0.5 },
@@ -38,10 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/contact-us'), changeFrequency: 'yearly', priority: 0.4 },
   ];
 
-  const [playerPage, academyList, trialList] = await Promise.all([
+  const [playerPage, academyList, trialList, posts] = await Promise.all([
     players.search({ pageSize: 200 }, { revalidate }).catch(() => ({ items: [] })),
     academiesApi.listPublic(undefined, { revalidate }).catch(() => []),
     trials.listUpcoming({}, { revalidate }).catch(() => []),
+    // Published posts only — the endpoint never lists a draft.
+    blog.sitemap({ revalidate }).catch(() => []),
   ]);
 
   return [
@@ -64,6 +69,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
+    })),
+    ...posts.map((post) => ({
+      url: absoluteUrl(`/blog/${post.slug}`),
+      lastModified: new Date(post.updatedAt),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
     })),
     ...trialList.map((trial) => ({
       url: absoluteUrl(`/trials/${trial.id}`),
