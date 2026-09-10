@@ -34,7 +34,7 @@ export default async function NewBlogPostPage() {
         <ArrowLeft className="size-4" aria-hidden /> {t.blog.manage}
       </Link>
       <h1 className="text-xl font-bold">{t.blog.newPost}</h1>
-      <PostEditor post={null} categories={categories} />
+      <PostEditor post={null} categories={categories} images={[]} />
     </div>
   );
 }

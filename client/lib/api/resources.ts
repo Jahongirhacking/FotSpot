@@ -63,6 +63,7 @@ import type {
   BlogPostCard,
   BlogPostStatus,
   BlogSitemapEntry,
+  BlogPostImage,
   BlogSpotlight,
 } from './types';
 
@@ -1729,7 +1730,7 @@ export const blog = {
   imageUploadUrl: (
     id: string,
     filename: string,
-    purpose: 'cover' | 'og' = 'cover',
+    purpose: 'cover' | 'og' | 'body' = 'cover',
     opts: Opts = {},
   ) =>
     apiFetch<{
@@ -1740,6 +1741,24 @@ export const blog = {
     }>(`/blog/admin/posts/${id}/images/upload-url`, {
       method: 'POST',
       body: { filename, purpose },
+      ...opts,
+    }),
+
+  /** The post's body images, newest first. */
+  listImages: (id: string, opts: Opts = {}) =>
+    apiFetch<BlogPostImage[]>(`/blog/admin/posts/${id}/images`, opts),
+
+  /** After the PUT: the API checks the object and lists it with the post. */
+  confirmImage: (id: string, storageKey: string, opts: Opts = {}) =>
+    apiFetch<BlogPostImage>(`/blog/admin/posts/${id}/images`, {
+      method: 'POST',
+      body: { storageKey },
+      ...opts,
+    }),
+
+  deleteImage: (id: string, imageId: string, opts: Opts = {}) =>
+    apiFetch<{ deleted: boolean }>(`/blog/admin/posts/${id}/images/${imageId}`, {
+      method: 'DELETE',
       ...opts,
     }),
 

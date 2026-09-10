@@ -1249,6 +1249,16 @@ export interface BlogSitemapEntry {
   updatedAt: string;
 }
 
+/** A picture uploaded for a post's body — the admin sees the URL, never the key. */
+export interface BlogPostImage {
+  id: string;
+  filename: string;
+  url: string | null;
+  contentType: string | null;
+  size: number;
+  createdAt: string;
+}
+
 /** A player as the article sidebar shows one — the band, never the birth date. */
 export interface SpotlightPlayer {
   id: string;

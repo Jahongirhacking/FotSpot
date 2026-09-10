@@ -1,13 +1,26 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { ArticleBody } from '@/components/blog/ArticleBody';
+import { useI18n } from '@/components/layout/I18nProvider';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Feedback';
+import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { LoadingImage } from '@/components/ui/LoadingImage';
+import { browserFetch } from '@/lib/api/browser';
+import type { SaveBlogPostBody } from '@/lib/api/resources';
+import type { AdminBlogPost, BlogCategory, BlogPostImage } from '@/lib/api/types';
+import { uploadToStorage } from '@/lib/api/upload';
+import { postPath } from '@/lib/blog';
+import { suggestKeywords } from '@/lib/blog-keywords';
+import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
 import {
   Bold,
-  Eye,
   ExternalLink,
+  Eye,
+  FolderOpen,
   Globe,
   Heading2,
   Image as ImageIcon,
@@ -24,20 +37,10 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import { uploadToStorage } from '@/lib/api/upload';
-import type { SaveBlogPostBody } from '@/lib/api/resources';
-import type { AdminBlogPost, BlogCategory } from '@/lib/api/types';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { ArticleBody } from '@/components/blog/ArticleBody';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Feedback';
-import { Field, Input, Select, Textarea } from '@/components/ui/Field';
-import { LoadingImage } from '@/components/ui/LoadingImage';
-import { postPath } from '@/lib/blog';
-import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import * as React from 'react';
+import { BlogMediaPanel } from './BlogMediaPanel';
 
 /** What the form holds — strings throughout, so an empty box is an empty string. */
 interface Draft {
@@ -73,7 +76,7 @@ function draftOf(post: AdminBlogPost | null): Draft {
     coverAlt: post?.coverAlt ?? '',
     categoryId: post?.categoryId ?? '',
     authorName: post?.authorName ?? '',
-    readingMinutes: post ? String(post.readingMinutes) : '',
+    readingMinutes: post ? String(post?.readingMinutes) : '',
     featured: post?.featured ?? false,
     seoTitle: post?.seoTitle ?? '',
     metaDescription: post?.metaDescription ?? '',
@@ -121,9 +124,11 @@ function slugPreview(title: string): string {
 export function PostEditor({
   post,
   categories,
+  images,
 }: {
   post: AdminBlogPost | null;
   categories: BlogCategory[];
+  images: BlogPostImage[];
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -135,6 +140,30 @@ export function PostEditor({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
+
+  /*
+   * Keywords are suggested until the admin touches them.
+   *
+   * A post that already carries keywords, or a field the admin has typed in,
+   * is theirs and is left alone. Otherwise the box shows what the title, the
+   * excerpt and the text suggest, live, and that is what is saved — so a post
+   * published without a thought for keywords still has them. "Suggest" puts
+   * the suggestion back after an edit.
+   */
+  const [keywordsTouched, setKeywordsTouched] = React.useState(
+    () => (post?.seoKeywords.length ?? 0) > 0,
+  );
+  const suggestedKeywords = React.useMemo(
+    () =>
+      suggestKeywords({
+        title: draft.title,
+        excerpt: draft.excerpt,
+        content: draft.content,
+        category: categories.find((c) => c.id === draft.categoryId)?.name ?? null,
+      }).join(', '),
+    [draft.title, draft.excerpt, draft.content, draft.categoryId, categories],
+  );
+  const keywordsValue = keywordsTouched ? draft.seoKeywords : suggestedKeywords;
 
   const body = (): SaveBlogPostBody => ({
     title: draft.title.trim(),
@@ -149,7 +178,7 @@ export function PostEditor({
     featured: draft.featured,
     seoTitle: draft.seoTitle,
     metaDescription: draft.metaDescription,
-    seoKeywords: draft.seoKeywords
+    seoKeywords: keywordsValue
       .split(',')
       .map((k) => k.trim())
       .filter(Boolean),
@@ -162,7 +191,7 @@ export function PostEditor({
   const save = useMutation({
     mutationFn: () =>
       post
-        ? browserFetch<AdminBlogPost>(`/blog/admin/posts/${post.id}`, {
+        ? browserFetch<AdminBlogPost>(`/blog/admin/posts/${post?.id}`, {
             method: 'PATCH',
             body: body(),
           })
@@ -188,8 +217,8 @@ export function PostEditor({
     mutationFn: async (next: 'publish' | 'unpublish') => {
       if (!post) throw new Error(t.blog.createdFirst);
       // Save first, so what goes live is what is on screen.
-      await browserFetch(`/blog/admin/posts/${post.id}`, { method: 'PATCH', body: body() });
-      return browserFetch<AdminBlogPost>(`/blog/admin/posts/${post.id}/${next}`, {
+      await browserFetch(`/blog/admin/posts/${post?.id}`, { method: 'PATCH', body: body() });
+      return browserFetch<AdminBlogPost>(`/blog/admin/posts/${post?.id}/${next}`, {
         method: 'POST',
       });
     },
@@ -218,7 +247,7 @@ export function PostEditor({
         uploadUrl: string;
         storageKey: string;
         publicUrl: string | null;
-      }>(`/blog/admin/posts/${post.id}/images/upload-url`, {
+      }>(`/blog/admin/posts/${post?.id}/images/upload-url`, {
         method: 'POST',
         body: { filename: file.name || 'image.jpg', purpose },
       });
@@ -288,26 +317,44 @@ export function PostEditor({
 
       {/* The bar: where the post stands, and the three presses. Sticky, so
           Save is never a scroll away on a long article. */}
-      <div className="bg-background/90 sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-lg px-1 py-2 backdrop-blur">
-        <Badge variant={published ? 'success' : 'warning'}>
-          {published ? t.blog.statusPublished : t.blog.statusDraft}
-        </Badge>
-        {post && published && (
-          <Link
-            href={postPath(post)}
-            target="_blank"
-            className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
-          >
-            {t.blog.viewOnBlog} <ExternalLink className="size-3" aria-hidden />
-          </Link>
-        )}
-        <div className="ml-auto flex flex-wrap gap-2">
+      <div className="bg-background/90 sticky top-0 z-10 -mx-1 flex flex-col gap-2 rounded-lg px-1 py-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex items-center gap-2">
+          <Badge variant={published ? 'success' : 'warning'}>
+            {published ? t.blog.statusPublished : t.blog.statusDraft}
+          </Badge>
+          {post && published && (
+            <Link
+              href={postPath(post)}
+              target="_blank"
+              className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+            >
+              {t.blog.viewOnBlog} <ExternalLink className="size-3" aria-hidden />
+            </Link>
+          )}
           {post && (
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className="text-danger"
+              className="text-danger ml-auto sm:hidden"
+              loading={remove.isPending}
+              onClick={() => {
+                if (window.confirm(t.blog.confirmDelete)) remove.mutate();
+              }}
+            >
+              <Trash2 aria-hidden /> {t.blog.deletePost}
+            </Button>
+          )}
+        </div>
+        {/* On a phone the two actions share the row and are thumb-sized; on a
+            laptop they sit at the right of the badge as before. */}
+        <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap">
+          {post && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-danger hidden sm:inline-flex"
               loading={remove.isPending}
               onClick={() => {
                 if (window.confirm(t.blog.confirmDelete)) remove.mutate();
@@ -320,6 +367,7 @@ export function PostEditor({
             type="submit"
             size="sm"
             variant="outline"
+            className="min-h-11 sm:min-h-9"
             loading={save.isPending}
             disabled={!ready || busy}
           >
@@ -329,6 +377,7 @@ export function PostEditor({
             <Button
               type="button"
               size="sm"
+              className="min-h-11 sm:min-h-9"
               loading={publish.isPending}
               disabled={!ready || busy}
               onClick={() => publish.mutate('publish')}
@@ -341,6 +390,7 @@ export function PostEditor({
               type="button"
               size="sm"
               variant="outline"
+              className="min-h-11 sm:min-h-9"
               loading={publish.isPending}
               disabled={busy}
               onClick={() => {
@@ -466,13 +516,13 @@ export function PostEditor({
                   value={draft.content}
                   onChange={(event) => set('content', event.target.value)}
                   rows={22}
-                  className="min-h-[28rem] rounded-none border-0 font-mono text-sm leading-relaxed focus-visible:ring-0"
+                  className="min-h-[20rem] rounded-none border-0 font-mono text-sm leading-relaxed focus-visible:ring-0 sm:min-h-[28rem]"
                   required
                 />
               ) : (
-                <div className="min-h-[28rem] p-5">
-                  {post && draft.content === post.content ? (
-                    <ArticleBody html={post.contentHtml} />
+                <div className="min-h-[20rem] p-4 sm:min-h-[28rem] sm:p-5">
+                  {post && draft.content === post?.content ? (
+                    <ArticleBody html={post?.contentHtml} />
                   ) : (
                     <p className="text-muted text-sm">{t.blog.previewNeedsSave}</p>
                   )}
@@ -480,12 +530,22 @@ export function PostEditor({
               )}
             </div>
           </Field>
+
+          {/* Body images live beside the editor, not inside it: the editor is a
+          form that saves as one row, and an upload is not a field of it. */}
+          <BlogMediaPanel postId={post?.id || ''} initialImages={images} />
         </div>
 
         {/* ---- The side: filing, pictures, SEO ---- */}
         <div className="space-y-5">
           <Card>
-            <CardContent className="space-y-4 p-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FolderOpen className="text-primary size-4" aria-hidden /> {t.blog.filingSection}
+              </CardTitle>
+              <CardDescription>{t.blog.filingHint}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Field label={t.blog.fieldCategory} htmlFor="post-category">
                 <Select
                   id="post-category"
@@ -601,11 +661,28 @@ export function PostEditor({
                 htmlFor="post-keywords"
                 hint={t.blog.fieldSeoKeywordsHint}
               >
-                <Input
-                  id="post-keywords"
-                  value={draft.seoKeywords}
-                  onChange={(event) => set('seoKeywords', event.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="post-keywords"
+                    value={keywordsValue}
+                    onChange={(event) => {
+                      setKeywordsTouched(true);
+                      set('seoKeywords', event.target.value);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    title={t.blog.suggestKeywords}
+                    onClick={() => {
+                      set('seoKeywords', suggestedKeywords);
+                      setKeywordsTouched(false);
+                    }}
+                  >
+                    <RefreshCw aria-hidden /> {t.blog.suggestKeywords}
+                  </Button>
+                </div>
               </Field>
               <Field
                 label={t.blog.fieldCanonicalUrl}
@@ -673,7 +750,7 @@ function ToolbarButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="hover:bg-surface text-muted hover:text-foreground grid size-8 place-items-center rounded-md [&_svg]:size-4"
+      className="hover:bg-surface text-muted hover:text-foreground grid size-10 place-items-center rounded-md sm:size-8 [&_svg]:size-4"
     >
       {children}
     </button>

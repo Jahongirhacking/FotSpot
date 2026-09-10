@@ -26,6 +26,7 @@ const ALLOWED_TAGS = [
   'code',
   'pre',
   'hr',
+  'iframe',
 ];
 
 export function sanitizeArticle(html: string | null | undefined): string {
@@ -35,8 +36,16 @@ export function sanitizeArticle(html: string | null | undefined): string {
     allowedAttributes: {
       a: ['href', 'title', 'rel', 'target'],
       img: ['src', 'alt', 'loading'],
+      figure: ['class'],
+      iframe: ['src', 'title', 'loading', 'allow', 'allowfullscreen', 'referrerpolicy'],
     },
     allowedSchemes: ['http', 'https', 'mailto'],
+    allowedIframeHostnames: ['www.youtube-nocookie.com'],
+    allowedClasses: { figure: ['video'] },
+    // A frame whose address was refused is left empty by the host filter;
+    // an empty frame is a grey box on the page, so it goes entirely.
+    exclusiveFilter: (frame: { tag: string; attribs: Record<string, string> }) =>
+      frame.tag === 'iframe' && !frame.attribs.src,
   });
 }
 

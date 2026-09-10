@@ -45,3 +45,40 @@ export async function uploadToStorage(
     throw new ApiError(response.status, messages.rejected);
   }
 }
+
+/**
+ * The same PUT, reporting progress.
+ *
+ * `fetch` cannot say how much of a body has gone up, and a picture on a
+ * mobile connection takes long enough that a bar which moves is the
+ * difference between "working" and "stuck". `XMLHttpRequest` still has the
+ * upload progress event, so this is the one place it is used. The error
+ * distinction from `uploadToStorage` is kept: a request that never completed
+ * (CORS, offline) is `blocked`; a status R2 refused is `rejected`.
+ */
+export function uploadToStorageWithProgress(
+  uploadUrl: string,
+  file: File | Blob,
+  messages: { blocked: string; rejected: string },
+  onProgress: (fraction: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
+    };
+    xhr.onerror = () => reject(new ApiError(0, messages.blocked));
+    xhr.onabort = () => reject(new ApiError(0, messages.blocked));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(1);
+        resolve();
+      } else {
+        reject(new ApiError(xhr.status, messages.rejected));
+      }
+    };
+    xhr.send(file);
+  });
+}

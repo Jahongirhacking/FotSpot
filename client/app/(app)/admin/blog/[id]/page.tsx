@@ -1,14 +1,14 @@
+import { Alert } from '@/components/ui/Feedback';
+import { ApiError } from '@/lib/api/client';
+import { blog } from '@/lib/api/resources';
+import type { BlogCategory, BlogPostImage } from '@/lib/api/types';
+import { getServerT } from '@/lib/i18n/server';
+import { isAdminActing } from '@/lib/roles';
+import { getSession } from '@/lib/session';
+import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { ApiError } from '@/lib/api/client';
-import { blog } from '@/lib/api/resources';
-import type { BlogCategory } from '@/lib/api/types';
-import { getSession } from '@/lib/session';
-import { isAdminActing } from '@/lib/roles';
-import { getServerT } from '@/lib/i18n/server';
-import { Alert } from '@/components/ui/Feedback';
 import { PostEditor } from '../PostEditor';
 
 export const metadata: Metadata = { title: 'Edit post' };
@@ -38,7 +38,10 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   }
-  const categories = await blog.categories(opts).catch(() => [] as BlogCategory[]);
+  const [categories, images] = await Promise.all([
+    blog.categories(opts).catch(() => [] as BlogCategory[]),
+    blog.listImages(id, opts).catch(() => [] as BlogPostImage[]),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -51,7 +54,7 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
       <h1 className="text-xl font-bold">{t.blog.editPost}</h1>
       {/* Keyed on the post so a save that changed the row remounts the form
           with the row as saved. */}
-      <PostEditor key={post.updatedAt} post={post} categories={categories} />
+      <PostEditor key={post.updatedAt} post={post} categories={categories} images={images} />
     </div>
   );
 }
