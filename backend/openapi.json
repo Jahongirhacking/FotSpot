@@ -6694,6 +6694,26 @@
         ]
       }
     },
+    "/api/v1/blog/spotlight": {
+      "get": {
+        "operationId": "blog_spotlight",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The article sidebar: six players and six academies picked at random from\nwhat the public directory already shows. A different six on every call.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
     "/api/v1/blog/posts/{slug}": {
       "get": {
         "operationId": "blog_bySlug",

@@ -92,6 +92,10 @@ function build(row: Record<string, unknown> | null = ROW) {
         ? (arg as (t: typeof tx) => unknown)(tx)
         : Promise.all(arg as Promise<unknown>[]),
     ),
+    // The random picks: first call players, second call academies.
+    $queryRaw: jest.fn(async (..._args: unknown[]): Promise<{ id: string }[]> => []),
+    playerProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
+    academyProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
   };
   const storage = {
     publicUrlOrNull: (key: string | null) => (key ? `https://cdn.example/${key}` : null),
@@ -345,5 +349,92 @@ describe('routes — who may press what', () => {
   ] as const)('%s is for admins only', (handler) => {
     expect(on(handler, ROLES_KEY)).toEqual(['admin', 'super_admin']);
     expect(on(handler, IS_PUBLIC_KEY)).toBeUndefined();
+  });
+});
+
+describe('spotlight — the sidebar picks', () => {
+  const year = new Date().getFullYear();
+
+  it('returns the random order, the age band instead of the birth date, and no contacts', async () => {
+    const { service, prisma } = build();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ id: 'p-2' }, { id: 'p-1' }])
+      .mockResolvedValueOnce([{ id: 'a-1' }]);
+    prisma.playerProfile.findMany.mockResolvedValue([
+      {
+        id: 'p-1',
+        firstName: 'Ali',
+        lastName: 'Karimov',
+        birthDate: new Date(`${year - 15}-01-01`),
+        primaryPosition: 'CM',
+        region: 'Toshkent',
+        user: { username: 'ali', avatarKey: 'public/avatars/ali.jpg' },
+      },
+      {
+        id: 'p-2',
+        firstName: 'Bobur',
+        lastName: 'Tosh',
+        birthDate: new Date(`${year - 25}-01-01`),
+        primaryPosition: null,
+        region: null,
+        user: { username: null, avatarKey: null },
+      },
+    ]);
+    prisma.academyProfile.findMany.mockResolvedValue([
+      {
+        id: 'a-1',
+        name: 'Bunyodkor',
+        region: 'Toshkent',
+        district: 'Yakkasaroy',
+        logoKey: 'public/academies/a-1/logo.png',
+        trials: [{ id: 't-1' }, { id: 't-2' }],
+      },
+    ]);
+
+    const result = await service.spotlight();
+
+    expect(result.players.map((p) => p.id)).toEqual(['p-2', 'p-1']);
+    expect(result.players[1]).toEqual({
+      id: 'p-1',
+      username: 'ali',
+      firstName: 'Ali',
+      lastName: 'Karimov',
+      avatarUrl: 'https://cdn.example/public/avatars/ali.jpg',
+      primaryPosition: 'CM',
+      region: 'Toshkent',
+      ageBand: 'U16',
+    });
+    expect(result.players[0].ageBand).toBe('Senior');
+    expect(JSON.stringify(result)).not.toMatch(/birthDate|phone|email|Key"/);
+    expect(result.academies).toEqual([
+      {
+        id: 'a-1',
+        name: 'Bunyodkor',
+        region: 'Toshkent',
+        district: 'Yakkasaroy',
+        logoUrl: 'https://cdn.example/public/academies/a-1/logo.png',
+        openTrials: 2,
+      },
+    ]);
+  });
+
+  it('asks the database for six of each, only public players and verified academies', async () => {
+    const { service, prisma } = build();
+
+    await service.spotlight();
+
+    const [players, academies] = prisma.$queryRaw.mock.calls.map((call) =>
+      (call[0] as TemplateStringsArray).join('?'),
+    );
+    expect(players).toMatch(/"isPrivate" = false AND u."isActive" = true/);
+    expect(players).toMatch(/ORDER BY random\(\)/);
+    expect(academies).toMatch(/"kind" = 'ACADEMY' AND a."status" = 'VERIFIED'/);
+    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(6);
+  });
+
+  it('caps a larger request', async () => {
+    const { service, prisma } = build();
+    await service.spotlight(50);
+    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(12);
   });
 });

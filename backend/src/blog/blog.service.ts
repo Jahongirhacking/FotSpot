@@ -16,6 +16,7 @@ import {
   PUBLIC_PREFIX,
 } from '../storage/storage.keys';
 import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
+import { ageAt, ageBandFor } from '../common/age.util';
 import { slugify, uniqueSlug } from './blog-slug.util';
 import { markdownToPlainText, readingMinutes, renderBlogMarkdown } from './blog-markdown.util';
 import type {
@@ -56,6 +57,10 @@ const CARD_SELECT = {
 } as const;
 
 const PUBLISHED: Prisma.BlogPostWhereInput = { status: 'PUBLISHED', publishedAt: { not: null } };
+
+/** How many players and how many academies an article's sidebar shows. */
+const SPOTLIGHT_SIZE = 6;
+const SPOTLIGHT_MAX = 12;
 
 /** How many the listing's sections show. */
 const HOME_LATEST = 9;
@@ -246,6 +251,94 @@ export class BlogService {
       publishedAt: row.publishedAt,
       updatedAt: row.updatedAt,
     }));
+  }
+
+  /**
+   * The article's sidebar: a handful of players and academies picked at
+   * random, so a reader who came for the news leaves having met the people
+   * the platform is about.
+   *
+   * Random in the database (`ORDER BY random()`) over the same set the public
+   * directory shows — no private accounts, no disabled ones, only verified
+   * academies — and shaped lean on purpose: a name, a face, a position, the
+   * age band and a region. Never a date of birth (README §11.3), never
+   * contacts. Two id picks and two hydrations, four cheap queries, and no
+   * cache so every article view is a different six.
+   */
+  async spotlight(limit = SPOTLIGHT_SIZE) {
+    const take = Math.min(Math.max(1, limit), SPOTLIGHT_MAX);
+    const [playerIds, academyIds] = await Promise.all([
+      this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT p."id"
+        FROM "PlayerProfile" p
+        JOIN "User" u ON u."id" = p."userId"
+        WHERE u."isPrivate" = false AND u."isActive" = true
+        ORDER BY random()
+        LIMIT ${take}`,
+      this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT a."id"
+        FROM "AcademyProfile" a
+        WHERE a."kind" = 'ACADEMY' AND a."status" = 'VERIFIED'
+        ORDER BY random()
+        LIMIT ${take}`,
+    ]);
+
+    const [players, academies] = await Promise.all([
+      this.prisma.playerProfile.findMany({
+        where: { id: { in: playerIds.map((row) => row.id) } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          birthDate: true,
+          primaryPosition: true,
+          region: true,
+          user: { select: { username: true, avatarKey: true } },
+        },
+      }),
+      this.prisma.academyProfile.findMany({
+        where: { id: { in: academyIds.map((row) => row.id) } },
+        select: {
+          id: true,
+          name: true,
+          region: true,
+          district: true,
+          logoKey: true,
+          trials: { where: { status: 'OPEN', type: 'GENERAL' }, select: { id: true } },
+        },
+      }),
+    ]);
+
+    // `IN` returns rows in storage order; put the random order back.
+    const order = (ids: { id: string }[]) => new Map(ids.map((row, index) => [row.id, index]));
+    const playerOrder = order(playerIds);
+    const academyOrder = order(academyIds);
+    const now = new Date();
+
+    return {
+      players: players
+        .sort((a, b) => (playerOrder.get(a.id) ?? 0) - (playerOrder.get(b.id) ?? 0))
+        .map((row) => ({
+          id: row.id,
+          username: row.user?.username ?? null,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          avatarUrl: this.storage.publicUrlOrNull(row.user?.avatarKey),
+          primaryPosition: row.primaryPosition,
+          region: row.region,
+          ageBand: ageBandFor(ageAt(row.birthDate, now)),
+        })),
+      academies: academies
+        .sort((a, b) => (academyOrder.get(a.id) ?? 0) - (academyOrder.get(b.id) ?? 0))
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          region: row.region,
+          district: row.district,
+          logoUrl: this.storage.publicUrlOrNull(row.logoKey),
+          openTrials: row.trials.length,
+        })),
+    };
   }
 
   /**

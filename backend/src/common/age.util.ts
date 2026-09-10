@@ -34,3 +34,25 @@ export function birthDateForAge(atDate: Date, age: number): Date {
   born.setFullYear(born.getFullYear() - age);
   return born;
 }
+
+/** The bands players are compared in — the same thresholds the client uses. */
+export type AgeBand = 'U8' | 'U10' | 'U12' | 'U14' | 'U16' | 'U18' | 'U21' | 'Senior';
+
+/**
+ * The band an age falls in.
+ *
+ * Shared because it is what stands in for a date of birth everywhere a
+ * stranger reads a player (README §11.3): the profile, search, and any list
+ * that promotes players. Two copies of these thresholds would drift, and a
+ * player who is U16 on one screen and U18 on another is a bug a parent notices.
+ */
+export function ageBandFor(age: number): AgeBand {
+  if (age < 8) return 'U8';
+  if (age < 10) return 'U10';
+  if (age < 12) return 'U12';
+  if (age < 14) return 'U14';
+  if (age < 16) return 'U16';
+  if (age < 18) return 'U18';
+  if (age < 21) return 'U21';
+  return 'Senior';
+}

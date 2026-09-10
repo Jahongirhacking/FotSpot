@@ -49,6 +49,16 @@ export class BlogController {
     return this.blog.sitemapEntries();
   }
 
+  /**
+   * The article sidebar: six players and six academies picked at random from
+   * what the public directory already shows. A different six on every call.
+   */
+  @Public()
+  @Get('spotlight')
+  spotlight() {
+    return this.blog.spotlight();
+  }
+
   /** A published post, rendered, with related posts. A guest reads the same page. */
   @Public()
   @Get('posts/:slug')
