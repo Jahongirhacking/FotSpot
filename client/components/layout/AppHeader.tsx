@@ -14,7 +14,6 @@ import { useI18n } from './I18nProvider';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { NotificationBell } from './NotificationBell';
 import { ProfileMenu } from './ProfileMenu';
-import { RoleSwitcher } from './RoleSwitcher';
 import { useSession } from './SessionProvider';
 import { ThemeToggle } from './ThemeToggle';
 import { navForRole } from './nav';
@@ -175,7 +174,6 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
               signed-in controls — and a way in, rather than a forced redirect. */}
           {isAuthenticated ? (
             <>
-              <RoleSwitcher />
               <ThemeToggle compact />
               <LanguageSwitcher compact />
               <NotificationBell />

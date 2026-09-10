@@ -1,9 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ExternalLink, FileText, Pencil, Search } from 'lucide-react';
-import type { BlogPostCard, BlogPostStatus } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -11,8 +7,12 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Input } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import type { BlogPostCard, BlogPostStatus } from '@/lib/api/types';
 import { postPath } from '@/lib/blog';
 import { cn, formatDateTime } from '@/lib/utils';
+import { ExternalLink, FileText, Pencil, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Row = BlogPostCard & { status: BlogPostStatus; createdAt: string };
 
@@ -153,17 +153,17 @@ export function AdminPostList({
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {post.status === 'PUBLISHED' && (
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        aria-label={t.blog.viewOnBlog}
-                        title={t.blog.viewOnBlog}
-                      >
-                        <Link href={postPath(post)} target="_blank">
+                      <Link href={postPath(post)} target="_blank">
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t.blog.viewOnBlog}
+                          title={t.blog.viewOnBlog}
+                        >
                           <ExternalLink aria-hidden />
-                        </Link>
-                      </Button>
+                        </Button>
+                      </Link>
                     )}
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/admin/blog/${post.id}`}>
