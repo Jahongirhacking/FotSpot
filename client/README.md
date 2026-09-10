@@ -36,24 +36,30 @@ npm run typecheck
 
 ```
 app/
-├── layout.tsx                  # root: fonts, providers, theme
-├── page.tsx                     # guest landing
-├── (auth)/                      # login · register — no app chrome
-├── welcome/                     # first-login role discovery (README §1.2.2)
-├── (app)/                       # authenticated shell: header, role switcher, nav
-│   ├── dashboard/                # role-aware home (README §1.2.1)
-│   ├── players/                  # search + [id] public profile
-│   ├── academies/  trials/  recommendations/  notifications/  settings/
-│   └── onboarding/player/        # age-gated player profile wizard (README §11.1)
-└── api/auth/                     # route handlers that set httpOnly session cookies
+├── layout.tsx  page.tsx          # root providers · guest landing
+├── (auth)/                       # login · register · forgot-password — no app chrome
+├── welcome/  onboarding/player/  # first-login role discovery (§1.2.2) · player wizard
+├── (app)/                        # app shell (header, role switcher, nav); public pages are
+│   │                             # reachable here as a guest, protected ones redirect to login
+│   ├── dashboard/  feed/  players/  academies/  trials/  scouts/  recommendations/
+│   ├── invitations/  groups/  notifications/  profile/  settings/  playing-styles/
+│   ├── blog/  blog/[slug]         # public blog with SEO metadata, JSON-LD and sitemap entries
+│   └── admin/                    # users · admins · roles · academies · moderation · requests ·
+│                                 # audit logs · tariff plans · blog (ADMIN / SUPER_ADMIN)
+├── api/auth/  api/proxy/         # route handlers: httpOnly session cookies, token-attaching proxy
+├── sitemap.ts  robots.ts         # SEO
+└── contact-us/  privacy/  terms/
 components/
-├── ui/                           # primitives (button, card, input, dialog, …)
-└── player/  layout/  …            # domain components — PlayerCard lives here
+├── ui/                           # hand-written primitives (see components/ui/README.md)
+├── layout/                       # AppHeader, nav per role, Session/I18n providers
+└── player/ academy/ trials/ blog/ shared/ auth/ landing/ legal/
 lib/
-├── api/                          # one typed wrapper module per backend resource
-├── schemas/                      # Zod, one per backend DTO
-├── stores/                       # Zustand (client-only UI state)
-└── roles.ts                      # active-role priority + persistence helpers
+├── api/                          # client.ts (server fetch), browser.ts (client fetch via proxy),
+│                                 # resources.ts (every endpoint), types.ts (mirrors backend DTOs)
+├── i18n/                         # uz · ru · en dictionaries; uz defines the Dictionary type
+├── schemas/                      # Zod (auth, player)
+└── seo.ts  structured-data.ts  session.ts  roles.ts  …  # pure helpers
+hooks/                            # useRequireAuth, useNotificationSocket, useWindowedList
 proxy.ts                          # route protection (Next 16 renamed middleware → proxy)
 ```
 
@@ -64,11 +70,14 @@ The backend issues a short-lived access token plus a rotating, device-bound refr
 under `app/api/auth/` — never in `localStorage`, which is readable by any injected script.
 
 - `POST /api/auth/login` → calls the NestJS API, sets `fs_access` + `fs_refresh` httpOnly cookies.
-- `POST /api/auth/refresh` → rotates. Called by the server-side fetch wrapper on a 401.
+- `POST /api/auth/refresh` → rotates. Client requests go through `/api/proxy/*`, which attaches
+  the token and refreshes **once per tab** on a 401 — the backend treats a second use of a
+  rotated refresh token as a replay and revokes the session.
 - `POST /api/auth/logout` → revokes server-side and clears cookies.
 
-`proxy.ts` guards authenticated route groups and redirects unauthenticated users to `/login`
-with a `next` parameter so they land where they were going.
+`proxy.ts` guards the authenticated prefixes and redirects to `/login?next=…`; public pages
+(players, academies, trials, blog) render for guests, and guest-visible actions (like, follow,
+apply) send them to login through `useRequireAuth()`.
 
 ### Active role
 
@@ -78,9 +87,8 @@ paint is correct) and is **deliberately not cleared on logout** — that is the 
 it is validated against the roles the user actually holds now, falling back by the priority order
 in `lib/roles.ts`. Every real authorization decision happens in the backend guards.
 
-> Long term this belongs on the user record (`users.last_active_role`) so it follows the account
-> across devices. The backend has no such column yet, so the cookie is the current implementation
-> and it is per-device. Adding the column is the only change needed to make it cross-device.
+> The cookie is per-device. Moving it to the user record would make it follow the account across
+> devices; nothing else would need to change.
 
 ### Data fetching
 
@@ -104,11 +112,16 @@ Constraints that come from the product, not from taste (`../README.md` §14, §2
 
 ## Status
 
-Built: guest landing · login/register (email + phone OTP) · first-login role discovery · age-gated
-player onboarding · role-aware dashboards · role switcher · PlayerCard · player search and profile ·
-academies · trials + apply · recommendations (create, mine, ranked academy inbox) · notifications ·
-session/device management.
+Built: guest landing · login/register (email, phone OTP, Google, Telegram; forced password set
+after social sign-in) · first-login role discovery · age-gated player onboarding · role-aware
+dashboards and role switcher · PlayerCard, attributes and rating history · clip upload with
+client-side processing, feed, engagement and moderation · player search and profiles (social
+links; contacts gated to the player's academy) · academies with squads, groups, invitations and
+scout trust · scouts and recommendations (create, mine, ranked academy inbox) · trials (global
+and private, stage tabs, participants, verdicts, squad candidates) · notifications (in-app,
+Socket.IO, Telegram) · settings, sessions and account requests · admin area · public blog with
+admin editor · legal pages · uz/ru/en i18n · SEO (metadata, JSON-LD, sitemap) · light/dark theme.
 
 Not built: guardian consent enforcement (§11 — a launch blocker on the backend too), Combine and
-Player Index (§13), i18n message extraction (§14 — copy is currently English-only), Telegram
-surface, offline trial-day mode, tests (`CLAUDE.md` §9 specifies Vitest + Playwright).
+Player Index (§13), offline trial-day mode, a client test runner (`node:test` specs exist beside
+some `lib/` modules but nothing runs them yet — see `CLAUDE.md` §5).

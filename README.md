@@ -24,7 +24,7 @@ Technical Specification (TZ) + Technical Solution (TY) · Version 2.0
 
 | §                                                                               | Topic                                             | Status                                        |
 | ------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------- |
-| [1](#1-product-overview)                                                        | Product overview & MVP spec                       | **MVP — API implemented, client pending**     |
+| [1](#1-product-overview)                                                        | Product overview & MVP spec                       | **MVP — implemented (API + client)**          |
 | [2](#2-academy-admission-process-real-world-model)                              | Real-world admission paths                        | MVP (informs modelling)                       |
 | [3](#3-post-acceptance-player-lifecycle)–[8](#8-recommendation-value-long-term) | Post-acceptance lifecycle, pro transition, badges | **Phase 2 — deferred**                        |
 | [9](#9-scope-mvp-vs-phase-15--phase-2)                                          | Scope split                                       | Reference                                     |
@@ -380,7 +380,9 @@ private working record, not a discovery ranking (§21.5).
 
 Images and videos, categorised: Dribbling · Passing · Shooting · Sprint · Match Highlights.
 Storage on Cloudflare R2 (S3-compatible), metadata in PostgreSQL. Upload is via presigned
-PUT (stubbed in the MVP). Transcoding/duration limits: §14.
+PUT straight from the browser; the API transcodes the clip in place and extracts a poster.
+A clip is visible to others only once a moderator has verified it; processing state never
+decides visibility. Transcoding/duration limits: §14.
 
 ### 1.8. Recommendation system
 
@@ -715,9 +717,10 @@ Phase 2 tables are listed once, in §10.
 
 ### 1.15. Backend architecture
 
-NestJS **modular monolith**. Modules: Auth · Users · Players · Coaches · Academies · Media ·
-Recommendations · Trials · Notifications · Moderation · Admin · RBAC · Audit.
-Persistence: Prisma + PostgreSQL 16. Details and rationale: [`backend/CLAUDE.md`](./backend/CLAUDE.md).
+NestJS **modular monolith**. Modules: Auth · Users · RBAC · Players · Coaches · Academies ·
+Follows · Media · Recommendations · Trials · Notifications · Moderation · Requests · Admin ·
+Insights · Tariffs · Blog, over Storage (R2) · Email · SMS · Telegram · Redis · Audit ·
+Rate-limit. Persistence: Prisma + PostgreSQL 16. Details: [`backend/CLAUDE.md`](./backend/CLAUDE.md).
 
 ### 1.16. Frontend architecture
 
@@ -790,6 +793,16 @@ Analysis · Mobile Apps · Fantasy Football.
 
 **North star: players accepted into an academy through the platform.** Every other number is
 a leading indicator of that one. Full metric tree: §18.
+
+### 1.25. Blog
+
+A public, SEO-first editorial surface at `/blog` (visible to guests): posts in categories with a
+cover, excerpt, reading time and likes (one per signed-in user), featured / latest / this week /
+top sections, search, related posts, no comments. Every post carries its own SEO fields (title,
+meta description, keywords, canonical, Open Graph) and Article JSON-LD, and published posts join
+the sitemap; drafts never do. Slugs are generated from the title (lowercase Latin, Cyrillic
+transliterated, unique), editable by an admin, and never rewritten by a later title change.
+Written and published by admins and super admins only.
 
 ---
 
@@ -1613,6 +1626,8 @@ by Telegram which player joined which academy.
 | Super admin | User | Enable/disable · Change roles · Change tariff | Yes | Not on a super admin; not on self |
 | Super admin | User | **Delete account** | Yes | Acts on a `DELETE_ACCOUNT` request; removes card, clips and stored objects; never self, never a super admin |
 | Super admin | Tariff plans, permissions | Edit | Yes | Platform-wide settings are not a plain admin's |
+| Admin · Super admin | Blog | Create · Edit · Publish · Unpublish · Delete · Categories | Yes | `/admin/blog`; readers see published posts only |
+| Admin · Super admin | Clip | Retry processing | Yes | On a `PROCESSING`/`FAILED` clip; moderation status untouched |
 
 ### Self-profile restrictions, collected
 

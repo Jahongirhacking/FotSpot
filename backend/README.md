@@ -1,10 +1,13 @@
-# FotSpot Backend (MVP)
+# FotSpot Backend
 
-Minimal, necessary NestJS implementation of the FotSpot TZ/TY (see project
-`README.md`), scoped strictly to **section 1.23 MVP**:
+NestJS implementation of the FotSpot TZ/TY (see project `README.md`), scoped to
+**section 1.23 MVP** plus the items listed under "Beyond MVP" below, each built
+with explicit sign-off. Trials, recommendations and squad placement follow
+[`../TRIAL.md`](../TRIAL.md), which is canonical.
 
 Auth · RBAC · Player Profiles · Academy Profiles · Scout Recommendations ·
-Coach Assessments · Trial Management · Notifications · Moderation · Admin.
+Coach Assessments · Trial Management · Notifications · Moderation · Admin ·
+Media processing · Blog.
 
 Sections 3–8 of the spec (post-acceptance lifecycle, professional transition,
 badges, extended scout-impact scoring) are **Phase 1.5/2 per the spec's own
@@ -15,22 +18,13 @@ and friends don't conflict with anything here.
 ## Project Setup
 
 ```bash
-npx prisma generate
-```
-
-```bash
-sudo docker run --name fotspot-postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=fotspot \
-  -p 5432:5432 \
-  -d postgres:16
-```
-
-```bash
-sudo docker run --name fotspot-redis \
-  -p 6379:6379 \
-  -d redis:7
+docker compose up -d          # from the repo root: Postgres 16 + Redis 7
+cp .env.example .env          # local values only — see "Development stays local"
+pnpm install
+pnpm prisma:generate
+pnpm prisma:migrate           # applies migrations to the dev database
+pnpm seed                     # roles + the bootstrap super_admin (once)
+pnpm start:dev                # http://localhost:3000/api/v1 · Swagger at /docs
 ```
 
 ## Stack & why
@@ -50,12 +44,17 @@ sudo docker run --name fotspot-redis \
 - **ioredis** behind a `RedisService` (`src/redis/`) for the read-through cache
   in 1.19. Cache failures degrade to Postgres rather than erroring — Postgres
   stays authoritative, so nothing is lost when Redis is down.
-- **Jest** (`pnpm test`) for unit tests. Currently covering the pure reputation
-  utils; see "Testing" below.
-- **BullMQ** is declared as a dependency for the queue jobs in 1.18, but no
-  workers are implemented in this pass — video/thumbnail/email jobs aren't
-  "necessary and minimal" for a functioning MVP API and are pure
-  infrastructure wiring once real media/SMS/email providers exist.
+- **Jest** (`pnpm test`) for unit specs beside the code; see "Testing" below.
+- **BullMQ** on the same Redis for the jobs in 1.18 that exist today:
+  `media-processing` (ffmpeg transcode + poster, `MediaProcessor`), `trials`
+  (the delayed consequences of a verdict, undoable for 30 s), `invitations`
+  (delayed squad-invitation effects) and `telegram-delivery`. Workers are tuned
+  for an idle queue on a per-command-billed Redis — see "Managed Postgres and
+  Redis" below.
+- **Cloudflare R2** (S3 API) for objects, **Resend** for email, an HTTP SMS
+  gateway (`SmsService`), and a **Telegram bot** for operator alerts and
+  user notifications, all optional in development: each reports `sent: false`
+  and logs when its variables are missing.
 
 ## Deliberate stubs / extension points (called out in code comments)
 
@@ -66,9 +65,11 @@ interface with a clearly marked stub body, not faked as if it worked:
    sign-in" below. The old `POST /auth/oauth` is gone: it took an email
    alongside an unverified provider token and trusted it, which made it a way to
    sign in as any address a caller could name.
-2. **SMS delivery** (`AuthService.requestOtp`) — OTP is generated, hashed,
-   and stored correctly; in non-production it's echoed back in the response
-   (`devCode`) so the flow is testable without an SMS gateway (e.g. Eskiz).
+2. **SMS delivery** — `SmsService` posts to whatever gateway `SMS_API_URL`,
+   `SMS_API_TOKEN` and `SMS_SENDER` name. Without them the OTP is still
+   generated, hashed and stored, and outside production it is echoed back in
+   the response (`devCode`) so the flow is testable. Registration and password
+   codes behave the same way through `EmailService` without `RESEND_API_KEY`.
 
 **Cloudflare R2 is no longer a stub** — `StorageService` issues genuine
 presigned PUT and GET URLs. Two pieces of setup are required and neither can be
@@ -112,9 +113,9 @@ editing the JSON.
 
 Object keys are split into two tiers (`src/storage/storage.keys.ts`):
 
-- `public/avatars/…` and `public/academies/…` — the faces an account chose to
-  publish. Served straight from the CDN origin: cacheable, hotlinkable, no
-  signature and no expiry.
+- `public/avatars/…`, `public/academies/…` and `public/blog/<post>/…` — the
+  faces an account chose to publish, and blog covers. Served straight from the
+  CDN origin: cacheable, hotlinkable, no signature and no expiry.
 - `private/players/…` — player clips and their cover frames, plus the §12.1 age
   and identity documents. Reachable **only** through a signature this API mints
   per read, so removing the row genuinely ends access.
@@ -129,7 +130,7 @@ key's tier decides where the object is written *and* where it is read from:
 
 | Prefix     | Bucket             | Holds                              | Reached by            |
 | ---------- | ------------------ | ---------------------------------- | --------------------- |
-| `public/`  | `R2_PUBLIC_BUCKET` | avatars, academy logos and gallery | `R2_PUBLIC_BASE_URL`  |
+| `public/`  | `R2_PUBLIC_BUCKET` | avatars, academy imagery, blog covers | `R2_PUBLIC_BASE_URL`  |
 | `private/` | `R2_PRIVATE_BUCKET` | clips, cover frames, §12.1 docs    | presigned URL, 7 days |
 
 Two rules follow, and getting either wrong fails quietly:
@@ -263,14 +264,29 @@ does not appear.
   (`trial-eligibility.util.ts`). Trials are archived by hand only.
 - **Notifications** (1.12): persisted `Notification` rows + realtime push
   over the `notifications` Socket.IO namespace, fired for recommendation
-  outcomes, trial invitations/results, and verification results.
+  outcomes, trial invitations/results, squad invitations and verification
+  results. Users who linked Telegram also get them from the bot through the
+  `telegram-delivery` queue; the operator chat (`TELEGRAM_ADMIN_CHAT_ID`) is
+  told when a trial is announced and when a player joins an academy. Outside
+  production **every** Telegram message goes to that chat tagged `#DEV_ENV`
+  (and is dropped if it is unset), so development never messages real users.
 - **Moderation** (1.13): reports against users/media/academies/coaches,
   admin resolution, optional media takedown.
-- **Video review before publication** (1.7): every uploaded clip carries a second
-  status, `Media.moderationStatus`, defaulting to `UNVERIFIED`, and **public
-  visibility is the conjunction `status = ACTIVE AND moderationStatus =
-  VERIFIED`**. Nothing on the upload path can set it: only
-  `PATCH /moderation/media/:id/verify` (admin or super admin) publishes a clip.
+- **Video processing** (1.7, §14): the browser PUTs the original straight to
+  R2; `MediaProcessor` transcodes it with ffmpeg into a temporary key and, only
+  on success, copies the result over the same `storageKey` and extracts a
+  poster. `status` tracks that pipeline (`PROCESSING → ACTIVE`, or `FAILED`),
+  a stale-processing sweep re-queues clips stuck longer than
+  `MEDIA_PROCESSING_STALE_MINUTES`, and admins can press **Retry processing**
+  on a `PROCESSING`/`FAILED` clip (`PATCH /moderation/media/:id/retry`, same queue).
+- **Video review before publication** (1.7): every clip also carries
+  `Media.moderationStatus`, defaulting to `UNVERIFIED`. **Visibility is decided
+  by moderation, not by processing**: a clip is public when
+  `moderationStatus = VERIFIED` and `status` is `ACTIVE`, `PROCESSING` or
+  `FAILED` (`WATCHABLE_STATUSES`), so a verified clip stays up while it is
+  being re-encoded; an unverified one is never served to anyone but its
+  uploader and the moderation queue. Nothing on the upload path can set it:
+  only `PATCH /moderation/media/:id/verify` (admin or super admin) publishes a clip.
   `…/block` takes one down while keeping the row, its ratings and its engagement
   for the moderation record; `DELETE /moderation/media/:id` destroys the row and
   its objects and is **super admin only**, matching the rule that governs deleting
@@ -282,6 +298,15 @@ does not appear.
   clip is verified it is served to exactly one account, its uploader, and signed
   for fifteen minutes rather than seven days so a block takes effect when it is
   pressed.
+- **Blog** (`blog/`): public `GET /blog/home|posts|categories|posts/:slug|sitemap`
+  return published posts only; drafts 404 everywhere. Posts are Markdown,
+  rendered to sanitised HTML on save (`blog-markdown.util.ts`), with a slug made
+  from the title (`blog-slug.util.ts`: lowercase Latin, Cyrillic transliterated,
+  unique, admin-editable, never rewritten by a later title change), SEO fields
+  (seoTitle, metaDescription, keywords, canonical, OG) and one like per user
+  per post (`POST/DELETE /blog/posts/:slug/like`). `/blog/admin/*` is
+  `admin`/`super_admin` only: drafts, publish/unpublish (the first publish date
+  is kept), categories, and presigned cover/OG uploads under `public/blog/<post>/`.
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
   plain admins can verify coaches/academies/moderate/view audit logs but
   cannot create admins or manage roles/permissions — only `super_admin` can.
@@ -458,16 +483,17 @@ pnpm test          # unit specs, no infrastructure required
 pnpm test:cov      # with coverage
 ```
 
-Unit specs sit beside the code (`*.spec.ts`). Current coverage is the pure
-reputation logic — `scout-level.util.spec.ts` (tier boundaries, the geometric
-weight ladder, credibility aggregation) and `scout-trust.util.spec.ts` (trust
-multipliers, and the invariant that trust can never promote a scout a tier).
-Service-level specs with a mocked Prisma and e2e specs under a top-level
-`test/` dir are still to come — see `CLAUDE.md` §8.
+Unit specs sit beside the code (`*.spec.ts`, ~70 suites): pure utils
+(reputation, eligibility, slugs, storage keys, media visibility, ffmpeg
+argument building) and services run against small hand-written Prisma/Redis
+fakes — trials, recommendations, media moderation and processing, storage,
+blog, auth helpers. No infrastructure is needed and the whole run takes well
+under a minute. There is no e2e suite yet; one would live under `test/`
+against the docker-compose Postgres (`CLAUDE.md` §5).
 
-> `pnpm lint` currently crashes on Node 18 (ESLint 10's stylish formatter calls
-> `util.styleText`, added in Node 20). Use `npx eslint . -f compact` until the
-> toolchain moves to Node 20+. Unrelated to application code.
+Toolchain: Node 20+ (22 in use). `pnpm lint` runs `eslint .`; the `eslint`
+binary is not a direct devDependency, so under pnpm's strict layout it may
+report `eslint: not found` — add it before relying on the script.
 
 ## Deliberately not built (per MVP scope, 1.23 "Excluded" + section 9)
 
@@ -484,18 +510,9 @@ minors until it does.**
 
 ## Migrations
 
-The migration `20260729145853_add_sessions_follows_media_engagement_playing_style`
-was generated offline with `prisma migrate diff` (no database was reachable in
-the authoring environment) and has **not yet been applied or round-tripped
-against a live Postgres**. Before trusting it:
-
-```bash
-docker compose up -d postgres redis
-pnpm prisma:migrate         # applies and verifies against the dev database
-```
-
-Note it drops `User.refreshTokenHash` in favour of the `Session` table, so any
-existing logged-in users are signed out once applied.
+Schema changes are new migrations (`pnpm prisma:migrate` against the dev
+database), committed together with the `schema.prisma` change. Existing SQL
+under `prisma/migrations/` is history and is never edited.
 
 ## Deployment: migrations run on boot
 
