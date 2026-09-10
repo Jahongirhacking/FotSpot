@@ -534,6 +534,8 @@ export const en: Dictionary = {
     staffHint: 'Managers, coaches and scouts.',
     openInMaps: 'Open in maps',
     noTrialsNow: 'No trials posted right now.',
+    noTrialsNowHint: 'Follow the academy to hear the moment one is announced.',
+    noTrialsNowManagerHint: 'Announce a trial from the Trials page and eligible players will be told.',
     manageAcademies: 'Manage academies',
     noAcademyLinked: 'No academy is linked to your account',
     postTrial: 'Post a trial',
@@ -1753,6 +1755,11 @@ export const en: Dictionary = {
     explorePlayers: 'Find young talent by position, age and region.',
     exploreAcademies: 'Verified academies and what they are looking for.',
     exploreTrials: 'Open trials you can apply to today.',
+    /* The article sidebar — a random six of each, a different six every visit. */
+    asidePlayers: 'Players on FotSpot',
+    asideAcademies: 'Academies',
+    seeMore: 'See more',
+    asideOpenTrials: '{count} open trials',
     /* Admin — see app/(app)/admin/blog. */
     manage: 'Blog',
     manageHint: 'Write and publish stories: news, players, academies, signings, trials, updates.',

@@ -1248,3 +1248,31 @@ export interface BlogSitemapEntry {
   publishedAt: string | null;
   updatedAt: string;
 }
+
+/** A player as the article sidebar shows one — the band, never the birth date. */
+export interface SpotlightPlayer {
+  id: string;
+  username: string | null;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  primaryPosition: string | null;
+  region: string | null;
+  ageBand: AgeBand;
+}
+
+export interface SpotlightAcademy {
+  id: string;
+  name: string;
+  region: string | null;
+  district: string | null;
+  logoUrl: string | null;
+  /** Open global trials, for the small badge. */
+  openTrials: number;
+}
+
+/** Six of each, at random, for the article sidebar. */
+export interface BlogSpotlight {
+  players: SpotlightPlayer[];
+  academies: SpotlightAcademy[];
+}

@@ -12,6 +12,7 @@ import { breadcrumbLd } from '@/lib/structured-data';
 import { categoryPath, metaDescriptionFor, postPath } from '@/lib/blog';
 import { ArticleBody } from '@/components/blog/ArticleBody';
 import { LikeButton } from '@/components/blog/LikeButton';
+import { BlogAside } from '@/components/blog/BlogAside';
 import { PostCard } from '@/components/blog/PostCard';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -93,7 +94,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const session = await getSession();
   const { t } = await getServerT();
   // With a session the read is personal — `liked` — and skips the shared cache.
-  const post = await load(slug, session?.accessToken);
+  // The sidebar is a different six on every view, and losing it must not lose
+  // the article, so it is fetched beside the post and tolerated when it fails.
+  const [post, spotlight] = await Promise.all([
+    load(slug, session?.accessToken),
+    blog.spotlight({ cache: 'no-store' }).catch(() => null),
+  ]);
   if (!post) notFound();
 
   const description = metaDescriptionFor(post);
@@ -121,136 +127,148 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   };
 
   return (
-    <article className="mx-auto max-w-3xl">
-      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(article)} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLd(
-          breadcrumbLd([
-            { name: t.blog.title, path: '/blog' },
-            ...(post.category
-              ? [{ name: post.category.name, path: categoryPath(post.category.slug) }]
-              : []),
-            { name: post.title, path: postPath(post) },
-          ]),
-        )}
-      />
-
-      <nav className="mb-5">
-        <Link
-          href="/blog"
-          className="text-muted hover:text-foreground inline-flex items-center gap-1 text-sm"
-        >
-          <ArrowLeft className="size-4" aria-hidden /> {t.blog.title}
-        </Link>
-      </nav>
-
-      <header className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {post.category && (
-            <Link href={categoryPath(post.category.slug)}>
-              <Badge variant="primary">{post.category.name}</Badge>
-            </Link>
+    <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-10">
+      <article className="mx-auto w-full max-w-3xl min-w-0">
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(article)} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLd(
+            breadcrumbLd([
+              { name: t.blog.title, path: '/blog' },
+              ...(post.category
+                ? [{ name: post.category.name, path: categoryPath(post.category.slug) }]
+                : []),
+              { name: post.title, path: postPath(post) },
+            ]),
           )}
-          {post.featured && <Badge variant="accent">{t.blog.featured}</Badge>}
-        </div>
-        <h1 className="text-3xl leading-tight font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-          {post.title}
-        </h1>
-        <p className="text-muted text-lg leading-relaxed sm:text-xl">{post.excerpt}</p>
+        />
 
-        <div className="border-border flex flex-wrap items-center gap-x-5 gap-y-3 border-y py-3 text-sm">
-          <span className="flex items-center gap-2">
-            <Avatar
-              src={post.author.avatarUrl}
-              fallback={initials(post.author.name.split(' ')[0], post.author.name.split(' ')[1])}
-              className="size-8 text-xs"
-            />
-            <span className="font-medium">{post.author.name}</span>
-          </span>
-          {post.publishedAt && (
-            <span className="text-muted flex items-center gap-1.5">
-              <CalendarDays className="size-4" aria-hidden />
-              <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
-            </span>
-          )}
-          <span className="text-muted flex items-center gap-1.5">
-            <Clock className="size-4" aria-hidden />
-            {post.readingMinutes} {t.blog.minRead}
-          </span>
-          <span className="ml-auto">
-            <LikeButton slug={post.slug} liked={post.liked} likeCount={post.likeCount} />
-          </span>
-        </div>
-      </header>
+        <nav className="mb-5">
+          <Link
+            href="/blog"
+            className="text-muted hover:text-foreground inline-flex items-center gap-1 text-sm"
+          >
+            <ArrowLeft className="size-4" aria-hidden /> {t.blog.title}
+          </Link>
+        </nav>
 
-      {post.coverUrl && (
-        <figure className="mt-6">
-          <div className="bg-surface-2 relative aspect-[16/9] w-full overflow-hidden rounded-2xl">
-            <LoadingImage
-              src={post.coverUrl}
-              alt={post.coverAlt ?? post.title}
-              fetchPriority="high"
-              className="absolute inset-0 size-full object-cover"
-            />
+        <header className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {post.category && (
+              <Link href={categoryPath(post.category.slug)}>
+                <Badge variant="primary">{post.category.name}</Badge>
+              </Link>
+            )}
+            {post.featured && <Badge variant="accent">{t.blog.featured}</Badge>}
           </div>
-          {post.coverAlt && (
-            <figcaption className="text-muted mt-2 text-center text-xs">{post.coverAlt}</figcaption>
-          )}
-        </figure>
-      )}
+          <h1 className="text-3xl leading-tight font-extrabold tracking-tight sm:text-4xl md:text-5xl">
+            {post.title}
+          </h1>
+          <p className="text-muted text-lg leading-relaxed sm:text-xl">{post.excerpt}</p>
 
-      <div className="mt-8">
-        <ArticleBody html={post.contentHtml} />
-      </div>
+          <div className="border-border flex flex-wrap items-center gap-x-5 gap-y-3 border-y py-3 text-sm">
+            <span className="flex items-center gap-2">
+              <Avatar
+                src={post.author.avatarUrl}
+                fallback={initials(post.author.name.split(' ')[0], post.author.name.split(' ')[1])}
+                className="size-8 text-xs"
+              />
+              <span className="font-medium">{post.author.name}</span>
+            </span>
+            {post.publishedAt && (
+              <span className="text-muted flex items-center gap-1.5">
+                <CalendarDays className="size-4" aria-hidden />
+                <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+              </span>
+            )}
+            <span className="text-muted flex items-center gap-1.5">
+              <Clock className="size-4" aria-hidden />
+              {post.readingMinutes} {t.blog.minRead}
+            </span>
+            <span className="ml-auto">
+              <LikeButton slug={post.slug} liked={post.liked} likeCount={post.likeCount} />
+            </span>
+          </div>
+        </header>
 
-      <footer className="border-border mt-10 space-y-10 border-t pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-muted text-sm">{t.blog.likePrompt}</p>
-          <LikeButton slug={post.slug} liked={post.liked} likeCount={post.likeCount} size="lg" />
+        {post.coverUrl && (
+          <figure className="mt-6">
+            <div className="bg-surface-2 relative aspect-[16/9] w-full overflow-hidden rounded-2xl">
+              <LoadingImage
+                src={post.coverUrl}
+                alt={post.coverAlt ?? post.title}
+                fetchPriority="high"
+                className="absolute inset-0 size-full object-cover"
+              />
+            </div>
+            {post.coverAlt && (
+              <figcaption className="text-muted mt-2 text-center text-xs">
+                {post.coverAlt}
+              </figcaption>
+            )}
+          </figure>
+        )}
+
+        <div className="mt-8">
+          <ArticleBody html={post.contentHtml} />
         </div>
 
-        {/* Where the story leads on the platform — every article links the
+        <footer className="border-border mt-10 space-y-10 border-t pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted text-sm">{t.blog.likePrompt}</p>
+            <LikeButton slug={post.slug} liked={post.liked} likeCount={post.likeCount} size="lg" />
+          </div>
+
+          {/* Where the story leads on the platform — every article links the
             three things FotSpot is for, so a reader who arrived from a search
             has somewhere to go, and a crawler has the paths. */}
-        <section className="space-y-3">
-          <h2 className="text-base font-bold">{t.blog.exploreTitle}</h2>
-          <ul className="grid gap-3 sm:grid-cols-3">
-            <ExploreLink
-              href="/players"
-              icon={Search}
-              title={t.nav.players}
-              hint={t.blog.explorePlayers}
-            />
-            <ExploreLink
-              href="/academies"
-              icon={Building2}
-              title={t.nav.academies}
-              hint={t.blog.exploreAcademies}
-            />
-            <ExploreLink
-              href="/trials"
-              icon={Users}
-              title={t.nav.trials}
-              hint={t.blog.exploreTrials}
-            />
-          </ul>
-        </section>
-
-        {post.related.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold">{t.blog.related}</h2>
-            <ul className="grid gap-5 sm:grid-cols-3">
-              {post.related.map((row) => (
-                <li key={row.id}>
-                  <PostCard post={row} t={t} />
-                </li>
-              ))}
+          <section className="space-y-3">
+            <h2 className="text-base font-bold">{t.blog.exploreTitle}</h2>
+            <ul className="grid gap-3 sm:grid-cols-3">
+              <ExploreLink
+                href="/players"
+                icon={Search}
+                title={t.nav.players}
+                hint={t.blog.explorePlayers}
+              />
+              <ExploreLink
+                href="/academies"
+                icon={Building2}
+                title={t.nav.academies}
+                hint={t.blog.exploreAcademies}
+              />
+              <ExploreLink
+                href="/trials"
+                icon={Users}
+                title={t.nav.trials}
+                hint={t.blog.exploreTrials}
+              />
             </ul>
           </section>
-        )}
-      </footer>
-    </article>
+
+          {post.related.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold">{t.blog.related}</h2>
+              <ul className="grid gap-5 sm:grid-cols-3">
+                {post.related.map((row) => (
+                  <li key={row.id}>
+                    <PostCard post={row} t={t} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </footer>
+      </article>
+
+      {/* Beside the article on a wide screen, after it on a phone — the story
+        first, then the people it is about. */}
+      {spotlight && (
+        <aside className="mt-10 lg:mt-0" aria-label={t.blog.asidePlayers}>
+          <BlogAside spotlight={spotlight} t={t} />
+        </aside>
+      )}
+    </div>
   );
 }
 

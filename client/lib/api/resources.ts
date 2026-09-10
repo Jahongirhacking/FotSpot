@@ -63,6 +63,7 @@ import type {
   BlogPostCard,
   BlogPostStatus,
   BlogSitemapEntry,
+  BlogSpotlight,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -1688,6 +1689,9 @@ export const blog = {
 
   /** Every published post's address and dates — the sitemap's input. */
   sitemap: (opts: Opts = {}) => apiFetch<BlogSitemapEntry[]>('/blog/sitemap', opts),
+
+  /** Six random players and six random academies for an article's sidebar. */
+  spotlight: (opts: Opts = {}) => apiFetch<BlogSpotlight>('/blog/spotlight', opts),
 
   like: (slug: string, liked: boolean, opts: Opts = {}) =>
     apiFetch<{ liked: boolean; likeCount: number }>(

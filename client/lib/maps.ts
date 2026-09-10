@@ -68,3 +68,26 @@ export function locationText(parts: {
 }): string {
   return [parts.name, parts.region, parts.district].filter(Boolean).join(', ');
 }
+
+/**
+ * Yandex's map widget, for embedding the point on a page.
+ *
+ * The same provider as the link out, for the same reason — it is the map that
+ * knows the street. The widget is a plain iframe: no script, no API key and no
+ * tile server of our own, and the reader gets the map they would open anyway,
+ * already centred and pinned. `lang` follows the site's language so the
+ * labels read in the same script as the page around them.
+ */
+export function yandexMapEmbedUrl({
+  latitude,
+  longitude,
+  locale,
+}: {
+  latitude: number;
+  longitude: number;
+  locale: 'uz' | 'ru' | 'en';
+}): string {
+  const point = lonLat(latitude, longitude);
+  const lang = { uz: 'uz_UZ', ru: 'ru_RU', en: 'en_US' }[locale];
+  return `https://yandex.com/map-widget/v1/?ll=${point}&z=${PLACE_ZOOM - 1}&pt=${point},pm2rdm&lang=${lang}`;
+}

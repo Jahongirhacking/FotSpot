@@ -562,6 +562,9 @@ export const uz = {
     staffHint: 'Menejerlar, murabbiylar va skautlar.',
     openInMaps: 'Xaritada ochish',
     noTrialsNow: 'Hozircha sinovlar yo‘q.',
+    noTrialsNowHint: 'Akademiyaga obuna bo‘ling — sinov e’lon qilinishi bilan xabar olasiz.',
+    noTrialsNowManagerHint:
+      'Sinovlar sahifasidan sinov e’lon qiling — mos futbolchilarga xabar boradi.',
     manageAcademies: 'Akademiyalarni boshqarish',
     noAcademyLinked: 'Hisobingizga akademiya biriktirilmagan',
     postTrial: 'Sinov e’lon qilish',
@@ -1821,6 +1824,11 @@ export const uz = {
     explorePlayers: 'Pozitsiya, yosh va hudud bo‘yicha yosh iqtidorlarni toping.',
     exploreAcademies: 'Tasdiqlangan akademiyalar va ular kimni izlayotgani.',
     exploreTrials: 'Bugunoq ariza berish mumkin bo‘lgan ochiq sinovlar.',
+    /* Maqola yon paneli — har safar tasodifiy oltitadan. */
+    asidePlayers: 'FotSpotdagi futbolchilar',
+    asideAcademies: 'Akademiyalar',
+    seeMore: 'Ko‘proq',
+    asideOpenTrials: '{count} ta ochiq sinov',
     /* Admin — see app/(app)/admin/blog. */
     manage: 'Blog',
     manageHint:

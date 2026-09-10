@@ -532,6 +532,9 @@ export const ru: Dictionary = {
     staffHint: 'Менеджеры, тренеры и скауты.',
     openInMaps: 'Открыть на карте',
     noTrialsNow: 'Сейчас просмотров нет.',
+    noTrialsNowHint: 'Подпишитесь на академию — вы узнаете о просмотре сразу после анонса.',
+    noTrialsNowManagerHint:
+      'Объявите просмотр на странице «Просмотры» — подходящие игроки получат уведомление.',
     manageAcademies: 'Управление академиями',
     noAcademyLinked: 'К вашему аккаунту не привязана академия',
     postTrial: 'Опубликовать просмотр',
@@ -1762,6 +1765,11 @@ export const ru: Dictionary = {
     explorePlayers: 'Юные таланты по позиции, возрасту и региону.',
     exploreAcademies: 'Проверенные академии и кого они ищут.',
     exploreTrials: 'Открытые просмотры, на которые можно подать заявку сегодня.',
+    /* Боковая панель статьи — по шесть случайных, каждый раз новых. */
+    asidePlayers: 'Игроки на FotSpot',
+    asideAcademies: 'Академии',
+    seeMore: 'Показать ещё',
+    asideOpenTrials: 'Открытых просмотров: {count}',
     /* Admin — see app/(app)/admin/blog. */
     manage: 'Блог',
     manageHint:
