@@ -9,13 +9,14 @@ and [`client/CLAUDE.md`](./client/CLAUDE.md) — read the relevant one before to
 **FotSpot** is a football talent discovery platform for Uzbekistan connecting players, scouts,
 coaches and academies. Sources of truth, in order of authority:
 
-- [`TRIAL.md`](./TRIAL.md) — canonical domain logic for recommendations, trials and squad
+- [`TRIAL.md`](./docs/TRIAL.md) — canonical domain logic for recommendations, trials and squad
   placement. A trial is a real-life examination with a PASS/FAIL verdict by the assigned coach;
   there is no online review step. Where any other document disagrees, TRIAL.md wins.
 - [`README.md`](./README.md) — the product spec (TZ/TY). Section numbers are load-bearing and
   referenced from code and docs; never renumber §1–§10, append new material as §11+.
 - [`backend/README.md`](./backend/README.md) — what is actually implemented, including the
   items built beyond the §1.23 MVP with explicit sign-off.
+- [`BLOG.md`](./BLOG.md) — how admins write blog posts for search; what each editor field feeds.
 
 **Before implementing a feature, check whether it is MVP (§1.23), a signed-off extra, or Phase
 1.5/2 (README §3–§8, §11–§15). Do not build deferred features (academy history, pro transition,

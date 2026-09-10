@@ -304,7 +304,9 @@ does not appear.
   from the title (`blog-slug.util.ts`: lowercase Latin, Cyrillic transliterated,
   unique, admin-editable, never rewritten by a later title change), SEO fields
   (seoTitle, metaDescription, keywords, canonical, OG) and one like per user
-  per post (`POST/DELETE /blog/posts/:slug/like`). `/blog/admin/*` is
+  per post (`POST/DELETE /blog/posts/:slug/like`). `GET /blog/spotlight` draws
+  six public players and six verified academies at random for the article
+  sidebar — age band, never a birth date. `/blog/admin/*` is
   `admin`/`super_admin` only: drafts, publish/unpublish (the first publish date
   is kept), categories, and presigned cover/OG uploads under `public/blog/<post>/`.
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
