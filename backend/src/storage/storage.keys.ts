@@ -122,6 +122,20 @@ export function academyMediaKey(academyId: string, filename: string): string {
   return `${academyMediaPrefix(academyId)}${objectName(filename)}`;
 }
 
+/**
+ * Directory the blog's imagery lives in — covers and social images. Public:
+ * an article is published to the world, and its picture goes on the result
+ * card and the share preview. One directory per post, so a deleted post's
+ * pictures are findable.
+ */
+export function blogMediaPrefix(postId: string): string {
+  return `${PUBLIC_PREFIX}blog/${postId}/`;
+}
+
+export function blogMediaKey(postId: string, filename: string): string {
+  return `${blogMediaPrefix(postId)}${objectName(filename)}`;
+}
+
 export function isPublicKey(key: string): boolean {
   return key.startsWith(PUBLIC_PREFIX);
 }

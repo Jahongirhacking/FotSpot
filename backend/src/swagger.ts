@@ -40,6 +40,11 @@ export const API_TAGS = [
       'The three plan tiers and their limits. Reading is open to any account; editing a tier, and moving an account between tiers, are super-admin only.',
   },
   {
+    name: 'blog',
+    description:
+      'The editorial blog — news, young players, academies, signings, trials, FotSpot updates. Reading is public; writing is admin-only.',
+  },
+  {
     name: 'insights',
     description:
       'Weekly recruiting activity and per-academy counters. Never exposed to players — see InsightsController.',

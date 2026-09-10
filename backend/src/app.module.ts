@@ -17,6 +17,7 @@ import { AuthModule } from './auth/auth.module';
 import { CoachesModule } from './coaches/coaches.module';
 import { FollowsModule } from './follows/follows.module';
 import { InsightsModule } from './insights/insights.module';
+import { BlogModule } from './blog/blog.module';
 import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -107,6 +108,7 @@ import { AppController } from './app.controller';
     ModerationModule,
     AdminModule,
     InsightsModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [
