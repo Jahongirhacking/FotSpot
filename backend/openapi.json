@@ -7064,7 +7064,110 @@
             "bearer": []
           }
         ],
-        "summary": "A presigned PUT for the post's cover or share image, under `public/blog/<post>/`.",
+        "summary": "A presigned PUT for a post image (cover, share or body), under `public/blog/<post>/`.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/images": {
+      "get": {
+        "operationId": "blog_listImages",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The post's body images with their public URLs, newest first.",
+        "tags": [
+          "blog"
+        ]
+      },
+      "post": {
+        "operationId": "blog_confirmImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmBlogImageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "After the PUT: checks the object is there and is an image, then lists it with the post.",
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/v1/blog/admin/posts/{id}/images/{imageId}": {
+      "delete": {
+        "operationId": "blog_deleteImage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "imageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Removes the image from storage and from the post.",
         "tags": [
           "blog"
         ]
@@ -9251,15 +9354,34 @@
           },
           "purpose": {
             "type": "string",
-            "description": "Which picture: the post's cover (default) or its share image.",
+            "description": "Which picture: the post's cover (default), its share image, or one for the body.",
             "enum": [
               "cover",
-              "og"
+              "og",
+              "body"
             ]
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The browser's MIME type, so the presigned PUT is bound to an image.",
+            "maxLength": 100
           }
         },
         "required": [
           "filename"
+        ]
+      },
+      "ConfirmBlogImageDto": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "storageKey"
         ]
       },
       "SaveCategoryDto": {

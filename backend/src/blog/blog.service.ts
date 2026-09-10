@@ -22,6 +22,7 @@ import { markdownToPlainText, readingMinutes, renderBlogMarkdown } from './blog-
 import type {
   AdminListPostsDto,
   BlogImageUploadDto,
+  ConfirmBlogImageDto,
   ListPostsDto,
   SaveCategoryDto,
   SavePostDto,
@@ -57,6 +58,11 @@ const CARD_SELECT = {
 } as const;
 
 const PUBLISHED: Prisma.BlogPostWhereInput = { status: 'PUBLISHED', publishedAt: { not: null } };
+
+/** What the body-image endpoints accept: a browser-displayable picture. */
+function isImageType(contentType: string): boolean {
+  return /^image\/(jpeg|png|webp|gif|avif|svg\+xml)$/i.test(contentType.trim());
+}
 
 /** How many players and how many academies an article's sidebar shows. */
 const SPOTLIGHT_SIZE = 6;
@@ -548,11 +554,18 @@ export class BlogService {
   async remove(actorId: string, id: string) {
     const post = await this.prisma.blogPost.findUnique({
       where: { id },
-      select: { id: true, slug: true, coverKey: true, ogImageKey: true },
+      select: {
+        id: true,
+        slug: true,
+        coverKey: true,
+        ogImageKey: true,
+        images: { select: { storageKey: true } },
+      },
     });
     if (!post) throw new NotFoundException('Post not found');
     await this.prisma.blogPost.delete({ where: { id } });
-    for (const key of [post.coverKey, post.ogImageKey]) {
+    const keys = [post.coverKey, post.ogImageKey, ...post.images.map((row) => row.storageKey)];
+    for (const key of keys) {
       if (key) await this.storage.deleteObject(key).catch(() => undefined);
     }
     await this.audit.record(actorId, AuditAction.BLOG_POST_DELETED, {
@@ -567,14 +580,101 @@ export class BlogService {
    * directory. The key is minted here; the client cannot steer it.
    */
   async imageUploadUrl(postId: string, dto: BlogImageUploadDto) {
+    await this.assertPost(postId);
+    if (dto.contentType && !isImageType(dto.contentType)) {
+      throw new BadRequestException('Only images can be uploaded here');
+    }
+    const storageKey = blogMediaKey(postId, dto.filename);
+    const signed = await this.storage.createUploadUrl(storageKey, dto.contentType);
+    return { ...signed, publicUrl: this.storage.publicUrlOrNull(storageKey) };
+  }
+
+  // ---------- Body images (admin) ----------
+
+  /**
+   * The pictures uploaded for a post's body, newest first, each with the
+   * public URL an admin pastes into the Markdown. Keys stay on the server.
+   */
+  async listImages(postId: string) {
+    await this.assertPost(postId);
+    const rows = await this.prisma.blogPostImage.findMany({
+      where: { postId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => this.toImage(row));
+  }
+
+  /**
+   * Records an image the browser has just PUT to storage.
+   *
+   * The key must be one this post's upload ticket could have minted — under
+   * the post's own directory — and the object must actually be there and be
+   * an image. A confirmation for something that never arrived, or for a file
+   * that is not a picture, is refused and the stray object removed, so the
+   * list never shows a broken thumbnail and the bucket never keeps a payload
+   * nobody can display.
+   */
+  async confirmImage(postId: string, dto: ConfirmBlogImageDto) {
+    await this.assertPost(postId);
+    assertKeyUnder(dto.storageKey, blogMediaPrefix(postId));
+
+    const head = await this.storage.describeObject(dto.storageKey);
+    if (!head) throw new BadRequestException('The image has not been uploaded yet');
+    if (head.contentType && !isImageType(head.contentType)) {
+      await this.storage.deleteObject(dto.storageKey).catch(() => undefined);
+      throw new BadRequestException('Only images can be uploaded here');
+    }
+
+    const existing = await this.prisma.blogPostImage.findUnique({
+      where: { storageKey: dto.storageKey },
+    });
+    if (existing) return this.toImage(existing);
+
+    const row = await this.prisma.blogPostImage.create({
+      data: {
+        postId,
+        storageKey: dto.storageKey,
+        filename: dto.storageKey.slice(dto.storageKey.lastIndexOf('/') + 1),
+        contentType: head.contentType ?? null,
+        size: head.size,
+      },
+    });
+    return this.toImage(row);
+  }
+
+  /** Removes the object and its row. Deleting twice is not an error. */
+  async deleteImage(postId: string, imageId: string) {
+    const row = await this.prisma.blogPostImage.findFirst({ where: { id: imageId, postId } });
+    if (!row) throw new NotFoundException('Image not found');
+    await this.storage.deleteObject(row.storageKey).catch(() => undefined);
+    await this.prisma.blogPostImage.delete({ where: { id: row.id } }).catch(() => undefined);
+    return { deleted: true };
+  }
+
+  private toImage(row: {
+    id: string;
+    filename: string;
+    storageKey: string;
+    contentType: string | null;
+    size: number;
+    createdAt: Date;
+  }) {
+    return {
+      id: row.id,
+      filename: row.filename,
+      url: this.storage.publicUrlOrNull(row.storageKey),
+      contentType: row.contentType,
+      size: row.size,
+      createdAt: row.createdAt,
+    };
+  }
+
+  private async assertPost(postId: string) {
     const exists = await this.prisma.blogPost.findUnique({
       where: { id: postId },
       select: { id: true },
     });
     if (!exists) throw new NotFoundException('Post not found');
-    const storageKey = blogMediaKey(postId, dto.filename);
-    const signed = await this.storage.createUploadUrl(storageKey);
-    return { ...signed, publicUrl: this.storage.publicUrlOrNull(storageKey) };
   }
 
   // ---------- Categories (admin) ----------

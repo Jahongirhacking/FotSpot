@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { BlogService } from './blog.service';
 import { BlogController } from './blog.controller';
 import { ROLES_KEY } from '../common/decorators/roles.decorator';
@@ -45,6 +50,7 @@ const ROW = {
   ogDescription: null,
   ogImageKey: null,
   likeCount: 3,
+  images: [] as { storageKey: string }[],
   createdAt: new Date('2026-08-30T10:00:00.000Z'),
   updatedAt: new Date('2026-09-02T10:00:00.000Z'),
 };
@@ -96,6 +102,17 @@ function build(row: Record<string, unknown> | null = ROW) {
     $queryRaw: jest.fn(async (..._args: unknown[]): Promise<{ id: string }[]> => []),
     playerProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
     academyProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
+    blogPostImage: {
+      findMany: jest.fn(async (): Promise<unknown[]> => []),
+      findUnique: jest.fn(async (): Promise<unknown> => null),
+      findFirst: jest.fn(async (): Promise<unknown> => null),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'img-1',
+        createdAt: new Date('2026-09-03T10:00:00.000Z'),
+        ...data,
+      })),
+      delete: jest.fn(async () => ({})),
+    },
   };
   const storage = {
     publicUrlOrNull: (key: string | null) => (key ? `https://cdn.example/${key}` : null),
@@ -105,6 +122,10 @@ function build(row: Record<string, unknown> | null = ROW) {
       expiresIn: 300,
     })),
     deleteObject: jest.fn(async () => undefined),
+    describeObject: jest.fn(async (): Promise<{ size: number; contentType?: string } | null> => ({
+      size: 1234,
+      contentType: 'image/png',
+    })),
   };
   const audit = { record: jest.fn(async () => undefined) };
   const service = new BlogService(prisma as never, storage as never, audit as never);
@@ -316,6 +337,140 @@ describe('writing — slugs and dates', () => {
     expect(signed.storageKey).toMatch(/^public\/blog\/post-1\/[0-9a-f-]+\.jpg$/);
     expect(signed.publicUrl).toContain('public/blog/post-1/');
   });
+
+  it('refuses an upload ticket for something that is not an image', async () => {
+    const { service } = build();
+    await expect(
+      service.imageUploadUrl('post-1', { filename: 'clip.mp4', contentType: 'video/mp4' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('body images — upload, confirm, list, delete', () => {
+  const KEY = 'public/blog/post-1/abc-123.png';
+
+  it('confirms an uploaded image and answers with its public URL, never the key', async () => {
+    const { service, prisma } = build();
+
+    const image = await service.confirmImage('post-1', { storageKey: KEY });
+
+    expect(prisma.blogPostImage.create).toHaveBeenCalledWith({
+      data: {
+        postId: 'post-1',
+        storageKey: KEY,
+        filename: 'abc-123.png',
+        contentType: 'image/png',
+        size: 1234,
+      },
+    });
+    expect(image).toEqual({
+      id: 'img-1',
+      filename: 'abc-123.png',
+      url: `https://cdn.example/${KEY}`,
+      contentType: 'image/png',
+      size: 1234,
+      createdAt: new Date('2026-09-03T10:00:00.000Z'),
+    });
+    expect(JSON.stringify(image)).not.toContain('storageKey');
+  });
+
+  it('refuses a key outside the post’s own directory', async () => {
+    const { service, storage } = build();
+    await expect(
+      service.confirmImage('post-1', { storageKey: 'public/blog/post-2/x.png' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      service.confirmImage('post-1', { storageKey: 'private/players/p/clip.mp4' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(storage.describeObject).not.toHaveBeenCalled();
+  });
+
+  it('refuses a confirmation for an object that never arrived', async () => {
+    const { service, storage, prisma } = build();
+    storage.describeObject.mockResolvedValue(null);
+    await expect(service.confirmImage('post-1', { storageKey: KEY })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.blogPostImage.create).not.toHaveBeenCalled();
+  });
+
+  it('removes and refuses an object that is not an image', async () => {
+    const { service, storage, prisma } = build();
+    storage.describeObject.mockResolvedValue({ size: 9, contentType: 'application/zip' });
+    await expect(service.confirmImage('post-1', { storageKey: KEY })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(storage.deleteObject).toHaveBeenCalledWith(KEY);
+    expect(prisma.blogPostImage.create).not.toHaveBeenCalled();
+  });
+
+  it('confirming the same key twice returns the same row', async () => {
+    const { service, prisma } = build();
+    prisma.blogPostImage.findUnique.mockResolvedValue({
+      id: 'img-9',
+      filename: 'abc-123.png',
+      storageKey: KEY,
+      contentType: 'image/png',
+      size: 1,
+      createdAt: new Date(),
+    });
+    const image = await service.confirmImage('post-1', { storageKey: KEY });
+    expect(image.id).toBe('img-9');
+    expect(prisma.blogPostImage.create).not.toHaveBeenCalled();
+  });
+
+  it('lists a post’s images newest first with URLs', async () => {
+    const { service, prisma } = build();
+    prisma.blogPostImage.findMany.mockResolvedValue([
+      {
+        id: 'img-2',
+        filename: 'b.png',
+        storageKey: 'public/blog/post-1/b.png',
+        contentType: 'image/png',
+        size: 2,
+        createdAt: new Date(),
+      },
+    ]);
+    const list = await service.listImages('post-1');
+    expect(prisma.blogPostImage.findMany).toHaveBeenCalledWith({
+      where: { postId: 'post-1' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(list).toHaveLength(1);
+    expect(list[0].url).toBe('https://cdn.example/public/blog/post-1/b.png');
+  });
+
+  it('deletes the object and the row, and only for the post it belongs to', async () => {
+    const { service, prisma, storage } = build();
+    prisma.blogPostImage.findFirst.mockResolvedValue({ id: 'img-1', storageKey: KEY });
+
+    await expect(service.deleteImage('post-1', 'img-1')).resolves.toEqual({ deleted: true });
+
+    expect(prisma.blogPostImage.findFirst).toHaveBeenCalledWith({
+      where: { id: 'img-1', postId: 'post-1' },
+    });
+    expect(storage.deleteObject).toHaveBeenCalledWith(KEY);
+    expect(prisma.blogPostImage.delete).toHaveBeenCalledWith({ where: { id: 'img-1' } });
+  });
+
+  it('a missing image is a 404', async () => {
+    const { service } = build();
+    await expect(service.deleteImage('post-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('deleting the post removes its body images from storage too', async () => {
+    const { service, prisma, storage } = build();
+    prisma.blogPost.findUnique.mockResolvedValue({
+      ...ROW,
+      images: [{ storageKey: KEY }, { storageKey: 'public/blog/post-1/second.jpg' }],
+    });
+
+    await service.remove('admin-1', 'post-1');
+
+    expect(storage.deleteObject).toHaveBeenCalledWith(ROW.coverKey);
+    expect(storage.deleteObject).toHaveBeenCalledWith(KEY);
+    expect(storage.deleteObject).toHaveBeenCalledWith('public/blog/post-1/second.jpg');
+  });
 });
 
 describe('routes — who may press what', () => {
@@ -343,6 +498,9 @@ describe('routes — who may press what', () => {
     'unpublish',
     'remove',
     'imageUploadUrl',
+    'listImages',
+    'confirmImage',
+    'deleteImage',
     'createCategory',
     'updateCategory',
     'removeCategory',

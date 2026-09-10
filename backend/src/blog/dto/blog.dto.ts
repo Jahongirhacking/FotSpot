@@ -84,6 +84,13 @@ export class SaveCategoryDto {
 
 export class BlogImageUploadDto {
   @IsString() @MinLength(1) @MaxLength(200) filename: string;
-  /** Which picture: the post's cover (default) or its share image. */
-  @IsOptional() @IsIn(['cover', 'og']) purpose?: 'cover' | 'og';
+  /** Which picture: the post's cover (default), its share image, or one for the body. */
+  @IsOptional() @IsIn(['cover', 'og', 'body']) purpose?: 'cover' | 'og' | 'body';
+  /** The browser's MIME type, so the presigned PUT is bound to an image. */
+  @IsOptional() @IsString() @MaxLength(100) contentType?: string;
+}
+
+/** Tells the API a body image landed in storage, so it is listed with the post. */
+export class ConfirmBlogImageDto {
+  @IsString() @MinLength(1) @MaxLength(300) storageKey: string;
 }

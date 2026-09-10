@@ -8,6 +8,7 @@ import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import {
   AdminListPostsDto,
   BlogImageUploadDto,
+  ConfirmBlogImageDto,
   ListPostsDto,
   SaveCategoryDto,
   SavePostDto,
@@ -123,11 +124,32 @@ export class BlogController {
     return this.blog.remove(user.userId, id);
   }
 
-  /** A presigned PUT for the post's cover or share image, under `public/blog/<post>/`. */
+  /** A presigned PUT for a post image (cover, share or body), under `public/blog/<post>/`. */
   @Roles('admin', 'super_admin')
   @Post('admin/posts/:id/images/upload-url')
   imageUploadUrl(@Param('id') id: string, @Body() dto: BlogImageUploadDto) {
     return this.blog.imageUploadUrl(id, dto);
+  }
+
+  /** The post's body images with their public URLs, newest first. */
+  @Roles('admin', 'super_admin')
+  @Get('admin/posts/:id/images')
+  listImages(@Param('id') id: string) {
+    return this.blog.listImages(id);
+  }
+
+  /** After the PUT: checks the object is there and is an image, then lists it with the post. */
+  @Roles('admin', 'super_admin')
+  @Post('admin/posts/:id/images')
+  confirmImage(@Param('id') id: string, @Body() dto: ConfirmBlogImageDto) {
+    return this.blog.confirmImage(id, dto);
+  }
+
+  /** Removes the image from storage and from the post. */
+  @Roles('admin', 'super_admin')
+  @Delete('admin/posts/:id/images/:imageId')
+  deleteImage(@Param('id') id: string, @Param('imageId') imageId: string) {
+    return this.blog.deleteImage(id, imageId);
   }
 
   @Roles('admin', 'super_admin')

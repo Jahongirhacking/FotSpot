@@ -8,8 +8,9 @@ import * as sanitizeHtml from 'sanitize-html';
  * What an editor writes for a football blog is headings, paragraphs,
  * emphasis, links, pictures, lists, a quote and a rule — and that is the
  * whole dialect: `#`/`##`/`###` headings, `**bold**`, `*italic*`,
- * `[text](url)`, `![alt](url)`, `-` and `1.` lists, `>` quotes, `---`, and
- * `` `code` ``. No tables, no raw HTML, no footnotes. Written here rather
+ * `[text](url)`, `![alt](url)`, `-` and `1.` lists, `>` quotes, `---`,
+ * `` `code` ``, and a YouTube address alone on a line, which becomes the
+ * player. No tables, no raw HTML, no footnotes. Written here rather
  * than pulled from a package for the same reason the trial note's subset is
  * (`common/rich-text.util.ts`): the output is stored and served to everyone,
  * and a rendering that changes with a dependency's next release is a blog
@@ -47,7 +48,48 @@ const ALLOWED_TAGS = [
   'code',
   'pre',
   'hr',
+  'iframe',
 ];
+
+/**
+ * The one host an `<iframe>` may point at, and it is the privacy-enhanced
+ * one: no YouTube cookies are set until the reader presses play.
+ */
+export const YOUTUBE_EMBED_ORIGIN = 'https://www.youtube-nocookie.com';
+
+/**
+ * A YouTube video id from any of the addresses people paste — watch, short
+ * `youtu.be`, Shorts, an existing embed — or null for anything else.
+ * Exact hosts only: `notyoutube.com/watch?v=` is somebody else's site.
+ */
+export function youtubeVideoId(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+  const host = parsed.hostname.replace(/^www\.|^m\./, '');
+  const valid = (id: string | null | undefined) =>
+    id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  if (host === 'youtu.be') return valid(parsed.pathname.slice(1).split('/')[0]);
+  if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    if (parsed.pathname === '/watch') return valid(parsed.searchParams.get('v'));
+    const path = /^\/(?:shorts|embed|live|v)\/([^/?#]+)/.exec(parsed.pathname);
+    if (path) return valid(path[1]);
+  }
+  return null;
+}
+
+/** The player for one video, sized by CSS to the article's width. */
+function youtubePlayer(id: string): string {
+  return (
+    `<figure class="video"><iframe src="${YOUTUBE_EMBED_ORIGIN}/embed/${id}" ` +
+    'title="YouTube video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
+    'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></figure>'
+  );
+}
 
 export function sanitizeBlogHtml(html: string): string {
   return sanitizeHtml(html, {
@@ -55,8 +97,17 @@ export function sanitizeBlogHtml(html: string): string {
     allowedAttributes: {
       a: ['href', 'title', 'rel', 'target'],
       img: ['src', 'alt', 'loading'],
+      figure: ['class'],
+      iframe: ['src', 'title', 'loading', 'allow', 'allowfullscreen', 'referrerpolicy'],
     },
     allowedSchemes: ['http', 'https', 'mailto'],
+    // An iframe is a window onto another site; only the YouTube player fits.
+    allowedIframeHostnames: ['www.youtube-nocookie.com'],
+    allowedClasses: { figure: ['video'] },
+    // A frame whose address was refused is left empty by the host filter;
+    // an empty frame is a grey box on the page, so it goes entirely.
+    exclusiveFilter: (frame: { tag: string; attribs: Record<string, string> }) =>
+      frame.tag === 'iframe' && !frame.attribs.src,
     // Only the internal links keep the reader in the tab; everything else
     // opens beside the article and carries no handle back to it.
     transformTags: {
@@ -155,6 +206,15 @@ export function renderBlogMarkdown(markdown: string): string {
     if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
       flushAll();
       html.push('<hr>');
+      continue;
+    }
+
+    // A YouTube address on its own line is the video itself, not a link to it.
+    const video = /^<?(https?:\/\/\S+)>?$/.exec(line.trim());
+    const videoId = video ? youtubeVideoId(video[1]) : null;
+    if (videoId) {
+      flushAll();
+      html.push(youtubePlayer(videoId));
       continue;
     }
 

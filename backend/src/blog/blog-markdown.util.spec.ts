@@ -1,4 +1,10 @@
-import { markdownToPlainText, readingMinutes, renderBlogMarkdown } from './blog-markdown.util';
+import {
+  markdownToPlainText,
+  readingMinutes,
+  renderBlogMarkdown,
+  sanitizeBlogHtml,
+  youtubeVideoId,
+} from './blog-markdown.util';
 
 describe('renderBlogMarkdown', () => {
   it('renders paragraphs, emphasis, links and code', () => {
@@ -68,5 +74,60 @@ describe('markdownToPlainText', () => {
     expect(markdownToPlainText('# Title\n\nSome **bold** [text](/x).')).toBe(
       'Title Some bold text.',
     );
+  });
+});
+
+describe('YouTube', () => {
+  const ID = 'dQw4w9WgXcQ';
+
+  it.each([
+    `https://www.youtube.com/watch?v=${ID}`,
+    `https://youtube.com/watch?v=${ID}&t=42s`,
+    `https://youtu.be/${ID}?si=abc`,
+    `https://m.youtube.com/watch?v=${ID}`,
+    `https://www.youtube.com/shorts/${ID}`,
+    `https://www.youtube.com/embed/${ID}`,
+    `https://www.youtube-nocookie.com/embed/${ID}`,
+  ])('recognises %s', (url) => {
+    expect(youtubeVideoId(url)).toBe(ID);
+  });
+
+  it.each([
+    'https://notyoutube.com/watch?v=dQw4w9WgXcQ',
+    'https://www.youtube.com/watch?v=short',
+    'https://example.com/youtu.be/dQw4w9WgXcQ',
+    'javascript:alert(1)',
+    'not a url',
+  ])('ignores %s', (url) => {
+    expect(youtubeVideoId(url)).toBeNull();
+  });
+
+  it('a bare link on its own line becomes the privacy-enhanced player', () => {
+    const html = renderBlogMarkdown(`Intro\n\nhttps://youtu.be/${ID}\n\nOutro`);
+    expect(html).toContain(
+      `<figure class="video"><iframe src="https://www.youtube-nocookie.com/embed/${ID}"`,
+    );
+    expect(html).toContain('allowfullscreen');
+    expect(html).toMatch(/<p>Intro<\/p>.*<figure class="video">.*<p>Outro<\/p>/s);
+  });
+
+  it('a link inside a sentence, or a Markdown link, stays a link', () => {
+    const html = renderBlogMarkdown(
+      `Watch https://youtu.be/${ID} now\n\n[Video](https://www.youtube.com/watch?v=${ID})`,
+    );
+    expect(html).not.toContain('<iframe');
+    expect(html).toContain(`<a href="https://www.youtube.com/watch?v=${ID}"`);
+  });
+
+  it('the sanitiser keeps the YouTube player and drops any other iframe', () => {
+    const kept = sanitizeBlogHtml(
+      `<figure class="video"><iframe src="https://www.youtube-nocookie.com/embed/${ID}" allowfullscreen></iframe></figure>`,
+    );
+    expect(kept).toContain('<iframe src="https://www.youtube-nocookie.com/embed/');
+    const dropped = sanitizeBlogHtml(
+      '<figure class="video"><iframe src="https://evil.example/embed"></iframe></figure>',
+    );
+    expect(dropped).not.toContain('<iframe');
+    expect(sanitizeBlogHtml('<figure class="other">x</figure>')).not.toContain('class=');
   });
 });
