@@ -803,7 +803,7 @@ meta description, keywords, canonical, Open Graph) and Article JSON-LD, and publ
 the sitemap; drafts never do. Slugs are generated from the title (lowercase Latin, Cyrillic
 transliterated, unique), editable by an admin, and never rewritten by a later title change.
 Written and published by admins and super admins only; the editorial and SEO guide for them
-is [`BLOG.md`](./BLOG.md). Beside every article, six players and six academies drawn at random
+is [`docs/BLOG.md`](./docs/BLOG.md). Beside every article, six players and six academies drawn at random
 from the public directories introduce the platform to a reader who came for the story.
 
 ---

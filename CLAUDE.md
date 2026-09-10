@@ -16,7 +16,7 @@ coaches and academies. Sources of truth, in order of authority:
   referenced from code and docs; never renumber §1–§10, append new material as §11+.
 - [`backend/README.md`](./backend/README.md) — what is actually implemented, including the
   items built beyond the §1.23 MVP with explicit sign-off.
-- [`BLOG.md`](./BLOG.md) — how admins write blog posts for search; what each editor field feeds.
+- [`docs/BLOG.md`](./docs/BLOG.md) — how admins write blog posts for search; what each editor field feeds.
 
 **Before implementing a feature, check whether it is MVP (§1.23), a signed-off extra, or Phase
 1.5/2 (README §3–§8, §11–§15). Do not build deferred features (academy history, pro transition,
@@ -27,7 +27,8 @@ badges, transfer/release, guardian accounts, Combine, subscriptions) unless expl
 ```
 /
 ├── docker-compose.yml   # Postgres 16 + Redis 7 for local dev only (service names: postgres, redis)
-├── README.md            # product spec          TRIAL.md  # canonical trial/recommendation rules
+├── README.md            # product spec
+├── docs/                # TRIAL.md (canonical trial rules), LOCAL_TEAM.md, PLAYER_SQUAD.md, BLOG.md
 ├── backend/             # NestJS 10 + Prisma 6 API, pnpm      → backend/CLAUDE.md, backend/README.md
 └── client/              # Next.js 16 App Router, npm/pnpm     → client/CLAUDE.md, client/AGENTS.md
 ```

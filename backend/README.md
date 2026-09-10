@@ -3,7 +3,7 @@
 NestJS implementation of the FotSpot TZ/TY (see project `README.md`), scoped to
 **section 1.23 MVP** plus the items listed under "Beyond MVP" below, each built
 with explicit sign-off. Trials, recommendations and squad placement follow
-[`../TRIAL.md`](../TRIAL.md), which is canonical.
+[`../docs/TRIAL.md`](../docs/TRIAL.md), which is canonical.
 
 Auth · RBAC · Player Profiles · Academy Profiles · Scout Recommendations ·
 Coach Assessments · Trial Management · Notifications · Moderation · Admin ·
@@ -304,7 +304,12 @@ does not appear.
   from the title (`blog-slug.util.ts`: lowercase Latin, Cyrillic transliterated,
   unique, admin-editable, never rewritten by a later title change), SEO fields
   (seoTitle, metaDescription, keywords, canonical, OG) and one like per user
-  per post (`POST/DELETE /blog/posts/:slug/like`). `GET /blog/spotlight` draws
+  per post (`POST/DELETE /blog/posts/:slug/like`). A YouTube address alone on a
+  line renders as the privacy-enhanced player; no other iframe survives the
+  sanitiser. Body images: `/blog/admin/posts/:id/images` lists, confirms
+  (after the presigned PUT — the object must exist and be an image) and
+  deletes `BlogPostImage` rows under `public/blog/<post>/`; deleting the post
+  removes them. `GET /blog/spotlight` draws
   six public players and six verified academies at random for the article
   sidebar — age band, never a birth date. `/blog/admin/*` is
   `admin`/`super_admin` only: drafts, publish/unpublish (the first publish date

@@ -21,8 +21,10 @@ URL, not in the sitemap, not in search.
    player, academy or trial on FotSpot.
 5. **Cover image** with **alt text**. Upload 1600×900 or larger, 16:9.
 6. **Category.** Pick one; create it in the Categories panel on `/admin/blog` if it is missing.
-7. **SEO panel** — only if the defaults are wrong for this post (see §6).
-8. **Preview**, read it once on a phone-width window, then **Publish**.
+7. **Pictures in the text** — from the Images panel under the content: upload, Copy Markdown, paste.
+8. **SEO panel** — keywords are suggested; check them. Everything else only if the defaults are
+   wrong for this post (see §6).
+9. **Preview**, read it once on a phone-width window, then **Publish**.
 
 Publishing needs a title, an excerpt and content; the API refuses an empty one. The first
 publish date is kept forever — unpublishing and republishing does not make a post "new".
@@ -74,18 +76,19 @@ compete with each other.
 Markdown, up to 60 000 characters, rendered to sanitised HTML on save. What the toolbar and
 the syntax map to:
 
-| You write                       | Reader gets                    | Note                                                    |
-| ------------------------------- | ------------------------------ | ------------------------------------------------------- |
-| `# Heading`                     | `<h2>`                         | The title is the only H1. Never repeat it as a heading. |
-| `## Heading`                    | `<h3>`                         | Sub-sections of an `#` section.                         |
-| `### Heading`                   | `<h4>`                         | Rarely needed.                                          |
-| `**bold**`, `*italic*`          | `<strong>`, `<em>`             |                                                         |
-| `[text](/players/@handle)`      | internal link                  | Kept as a plain link — crawlers follow it.              |
-| `[text](https://example.com)`   | external link                  | Opens in a new tab with `rel="noopener noreferrer"`.    |
-| `![Caption](https://…/img.jpg)` | `<figure>` with `<figcaption>` | Own line; the caption is also the image's alt text.     |
-| `- item`, `1. item`             | lists                          |                                                         |
-| `> quote`                       | `<blockquote>`                 | Good for what a coach or manager actually said.         |
-| `---`                           | horizontal rule                |                                                         |
+| You write                       | Reader gets                    | Note                                                                        |
+| ------------------------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| `# Heading`                     | `<h2>`                         | The title is the only H1. Never repeat it as a heading.                     |
+| `## Heading`                    | `<h3>`                         | Sub-sections of an `#` section.                                             |
+| `### Heading`                   | `<h4>`                         | Rarely needed.                                                              |
+| `**bold**`, `*italic*`          | `<strong>`, `<em>`             |                                                                             |
+| `[text](/players/@handle)`      | internal link                  | Kept as a plain link — crawlers follow it.                                  |
+| `[text](https://example.com)`   | external link                  | Opens in a new tab with `rel="noopener noreferrer"`.                        |
+| `![Caption](https://…/img.jpg)` | `<figure>` with `<figcaption>` | Own line; the caption is also the image's alt text.                         |
+| a YouTube link on its own line  | the YouTube player, 16:9       | `youtube.com/watch`, `youtu.be`, Shorts; inside a sentence it stays a link. |
+| `- item`, `1. item`             | lists                          |                                                                             |
+| `> quote`                       | `<blockquote>`                 | Good for what a coach or manager actually said.                             |
+| `---`                           | horizontal rule                |                                                                             |
 
 Rules of thumb that matter for search:
 
@@ -103,8 +106,12 @@ Rules of thumb that matter for search:
   the article `inLanguage: uz`. A Russian post is fine, but keep one post in one language.
 - **Reading time** is computed at 200 words per minute and shown on cards. Override it only if
   the post is mostly images or tables; setting `0` recomputes.
-- Images inside the text must already be online (a public URL). For the post's own picture use
-  the cover upload, which stores it on the CDN under the post.
+- **Pictures inside the text come from the "Images for this post" panel** under the content
+  box (it appears once the draft is saved). Upload, press **Copy Markdown**, paste on its own
+  line, replace the description, then **Preview**. See §5.
+- **A video is a YouTube link on its own line.** Nothing else to write; the page shows the
+  player (privacy-enhanced, no cookies until play). Put it after the paragraph that introduces
+  it, and keep the link out of the middle of a sentence unless you want a plain link.
 
 ---
 
@@ -123,6 +130,20 @@ _"cover image"_ or the title again.
 portrait). 1200×630 is the format every messenger and social network expects. Leave it empty
 otherwise; the cover is used.
 
+**Images in the text** — the panel under the content box, once the draft is saved:
+
+1. **Upload image** (JPEG, PNG, WebP, GIF or AVIF, up to 8 MB; each file shows its own progress
+   and its own error). The file goes straight to the CDN under this post.
+2. **Copy Markdown** — the clipboard gets `![Cover alt text](https://…)`. **Copy URL** gives the
+   bare address if you prefer to type the line yourself.
+3. Paste it on its own line in the content and replace the description in the square brackets
+   with what the picture shows. That text is the caption under the image and its alt text.
+4. **Preview** after saving.
+
+**Delete** asks first, then removes the file from the CDN at once. A picture still referenced in
+the content shows as broken afterwards, so remove the line from the text too. Deleting the post
+removes all of its images.
+
 Never upload a photo of a minor you do not have permission to publish. Academy photos and trial
 photos supplied by the academy are fine; a scraped image is not.
 
@@ -132,15 +153,15 @@ photos supplied by the academy are fine; a scraped image is not.
 
 Every field is optional and falls back sensibly. Fill one only when the fallback is wrong.
 
-| Field                  | Default                       | Fill it when                                                                                                                                                                                                                  |
-| ---------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SEO title** (≤ 70)   | the title                     | the title is long or editorial; write the 55–60 character search version here.                                                                                                                                                |
-| **Meta description**   | the excerpt, trimmed to 160   | see §3.                                                                                                                                                                                                                       |
-| **Keywords** (≤ 15)    | none                          | add 3–8 specific terms: club, district, age group, position, the Uzbek and Russian spellings people actually type. They feed `<meta name="keywords">` and JSON-LD `keywords`. Generic words (`football`, `news`) add nothing. |
-| **Canonical URL**      | the post's own `/blog/<slug>` | **only** if the story was first published elsewhere and this is a repost — then paste the original's URL so search engines credit it, not us. Otherwise leave empty; a wrong canonical de-indexes the post.                   |
-| **Share title** (≤ 90) | the SEO title, else the title | the messenger preview wants a punchier line than search does.                                                                                                                                                                 |
-| **Share description**  | the meta description          | same idea, for the preview card.                                                                                                                                                                                              |
-| **Share image**        | the cover                     | see §5.                                                                                                                                                                                                                       |
+| Field                  | Default                                    | Fill it when                                                                                                                                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SEO title** (≤ 70)   | the title                                  | the title is long or editorial; write the 55–60 character search version here.                                                                                                                                                                                                                                                           |
+| **Meta description**   | the excerpt, trimmed to 160                | see §3.                                                                                                                                                                                                                                                                                                                                  |
+| **Keywords** (≤ 15)    | suggested from the title, excerpt and text | the suggestion is a starting point, not an answer: keep the specific terms (club, district, age group, position), drop the vague ones, add the Uzbek and Russian spellings people actually type. Once you edit the box it is yours; **Suggest** puts the automatic list back. They feed `<meta name="keywords">` and JSON-LD `keywords`. |
+| **Canonical URL**      | the post's own `/blog/<slug>`              | **only** if the story was first published elsewhere and this is a repost — then paste the original's URL so search engines credit it, not us. Otherwise leave empty; a wrong canonical de-indexes the post.                                                                                                                              |
+| **Share title** (≤ 90) | the SEO title, else the title              | the messenger preview wants a punchier line than search does.                                                                                                                                                                                                                                                                            |
+| **Share description**  | the meta description                       | same idea, for the preview card.                                                                                                                                                                                                                                                                                                         |
+| **Share image**        | the cover                                  | see §5.                                                                                                                                                                                                                                                                                                                                  |
 
 What is generated without any input: `rel="canonical"`, `og:type=article`,
 `article:published_time` / `article:modified_time`, `article:author`, `article:section` (the
@@ -173,7 +194,7 @@ post joins `/sitemap.xml` the moment it is published and leaves it the moment it
 - [ ] Sections use `#` (never a second H1); one heading every 150–300 words.
 - [ ] At least one link to a player, academy, trial or post on FotSpot.
 - [ ] Cover uploaded, 16:9, with alt text that describes the picture.
-- [ ] Category chosen. Keywords, if any, are specific.
+- [ ] Category chosen. Keywords checked: the suggested list trimmed to specific terms.
 - [ ] Canonical left empty unless this is a repost.
 - [ ] Preview checked at phone width: no giant images, no walls of text.
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — backend (NestJS API)
 
-Read [`../CLAUDE.md`](../CLAUDE.md) first for repo-wide rules and [`../TRIAL.md`](../TRIAL.md)
+Read [`../CLAUDE.md`](../CLAUDE.md) first for repo-wide rules and [`../docs/TRIAL.md`](../docs/TRIAL.md)
 before touching recommendations, trials or squads. What is implemented, and why, is in
 [`README.md`](./README.md).
 
