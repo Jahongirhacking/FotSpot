@@ -1149,3 +1149,102 @@ export interface AcademyScoutFollow {
   state: AcademyScoutFollowState;
   createdAt: string;
 }
+
+// ---------- Blog ----------
+
+export interface BlogCategory {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  /** Published posts in it — on the public listing only. */
+  postCount?: number;
+  sortOrder?: number;
+}
+
+export interface BlogAuthor {
+  name: string;
+  avatarUrl: string | null;
+}
+
+/** A post as a listing draws it. */
+export interface BlogPostCard {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  coverUrl: string | null;
+  coverAlt: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+  readingMinutes: number;
+  likeCount: number;
+  featured: boolean;
+  category: Pick<BlogCategory, 'id' | 'slug' | 'name'> | null;
+  author: BlogAuthor;
+}
+
+/** A published post as the page reads it. */
+export interface BlogPost extends BlogPostCard {
+  /** Rendered and sanitised by the API; the page shows it as is. */
+  contentHtml: string;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  seoKeywords: string[];
+  canonicalUrl: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageUrl: string | null;
+  /** Whether the signed-in reader liked it; false for a guest. */
+  liked: boolean;
+  related: BlogPostCard[];
+}
+
+export interface BlogHome {
+  featured: BlogPostCard | null;
+  latest: BlogPostCard[];
+  thisWeek: BlogPostCard[];
+  top: BlogPostCard[];
+  categories: BlogCategory[];
+}
+
+export type BlogPostStatus = 'DRAFT' | 'PUBLISHED';
+
+/** The row as an admin edits it — Markdown, keys, every SEO field. */
+export interface AdminBlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  contentHtml: string;
+  coverKey: string | null;
+  coverUrl: string | null;
+  coverAlt: string | null;
+  categoryId: string | null;
+  category: Pick<BlogCategory, 'id' | 'slug' | 'name'> | null;
+  authorUserId: string;
+  authorName: string | null;
+  author: BlogAuthor;
+  status: BlogPostStatus;
+  publishedAt: string | null;
+  readingMinutes: number;
+  featured: boolean;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  seoKeywords: string[];
+  canonicalUrl: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImageKey: string | null;
+  ogImageUrl: string | null;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogSitemapEntry {
+  slug: string;
+  publishedAt: string | null;
+  updatedAt: string;
+}

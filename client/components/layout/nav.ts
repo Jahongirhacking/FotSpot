@@ -8,6 +8,7 @@ import {
   Home,
   Inbox,
   LifeBuoy,
+  Newspaper,
   Search,
   ShieldCheck,
   Sparkles,
@@ -26,7 +27,13 @@ const COMMON: NavItem[] = [
   { href: '/players', label: 'players', icon: Search },
   { href: '/academies', label: 'academies', icon: Building2 },
   { href: '/trials', label: 'trials', icon: CalendarDays },
+  { href: '/blog', label: 'blog', icon: Newspaper },
 ];
+
+/** The blog, on every signed-in menu too: news is for everybody. */
+const BLOG: NavItem = { href: '/blog', label: 'blog', icon: Newspaper };
+/** The admin's blog is the one they write. */
+const BLOG_ADMIN: NavItem = { href: '/admin/blog', label: 'blog', icon: Newspaper };
 
 /**
  * Navigation is a function of the *active* role (README §1.2.1) — this is what
@@ -57,6 +64,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/trials', label: 'trials', icon: CalendarDays },
         { href: '/academies', label: 'academies', icon: Building2 },
         { href: '/players', label: 'players', icon: Search },
+        BLOG,
       ];
 
     // The scout's home *is* the feed: what they open the app to do is watch the
@@ -70,6 +78,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/players', label: 'players', icon: Search },
         { href: '/academies', label: 'academies', icon: Building2 },
         { href: '/recommendations', label: 'myPicks', icon: Inbox },
+        BLOG,
       ];
 
     /*
@@ -90,6 +99,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/feed', label: 'feed', icon: Clapperboard },
         { href: '/trials', label: 'trials', icon: ClipboardCheck },
         { href: '/players', label: 'players', icon: Search },
+        BLOG,
       ];
 
     // No "Academies" entry. A manager runs exactly one academy and it is already
@@ -125,6 +135,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         ...(context.isLocalTeam
           ? []
           : [{ href: '/trials', label: 'trials', icon: CalendarDays } as NavItem]),
+        BLOG,
       ];
 
     case 'admin':
@@ -134,6 +145,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         { href: '/admin/users', label: 'users', icon: Users },
         { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
+        BLOG_ADMIN,
       ];
 
     // Tariff plans only for the super admin: §1.2 keeps platform-wide settings
@@ -147,6 +159,7 @@ export function navForRole(role: Role | null, context: NavContext = {}): NavItem
         // { href: '/admin/tariff-plans', label: 'tariffPlans', icon: Gauge },
         { href: '/admin/requests', label: 'requests', icon: LifeBuoy },
         { href: '/admin/moderation', label: 'moderation', icon: ShieldCheck },
+        BLOG_ADMIN,
       ];
     default:
       return COMMON;
