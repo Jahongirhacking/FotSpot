@@ -177,8 +177,11 @@ post joins `/sitemap.xml` the moment it is published and leaves it the moment it
   `article:section`, and drives "Related posts" under the article. Keep the set small and
   stable — _Yangiliklar · Futbolchilar · Akademiyalar · Transferlar · Sinovlar · Platforma_ is
   plenty. A category's slug follows the same rules as a post's.
-- **Byline** defaults to your account name. Set it when the piece is by a guest or a named
-  editor; it is what `article:author` and the JSON-LD author carry.
+- **Author** is a choice between Lupo and a verified academy. Left on **🐺 Lupo - Talent
+  Hunter**, the FotSpot mascot signs the post with his picture, and the markup names FotSpot as
+  the author organisation. Pick an academy when the piece is theirs: its name and logo sign the
+  post, link to its page, and go into `article:author` and the JSON-LD. An admin's own account
+  name is never shown to readers.
 - **Feature this post** puts it in the large banner on `/blog`. One post at a time is the
   intent; the newest featured wins if several are ticked, and unpublishing clears the flag.
 

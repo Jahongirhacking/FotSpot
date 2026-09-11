@@ -1,6 +1,6 @@
 import { Alert } from '@/components/ui/Feedback';
 import { ApiError } from '@/lib/api/client';
-import { blog } from '@/lib/api/resources';
+import { academies, blog } from '@/lib/api/resources';
 import type { BlogCategory, BlogPostImage } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { isAdminActing } from '@/lib/roles';
@@ -38,9 +38,10 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
   }
-  const [categories, images] = await Promise.all([
+  const [categories, images, academyOptions] = await Promise.all([
     blog.categories(opts).catch(() => [] as BlogCategory[]),
     blog.listImages(id, opts).catch(() => [] as BlogPostImage[]),
+    academies.listPublic(undefined, opts).catch(() => []),
   ]);
 
   return (
@@ -54,7 +55,13 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
       <h1 className="text-xl font-bold">{t.blog.editPost}</h1>
       {/* Keyed on the post so a save that changed the row remounts the form
           with the row as saved. */}
-      <PostEditor key={post.updatedAt} post={post} categories={categories} images={images} />
+      <PostEditor
+        key={post.updatedAt}
+        post={post}
+        categories={categories}
+        images={images}
+        academyOptions={academyOptions}
+      />
     </div>
   );
 }

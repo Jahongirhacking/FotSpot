@@ -1790,8 +1790,9 @@ export const en: Dictionary = {
     write: 'Write',
     fieldCategory: 'Category',
     noCategory: 'No category',
-    fieldAuthorName: 'Byline',
-    fieldAuthorNameHint: 'Leave empty to use your name.',
+    fieldAuthorName: 'Author',
+    fieldAuthorNameHint:
+      'The academy the post is signed by. Leave it on Lupo, the FotSpot mascot, for the platform’s own posts — an admin’s name is never shown.',
     fieldReadingMinutes: 'Reading time (min)',
     fieldReadingMinutesHint: 'Computed from the content. Set a number to override; 0 recomputes.',
     fieldFeatured: 'Feature this post on the blog front page',

@@ -1800,8 +1800,9 @@ export const ru: Dictionary = {
     write: 'Писать',
     fieldCategory: 'Рубрика',
     noCategory: 'Без рубрики',
-    fieldAuthorName: 'Подпись автора',
-    fieldAuthorNameHint: 'Оставьте пустым, чтобы использовать ваше имя.',
+    fieldAuthorName: 'Автор',
+    fieldAuthorNameHint:
+      'Академия, от имени которой выходит статья. Для статей самой платформы оставьте Лупо — талисман FotSpot; имя администратора никогда не показывается.',
     fieldReadingMinutes: 'Время чтения (мин)',
     fieldReadingMinutesHint:
       'Считается по тексту. Укажите число, чтобы задать вручную; 0 — пересчитать.',

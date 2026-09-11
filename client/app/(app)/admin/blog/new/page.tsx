@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { blog } from '@/lib/api/resources';
+import { academies, blog } from '@/lib/api/resources';
 import type { BlogCategory } from '@/lib/api/types';
 import { getSession } from '@/lib/session';
 import { isAdminActing } from '@/lib/roles';
@@ -21,9 +21,14 @@ export default async function NewBlogPostPage() {
     return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
   }
 
-  const categories = await blog
-    .categories({ token: session.accessToken, cache: 'no-store' })
-    .catch(() => [] as BlogCategory[]);
+  const [categories, academyOptions] = await Promise.all([
+    blog
+      .categories({ token: session.accessToken, cache: 'no-store' })
+      .catch(() => [] as BlogCategory[]),
+    academies
+      .listPublic(undefined, { token: session.accessToken, cache: 'no-store' })
+      .catch(() => []),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -34,7 +39,7 @@ export default async function NewBlogPostPage() {
         <ArrowLeft className="size-4" aria-hidden /> {t.blog.manage}
       </Link>
       <h1 className="text-xl font-bold">{t.blog.newPost}</h1>
-      <PostEditor post={null} categories={categories} images={[]} />
+      <PostEditor post={null} categories={categories} images={[]} academyOptions={academyOptions} />
     </div>
   );
 }

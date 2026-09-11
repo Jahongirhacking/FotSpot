@@ -1652,7 +1652,8 @@ export interface SaveBlogPostBody {
   coverAlt?: string;
   /** A category id; empty string clears. */
   categoryId?: string;
-  authorName?: string;
+  /** The signing academy's id; empty string means the mascot signs it. */
+  authorAcademyId?: string;
   /** 0 or absent recomputes from the content. */
   readingMinutes?: number;
   featured?: boolean;

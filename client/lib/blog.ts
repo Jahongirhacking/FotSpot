@@ -1,5 +1,30 @@
 import sanitizeHtml from 'sanitize-html';
-import type { BlogPostCard } from '@/lib/api/types';
+import type { BlogAuthor, BlogPostCard } from '@/lib/api/types';
+
+/**
+ * Lupo, the FotSpot wolf, signs every post no academy signs.
+ *
+ * A blog post written by the platform team used to carry the admin's
+ * account name, which told readers nothing and put a private name in front
+ * of everyone. The mascot is the platform's voice: one name, one face, the
+ * same in every language, so it is a constant rather than a dictionary key.
+ */
+export const LUPO = {
+  name: '🐺 Lupo - Talent Hunter',
+  avatarUrl: '/images/blog/lupo.jpg',
+} as const;
+
+/** What to draw for a post's author: name, picture, and a page when there is one. */
+export function authorDisplay(author: BlogAuthor): {
+  name: string;
+  avatarUrl: string | null;
+  href: string | null;
+} {
+  if (author.kind === 'academy') {
+    return { name: author.name, avatarUrl: author.avatarUrl, href: `/academies/${author.id}` };
+  }
+  return { name: LUPO.name, avatarUrl: LUPO.avatarUrl, href: null };
+}
 
 /**
  * The tags an article body may contain — the same list the API renders to

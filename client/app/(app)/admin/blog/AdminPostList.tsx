@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Input } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import type { BlogPostCard, BlogPostStatus } from '@/lib/api/types';
-import { postPath } from '@/lib/blog';
+import { authorDisplay, postPath } from '@/lib/blog';
 import { cn, formatDateTime } from '@/lib/utils';
 import { ExternalLink, FileText, Pencil, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -157,7 +157,8 @@ export function AdminPostList({
                       {[post.category?.name, `/blog/${post.slug}`].filter(Boolean).join(' · ')}
                     </p>
                     <p className="text-muted text-xs">
-                      {t.blog.lastEdited} {formatDateTime(post.updatedAt)} · {post.author.name}
+                      {t.blog.lastEdited} {formatDateTime(post.updatedAt)} ·{' '}
+                      {authorDisplay(post.author).name}
                       {post.likeCount > 0 ? ` · ♥ ${post.likeCount}` : ''}
                     </p>
                   </div>

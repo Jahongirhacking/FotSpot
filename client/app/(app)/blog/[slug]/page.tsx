@@ -1,23 +1,23 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, Building2, CalendarDays, Clock, Search, Users } from 'lucide-react';
-import { ApiError } from '@/lib/api/client';
-import { blog } from '@/lib/api/resources';
-import type { BlogPost } from '@/lib/api/types';
-import { getSession } from '@/lib/session';
-import { getServerT } from '@/lib/i18n/server';
-import { absoluteUrl, jsonLd } from '@/lib/seo';
-import { breadcrumbLd } from '@/lib/structured-data';
-import { categoryPath, metaDescriptionFor, postPath } from '@/lib/blog';
 import { ArticleBody } from '@/components/blog/ArticleBody';
-import { LikeButton } from '@/components/blog/LikeButton';
 import { BlogAside } from '@/components/blog/BlogAside';
+import { LikeButton } from '@/components/blog/LikeButton';
 import { PostCard } from '@/components/blog/PostCard';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { ApiError } from '@/lib/api/client';
+import { blog } from '@/lib/api/resources';
+import type { BlogPost } from '@/lib/api/types';
+import { authorDisplay, categoryPath, metaDescriptionFor, postPath } from '@/lib/blog';
+import { getServerT } from '@/lib/i18n/server';
+import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { getSession } from '@/lib/session';
+import { breadcrumbLd } from '@/lib/structured-data';
 import { formatDate, initials } from '@/lib/utils';
+import { ArrowLeft, Building2, CalendarDays, Clock, Search, Users } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 export const revalidate = 60;
 
@@ -63,7 +63,7 @@ export async function generateMetadata({
       images: [{ url: image, alt: post.coverAlt ?? post.title }],
       publishedTime: post.publishedAt ?? undefined,
       modifiedTime: post.updatedAt,
-      authors: [post.author.name],
+      authors: [authorDisplay(post.author).name],
       section: post.category?.name,
       tags: post.seoKeywords,
     },
@@ -113,7 +113,16 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     ...(image ? { image: [image] } : {}),
     datePublished: post.publishedAt ?? undefined,
     dateModified: post.updatedAt,
-    author: { '@type': 'Person', name: post.author.name },
+    // An academy is an organisation with a page of its own; a mascot post is
+    // the platform speaking, so the publisher is the author.
+    author:
+      post.author.kind === 'academy'
+        ? {
+            '@type': 'Organization',
+            name: post.author.name,
+            url: absoluteUrl(`/academies/${post.author.id}`),
+          }
+        : { '@type': 'Organization', name: 'FotSpot', url: absoluteUrl('/') },
     publisher: {
       '@type': 'Organization',
       name: 'FotSpot',
@@ -167,14 +176,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <p className="text-muted text-lg leading-relaxed sm:text-xl">{post.excerpt}</p>
 
           <div className="border-border flex flex-wrap items-center gap-x-5 gap-y-3 border-y py-3 text-sm">
-            <span className="flex items-center gap-2">
-              <Avatar
-                src={post.author.avatarUrl}
-                fallback={initials(post.author.name.split(' ')[0], post.author.name.split(' ')[1])}
-                className="size-8 text-xs"
-              />
-              <span className="font-medium">{post.author.name}</span>
-            </span>
+            <AuthorLine author={post.author} />
             {post.publishedAt && (
               <span className="text-muted flex items-center gap-1.5">
                 <CalendarDays className="size-4" aria-hidden />
@@ -298,5 +300,28 @@ function ExploreLink({
         </span>
       </Link>
     </li>
+  );
+}
+
+/** The signature: the academy with a link to its page, or Lupo. */
+function AuthorLine({ author }: { author: BlogPost['author'] }) {
+  const { name, avatarUrl, href } = authorDisplay(author);
+  const body = (
+    <>
+      <Avatar
+        src={avatarUrl}
+        fallback={initials(name.split(' ')[0], name.split(' ')[1])}
+        className="size-10 text-xs"
+        alt=""
+      />
+      <span className="font-medium">{name}</span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className="flex items-center gap-2 hover:underline">
+      {body}
+    </Link>
+  ) : (
+    <span className="flex items-center gap-2">{body}</span>
   );
 }

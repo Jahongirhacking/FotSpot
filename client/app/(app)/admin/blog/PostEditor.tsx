@@ -10,9 +10,9 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { browserFetch } from '@/lib/api/browser';
 import type { SaveBlogPostBody } from '@/lib/api/resources';
-import type { AdminBlogPost, BlogCategory, BlogPostImage } from '@/lib/api/types';
+import type { AcademyProfile, AdminBlogPost, BlogCategory, BlogPostImage } from '@/lib/api/types';
 import { uploadToStorage } from '@/lib/api/upload';
-import { postPath } from '@/lib/blog';
+import { LUPO, postPath } from '@/lib/blog';
 import { suggestKeywords } from '@/lib/blog-keywords';
 import { cn } from '@/lib/utils';
 import { useMutation } from '@tanstack/react-query';
@@ -52,7 +52,7 @@ interface Draft {
   coverUrl: string | null;
   coverAlt: string;
   categoryId: string;
-  authorName: string;
+  authorAcademyId: string;
   readingMinutes: string;
   featured: boolean;
   seoTitle: string;
@@ -75,7 +75,7 @@ function draftOf(post: AdminBlogPost | null): Draft {
     coverUrl: post?.coverUrl ?? null,
     coverAlt: post?.coverAlt ?? '',
     categoryId: post?.categoryId ?? '',
-    authorName: post?.authorName ?? '',
+    authorAcademyId: post?.authorAcademyId ?? '',
     readingMinutes: post ? String(post?.readingMinutes) : '',
     featured: post?.featured ?? false,
     seoTitle: post?.seoTitle ?? '',
@@ -125,10 +125,13 @@ export function PostEditor({
   post,
   categories,
   images,
+  academyOptions = [],
 }: {
   post: AdminBlogPost | null;
   categories: BlogCategory[];
   images: BlogPostImage[];
+  /** Verified academies a post may be signed by; the mascot signs it otherwise. */
+  academyOptions?: Pick<AcademyProfile, 'id' | 'name'>[];
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -173,7 +176,7 @@ export function PostEditor({
     coverKey: draft.coverKey,
     coverAlt: draft.coverAlt,
     categoryId: draft.categoryId,
-    authorName: draft.authorName,
+    authorAcademyId: draft.authorAcademyId,
     readingMinutes: Number(draft.readingMinutes) || 0,
     featured: draft.featured,
     seoTitle: draft.seoTitle,
@@ -565,12 +568,18 @@ export function PostEditor({
                 htmlFor="post-author"
                 hint={t.blog.fieldAuthorNameHint}
               >
-                <Input
+                <Select
                   id="post-author"
-                  value={draft.authorName}
-                  onChange={(event) => set('authorName', event.target.value)}
-                  maxLength={80}
-                />
+                  value={draft.authorAcademyId}
+                  onChange={(event) => set('authorAcademyId', event.target.value)}
+                >
+                  <option value="">{LUPO.name}</option>
+                  {academyOptions.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
+                </Select>
               </Field>
               <Field
                 label={t.blog.fieldReadingMinutes}

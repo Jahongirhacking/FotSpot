@@ -1859,8 +1859,9 @@ export const uz = {
     write: 'Yozish',
     fieldCategory: 'Bo‘lim',
     noCategory: 'Bo‘limsiz',
-    fieldAuthorName: 'Muallif nomi',
-    fieldAuthorNameHint: 'Bo‘sh qoldirsangiz, sizning ismingiz ishlatiladi.',
+    fieldAuthorName: 'Muallif',
+    fieldAuthorNameHint:
+      'Maqola qaysi akademiya nomidan chiqadi. Platformaning o‘z maqolalari uchun Lupo — FotSpot maskoti — qolsin; adminning ismi hech qachon ko‘rsatilmaydi.',
     fieldReadingMinutes: 'O‘qish vaqti (daq.)',
     fieldReadingMinutesHint:
       'Matndan hisoblanadi. Raqam kiritsangiz, o‘sha olinadi; 0 — qayta hisoblash.',
