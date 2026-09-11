@@ -73,7 +73,7 @@ export default async function AdminBlogPage({
           </h1>
           <p className="text-muted text-sm">{t.blog.manageHint}</p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/admin/blog/new">
             <Plus aria-hidden /> {t.blog.newPost}
           </Link>
