@@ -856,13 +856,14 @@ enum MediaCategory {
 }
 
 /**
- * Whether a rating on a clip is the player's claim or a coach's judgement.
+ * Who put the number on a clip. A coach's rating is verified; a moderator's,
+ * given in review or after an appeal, is relative — it stands until a coach
+ * who works with the player replaces it, and it weighs half on the card.
+ * Players do not rate their own clips.
  */
 enum RatingSource {
-  SELF
-  COACH
-  /// A moderator rated the clip while reviewing it, or after an appeal.
-  ADMIN
+  VERIFIED
+  RELATIVE
 }
 
 enum RatingAppealStatus {
@@ -1077,15 +1078,15 @@ model Media {
 
   /// Who put `rating` there.
   ///
-  /// A player's number is a claim; a coach watching the same clip can replace it,
-  /// and then it is evidence (§1.6). One column rather than two nullable ones
-  /// because a clip has exactly one current rating — storing both invites a UI
-  /// that shows a stale claim beside the coach's correction and leaves the reader
-  /// to guess which is live.
+  /// A moderator's number is relative; a coach watching the same clip can
+  /// replace it, and then it is verified (§1.6). One column rather than two
+  /// nullable ones because a clip has exactly one current rating — storing both
+  /// invites a UI that shows a stale number beside the coach's correction and
+  /// leaves the reader to guess which is live.
   ///
   /// The previous value is not overwritten silently: `RatingRevision` keeps what
   /// it was, who changed it and when.
-  reportedBy RatingSource @default(SELF)
+  reportedBy RatingSource @default(RELATIVE)
 
   revisions RatingRevision[]
   appeals   RatingAppeal[]
@@ -1820,6 +1821,8 @@ enum NotificationEvent {
   ADMIN_MESSAGE
   /// A moderator answered the player's appeal against a clip's rating.
   RATING_APPEAL_RESOLVED
+  /// A player appealed a relative rating; sent to every super admin, who alone answer appeals.
+  RATING_APPEAL_FILED
 }
 
 /// A message an admin sent to one user. The user reads it as a notification;

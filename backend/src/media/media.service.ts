@@ -25,6 +25,7 @@ import {
 import { StorageService } from '../storage/storage.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { FEED_SCORE } from './feed-score.util';
 import {
   AppealRatingDto,
@@ -39,10 +40,11 @@ import {
 } from './dto/media.dto';
 import { MediaFinaliserService } from './media-finaliser.service';
 import {
-  canViewMedia,
-  isPubliclyVisible,
+  MEDIA_ORDER,
   OWN_MEDIA_WHERE,
   PUBLIC_MEDIA_WHERE,
+  canViewMedia,
+  isPubliclyVisible,
 } from './media-visibility.util';
 import {
   FINALISE_ATTEMPTS,
@@ -165,7 +167,7 @@ interface FeedRow {
   storageKey: string;
   posterKey: string | null;
   rating: number | null;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
   title: string | null;
   description: string | null;
   createdAt: Date;
@@ -204,6 +206,7 @@ export class MediaService {
     @InjectQueue(MEDIA_QUEUE) private queue: Queue<FinaliseClipJob>,
     private finaliser: MediaFinaliserService,
     private adminAlerts: TelegramAdminAlertsService,
+    private notifications: NotificationsService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -544,7 +547,7 @@ export class MediaService {
     };
 
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.media.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.media.findMany({ where, orderBy: MEDIA_ORDER, skip, take }),
       this.prisma.media.count({ where }),
     ]);
 
@@ -904,7 +907,7 @@ export class MediaService {
         // attribute it used to argue for, so the number goes with the old
         // filing and the clip waits for a new one. `dto.rating` is ignored —
         // players no longer rate their own clips.
-        ...(categoryChanged ? { rating: null, reportedBy: 'SELF' as const } : {}),
+        ...(categoryChanged ? { rating: null, reportedBy: 'RELATIVE' as const } : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
@@ -952,14 +955,14 @@ export class MediaService {
           previousRating: media.rating,
           previousReportedBy: media.reportedBy,
           rating: dto.rating,
-          reportedBy: 'COACH',
+          reportedBy: 'VERIFIED',
           actorUserId: userId,
         },
       });
 
       return tx.media.update({
         where: { id: mediaId },
-        data: { rating: dto.rating, reportedBy: 'COACH' },
+        data: { rating: dto.rating, reportedBy: 'VERIFIED' },
       });
     });
 
@@ -987,8 +990,15 @@ export class MediaService {
     if (!ATTRIBUTE_CATEGORIES.includes(media.category)) {
       throw new BadRequestException('Highlights carry no rating to appeal');
     }
-    if (media.rating === null || media.reportedBy === 'SELF') {
-      throw new BadRequestException('There is no rating from a coach or a moderator to appeal');
+    // A coach's number is verified — it is the judgement the platform stands
+    // on, and there is nobody above a coach to appeal to. A moderator's is
+    // relative, and a super admin can look again.
+    if (media.rating === null || media.reportedBy !== 'RELATIVE') {
+      throw new BadRequestException(
+        media.rating === null
+          ? 'There is no rating to appeal yet'
+          : 'A coach’s rating is verified and cannot be appealed',
+      );
     }
     const pending = await this.prisma.ratingAppeal.findFirst({
       where: { mediaId, status: 'PENDING' },
@@ -996,7 +1006,7 @@ export class MediaService {
     });
     if (pending) throw new ConflictException('This rating is already under appeal');
 
-    return this.prisma.ratingAppeal.create({
+    const appeal = await this.prisma.ratingAppeal.create({
       data: {
         mediaId,
         playerId: profile.id,
@@ -1004,6 +1014,42 @@ export class MediaService {
         ratingAtAppeal: media.rating,
       },
     });
+
+    // Only super admins answer appeals, so only they are told — in the app,
+    // and in the operator chat, which is where they actually look.
+    const name = `${profile.firstName} ${profile.lastName}`.trim();
+    const superAdmins = await this.prisma.user.findMany({
+      where: { isActive: true, roles: { some: { role: { name: 'super_admin' } } } },
+      select: { id: true },
+    });
+    await Promise.all(
+      superAdmins.map((admin) =>
+        this.notifications.notify(
+          admin.id,
+          'RATING_APPEAL_FILED',
+          {
+            appealId: appeal.id,
+            mediaId,
+            clipTitle: media.title,
+            category: media.category,
+            rating: media.rating,
+            playerId: profile.id,
+            playerName: name,
+            reason: appeal.reason,
+          },
+          { userId, role: 'player' },
+        ),
+      ),
+    );
+    void this.adminAlerts.announce({
+      kind: 'RATING_APPEALED',
+      name,
+      category: media.category,
+      rating: media.rating,
+      reason: appeal.reason,
+    });
+
+    return appeal;
   }
 
   /** The owner's latest appeal on a clip, or null — what the clip view shows. */

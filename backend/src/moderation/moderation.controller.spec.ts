@@ -30,11 +30,14 @@ describe('moderation routes — who may press what', () => {
     expect(rolesOn('removeFlaggedMedia')).toEqual(['admin', 'super_admin']);
   });
 
-  it('lets both admin roles rate, re-file, and answer appeals', () => {
+  it('lets both admin roles rate and re-file a clip in review', () => {
     expect(rolesOn('rateMedia')).toEqual(['admin', 'super_admin']);
     expect(rolesOn('recategoriseMedia')).toEqual(['admin', 'super_admin']);
-    expect(rolesOn('listAppeals')).toEqual(['admin', 'super_admin']);
-    expect(rolesOn('resolveAppeal')).toEqual(['admin', 'super_admin']);
+  });
+
+  it('keeps appeals for the super admin alone — an admin’s own rating is what is appealed', () => {
+    expect(rolesOn('listAppeals')).toEqual(['super_admin']);
+    expect(rolesOn('resolveAppeal')).toEqual(['super_admin']);
   });
 
   it('lets both admin roles list clips by processing status', () => {

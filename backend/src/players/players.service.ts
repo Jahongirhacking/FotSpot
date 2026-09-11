@@ -11,7 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import { ageAt, ageBandFor } from '../common/age.util';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
-import { PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
+import { MEDIA_ORDER, PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
@@ -87,7 +87,14 @@ export class PlayersService {
         // that stops at the video and not at what the video claims is not
         // moderation.
         where: { playerId: { in: playerIds }, ...PUBLIC_MEDIA_WHERE, rating: { not: null } },
-        select: { playerId: true, category: true, rating: true, reportedBy: true, createdAt: true },
+        select: {
+          playerId: true,
+          category: true,
+          rating: true,
+          reportedBy: true,
+          recordedAt: true,
+          createdAt: true,
+        },
       }),
       this.prisma.coachAssessment.findMany({
         where: { playerId: { in: playerIds } },
@@ -397,7 +404,10 @@ export class PlayersService {
           // verified clips only. The owner's own view of their clips comes from
           // `GET /media/player/:id`, which knows who is asking; this one cannot,
           // because the cache entry is shared.
-          include: { media: { where: PUBLIC_MEDIA_WHERE }, ...AVATAR_INCLUDE },
+          include: {
+            media: { where: PUBLIC_MEDIA_WHERE, orderBy: MEDIA_ORDER },
+            ...AVATAR_INCLUDE,
+          },
         });
         if (!found) return found;
         const stars = await this.starsFor([found.id]);

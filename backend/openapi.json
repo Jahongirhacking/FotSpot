@@ -6371,7 +6371,7 @@
             "bearer": []
           }
         ],
-        "summary": "Players' appeals against ratings, pending first.",
+        "summary": "Players' appeals against ratings, pending first. Super admins alone answer them.",
         "tags": [
           "moderation"
         ]

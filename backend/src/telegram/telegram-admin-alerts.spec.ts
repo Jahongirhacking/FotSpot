@@ -98,6 +98,20 @@ describe('what each alert says', () => {
     expect(text).toContain('My sprint');
   });
 
+  it('announces an appeal with the player, the skill, the disputed number and the reason', () => {
+    const text = adminAlertMessage({
+      kind: 'RATING_APPEALED',
+      name: 'Aziz <b>',
+      category: 'DRIBBLING',
+      rating: 72,
+      reason: 'The stop at 0:12 is clean & undersold',
+    });
+    expect(text).toContain('#rating_appeal');
+    expect(text).toContain('<b>Aziz &lt;b&gt;</b>');
+    expect(text).toContain('DRIBBLING (72)');
+    expect(text).toContain('clean &amp; undersold');
+  });
+
   it('announces a trial with the academy, the title, the day and the place', () => {
     const text = adminAlertMessage({
       kind: 'TRIAL_CREATED',

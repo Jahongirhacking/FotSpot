@@ -29,7 +29,7 @@ const ROW: {
   moderationStatus: 'VERIFIED',
   category: 'TECHNIQUE',
   rating: 70,
-  reportedBy: 'COACH',
+  reportedBy: 'VERIFIED',
   storageKey: 'private/players/player-1/clip.mp4',
   posterKey: null,
   title: null,
@@ -74,7 +74,7 @@ describe('MediaService.update — re-filing a clip under the right skill', () =>
 
     // The coach's 70 was a rating of technique. Under finishing the clip is a
     // new claim and waits for a coach or a moderator to rate it.
-    expect(written(prisma)).toEqual({ category: 'FINISHING', rating: null, reportedBy: 'SELF' });
+    expect(written(prisma)).toEqual({ category: 'FINISHING', rating: null, reportedBy: 'RELATIVE' });
   });
 
   it('ignores a rating sent with the edit — players no longer rate their own clips', async () => {
@@ -82,7 +82,7 @@ describe('MediaService.update — re-filing a clip under the right skill', () =>
 
     await service.update('user-1', 'clip-1', { category: 'FINISHING', rating: 65 });
 
-    expect(written(prisma)).toEqual({ category: 'FINISHING', rating: null, reportedBy: 'SELF' });
+    expect(written(prisma)).toEqual({ category: 'FINISHING', rating: null, reportedBy: 'RELATIVE' });
   });
 
   it('files a highlights clip under an attribute, unrated, for a coach to rate', async () => {
@@ -90,7 +90,7 @@ describe('MediaService.update — re-filing a clip under the right skill', () =>
 
     await service.update('user-1', 'clip-1', { category: 'PACE' });
 
-    expect(written(prisma)).toEqual({ category: 'PACE', rating: null, reportedBy: 'SELF' });
+    expect(written(prisma)).toEqual({ category: 'PACE', rating: null, reportedBy: 'RELATIVE' });
   });
 
   it('drops the rating when a clip becomes highlights', async () => {
@@ -101,7 +101,7 @@ describe('MediaService.update — re-filing a clip under the right skill', () =>
     expect(written(prisma)).toEqual({
       category: 'MATCH_HIGHLIGHTS',
       rating: null,
-      reportedBy: 'SELF',
+      reportedBy: 'RELATIVE',
     });
   });
 

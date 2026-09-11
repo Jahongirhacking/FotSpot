@@ -906,13 +906,13 @@ describe('rating in review', () => {
     const { service, prisma, audit, redis } = build({
       category: 'DRIBBLING',
       rating: null,
-      reportedBy: 'SELF',
+      reportedBy: 'RELATIVE',
     });
 
     const media = await service.rateMedia('admin-1', 'clip-1', { rating: 72 });
 
     expect(media.rating).toBe(72);
-    expect(media.reportedBy).toBe('ADMIN');
+    expect(media.reportedBy).toBe('RELATIVE');
     expect(audit.record).toHaveBeenCalledWith(
       'admin-1',
       AuditAction.MEDIA_RATED_BY_ADMIN,
@@ -933,14 +933,14 @@ describe('rating in review', () => {
     const { service, prisma, audit } = build({
       category: 'GOALKEEPING',
       rating: 80,
-      reportedBy: 'ADMIN',
+      reportedBy: 'RELATIVE',
     });
 
     await service.recategoriseMedia('admin-1', 'clip-1', { category: 'DRIBBLING' });
 
     expect(prisma.media.update).toHaveBeenCalledWith({
       where: { id: 'clip-1' },
-      data: { category: 'DRIBBLING', rating: null, reportedBy: 'SELF' },
+      data: { category: 'DRIBBLING', rating: null, reportedBy: 'RELATIVE' },
     });
     expect(audit.record).toHaveBeenCalledWith(
       'admin-1',
@@ -982,7 +982,7 @@ describe('appeals', () => {
     const { service, prisma, notifications, audit } = build({
       category: 'DRIBBLING',
       rating: 40,
-      reportedBy: 'COACH',
+      reportedBy: 'VERIFIED',
     });
     prisma.ratingAppeal.findUnique.mockResolvedValue(APPEAL);
 
@@ -1023,7 +1023,7 @@ describe('appeals', () => {
   });
 
   it('no rating keeps the number and says so', async () => {
-    const { service, prisma, notifications } = build({ rating: 40, reportedBy: 'COACH' });
+    const { service, prisma, notifications } = build({ rating: 40, reportedBy: 'VERIFIED' });
     prisma.ratingAppeal.findUnique.mockResolvedValue(APPEAL);
 
     await service.resolveAppeal('admin-1', 'appeal-1', {});
@@ -1060,7 +1060,7 @@ describe('appeals', () => {
         media: {
           ...CLIP,
           rating: 40,
-          reportedBy: 'COACH',
+          reportedBy: 'VERIFIED',
           player: {
             id: 'player-1',
             firstName: 'Ali',

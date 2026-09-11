@@ -6,6 +6,7 @@ import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
 import { MediaService, toMediaResponse } from './media.service';
 import type { MediaFinaliserService } from './media-finaliser.service';
 import type { GroupsService } from '../academies/groups.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { StorageService } from '../storage/storage.service';
@@ -34,7 +35,7 @@ const CLIP: {
   storageKey: string;
   posterKey: string | null;
   rating: number | null;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
 } = {
   id: 'clip-1',
   playerId: PLAYER_ID,
@@ -44,7 +45,7 @@ const CLIP: {
   storageKey: `private/players/${PLAYER_ID}/clip.mp4`,
   posterKey: null,
   rating: 70,
-  reportedBy: 'SELF',
+  reportedBy: 'RELATIVE',
 };
 
 /**
@@ -114,6 +115,8 @@ function build(clip: Partial<typeof CLIP> = {}) {
     {} as unknown as MediaFinaliserService,
     // Only reached from confirmUpload for a VIDEO; inert here.
     { announce: jest.fn(async () => undefined) } as unknown as TelegramAdminAlertsService,
+    // Only reached from appealRating; inert here.
+    { notify: jest.fn(async () => undefined) } as unknown as NotificationsService,
   );
 
   return { service, prisma, storage };
@@ -207,6 +210,20 @@ describe('a player profile — who is asking decides what comes back', () => {
       expect.objectContaining({
         where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
       }),
+    );
+  });
+
+  it('lists clips by the day they were filmed, newest first, for every skill tab', async () => {
+    const { service, prisma } = build();
+
+    await service.listForPlayer(PLAYER_ID, {}, undefined);
+    await service.listForPlayer(PLAYER_ID, { category: 'PACE' }, undefined);
+
+    for (const call of prisma.media.findMany.mock.calls as unknown as [{ orderBy: unknown }][]) {
+      expect(call[0].orderBy).toEqual([{ recordedAt: 'desc' }, { createdAt: 'desc' }]);
+    }
+    expect(prisma.media.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ category: 'PACE' }) }),
     );
   });
 

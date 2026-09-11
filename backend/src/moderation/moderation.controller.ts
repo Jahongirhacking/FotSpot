@@ -207,15 +207,15 @@ export class ModerationController {
     return this.moderationService.recategoriseMedia(user.userId, id, dto);
   }
 
-  /** Players' appeals against ratings, pending first. */
-  @Roles('admin', 'super_admin')
+  /** Players' appeals against ratings, pending first. Super admins alone answer them. */
+  @Roles('super_admin')
   @Get('appeals')
   listAppeals(@Query() dto: ListAppealsDto) {
     return this.moderationService.listAppeals(dto);
   }
 
   /** Answers an appeal with a new rating or the same one, and tells the player. */
-  @Roles('admin', 'super_admin')
+  @Roles('super_admin')
   @Patch('appeals/:id')
   resolveAppeal(
     @CurrentUser() user: AuthUser,

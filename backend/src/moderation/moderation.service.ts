@@ -720,13 +720,13 @@ export class ModerationService {
           previousRating: media.rating,
           previousReportedBy: media.reportedBy,
           rating: dto.rating,
-          reportedBy: 'ADMIN',
+          reportedBy: 'RELATIVE',
           actorUserId: actorId,
         },
       });
       return tx.media.update({
         where: { id: mediaId },
-        data: { rating: dto.rating, reportedBy: 'ADMIN' },
+        data: { rating: dto.rating, reportedBy: 'RELATIVE' },
       });
     });
     await this.audit.record(actorId, AuditAction.MEDIA_RATED_BY_ADMIN, {
@@ -757,7 +757,7 @@ export class ModerationService {
       );
     const updated = await this.prisma.media.update({
       where: { id: mediaId },
-      data: { category: dto.category, rating: null, reportedBy: 'SELF' },
+      data: { category: dto.category, rating: null, reportedBy: 'RELATIVE' },
     });
     await this.audit.record(actorId, AuditAction.MEDIA_RECATEGORISED, {
       mediaId,
