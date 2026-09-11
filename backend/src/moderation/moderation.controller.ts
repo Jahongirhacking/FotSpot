@@ -142,4 +142,36 @@ export class ModerationController {
   deleteMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.moderationService.deleteMedia(user.userId, id);
   }
+
+  /**
+   * Takes a live, verified clip down. Super admin only: the queue's Block is a
+   * first decision on something nobody has seen; this undoes a decision on
+   * something people have.
+   */
+  @Roles('super_admin')
+  @Patch('media/:id/block-active')
+  blockActiveMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.blockActiveMedia(user.userId, id);
+  }
+
+  /** Puts a blocked clip back on the public surfaces. Super admin only. */
+  @Roles('super_admin')
+  @Patch('media/:id/unblock')
+  unblockMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.unblockMedia(user.userId, id);
+  }
+
+  /** A flagged clip, cleared: back to ACTIVE. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/restore')
+  restoreFlaggedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.restoreFlaggedMedia(user.userId, id);
+  }
+
+  /** A flagged clip, taken down for good: REMOVED, row and trail kept. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/remove')
+  removeFlaggedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.removeFlaggedMedia(user.userId, id);
+  }
 }

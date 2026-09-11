@@ -6042,6 +6042,122 @@
         ]
       }
     },
+    "/api/v1/moderation/media/{id}/block-active": {
+      "patch": {
+        "operationId": "moderation_blockActiveMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Takes a live, verified clip down. Super admin only: the queue's Block is a\nfirst decision on something nobody has seen; this undoes a decision on\nsomething people have.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/unblock": {
+      "patch": {
+        "operationId": "moderation_unblockMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Puts a blocked clip back on the public surfaces. Super admin only.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/restore": {
+      "patch": {
+        "operationId": "moderation_restoreFlaggedMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A flagged clip, cleared: back to ACTIVE.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/remove": {
+      "patch": {
+        "operationId": "moderation_removeFlaggedMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A flagged clip, taken down for good: REMOVED, row and trail kept.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/admin/coaches/{id}/verify": {
       "patch": {
         "operationId": "admin_verifyCoach",
@@ -6525,6 +6641,127 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages": {
+      "post": {
+        "operationId": "admin_sendMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendAdminMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages/chats": {
+      "get": {
+        "operationId": "admin_listChats",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The chat history: one row per person written to, newest first, paginated.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages/chats/{userId}": {
+      "get": {
+        "operationId": "admin_listThread",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One person's thread, newest first, paginated.",
         "tags": [
           "admin"
         ]
@@ -9271,6 +9508,23 @@
         "required": [
           "roleId",
           "permissionId"
+        ]
+      },
+      "SendAdminMessageDto": {
+        "type": "object",
+        "properties": {
+          "recipientUserId": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "recipientUserId",
+          "body"
         ]
       },
       "BlogPostStatus": {

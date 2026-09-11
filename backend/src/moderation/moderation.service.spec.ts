@@ -757,3 +757,110 @@ describe('retryFailedMedia — a clip stuck at PROCESSING', () => {
     expect(wroteActive).toBe(false);
   });
 });
+
+/*
+ * The four moves the queue's transition table leaves out, each an explicit
+ * act from the status lists: a super admin taking a live clip down or putting
+ * a blocked one back; an admin clearing or finishing a takedown on a flagged
+ * clip. Each is conditional on the row still being what the admin saw.
+ */
+describe('second decisions from the status lists', () => {
+  it('blocks a live, verified clip and says so in the audit trail', async () => {
+    const { service, prisma, audit, redis } = build({ moderationStatus: 'VERIFIED' });
+
+    await service.blockActiveMedia('super-1', 'clip-1');
+
+    expect(prisma.media.updateMany).toHaveBeenCalledWith({
+      where: { id: 'clip-1', moderationStatus: 'VERIFIED' },
+      data: { moderationStatus: 'BLOCKED' },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      'super-1',
+      AuditAction.MEDIA_BLOCKED_ACTIVE,
+      expect.objectContaining({ previousStatus: 'VERIFIED', newStatus: 'BLOCKED' }),
+    );
+    expect(redis.del).toHaveBeenCalled();
+  });
+
+  it('refuses to block-active a clip that is not verified', async () => {
+    const { service, prisma } = build({ moderationStatus: 'UNVERIFIED' });
+    await expect(service.blockActiveMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.media.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('puts a blocked clip back, checking the file is there when it is not ACTIVE', async () => {
+    const { service, prisma, storage, audit } = build({
+      moderationStatus: 'BLOCKED',
+      status: 'PROCESSING',
+    });
+
+    await service.unblockMedia('super-1', 'clip-1');
+
+    expect(storage.describeObject).toHaveBeenCalledWith(CLIP.storageKey);
+    expect(prisma.media.updateMany).toHaveBeenCalledWith({
+      where: { id: 'clip-1', moderationStatus: 'BLOCKED' },
+      data: { moderationStatus: 'VERIFIED' },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      'super-1',
+      AuditAction.MEDIA_UNBLOCKED,
+      expect.anything(),
+    );
+  });
+
+  it('refuses to unblock when there is no file behind the clip', async () => {
+    const { service, storage, prisma } = build({ moderationStatus: 'BLOCKED', status: 'FAILED' });
+    storage.describeObject.mockResolvedValue(null);
+    await expect(service.unblockMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.media.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('restores a flagged clip to ACTIVE and removes one to REMOVED, never touching moderation', async () => {
+    const restored = build({ status: 'FLAGGED', moderationStatus: 'VERIFIED' });
+    await restored.service.restoreFlaggedMedia('admin-1', 'clip-1');
+    expect(restored.prisma.media.updateMany).toHaveBeenCalledWith({
+      where: { id: 'clip-1', status: 'FLAGGED' },
+      data: { status: 'ACTIVE' },
+    });
+
+    const removed = build({ status: 'FLAGGED', moderationStatus: 'VERIFIED' });
+    await removed.service.removeFlaggedMedia('admin-1', 'clip-1');
+    expect(removed.prisma.media.updateMany).toHaveBeenCalledWith({
+      where: { id: 'clip-1', status: 'FLAGGED' },
+      data: { status: 'REMOVED' },
+    });
+    expect(removed.audit.record).toHaveBeenCalledWith(
+      'admin-1',
+      AuditAction.MEDIA_REMOVED,
+      expect.anything(),
+    );
+  });
+
+  it('refuses to restore or remove a clip that is not flagged', async () => {
+    const { service } = build({ status: 'ACTIVE' });
+    await expect(service.restoreFlaggedMedia('admin-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    await expect(service.removeFlaggedMedia('admin-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('tells the loser when another moderator changed the row in between', async () => {
+    const { service, prisma } = build({ moderationStatus: 'VERIFIED' });
+    prisma.media.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.blockActiveMedia('super-1', 'clip-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('404s an unknown clip', async () => {
+    const { service, prisma } = build();
+    prisma.media.findUnique.mockResolvedValue(null);
+    await expect(service.unblockMedia('super-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});

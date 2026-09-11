@@ -6,13 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, type MediaModerationStatus } from '@prisma/client';
+import { Prisma, type MediaModerationStatus, type MediaStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaFinaliserService } from '../media/media-finaliser.service';
 import { MediaRecoveryService } from '../media/media-recovery.service';
 import { PROCESSING_GAVE_UP_REASON } from '../media/media-processing.constants';
 import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/audit.actions';
+import { AuditAction, type AuditActionKey } from '../audit/audit.actions';
 import { RedisKeys } from '../redis/redis.keys';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
@@ -552,6 +552,128 @@ export class ModerationService {
    * clip is already gone from the platform, and reporting failure for work that
    * succeeded would invite a retry with nothing left to delete.
    */
+  /**
+   * The four moves the queue's table deliberately leaves out, each its own act.
+   *
+   * `decide` handles a *first* decision on an unreviewed clip and refuses
+   * anything else, so two moderators cannot overwrite each other in the queue.
+   * These are second decisions, made from the status lists rather than the
+   * queue, and they say so: a super admin taking down a clip that has been
+   * live, or putting a blocked one back; an admin clearing or finishing a
+   * takedown on a flagged clip. Each is conditional on the row still being in
+   * the state the admin saw, audited under its own key, and followed by the
+   * same cache purge as every other visibility change.
+   */
+  async blockActiveMedia(actorId: string, mediaId: string) {
+    return this.moveModeration(
+      actorId,
+      mediaId,
+      'VERIFIED',
+      'BLOCKED',
+      AuditAction.MEDIA_BLOCKED_ACTIVE,
+    );
+  }
+
+  async unblockMedia(actorId: string, mediaId: string) {
+    return this.moveModeration(
+      actorId,
+      mediaId,
+      'BLOCKED',
+      'VERIFIED',
+      AuditAction.MEDIA_UNBLOCKED,
+    );
+  }
+
+  async restoreFlaggedMedia(actorId: string, mediaId: string) {
+    return this.moveStatus(actorId, mediaId, 'FLAGGED', 'ACTIVE', AuditAction.MEDIA_RESTORED);
+  }
+
+  async removeFlaggedMedia(actorId: string, mediaId: string) {
+    return this.moveStatus(actorId, mediaId, 'FLAGGED', 'REMOVED', AuditAction.MEDIA_REMOVED);
+  }
+
+  private async moveModeration(
+    actorId: string,
+    mediaId: string,
+    from: MediaModerationStatus,
+    to: MediaModerationStatus,
+    action: AuditActionKey,
+  ) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { id: true, playerId: true, status: true, moderationStatus: true, storageKey: true },
+    });
+    if (!media) throw new NotFoundException('Clip not found');
+    if (media.moderationStatus !== from) {
+      throw new ConflictException(
+        `This clip is ${media.moderationStatus.toLowerCase()}, not ${from.toLowerCase()}. Reload the list.`,
+      );
+    }
+    // Putting a clip back on the public surfaces needs the file to be there,
+    // for the same reason the queue's verify checks.
+    if (to === 'VERIFIED' && media.status !== 'ACTIVE') {
+      const present = await this.storage.describeObject(media.storageKey);
+      if (!present) {
+        throw new ConflictException(
+          'There is no file behind this clip, so it cannot be made active.',
+        );
+      }
+    }
+    const { count } = await this.prisma.media.updateMany({
+      where: { id: mediaId, moderationStatus: from },
+      data: { moderationStatus: to },
+    });
+    if (count === 0) {
+      throw new ConflictException(
+        'Another moderator changed this clip while you were looking at it. Reload the list.',
+      );
+    }
+    await this.audit.record(actorId, action, {
+      mediaId,
+      playerId: media.playerId,
+      previousStatus: from,
+      newStatus: to,
+    });
+    await this.redis.del(RedisKeys.playerProfile(media.playerId));
+    return this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+  }
+
+  private async moveStatus(
+    actorId: string,
+    mediaId: string,
+    from: MediaStatus,
+    to: MediaStatus,
+    action: AuditActionKey,
+  ) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { id: true, playerId: true, status: true },
+    });
+    if (!media) throw new NotFoundException('Clip not found');
+    if (media.status !== from) {
+      throw new ConflictException(
+        `This clip is ${media.status.toLowerCase()}, not ${from.toLowerCase()}. Reload the list.`,
+      );
+    }
+    const { count } = await this.prisma.media.updateMany({
+      where: { id: mediaId, status: from },
+      data: { status: to },
+    });
+    if (count === 0) {
+      throw new ConflictException(
+        'Another moderator changed this clip while you were looking at it. Reload the list.',
+      );
+    }
+    await this.audit.record(actorId, action, {
+      mediaId,
+      playerId: media.playerId,
+      previousStatus: from,
+      newStatus: to,
+    });
+    await this.redis.del(RedisKeys.playerProfile(media.playerId));
+    return this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+  }
+
   async deleteMedia(actorId: string, mediaId: string) {
     const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
     if (!media) throw new NotFoundException('Clip not found');

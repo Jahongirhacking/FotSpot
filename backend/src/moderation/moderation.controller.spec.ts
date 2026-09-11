@@ -20,6 +20,16 @@ describe('moderation routes — who may press what', () => {
     expect(rolesOn('deleteMedia')).toEqual(['super_admin']);
   });
 
+  it('keeps taking a live clip down, and putting a blocked one back, to the super admin', () => {
+    expect(rolesOn('blockActiveMedia')).toEqual(['super_admin']);
+    expect(rolesOn('unblockMedia')).toEqual(['super_admin']);
+  });
+
+  it('lets both admin roles clear or finish a takedown on a flagged clip', () => {
+    expect(rolesOn('restoreFlaggedMedia')).toEqual(['admin', 'super_admin']);
+    expect(rolesOn('removeFlaggedMedia')).toEqual(['admin', 'super_admin']);
+  });
+
   it('lets both admin roles list clips by processing status', () => {
     expect(rolesOn('listMedia')).toEqual(['admin', 'super_admin']);
   });
