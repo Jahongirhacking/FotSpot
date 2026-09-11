@@ -26,6 +26,7 @@ const PROFILE = {
   telegramUrl: null,
   youtubeUrl: 'https://youtube.com/@kid',
   transfermarktUrl: null,
+  contactPhone: '+998971112233',
   media: [],
   user: {},
 };
@@ -100,6 +101,7 @@ describe('getPublicProfile — what a viewer is told about a player', () => {
       email: 'kid@example.test',
       phone: '+998901234567',
       telegram: 'tg://user?id=123456',
+      contactPhone: '+998971112233',
       social: {
         instagramUrl: 'https://instagram.com/kid',
         telegramUrl: null,
@@ -159,6 +161,7 @@ describe('getPublicProfile — what a viewer is told about a player', () => {
       expect(profile).not.toHaveProperty('youtubeUrl');
       expect(profile).not.toHaveProperty('telegramUrl');
       expect(profile).not.toHaveProperty('transfermarktUrl');
+      expect(profile).not.toHaveProperty('contactPhone');
     }
   });
 

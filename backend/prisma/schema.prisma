@@ -426,6 +426,10 @@ model PlayerProfile {
   telegramUrl      String?
   youtubeUrl       String?
   transfermarktUrl String?
+  /// A number the player gives out for an academy manager to call — E.164,
+  /// `+` and country code first. Not the sign-in phone and not verified by
+  /// the platform; private like the links above, served only inside `contacts`.
+  contactPhone     String?
 
   matches        Int    @default(0)
   goals          Int    @default(0)

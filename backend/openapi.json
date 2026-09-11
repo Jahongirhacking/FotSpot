@@ -9121,6 +9121,11 @@
           "transfermarktUrl": {
             "type": "string",
             "maxLength": 300
+          },
+          "contactPhone": {
+            "type": "string",
+            "description": "A number for an academy manager to call — not the sign-in phone, not\nverified. Stored as E.164 (`normaliseContactPhone`); an empty string\nclears it. Private: served only inside `contacts`.",
+            "maxLength": 40
           }
         }
       },

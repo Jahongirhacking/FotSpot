@@ -69,6 +69,12 @@ export class UpdatePlayerProfileDto {
   @IsOptional() @IsString() @MaxLength(300) telegramUrl?: string;
   @IsOptional() @IsString() @MaxLength(300) youtubeUrl?: string;
   @IsOptional() @IsString() @MaxLength(300) transfermarktUrl?: string;
+  /**
+   * A number for an academy manager to call — not the sign-in phone, not
+   * verified. Stored as E.164 (`normaliseContactPhone`); an empty string
+   * clears it. Private: served only inside `contacts`.
+   */
+  @IsOptional() @IsString() @MaxLength(40) contactPhone?: string;
 }
 
 export class UpdatePlayerStatsDto {
