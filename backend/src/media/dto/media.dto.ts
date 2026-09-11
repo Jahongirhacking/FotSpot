@@ -59,13 +59,11 @@ export class ConfirmUploadDto {
   category: (typeof CATEGORIES)[number];
 
   /**
-   * The player's own 0–100 claim for this attribute, evidenced by the clip.
-   *
-   * Required for every attribute category and rejected for MATCH_HIGHLIGHTS — enforced in the service, because "required unless the
-   * value of another field is X" is not something class-validator states
-   * clearly enough to be worth the custom constraint.
+   * Accepted and ignored. Players no longer rate their own clips: a rating is
+   * put on a clip by a coach or by a moderator in review. The field stays so
+   * an older app that still sends it is not refused by the whitelist pipe.
    */
-  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 100, deprecated: true })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -192,3 +190,8 @@ export class CreateMediaCommentDto {
 }
 
 export class ListMediaCommentsDto extends PaginationDto {}
+
+/** A player disputing the rating a coach or a moderator put on their clip. */
+export class AppealRatingDto {
+  @IsString() @MinLength(5) @MaxLength(1000) reason: string;
+}

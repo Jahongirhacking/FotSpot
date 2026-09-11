@@ -229,6 +229,7 @@ model User {
   blogLikes              BlogPostLike[]
   adminMessagesSent      AdminMessage[]       @relation("AdminMessagesSent")
   adminMessagesReceived  AdminMessage[]       @relation("AdminMessagesReceived")
+  ratingAppealsResolved  RatingAppeal[]       @relation("RatingAppealResolvers")
   passwordResetCodes     PasswordResetCode[]
   auditLogs              AuditLog[]
   reportsFiled           Report[]             @relation("ReportsFiled")
@@ -427,6 +428,7 @@ model PlayerProfile {
   recommendationWeight PlayerRecommendationWeight?
   academyWeights       PlayerAcademyRecommendationWeight[]
   coachAssessments     CoachAssessment[]
+  ratingAppeals        RatingAppeal[]
   trialApplications    TrialApplication[]
 
   createdAt DateTime @default(now())
@@ -859,6 +861,40 @@ enum MediaCategory {
 enum RatingSource {
   SELF
   COACH
+  /// A moderator rated the clip while reviewing it, or after an appeal.
+  ADMIN
+}
+
+enum RatingAppealStatus {
+  PENDING
+  RESOLVED
+}
+
+/// A player disputing the rating a coach or a moderator put on their clip.
+/// Reviewed on /admin/moderation/appealed-rating; the decision — a new
+/// rating or the same one — is recorded here and told to the player.
+model RatingAppeal {
+  id       String        @id @default(uuid())
+  mediaId  String
+  media    Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  playerId String
+  player   PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  reason           String
+  status           RatingAppealStatus @default(PENDING)
+  /// The rating the player disputed, kept so the decision reads against it.
+  ratingAtAppeal   Int?
+  /// The rating after the decision — the same number when it was kept.
+  decisionRating   Int?
+  decisionNote     String?
+  resolvedByUserId String?
+  resolvedBy       User?              @relation("RatingAppealResolvers", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([mediaId, status])
 }
 
 /**
@@ -1052,6 +1088,7 @@ model Media {
   reportedBy RatingSource @default(SELF)
 
   revisions RatingRevision[]
+  appeals   RatingAppeal[]
 
   likes    MediaLike[]
   views    MediaView[]
@@ -1781,6 +1818,8 @@ enum NotificationEvent {
   VERIFICATION_RESULT
   /// A message written to this person by an admin, delivered here and nowhere else.
   ADMIN_MESSAGE
+  /// A moderator answered the player's appeal against a clip's rating.
+  RATING_APPEAL_RESOLVED
 }
 
 /// A message an admin sent to one user. The user reads it as a notification;

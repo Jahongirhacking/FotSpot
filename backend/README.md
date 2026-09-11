@@ -298,6 +298,19 @@ does not appear.
   clip is verified it is served to exactly one account, its uploader, and signed
   for fifteen minutes rather than seven days so a block takes effect when it is
   pressed.
+- **Rating in review, and appeals**: a player no longer rates their own clip —
+  uploads land with `rating = null` (a `rating` in the confirm body is accepted
+  and ignored for older apps) and the number is put on by a coach or, in the
+  queue, by a moderator: `PATCH /moderation/media/:id/rating` stores it as
+  `reportedBy = ADMIN` with a `RatingRevision`, and `…/category` re-files the
+  clip under the skill the footage actually shows, dropping any rating. An
+  `ADMIN` rating weighs like a coach's on the card (`card-stars.util.ts`).
+  The player can dispute a non-self rating once per open case:
+  `POST /media/:id/appeal` files a `RatingAppeal` (PENDING; 409 while one is
+  open), `GET /media/:id/appeal` reads it back, and an admin answers from
+  `GET /moderation/appeals` with `PATCH /moderation/appeals/:id` — an optional
+  new rating and a note — which resolves it and sends the player a
+  `RATING_APPEAL_RESOLVED` notification saying whether the number changed.
 - **Blog** (`blog/`): public `GET /blog/home|posts|categories|posts/:slug|sitemap`
   return published posts only; drafts 404 everywhere. Posts are Markdown,
   rendered to sanitised HTML on save (`blog-markdown.util.ts`), with a slug made

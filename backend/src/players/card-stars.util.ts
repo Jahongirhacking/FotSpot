@@ -46,7 +46,8 @@ export const STARS = 5;
 export interface StarClip {
   category: string;
   rating: number | null;
-  reportedBy: 'SELF' | 'COACH';
+  /** Who put the number there. Anyone but the player weighs as a coach. */
+  reportedBy: 'SELF' | 'COACH' | 'ADMIN';
   createdAt: Date | string;
 }
 
@@ -101,11 +102,11 @@ export function computeCardStars(clips: StarClip[] = [], assessments: StarAssess
   for (const attribute of Object.keys(CARD_ATTRIBUTES) as CardAttribute[]) {
     const clip = latestClip(clips, attribute);
     if (clip?.rating != null) {
-      if (clip.reportedBy === 'COACH') coachSum += clip.rating;
+      if (clip.reportedBy !== 'SELF') coachSum += clip.rating;
       else selfSum += clip.rating;
     }
 
-    if (clip?.reportedBy !== 'COACH') {
+    if (clip?.reportedBy === undefined || clip.reportedBy === 'SELF') {
       const assessed = latestAssessed(assessments, CARD_ATTRIBUTES[attribute]);
       if (assessed !== null) coachSum += assessed;
     }

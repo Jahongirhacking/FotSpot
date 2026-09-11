@@ -1,4 +1,9 @@
-import { ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
 import { ModerationService } from './moderation.service';
 import { MODERATION_QUEUE_WHERE } from '../media/media-visibility.util';
@@ -9,6 +14,7 @@ import type { RedisService } from '../redis/redis.service';
 import type { StorageService } from '../storage/storage.service';
 import type { MediaFinaliserService } from '../media/media-finaliser.service';
 import type { MediaRecoveryService } from '../media/media-recovery.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * The admin half of video moderation: what the queue offers, what the two
@@ -51,7 +57,32 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
       delete: jest.fn(async (): Promise<unknown> => row),
       groupBy: jest.fn(async (): Promise<unknown[]> => []),
     },
-    $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+    ratingRevision: { create: jest.fn(async () => ({})) },
+    ratingAppeal: {
+      findUnique: jest.fn(async (): Promise<unknown> => null),
+      findMany: jest.fn(async (): Promise<unknown[]> => []),
+      count: jest.fn(async () => 0),
+      update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'appeal-1',
+        ...data,
+      })),
+    },
+    playerProfile: {
+      findUnique: jest.fn(async (): Promise<unknown> => ({ userId: 'player-user-1' })),
+    },
+    $transaction: jest.fn(async (arg: unknown) =>
+      typeof arg === 'function'
+        ? (arg as (tx: unknown) => unknown)({
+            ratingRevision: { create: jest.fn(async () => ({})) },
+            media: {
+              update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+                ...row,
+                ...data,
+              })),
+            },
+          })
+        : Promise.all(arg as Promise<unknown>[]),
+    ),
   };
 
   const audit = { record: jest.fn(async () => undefined) };
@@ -85,6 +116,7 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
     restart: jest.fn(async (): Promise<string> => 'RESTARTED'),
   };
 
+  const notifications = { notify: jest.fn(async () => undefined) };
   const service = new ModerationService(
     prisma as unknown as PrismaService,
     audit as unknown as AuditService,
@@ -92,9 +124,10 @@ function build(clip: Partial<typeof CLIP> & Record<string, unknown> = {}) {
     redis as unknown as RedisService,
     finaliser as unknown as MediaFinaliserService,
     recovery as unknown as MediaRecoveryService,
+    notifications as unknown as NotificationsService,
   );
 
-  return { service, prisma, audit, redis, storage, finaliser, recovery };
+  return { notifications, service, prisma, audit, redis, storage, finaliser, recovery };
 }
 
 describe('listUnverifiedMedia — what a moderator is shown', () => {
@@ -862,5 +895,196 @@ describe('second decisions from the status lists', () => {
     const { service, prisma } = build();
     prisma.media.findUnique.mockResolvedValue(null);
     await expect(service.unblockMedia('super-1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+/*
+ * Ratings put on by a moderator, and the player's appeal against them.
+ */
+describe('rating in review', () => {
+  it('rates the clip as ADMIN, keeps the revision, audits, and purges the profile cache', async () => {
+    const { service, prisma, audit, redis } = build({
+      category: 'DRIBBLING',
+      rating: null,
+      reportedBy: 'SELF',
+    });
+
+    const media = await service.rateMedia('admin-1', 'clip-1', { rating: 72 });
+
+    expect(media.rating).toBe(72);
+    expect(media.reportedBy).toBe('ADMIN');
+    expect(audit.record).toHaveBeenCalledWith(
+      'admin-1',
+      AuditAction.MEDIA_RATED_BY_ADMIN,
+      expect.objectContaining({ previousRating: null, rating: 72 }),
+    );
+    expect(redis.del).toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('refuses to rate highlights', async () => {
+    const { service } = build({ category: 'MATCH_HIGHLIGHTS' });
+    await expect(service.rateMedia('admin-1', 'clip-1', { rating: 50 })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('re-filing a clip drops the rating it carried for the old attribute', async () => {
+    const { service, prisma, audit } = build({
+      category: 'GOALKEEPING',
+      rating: 80,
+      reportedBy: 'ADMIN',
+    });
+
+    await service.recategoriseMedia('admin-1', 'clip-1', { category: 'DRIBBLING' });
+
+    expect(prisma.media.update).toHaveBeenCalledWith({
+      where: { id: 'clip-1' },
+      data: { category: 'DRIBBLING', rating: null, reportedBy: 'SELF' },
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      'admin-1',
+      AuditAction.MEDIA_RECATEGORISED,
+      expect.objectContaining({
+        previousCategory: 'GOALKEEPING',
+        category: 'DRIBBLING',
+        droppedRating: 80,
+      }),
+    );
+  });
+
+  it('re-filing under the same attribute changes nothing', async () => {
+    const { service, prisma, audit } = build({ category: 'DRIBBLING' });
+    await service.recategoriseMedia('admin-1', 'clip-1', { category: 'DRIBBLING' });
+    expect(prisma.media.update).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+});
+
+describe('appeals', () => {
+  const APPEAL = {
+    id: 'appeal-1',
+    mediaId: 'clip-1',
+    playerId: 'player-1',
+    reason: 'Bu baho adolatsiz.',
+    status: 'PENDING',
+    ratingAtAppeal: 40,
+    media: {
+      id: 'clip-1',
+      playerId: 'player-1',
+      rating: 40,
+      category: 'DRIBBLING',
+      title: 'Kechgi',
+    },
+  };
+
+  it('a new rating re-rates the clip, resolves the appeal and tells the player it changed', async () => {
+    const { service, prisma, notifications, audit } = build({
+      category: 'DRIBBLING',
+      rating: 40,
+      reportedBy: 'COACH',
+    });
+    prisma.ratingAppeal.findUnique.mockResolvedValue(APPEAL);
+
+    const resolved = await service.resolveAppeal('admin-1', 'appeal-1', {
+      rating: 65,
+      note: 'Qayta ko‘rildi',
+    });
+
+    expect(prisma.ratingAppeal.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'appeal-1' },
+        data: expect.objectContaining({
+          status: 'RESOLVED',
+          decisionRating: 65,
+          decisionNote: 'Qayta ko‘rildi',
+          resolvedByUserId: 'admin-1',
+        }),
+      }),
+    );
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'player-user-1',
+      'RATING_APPEAL_RESOLVED',
+      expect.objectContaining({
+        mediaId: 'clip-1',
+        previousRating: 40,
+        rating: 65,
+        changed: true,
+        note: 'Qayta ko‘rildi',
+      }),
+      { userId: 'admin-1', role: 'admin' },
+    );
+    expect(audit.record).toHaveBeenCalledWith(
+      'admin-1',
+      AuditAction.RATING_APPEAL_RESOLVED,
+      expect.objectContaining({ appealId: 'appeal-1', rating: 65 }),
+    );
+    expect(resolved.status).toBe('RESOLVED');
+  });
+
+  it('no rating keeps the number and says so', async () => {
+    const { service, prisma, notifications } = build({ rating: 40, reportedBy: 'COACH' });
+    prisma.ratingAppeal.findUnique.mockResolvedValue(APPEAL);
+
+    await service.resolveAppeal('admin-1', 'appeal-1', {});
+
+    expect(prisma.ratingRevision.create).not.toHaveBeenCalled();
+    expect(prisma.ratingAppeal.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ decisionRating: 40 }) }),
+    );
+    expect(notifications.notify).toHaveBeenCalledWith(
+      'player-user-1',
+      'RATING_APPEAL_RESOLVED',
+      expect.objectContaining({ rating: 40, changed: false }),
+      expect.anything(),
+    );
+  });
+
+  it('an answered appeal cannot be answered again; an unknown one is a 404', async () => {
+    const { service, prisma } = build();
+    prisma.ratingAppeal.findUnique.mockResolvedValueOnce({ ...APPEAL, status: 'RESOLVED' });
+    await expect(service.resolveAppeal('admin-1', 'appeal-1', {})).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    prisma.ratingAppeal.findUnique.mockResolvedValueOnce(null);
+    await expect(service.resolveAppeal('admin-1', 'nope', {})).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('lists pending appeals oldest first by default, with the clip and its player', async () => {
+    const { service, prisma } = build();
+    prisma.ratingAppeal.findMany.mockResolvedValue([
+      {
+        ...APPEAL,
+        media: {
+          ...CLIP,
+          rating: 40,
+          reportedBy: 'COACH',
+          player: {
+            id: 'player-1',
+            firstName: 'Ali',
+            lastName: 'V',
+            birthDate: new Date('2010-01-01'),
+            primaryPosition: 'CM',
+            region: null,
+            district: null,
+            user: { id: 'player-user-1', username: 'ali', avatarKey: null },
+          },
+        },
+      },
+    ]);
+    prisma.ratingAppeal.count.mockResolvedValue(1);
+
+    const page = await service.listAppeals({});
+
+    expect(prisma.ratingAppeal.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } }),
+    );
+    expect(page.total).toBe(1);
+    expect(page.items[0].reason).toBe('Bu baho adolatsiz.');
+    expect(page.items[0].clip.player.userId).toBe('player-user-1');
+    expect(page.items[0].clip.rating).toBe(40);
+    expect(JSON.stringify(page)).not.toContain('avatarKey');
   });
 });

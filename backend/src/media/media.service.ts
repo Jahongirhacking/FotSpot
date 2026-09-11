@@ -1,6 +1,7 @@
 import {
   Logger,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -26,6 +27,7 @@ import { TariffsService } from '../tariffs/tariffs.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
 import { FEED_SCORE } from './feed-score.util';
 import {
+  AppealRatingDto,
   ConfirmUploadDto,
   CreateMediaCommentDto,
   FeedDto,
@@ -333,14 +335,10 @@ export class MediaService {
     const profile = await this.ownPlayerProfile(userId);
     // The row is what the plan limits, so this is the check that matters.
     await this.tariffs.assertCanUploadClip(userId);
-    const isAttribute = ATTRIBUTE_CATEGORIES.includes(dto.category as MediaCategory);
 
-    if (isAttribute && dto.rating === undefined) {
-      throw new BadRequestException('Rate the attribute this clip is evidence for');
-    }
-    if (!isAttribute && dto.rating !== undefined) {
-      throw new BadRequestException('Highlights are not evidence for a single attribute');
-    }
+    // No self-rating any more: a clip arrives unrated and a coach or a
+    // moderator puts the number on it. `dto.rating` from an older app is
+    // accepted and ignored rather than refused.
 
     // The key made a round trip through the browser, so it comes back
     // attacker-controlled: re-check it addresses *this* player's own directory
@@ -359,7 +357,7 @@ export class MediaService {
         // in the product's time zone, so it can be late but never ahead of the
         // upload. `createdAt` stays the server's own fact about the upload.
         recordedAt: parseRecordedAt(dto.recordedAt),
-        rating: isAttribute ? dto.rating : null,
+        rating: null,
         title: dto.title ?? null,
         description: dto.description ?? null,
         // PROCESSING and UNVERIFIED, both by column default and never written
@@ -895,14 +893,6 @@ export class MediaService {
      */
     const nextCategory = dto.category ?? media.category;
     const categoryChanged = nextCategory !== media.category;
-    const nextIsAttribute = ATTRIBUTE_CATEGORIES.includes(nextCategory);
-    if (dto.rating !== undefined && !nextIsAttribute) {
-      throw new BadRequestException('Highlights are not evidence for a single attribute');
-    }
-    const nextRating = nextIsAttribute ? (dto.rating ?? media.rating) : null;
-    if (nextIsAttribute && nextRating === null) {
-      throw new BadRequestException('Rate the attribute this clip is evidence for');
-    }
 
     const updated = await this.prisma.media.update({
       where: { id: mediaId },
@@ -910,14 +900,11 @@ export class MediaService {
         ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
         ...(categoryChanged ? { category: nextCategory } : {}),
-        // A player editing their own clip is making a claim again, even if a
-        // coach had corrected it — so the source goes back to SELF and the
-        // coach's number is kept in the revision trail rather than silently lost.
-        // A re-filed clip is a new claim for the same reason: the coach's number
-        // was about the attribute it used to argue for.
-        ...(categoryChanged || dto.rating !== undefined
-          ? { rating: nextRating, reportedBy: 'SELF' as const }
-          : {}),
+        // A re-filed clip is a new claim: whoever rated it was rating the
+        // attribute it used to argue for, so the number goes with the old
+        // filing and the clip waits for a new one. `dto.rating` is ignored —
+        // players no longer rate their own clips.
+        ...(categoryChanged ? { rating: null, reportedBy: 'SELF' as const } : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
@@ -979,6 +966,59 @@ export class MediaService {
     // The card and the bars are drawn from this player's cached profile.
     await this.redis.del(RedisKeys.playerProfile(media.playerId));
     return toMediaResponse(updated, this.storage);
+  }
+
+  /**
+   * The player disputes the rating on their clip.
+   *
+   * Only a rating somebody else put there can be appealed — a coach's or a
+   * moderator's — and only once at a time: a second appeal while the first
+   * is unanswered would be the same question twice. The appeal is read on
+   * /admin/moderation/appealed-rating and the decision comes back as a
+   * notification.
+   */
+  async appealRating(userId: string, mediaId: string, dto: AppealRatingDto) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) {
+      throw new ForbiddenException('You can only appeal the rating on your own clips');
+    }
+    if (!ATTRIBUTE_CATEGORIES.includes(media.category)) {
+      throw new BadRequestException('Highlights carry no rating to appeal');
+    }
+    if (media.rating === null || media.reportedBy === 'SELF') {
+      throw new BadRequestException('There is no rating from a coach or a moderator to appeal');
+    }
+    const pending = await this.prisma.ratingAppeal.findFirst({
+      where: { mediaId, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (pending) throw new ConflictException('This rating is already under appeal');
+
+    return this.prisma.ratingAppeal.create({
+      data: {
+        mediaId,
+        playerId: profile.id,
+        reason: dto.reason.trim(),
+        ratingAtAppeal: media.rating,
+      },
+    });
+  }
+
+  /** The owner's latest appeal on a clip, or null — what the clip view shows. */
+  async latestAppeal(userId: string, mediaId: string) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { playerId: true, status: true },
+    });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) throw new ForbiddenException();
+    return this.prisma.ratingAppeal.findFirst({
+      where: { mediaId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   /**

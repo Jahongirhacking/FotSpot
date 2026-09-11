@@ -3,7 +3,7 @@ import { computeCardStars, roundToNearestHalf, STARS_MAX_SCORE } from './card-st
 const clip = (
   category: string,
   rating: number | null,
-  reportedBy: 'SELF' | 'COACH' = 'SELF',
+  reportedBy: 'SELF' | 'COACH' | 'ADMIN' = 'SELF',
   createdAt = '2026-01-01T00:00:00.000Z',
 ) => ({ category, rating, reportedBy, createdAt });
 
@@ -125,5 +125,33 @@ describe('computeCardStars — half stars', () => {
       expect(stars).toBeGreaterThanOrEqual(0);
       expect(stars).toBeLessThanOrEqual(5);
     }
+  });
+});
+
+describe('a moderator’s rating', () => {
+  it('weighs like a coach’s, not like the player’s own claim', () => {
+    const byAdmin = computeCardStars(
+      ALL.map((category) => clip(category, 100, 'ADMIN')),
+      [],
+    );
+    const byCoach = computeCardStars(
+      ALL.map((category) => clip(category, 100, 'COACH')),
+      [],
+    );
+    const bySelf = computeCardStars(
+      ALL.map((category) => clip(category, 100, 'SELF')),
+      [],
+    );
+    expect(byAdmin).toBe(byCoach);
+    expect(byAdmin).toBeGreaterThan(bySelf);
+  });
+
+  it('an unrated clip counts for nothing', () => {
+    expect(
+      computeCardStars(
+        ALL.map((category) => clip(category, null)),
+        [],
+      ),
+    ).toBe(0);
   });
 });

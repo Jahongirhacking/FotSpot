@@ -73,6 +73,12 @@ export const AuditAction = {
   MEDIA_DELETED: 'media.deleted',
   /** A super admin re-ran finalisation on an upload the worker had given up on. */
   MEDIA_RETRIED: 'media.retried',
+  /** A moderator put a rating on a clip, in review or on appeal. */
+  MEDIA_RATED_BY_ADMIN: 'media.rated_by_admin',
+  /** A moderator re-filed a clip under the attribute the footage actually shows. */
+  MEDIA_RECATEGORISED: 'media.recategorised',
+  /** A player's appeal against a rating was answered. */
+  RATING_APPEAL_RESOLVED: 'media.rating_appeal_resolved',
 
   // ---- Blog ----
   BLOG_POST_CREATED: 'blog.post_created',

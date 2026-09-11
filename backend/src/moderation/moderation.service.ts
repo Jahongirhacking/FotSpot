@@ -6,7 +6,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, type MediaModerationStatus, type MediaStatus } from '@prisma/client';
+import {
+  MediaCategory,
+  Prisma,
+  type MediaModerationStatus,
+  type MediaStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaFinaliserService } from '../media/media-finaliser.service';
 import { MediaRecoveryService } from '../media/media-recovery.service';
@@ -17,6 +22,7 @@ import { RedisKeys } from '../redis/redis.keys';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { toMediaResponse } from '../media/media.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   BLOCKED_MEDIA_WHERE,
   FAILED_UPLOADS_WHERE,
@@ -26,9 +32,13 @@ import {
 } from '../media/media-visibility.util';
 import {
   CreateReportDto,
+  ListAppealsDto,
   ListMediaDto,
-  type MediaStatusFilter,
+  ModerateCategoryDto,
+  ModerateRatingDto,
+  ResolveAppealDto,
   ResolveReportDto,
+  type MediaStatusFilter,
 } from './dto/moderation.dto';
 import { PaginationDto, pageOf, toSkipTake } from '../common/dto/pagination.dto';
 
@@ -55,6 +65,7 @@ export class ModerationService {
     private redis: RedisService,
     private finaliser: MediaFinaliserService,
     private recovery: MediaRecoveryService,
+    private notifications: NotificationsService,
   ) {}
 
   async fileReport(reporterId: string, dto: CreateReportDto) {
@@ -672,6 +683,190 @@ export class ModerationService {
     });
     await this.redis.del(RedisKeys.playerProfile(media.playerId));
     return this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+  }
+
+  // ---- Rating in review, and appeals ----
+  //
+  // Players no longer rate their own clips. The number on a clip comes from a
+  // coach who shares a group with the player, or from a moderator here — at
+  // review, where a clip cannot be verified until it has one, or on appeal.
+  // A moderator's rating weighs as a coach's on the card (card-stars.util).
+
+  /** The categories a rating means something for — everything but highlights. */
+  private static readonly RATED_CATEGORIES: MediaCategory[] = Object.values(MediaCategory).filter(
+    (category) => category !== 'MATCH_HIGHLIGHTS',
+  );
+
+  async rateMedia(actorId: string, mediaId: string, dto: ModerateRatingDto) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: {
+        id: true,
+        playerId: true,
+        status: true,
+        category: true,
+        rating: true,
+        reportedBy: true,
+      },
+    });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (!ModerationService.RATED_CATEGORIES.includes(media.category)) {
+      throw new BadRequestException('Highlights are not evidence for a single attribute');
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.ratingRevision.create({
+        data: {
+          mediaId,
+          previousRating: media.rating,
+          previousReportedBy: media.reportedBy,
+          rating: dto.rating,
+          reportedBy: 'ADMIN',
+          actorUserId: actorId,
+        },
+      });
+      return tx.media.update({
+        where: { id: mediaId },
+        data: { rating: dto.rating, reportedBy: 'ADMIN' },
+      });
+    });
+    await this.audit.record(actorId, AuditAction.MEDIA_RATED_BY_ADMIN, {
+      mediaId,
+      playerId: media.playerId,
+      previousRating: media.rating,
+      rating: dto.rating,
+    });
+    await this.redis.del(RedisKeys.playerProfile(media.playerId));
+    return toMediaResponse(updated, this.storage);
+  }
+
+  /**
+   * Re-files a clip under what the footage shows. The rating goes with the old
+   * filing — it was a rating of that attribute — so the clip waits for a new
+   * one; moving to highlights leaves it unrated for good.
+   */
+  async recategoriseMedia(actorId: string, mediaId: string, dto: ModerateCategoryDto) {
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { id: true, playerId: true, status: true, category: true, rating: true },
+    });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.category === dto.category)
+      return toMediaResponse(
+        await this.prisma.media.findUniqueOrThrow({ where: { id: mediaId } }),
+        this.storage,
+      );
+    const updated = await this.prisma.media.update({
+      where: { id: mediaId },
+      data: { category: dto.category, rating: null, reportedBy: 'SELF' },
+    });
+    await this.audit.record(actorId, AuditAction.MEDIA_RECATEGORISED, {
+      mediaId,
+      playerId: media.playerId,
+      previousCategory: media.category,
+      category: dto.category,
+      droppedRating: media.rating,
+    });
+    await this.redis.del(RedisKeys.playerProfile(media.playerId));
+    return toMediaResponse(updated, this.storage);
+  }
+
+  /** Appeals, pending first by default, each with the clip and its player. */
+  async listAppeals(dto: ListAppealsDto = {}) {
+    const status = dto.status ?? 'PENDING';
+    const where: Prisma.RatingAppealWhereInput = status === 'ALL' ? {} : { status };
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.ratingAppeal.findMany({
+        where,
+        orderBy: { createdAt: 'asc' },
+        skip,
+        take,
+        include: {
+          media: { include: { player: { select: QUEUE_PLAYER_SELECT } } },
+          resolvedBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      }),
+      this.prisma.ratingAppeal.count({ where }),
+    ]);
+    const items = await Promise.all(
+      rows.map(async ({ media: { player, ...media }, ...appeal }) => ({
+        ...appeal,
+        clip: {
+          ...(await toMediaResponse(media, this.storage)),
+          player: {
+            ...player,
+            userId: player.user.id,
+            username: player.user.username,
+            avatarUrl: this.storage.publicUrlOrNull(player.user.avatarKey),
+            user: undefined,
+          },
+        },
+      })),
+    );
+    return pageOf(items, total, { page, pageSize });
+  }
+
+  /**
+   * Answers an appeal: a new rating, or the same one, and a note either way.
+   * The player is told; the clip's own trail records any re-rating as a
+   * moderator's decision like any other.
+   */
+  async resolveAppeal(actorId: string, appealId: string, dto: ResolveAppealDto) {
+    const appeal = await this.prisma.ratingAppeal.findUnique({
+      where: { id: appealId },
+      include: {
+        media: { select: { id: true, playerId: true, rating: true, category: true, title: true } },
+      },
+    });
+    if (!appeal) throw new NotFoundException('Appeal not found');
+    if (appeal.status !== 'PENDING')
+      throw new ConflictException('This appeal has already been answered');
+
+    let finalRating = appeal.media.rating;
+    if (dto.rating !== undefined) {
+      const rated = await this.rateMedia(actorId, appeal.mediaId, { rating: dto.rating });
+      finalRating = rated.rating ?? dto.rating;
+    }
+    const note = dto.note?.trim() || null;
+    const resolved = await this.prisma.ratingAppeal.update({
+      where: { id: appealId },
+      data: {
+        status: 'RESOLVED',
+        decisionRating: finalRating,
+        decisionNote: note,
+        resolvedByUserId: actorId,
+        resolvedAt: new Date(),
+      },
+    });
+
+    const player = await this.prisma.playerProfile.findUnique({
+      where: { id: appeal.playerId },
+      select: { userId: true },
+    });
+    if (player) {
+      await this.notifications.notify(
+        player.userId,
+        'RATING_APPEAL_RESOLVED',
+        {
+          mediaId: appeal.mediaId,
+          clipTitle: appeal.media.title,
+          category: appeal.media.category,
+          previousRating: appeal.ratingAtAppeal,
+          rating: finalRating,
+          changed: dto.rating !== undefined && dto.rating !== appeal.ratingAtAppeal,
+          note,
+        },
+        { userId: actorId, role: 'admin' },
+      );
+    }
+    await this.audit.record(actorId, AuditAction.RATING_APPEAL_RESOLVED, {
+      appealId,
+      mediaId: appeal.mediaId,
+      playerId: appeal.playerId,
+      previousRating: appeal.ratingAtAppeal,
+      rating: finalRating,
+    });
+    return resolved;
   }
 
   async deleteMedia(actorId: string, mediaId: string) {

@@ -18,12 +18,13 @@ import { OptionalUser } from '../common/decorators/optional-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Throttle } from '../common/decorators/throttle.decorator';
 import {
+  AppealRatingDto,
   ConfirmUploadDto,
-  FeedDto,
-  RateMediaDto,
   CreateMediaCommentDto,
+  FeedDto,
   ListMediaCommentsDto,
   ListPlayerMediaDto,
+  RateMediaDto,
   RequestUploadDto,
   UpdateMediaDto,
 } from './dto/media.dto';
@@ -121,6 +122,22 @@ export class MediaController {
   }
 
   /** What that rating was before each change. Gated like the clip itself. */
+  /** The player disputes the rating a coach or a moderator put on their clip. */
+  @Post(':id/appeal')
+  appealRating(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: AppealRatingDto,
+  ) {
+    return this.mediaService.appealRating(user.userId, id, dto);
+  }
+
+  /** The owner's latest appeal on the clip, or null. */
+  @Get(':id/appeal')
+  latestAppeal(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.mediaService.latestAppeal(user.userId, id);
+  }
+
   @Get(':id/rating/history')
   ratingHistory(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.mediaService.ratingHistory(id, user.userId);
