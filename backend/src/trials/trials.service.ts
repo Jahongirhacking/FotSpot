@@ -11,6 +11,7 @@ import type { Queue } from 'bullmq';
 import type { Prisma, TrialType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import {
   ListTrialsQueryDto,
   AssignCoachesDto,
@@ -18,6 +19,7 @@ import {
   RecordTrialVerdictDto,
   UpdateTrialApplicationStatusDto,
   UpdateTrialDto,
+  MyApplicationsQueryDto,
 } from './dto/trial.dto';
 import { TrialBackingsService } from '../recommendations/trial-backings.service';
 import { RecommendationsService } from '../recommendations/recommendations.service';
@@ -1474,14 +1476,22 @@ export class TrialsService {
     return application;
   }
 
-  async listMyApplications(userId: string) {
+  async listMyApplications(userId: string, dto: MyApplicationsQueryDto = {}) {
     const player = await this.prisma.playerProfile.findUnique({ where: { userId } });
     if (!player) throw new ForbiddenException('Only players have trial applications');
-    return this.prisma.trialApplication.findMany({
-      where: { playerId: player.id },
-      include: { trial: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const where = { playerId: player.id, ...(dto.trialId ? { trialId: dto.trialId } : {}) };
+    const [items, total] = await Promise.all([
+      this.prisma.trialApplication.findMany({
+        where,
+        include: { trial: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.trialApplication.count({ where }),
+    ]);
+    return pageOf(items, total, { page, pageSize });
   }
 
   /**

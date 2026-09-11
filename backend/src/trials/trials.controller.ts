@@ -19,6 +19,7 @@ import {
   AssignCoachesDto,
   CoachQueueQueryDto,
   ListApplicationsQueryDto,
+  MyApplicationsQueryDto,
   CreateTrialDto,
   RecordTrialVerdictDto,
   RespondToInvitationDto,
@@ -164,8 +165,8 @@ export class TrialsController {
   }
 
   @Get('applications/mine')
-  listMyApplications(@CurrentUser() user: AuthUser) {
-    return this.trialsService.listMyApplications(user.userId);
+  listMyApplications(@CurrentUser() user: AuthUser, @Query() dto: MyApplicationsQueryDto) {
+    return this.trialsService.listMyApplications(user.userId, dto);
   }
 
   /**
