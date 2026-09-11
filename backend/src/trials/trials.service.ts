@@ -1480,7 +1480,11 @@ export class TrialsService {
     const player = await this.prisma.playerProfile.findUnique({ where: { userId } });
     if (!player) throw new ForbiddenException('Only players have trial applications');
     const { skip, take, page, pageSize } = toSkipTake(dto);
-    const where = { playerId: player.id, ...(dto.trialId ? { trialId: dto.trialId } : {}) };
+    const where = {
+      playerId: player.id,
+      ...(dto.trialId ? { trialId: dto.trialId } : {}),
+      ...(dto.status?.length ? { status: { in: dto.status } } : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.trialApplication.findMany({
         where,

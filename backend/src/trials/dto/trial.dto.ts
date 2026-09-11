@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TrialStatus, TrialType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { TrialApplicationStatus, TrialStatus, TrialType } from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -275,6 +275,24 @@ export class MyApplicationsQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   trialId?: string;
+
+  /** One or more statuses, comma-separated: `status=INVITED,CONFIRMED` for the open invitations. */
+  @ApiPropertyOptional({
+    enum: TrialApplicationStatus,
+    isArray: true,
+    description: 'Comma-separated list of statuses to keep.',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value
+      : String(value)
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+  )
+  @IsEnum(TrialApplicationStatus, { each: true })
+  status?: TrialApplicationStatus[];
 }
 
 export class CoachQueueQueryDto extends PaginationDto {
