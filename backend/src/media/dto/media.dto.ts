@@ -4,11 +4,12 @@ import { MediaCategory } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   IsBoolean,
-  IsIn,
   IsISO8601,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -169,6 +170,18 @@ export class FeedDto {
   @Min(1)
   @Max(24)
   pageSize?: number;
+
+  /**
+   * The session's seed for the exploration term. Returned by the first page;
+   * sent back with every next page so the noise — and so the order — holds.
+   */
+  @IsOptional() @IsString() @Matches(/^[A-Za-z0-9_-]{1,32}$/) seed?: string;
+
+  /**
+   * When the session began. Every count and penalty is read as of this
+   * moment, so page two agrees with page one. Returned by the first page.
+   */
+  @IsOptional() @IsISO8601() since?: string;
 }
 
 export class CreateMediaCommentDto {

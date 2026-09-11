@@ -1224,6 +1224,25 @@
               "maximum": 24,
               "type": "number"
             }
+          },
+          {
+            "name": "seed",
+            "required": false,
+            "in": "query",
+            "description": "The session's seed for the exploration term. Returned by the first page;\nsent back with every next page so the noise — and so the order — holds.",
+            "schema": {
+              "pattern": "/^[A-Za-z0-9_-]{1,32}$/",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "When the session began. Every count and penalty is read as of this\nmoment, so page two agrees with page one. Returned by the first page.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
