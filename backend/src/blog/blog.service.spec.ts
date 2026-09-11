@@ -15,12 +15,11 @@ import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
  * publish date is the one the markup keeps.
  */
 
-const AUTHOR = {
-  id: 'admin-1',
-  firstName: 'Ali',
-  lastName: 'Valiyev',
-  username: 'ali',
-  avatarKey: null,
+/** The academy a post can be signed by; null on the row means the mascot signs it. */
+const ACADEMY_AUTHOR = {
+  id: 'acad-1',
+  name: 'Bunyodkor',
+  logoKey: 'public/academies/acad-1/logo.png',
 };
 const CATEGORY = { id: 'cat-1', slug: 'news', name: 'News' };
 
@@ -36,8 +35,8 @@ const ROW = {
   categoryId: 'cat-1',
   category: CATEGORY,
   authorUserId: 'admin-1',
-  author: AUTHOR,
-  authorName: null,
+  authorAcademyId: null,
+  authorAcademy: null,
   status: 'PUBLISHED',
   publishedAt: new Date('2026-09-01T10:00:00.000Z'),
   readingMinutes: 1,
@@ -101,7 +100,10 @@ function build(row: Record<string, unknown> | null = ROW) {
     // The random picks: first call players, second call academies.
     $queryRaw: jest.fn(async (..._args: unknown[]): Promise<{ id: string }[]> => []),
     playerProfile: { findMany: jest.fn(async (_args?: unknown): Promise<unknown[]> => []) },
-    academyProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
+    academyProfile: {
+      findMany: jest.fn(async (): Promise<unknown[]> => []),
+      findUnique: jest.fn(async (_args?: unknown): Promise<unknown> => null),
+    },
     blogPostImage: {
       findMany: jest.fn(async (): Promise<unknown[]> => []),
       findUnique: jest.fn(async (): Promise<unknown> => null),
@@ -173,7 +175,20 @@ describe('reading — only what is published', () => {
     expect(post.coverUrl).toBe('https://cdn.example/public/blog/post-1/cover.jpg');
     expect(post).not.toHaveProperty('content');
     expect(post).not.toHaveProperty('coverKey');
-    expect(post.author).toEqual({ name: 'Ali Valiyev', avatarUrl: null });
+    // No academy chosen: the mascot signs, and nothing about the admin leaks.
+    expect(post.author).toEqual({ kind: 'mascot' });
+    expect(JSON.stringify(post)).not.toMatch(/admin-1|firstName|username/);
+  });
+
+  it('a post signed by an academy carries its name, logo and id', async () => {
+    const { service } = build({ ...ROW, authorAcademyId: 'acad-1', authorAcademy: ACADEMY_AUTHOR });
+    const post = await service.bySlug(ROW.slug);
+    expect(post.author).toEqual({
+      kind: 'academy',
+      id: 'acad-1',
+      name: 'Bunyodkor',
+      avatarUrl: 'https://cdn.example/public/academies/acad-1/logo.png',
+    });
   });
 
   it('404s a draft for a reader, whoever they are', async () => {
@@ -344,6 +359,33 @@ describe('writing — slugs and dates', () => {
 
     expect(signed.storageKey).toMatch(/^public\/blog\/post-1\/[0-9a-f-]+\.jpg$/);
     expect(signed.publicUrl).toContain('public/blog/post-1/');
+  });
+
+  it('signs a post with a verified academy, and refuses anything else', async () => {
+    const { service, prisma } = build();
+    prisma.academyProfile.findUnique.mockImplementation(async (args?: unknown) => {
+      const id = (args as { where: { id: string } }).where.id;
+      if (id === 'acad-1') return { kind: 'ACADEMY', status: 'VERIFIED' };
+      if (id === 'team-1') return { kind: 'LOCAL_TEAM', status: 'VERIFIED' };
+      return null;
+    });
+
+    await service.update('admin-1', 'post-1', { authorAcademyId: 'acad-1' });
+    expect(prisma.blogPost.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ authorAcademyId: 'acad-1' }) }),
+    );
+
+    await service.update('admin-1', 'post-1', { authorAcademyId: '' });
+    expect(prisma.blogPost.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ authorAcademyId: null }) }),
+    );
+
+    await expect(
+      service.update('admin-1', 'post-1', { authorAcademyId: 'team-1' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.update('admin-1', 'post-1', { authorAcademyId: 'nope' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('refuses an upload ticket for something that is not an image', async () => {

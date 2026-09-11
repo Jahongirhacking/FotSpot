@@ -29,14 +29,12 @@ import type {
   SavePostDto,
 } from './dto/blog.dto';
 
-/** What a card and a page know about the author. */
-const AUTHOR_SELECT = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  username: true,
-  avatarKey: true,
-} as const;
+/**
+ * The academy a post is signed by. Nothing about the admin who typed it is
+ * ever selected for a reader: a post without an academy is signed by the
+ * mascot, and that is the client's to draw.
+ */
+const AUTHOR_SELECT = { id: true, name: true, logoKey: true } as const;
 
 const CATEGORY_SELECT = { id: true, slug: true, name: true } as const;
 
@@ -54,8 +52,7 @@ const CARD_SELECT = {
   likeCount: true,
   featured: true,
   category: { select: CATEGORY_SELECT },
-  author: { select: AUTHOR_SELECT },
-  authorName: true,
+  authorAcademy: { select: AUTHOR_SELECT },
 } as const;
 
 const PUBLISHED: Prisma.BlogPostWhereInput = { status: 'PUBLISHED', publishedAt: { not: null } };
@@ -80,6 +77,10 @@ const HOME_TOP = 5;
 const RELATED = 3;
 
 type CardRow = Prisma.BlogPostGetPayload<{ select: typeof CARD_SELECT }>;
+
+/** A post's signature as readers get it. */
+export type BlogAuthor =
+  { kind: 'academy'; id: string; name: string; avatarUrl: string | null } | { kind: 'mascot' };
 
 /**
  * The blog — README §1.16's organic half.
@@ -452,7 +453,7 @@ export class BlogService {
   async adminGet(id: string) {
     const post = await this.prisma.blogPost.findUnique({
       where: { id },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (!post) throw new NotFoundException('Post not found');
     return this.toAdminPost(post);
@@ -476,7 +477,7 @@ export class BlogService {
         readingMinutes: dto.readingMinutes || readingMinutes(dto.content),
         authorUserId: actorId,
       },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (post.featured) await this.featureOnly(post.id);
 
@@ -528,7 +529,7 @@ export class BlogService {
               ? readingMinutes(content)
               : existing.readingMinutes,
       },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (post.featured && dto.featured) await this.featureOnly(post.id);
     return this.toAdminPost(post);
@@ -551,7 +552,7 @@ export class BlogService {
     const post = await this.prisma.blogPost.update({
       where: { id },
       data: { status: 'PUBLISHED', publishedAt: existing.publishedAt ?? new Date() },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     await this.audit.record(actorId, AuditAction.BLOG_POST_PUBLISHED, {
       postId: id,
@@ -565,7 +566,10 @@ export class BlogService {
       .update({
         where: { id },
         data: { status: 'DRAFT', featured: false },
-        include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+        include: {
+          category: { select: CATEGORY_SELECT },
+          authorAcademy: { select: AUTHOR_SELECT },
+        },
       })
       .catch(() => null);
     if (!post) throw new NotFoundException('Post not found');
@@ -809,7 +813,7 @@ export class BlogService {
       coverKey?: string | null;
       ogImageKey?: string | null;
       coverAlt?: string | null;
-      authorName?: string | null;
+      authorAcademyId?: string | null;
       featured?: boolean;
       seoTitle?: string | null;
       metaDescription?: string | null;
@@ -831,7 +835,21 @@ export class BlogService {
       data[field] = key;
     }
     if (dto.coverAlt !== undefined) data.coverAlt = dto.coverAlt.trim() || null;
-    if (dto.authorName !== undefined) data.authorName = dto.authorName.trim() || null;
+    if (dto.authorAcademyId !== undefined) {
+      // Only an academy signs a post — a local team or an unverified record
+      // would put a name on the blog that the directory does not vouch for.
+      if (dto.authorAcademyId === '') data.authorAcademyId = null;
+      else {
+        const academy = await this.prisma.academyProfile.findUnique({
+          where: { id: dto.authorAcademyId },
+          select: { kind: true, status: true },
+        });
+        if (!academy || academy.kind !== 'ACADEMY' || academy.status !== 'VERIFIED') {
+          throw new BadRequestException('Only a verified academy can sign a post');
+        }
+        data.authorAcademyId = dto.authorAcademyId;
+      }
+    }
     if (dto.featured !== undefined) data.featured = dto.featured;
     if (dto.seoTitle !== undefined) data.seoTitle = dto.seoTitle.trim() || null;
     if (dto.metaDescription !== undefined)
@@ -871,20 +889,25 @@ export class BlogService {
     return data;
   }
 
+  /**
+   * Who signs the post: the chosen academy, with its logo and a way to its
+   * page — or the mascot, which the client names and draws. An admin's own
+   * name is never here, whatever role saved the row.
+   */
   private authorOf(row: {
-    author: Prisma.UserGetPayload<{ select: typeof AUTHOR_SELECT }>;
-    authorName: string | null;
-  }) {
-    const name =
-      row.authorName?.trim() ||
-      [row.author.firstName, row.author.lastName].filter(Boolean).join(' ') ||
-      row.author.username ||
-      'FotSpot';
-    return { name, avatarUrl: this.storage.publicUrlOrNull(row.author.avatarKey) };
+    authorAcademy: Prisma.AcademyProfileGetPayload<{ select: typeof AUTHOR_SELECT }> | null;
+  }): BlogAuthor {
+    if (!row.authorAcademy) return { kind: 'mascot' };
+    return {
+      kind: 'academy',
+      id: row.authorAcademy.id,
+      name: row.authorAcademy.name,
+      avatarUrl: this.storage.publicUrlOrNull(row.authorAcademy.logoKey),
+    };
   }
 
   private toCard(row: CardRow) {
-    const { coverKey, author: _author, authorName: _authorName, ...rest } = row;
+    const { coverKey, authorAcademy: _authorAcademy, ...rest } = row;
     return {
       ...rest,
       coverUrl: this.storage.publicUrlOrNull(coverKey),
@@ -896,12 +919,13 @@ export class BlogService {
     post: Prisma.BlogPostGetPayload<{
       include: {
         category: { select: typeof CATEGORY_SELECT };
-        author: { select: typeof AUTHOR_SELECT };
+        authorAcademy: { select: typeof AUTHOR_SELECT };
       };
     }>,
   ) {
+    const { authorAcademy: _authorAcademy, ...rest } = post;
     return {
-      ...post,
+      ...rest,
       coverUrl: this.storage.publicUrlOrNull(post.coverKey),
       ogImageUrl: this.storage.publicUrlOrNull(post.ogImageKey),
       author: this.authorOf(post),
