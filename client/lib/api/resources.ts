@@ -1297,8 +1297,12 @@ export interface InvitePlayerBody {
 
 export const media = {
   /** One page of the ranked feed. Personalised, so never cached. */
-  feed: (page: number, pageSize: number, opts: Opts = {}) =>
-    apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize })}`, opts),
+  feed: (
+    page: number,
+    pageSize: number,
+    opts: Opts = {},
+    session: { seed?: string; since?: string } = {},
+  ) => apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize, ...session })}`, opts),
 
   suggestedPlayers: (limit: number, opts: Opts = {}) =>
     apiFetch<SuggestedPlayer[]>(`/media/feed/suggested-players${toQuery({ limit })}`, opts),

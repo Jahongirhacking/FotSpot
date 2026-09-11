@@ -159,6 +159,13 @@ export interface FeedPage {
   total: number;
   page: number;
   pageSize: number;
+  /**
+   * The session's ranking snapshot: send both back with every next page so
+   * page two is cut from the same order as page one. Absent from older
+   * responses, in which case the next page starts a session of its own.
+   */
+  seed?: string;
+  since?: string;
 }
 
 /**
