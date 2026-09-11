@@ -65,6 +65,9 @@ import type {
   BlogSitemapEntry,
   BlogPostImage,
   BlogSpotlight,
+  AdminChat,
+  AdminMessage,
+  AdminMessageUser,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -764,6 +767,23 @@ export const admin = {
     params: { status?: MediaStatusFilter; page?: number; pageSize?: number } = {},
     opts: Opts = {},
   ) => apiFetch<Page<PendingClip>>(`/moderation/media${toQuery({ ...params })}`, opts),
+
+  // ---- Messages to users ----
+  sendMessage: (body: { recipientUserId: string; body: string }, opts: Opts = {}) =>
+    apiFetch<AdminMessage>('/admin/messages', { method: 'POST', body, ...opts }),
+  /** One row per person written to, newest first. */
+  listChats: (params: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
+    apiFetch<Page<AdminChat>>(`/admin/messages/chats${toQuery({ ...params })}`, opts),
+  /** One person's thread, newest first. */
+  listThread: (
+    userId: string,
+    params: { page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) =>
+    apiFetch<Page<AdminMessage> & { user: AdminMessageUser }>(
+      `/admin/messages/chats/${userId}${toQuery({ ...params })}`,
+      opts,
+    ),
 
   /** How many videos sit in each processing status, for the filter chips. */
   mediaCounts: (opts: Opts = {}) =>

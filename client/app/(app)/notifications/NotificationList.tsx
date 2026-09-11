@@ -16,6 +16,7 @@ import {
   Building2,
   CalendarCheck,
   CheckCheck,
+  MessageSquare,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -211,6 +212,14 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       href: '/trials',
       idKey: 'trialId',
     },
+    // A message from the platform team. The text is the whole content and is
+    // shown under the title; there is nowhere else to go for it.
+    ADMIN_MESSAGE: {
+      icon: MessageSquare,
+      title: t.notifications.adminMessage,
+      tone: 'text-primary',
+      href: '/notifications',
+    },
   };
 
   const queryClient = useQueryClient();
@@ -293,6 +302,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
             notification?.payload?.academyName,
             notification?.payload?.trialTitle,
             notification?.payload?.note,
+            notification?.payload?.message,
           ]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)
             .join(' · ');

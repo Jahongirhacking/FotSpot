@@ -1072,7 +1072,39 @@ export type NotificationEvent =
   | 'TRIAL_RESULT'
   | 'SQUAD_JOINED'
   | 'SQUAD_LEFT'
-  | 'VERIFICATION_RESULT';
+  | 'VERIFICATION_RESULT'
+  | 'ADMIN_MESSAGE';
+
+/** Somebody in an admin message: the writer or the person written to. */
+export interface AdminMessageUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+}
+
+/** One message from an admin to a user. The user reads it as a notification. */
+export interface AdminMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  sender: AdminMessageUser;
+  recipient: AdminMessageUser;
+}
+
+/** One row of the admin's chat history: a person, and the last thing said to them. */
+export interface AdminChat {
+  user: AdminMessageUser | null;
+  messageCount: number;
+  lastAt: string;
+  lastMessage: {
+    id: string;
+    body: string;
+    createdAt: string;
+    sender: AdminMessageUser;
+  } | null;
+}
 
 export interface AppNotification {
   id: string;

@@ -16,6 +16,8 @@ import { ProfileMenu } from './ProfileMenu';
 import { useSession } from './SessionProvider';
 import { ThemeToggle } from './ThemeToggle';
 import { BottomNav } from './BottomNav';
+import { AdminChatFloat } from './AdminChatFloat';
+import { isAdminActing } from '@/lib/roles';
 import { navForRole } from './nav';
 
 /**
@@ -182,6 +184,8 @@ export function AppHeader({ initials, avatarUrl }: { initials: string; avatarUrl
       </header>
 
       <BottomNav items={nav} badgeFor={badgeFor} />
+      {/* The team's messages to users: a floating button for an admin acting as one. */}
+      {isAuthenticated && isAdminActing(activeRole) && <AdminChatFloat />}
     </>
   );
 }

@@ -1330,6 +1330,7 @@ export const uz = {
     candidacyClosed: 'Tarkibga nomzodlik yopildi',
     applicationClosed: 'Akademiya arizangizni yopdi',
     verificationResult: 'Tasdiqlash yangiligi',
+    adminMessage: 'FotSpotdan xabar',
   },
 
   dashboard: {
@@ -1675,6 +1676,38 @@ export const uz = {
     clipDeleted: 'Video butunlay o‘chirildi.',
 
     blockedVideos: 'Bloklangan videolar',
+    /* Holat ro‘yxatlaridagi ikkinchi qarorlar. */
+    blockActiveClip: 'Bloklash',
+    blockActiveTitle: 'Bu jonli video bloklansinmi?',
+    blockActiveBody:
+      'U darhol barcha ochiq joylardan — lenta, profil, qidiruv — chiqib ketadi. Qaytarish faqat super adminning qo‘lida.',
+    makeActiveClip: 'Faollashtirish',
+    unblockTitle: 'Bu video qaytarilsinmi?',
+    unblockBody: 'U lentaga va profilga avvalgidek qaytadi. Blok audit izida qoladi.',
+    restoreTitle: 'Bu videodagi belgi olib tashlansinmi?',
+    restoreBody: 'U lentaga va profilga qaytadi. Belgi audit izida qoladi.',
+    removeClip: 'Olib tashlash',
+    removeTitle: 'Bu video olib tashlansinmi?',
+    removeBody:
+      'U butunlay olib tashlanadi: yozuv va tarixi hisob uchun qoladi, futbolchi uni qaytara olmaydi.',
+    /* Admin chati: foydalanuvchilarga xabarlar, bildirishnoma sifatida yetadi. */
+    chatTitle: 'Xabarlar',
+    chatOpen: 'Foydalanuvchiga yozish',
+    chatHistory: 'Tarix',
+    chatNew: 'Yangi chat',
+    chatHistoryHint: 'Jamoa yozgan barcha odamlar, eng yangisi birinchi.',
+    chatNewHint: 'Odam uni ilovada bildirishnoma sifatida, ulangan bo‘lsa Telegramda ham oladi.',
+    chatPickUser: 'Kimga?',
+    chatPickUserPlaceholder: 'Ism, email yoki username bo‘yicha qidiring…',
+    chatMessage: 'Xabar',
+    chatMessagePlaceholder: 'Xabarni yozing…',
+    chatSend: 'Yuborish',
+    chatSent: 'Yuborildi',
+    chatNoHistory: 'Hali hech kimga yozilmagan.',
+    chatMessages: '{count} ta xabar',
+    chatBack: 'Barcha chatlar',
+    chatOlder: 'Eskiroq',
+    chatNewer: 'Yangiroq',
     blockedVideosHint:
       'Administratorlar bloklagan videolar. Ular hech kimga ko‘rinmaydi, lekin moderatsiya tarixi uchun saqlanadi. Faqat super administrator ularni butunlay o‘chira oladi.',
     noBlockedVideos: 'Bloklangan video yo‘q.',

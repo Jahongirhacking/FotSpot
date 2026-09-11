@@ -1286,6 +1286,7 @@ export const en: Dictionary = {
     candidacyClosed: 'Squad candidacy closed',
     applicationClosed: 'The academy closed your application',
     verificationResult: 'Verification update',
+    adminMessage: 'Message from FotSpot',
   },
 
   dashboard: {
@@ -1611,6 +1612,39 @@ export const en: Dictionary = {
     clipDeleted: 'Video permanently deleted.',
 
     blockedVideos: 'Blocked videos',
+    /* Second decisions from the status lists. */
+    blockActiveClip: 'Block',
+    blockActiveTitle: 'Block this live video?',
+    blockActiveBody:
+      'It leaves every public surface at once — the feed, the profile, search. Only a super admin can put it back.',
+    makeActiveClip: 'Make active',
+    unblockTitle: 'Put this video back?',
+    unblockBody:
+      'It returns to the feed and the profile as it was. The block stays in the audit trail.',
+    restoreTitle: 'Clear the flag on this video?',
+    restoreBody: 'It returns to the feed and the profile. The flag stays in the audit trail.',
+    removeClip: 'Remove',
+    removeTitle: 'Remove this video?',
+    removeBody:
+      'It is taken down for good: the row and its history stay for the record, the player cannot bring it back.',
+    /* The admin chat: messages to users, delivered as notifications. */
+    chatTitle: 'Messages',
+    chatOpen: 'Message a user',
+    chatHistory: 'History',
+    chatNew: 'New chat',
+    chatHistoryHint: 'Everyone the team has written to, newest first.',
+    chatNewHint: 'The person receives it as a notification in the app, and on Telegram if linked.',
+    chatPickUser: 'Who is it for?',
+    chatPickUserPlaceholder: 'Search by name, email or username…',
+    chatMessage: 'Message',
+    chatMessagePlaceholder: 'Write the message…',
+    chatSend: 'Send',
+    chatSent: 'Sent',
+    chatNoHistory: 'Nobody has been written to yet.',
+    chatMessages: '{count} messages',
+    chatBack: 'All chats',
+    chatOlder: 'Older',
+    chatNewer: 'Newer',
     blockedVideosHint:
       'Videos an admin has blocked. They are visible to nobody, but the record is kept for moderation history. Only a super admin can delete them permanently.',
     noBlockedVideos: 'No blocked videos.',

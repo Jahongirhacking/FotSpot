@@ -143,7 +143,15 @@ export default async function VideoModerationPage({
         <>
           {/* "Process again" is part of working the queue, so both admin roles
               have it — the API gates it the same way as verify and block. */}
-          <StatusVideoList clips={list.items} canRetry />
+          <StatusVideoList
+            clips={list.items}
+            canRetry
+            // Taking a live clip down is the super admin's; clearing or
+            // finishing a takedown on a flagged one is both roles'. The API
+            // gates each the same way.
+            canBlock={isSuperAdmin}
+            canModerateFlagged
+          />
           <Pagination page={list.page} pageSize={list.pageSize} total={list.total} />
         </>
       ) : (
