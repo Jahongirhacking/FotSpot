@@ -61,6 +61,7 @@ export const en: Dictionary = {
   },
 
   nav: {
+    more: 'More',
     blog: 'Blog',
     squad: 'Squad',
     groups: 'Groups',
@@ -1789,8 +1790,9 @@ export const en: Dictionary = {
     write: 'Write',
     fieldCategory: 'Category',
     noCategory: 'No category',
-    fieldAuthorName: 'Byline',
-    fieldAuthorNameHint: 'Leave empty to use your name.',
+    fieldAuthorName: 'Author',
+    fieldAuthorNameHint:
+      'The academy the post is signed by. Leave it on Lupo, the FotSpot mascot, for the platform’s own posts — an admin’s name is never shown.',
     fieldReadingMinutes: 'Reading time (min)',
     fieldReadingMinutesHint: 'Computed from the content. Set a number to override; 0 recomputes.',
     fieldFeatured: 'Feature this post on the blog front page',
@@ -1963,6 +1965,11 @@ export const en: Dictionary = {
     localTeamMessage: 'Hello! I would like to create a local team on FotSpot.',
 
     safetyTitle: 'For players under 18 — safety comes first.',
+    /* The blog on the landing page: the three newest posts and a way to the rest. */
+    blogTitle: 'From the FotSpot blog',
+    blogBody:
+      'News from academies and trials, young players worth watching, and what changed on the platform.',
+    blogCta: 'Read our blog',
     safetyBody:
       'Profiles of underage players are private by default. FotSpot does not allow private messaging between adults and children. We never sell the visibility of a child’s profile or access to their information.',
     privacyPolicy: 'Privacy policy',

@@ -582,6 +582,7 @@ model AcademyProfile {
   endorsements          AcademyEndorsement[]
   recommendationTargets RecommendationTarget[]
   playerWeights         PlayerAcademyRecommendationWeight[]
+  blogPosts             BlogPost[]                          @relation("BlogAcademyAuthors")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1951,10 +1952,13 @@ model BlogPost {
   categoryId String?
   category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  authorUserId String
-  author       User    @relation("BlogAuthors", fields: [authorUserId], references: [id], onDelete: Restrict)
-  /// A byline other than the author's account name — "FotSpot Team", say.
-  authorName   String?
+  /// Who pressed save — for the audit trail, never shown to readers.
+  authorUserId    String
+  author          User            @relation("BlogAuthors", fields: [authorUserId], references: [id], onDelete: Restrict)
+  /// The academy the post is signed by. Null means the mascot signs it:
+  /// readers are never shown an admin's account name.
+  authorAcademyId String?
+  authorAcademy   AcademyProfile? @relation("BlogAcademyAuthors", fields: [authorAcademyId], references: [id], onDelete: SetNull)
 
   status         BlogPostStatus @default(DRAFT)
   /// Set the first time the post is published and kept across unpublish /

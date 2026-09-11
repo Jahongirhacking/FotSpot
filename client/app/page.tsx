@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { ApiError } from '@/lib/api/client';
-import { academies, media, players, trials, type RecentClip } from '@/lib/api/resources';
-import type { PlayerProfile } from '@/lib/api/types';
+import { academies, blog, media, players, trials, type RecentClip } from '@/lib/api/resources';
+import type { BlogPostCard, PlayerProfile } from '@/lib/api/types';
+import { PostCard } from '@/components/blog/PostCard';
 import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
 import { pageMetadata } from '@/lib/seo';
@@ -26,6 +27,7 @@ import {
   Building2,
   CalendarDays,
   IdCard,
+  Newspaper,
   Search,
   Send,
   ShieldCheck,
@@ -54,7 +56,7 @@ export default async function LandingPage() {
   const { t } = await getServerT();
 
   // Every fetch is optional: this page must render with the API down.
-  const [recent, academyList, trialList, clips] = await Promise.all([
+  const [recent, academyList, trialList, clips, posts] = await Promise.all([
     players?.search({ pageSize: 6 }, { revalidate: 600 }).catch(() => ({
       items: [] as PlayerProfile[],
       total: 0,
@@ -67,6 +69,12 @@ export default async function LandingPage() {
     // one media request per player — seven round trips, on the most-visited page
     // in the product, for visitors on the worst connections it ever serves.
     media?.listRecent(8, { revalidate: 600 }).catch(() => [] as RecentClip[]),
+    // The three newest published posts; a blog with nothing in it shows no section.
+    blog
+      .home({ revalidate: 600 })
+      .then((home) => [home.featured, ...home.latest].filter((p): p is BlogPostCard => !!p))
+      .then((rows) => rows.filter((p, i) => rows.findIndex((q) => q.id === p.id) === i).slice(0, 3))
+      .catch(() => [] as BlogPostCard[]),
   ]);
 
   const cta = await resolvePlayerCta(session);
@@ -505,6 +513,33 @@ export default async function LandingPage() {
             </LandingContainer>
           </LandingSection>
         </Reveal>
+
+        {/* ---------- The blog ----------
+            Between the asks and the safety note: somebody who has read what the
+            platform is for is the person most likely to want to know what is
+            happening on it this week. Only renders once there is a post. */}
+        {posts.length > 0 && (
+          <Reveal>
+            <LandingSection tone="tint">
+              <LandingContainer>
+                <SectionHeading
+                  icon={Newspaper}
+                  title={t.landing.blogTitle}
+                  body={t.landing.blogBody}
+                  actionHref="/blog"
+                  actionLabel={t.landing.blogCta}
+                />
+                <ul className="grid gap-5 sm:grid-cols-3">
+                  {posts.map((post) => (
+                    <li key={post.id}>
+                      <PostCard post={post} t={t} />
+                    </li>
+                  ))}
+                </ul>
+              </LandingContainer>
+            </LandingSection>
+          </Reveal>
+        )}
 
         <Reveal>
           <section className="border-border bg-surface-2 border-t px-4 py-12">

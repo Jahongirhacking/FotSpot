@@ -74,6 +74,7 @@ export const uz = {
   },
 
   nav: {
+    more: 'Yana',
     blog: 'Blog',
     squad: 'Tarkib',
     groups: 'Guruhlar',
@@ -1825,7 +1826,7 @@ export const uz = {
     exploreAcademies: 'Tasdiqlangan akademiyalar va ular kimni izlayotgani.',
     exploreTrials: 'Bugunoq ariza berish mumkin bo‘lgan ochiq sinovlar.',
     /* Maqola yon paneli — har safar tasodifiy oltitadan. */
-    asidePlayers: 'Iste’dod',
+    asidePlayers: 'Iste’dodlar',
     asideAcademies: 'Akademiyalar',
     seeMore: 'Ko‘proq',
     asideOpenTrials: '{count} ta ochiq sinov',
@@ -1858,8 +1859,9 @@ export const uz = {
     write: 'Yozish',
     fieldCategory: 'Bo‘lim',
     noCategory: 'Bo‘limsiz',
-    fieldAuthorName: 'Muallif nomi',
-    fieldAuthorNameHint: 'Bo‘sh qoldirsangiz, sizning ismingiz ishlatiladi.',
+    fieldAuthorName: 'Muallif',
+    fieldAuthorNameHint:
+      'Maqola qaysi akademiya nomidan chiqadi. Platformaning o‘z maqolalari uchun Lupo — FotSpot maskoti — qolsin; adminning ismi hech qachon ko‘rsatilmaydi.',
     fieldReadingMinutes: 'O‘qish vaqti (daq.)',
     fieldReadingMinutesHint:
       'Matndan hisoblanadi. Raqam kiritsangiz, o‘sha olinadi; 0 — qayta hisoblash.',
@@ -2034,6 +2036,11 @@ export const uz = {
     localTeamMessage: 'Assalomu alaykum! Men FotSpot’da mahalliy jamoa ochmoqchiman.',
 
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — xavfsizlik birinchi o‘rinda.',
+    /* Bosh sahifadagi blog: eng yangi uchta maqola va qolganlariga yo‘l. */
+    blogTitle: 'FotSpot blogidan',
+    blogBody:
+      'Akademiyalar va sinovlar yangiliklari, kuzatishga arziydigan yosh futbolchilar va platformadagi o‘zgarishlar.',
+    blogCta: 'Blogimizni o‘qing',
     safetyBody:
       'Voyaga yetmagan o‘yinchilar profillari sukut bo‘yicha yopiq bo‘ladi. FotSpot’da kattalar va bolalar o‘rtasida shaxsiy yozishmalar mavjud emas. Biz hech qachon bola profilining ko‘rinishini yoki unga kirishni sotmaymiz.',
     privacyPolicy: 'Maxfiylik siyosati',

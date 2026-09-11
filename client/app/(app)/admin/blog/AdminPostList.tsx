@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Input } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import type { BlogPostCard, BlogPostStatus } from '@/lib/api/types';
-import { postPath } from '@/lib/blog';
+import { authorDisplay, postPath } from '@/lib/blog';
 import { cn, formatDateTime } from '@/lib/utils';
 import { ExternalLink, FileText, Pencil, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -56,8 +56,9 @@ export function AdminPostList({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" className="bg-surface-2 flex gap-1 rounded-lg p-1">
+      {/* Tabs on one row, search on the next on a phone; one row from sm up. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div role="tablist" className="bg-surface-2 grid grid-cols-3 gap-1 rounded-lg p-1 sm:flex">
           {tabs.map((tab) => (
             <button
               key={tab.label}
@@ -66,7 +67,7 @@ export function AdminPostList({
               aria-selected={tab.value === status}
               onClick={() => navigate({ status: tab.value })}
               className={cn(
-                'min-h-9 rounded-md px-3 text-sm font-medium transition-colors',
+                'min-h-10 rounded-md px-3 text-sm font-medium transition-colors sm:min-h-9',
                 tab.value === status ? 'bg-surface text-foreground shadow-sm' : 'text-muted',
               )}
             >
@@ -95,7 +96,9 @@ export function AdminPostList({
             className="pl-9"
           />
         </form>
-        <span className="text-muted ml-auto text-sm">{total}</span>
+        <span className="text-muted text-sm sm:ml-auto">
+          {total} · {t.blog.posts.toLowerCase()}
+        </span>
       </div>
 
       {items.length === 0 ? (
@@ -114,10 +117,17 @@ export function AdminPostList({
           {items.map((post) => (
             <li key={post.id}>
               <Card>
-                <CardContent className="flex items-center gap-3 p-3">
+                {/* A phone gets the cover across the top and the actions along
+                    the bottom; a laptop gets one row. */}
+                <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                   <Link
                     href={`/admin/blog/${post.id}`}
-                    className="bg-surface-2 relative aspect-[16/10] w-24 shrink-0 overflow-hidden rounded-lg sm:w-28"
+                    className={cn(
+                      'bg-surface-2 relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-lg sm:aspect-[16/10] sm:w-28',
+                      // A blank frame the height of a photo tells a phone reader
+                      // nothing; the small square on a laptop is fine empty.
+                      !post.coverUrl && 'hidden sm:block',
+                    )}
                     aria-hidden
                     tabIndex={-1}
                   >
@@ -147,25 +157,21 @@ export function AdminPostList({
                       {[post.category?.name, `/blog/${post.slug}`].filter(Boolean).join(' · ')}
                     </p>
                     <p className="text-muted text-xs">
-                      {t.blog.lastEdited} {formatDateTime(post.updatedAt)} · {post.author.name}
+                      {t.blog.lastEdited} {formatDateTime(post.updatedAt)} ·{' '}
+                      {authorDisplay(post.author).name}
                       {post.likeCount > 0 ? ` · ♥ ${post.likeCount}` : ''}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-1">
                     {post.status === 'PUBLISHED' && (
-                      <Link href={postPath(post)} target="_blank">
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="ghost"
-                          aria-label={t.blog.viewOnBlog}
-                          title={t.blog.viewOnBlog}
-                        >
+                      <Button asChild size="sm" variant="ghost" className="flex-1 sm:flex-none">
+                        <Link href={postPath(post)} target="_blank" title={t.blog.viewOnBlog}>
                           <ExternalLink aria-hidden />
-                        </Button>
-                      </Link>
+                          <span className="sm:sr-only">{t.blog.viewOnBlog}</span>
+                        </Link>
+                      </Button>
                     )}
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline" className="flex-1 sm:flex-none">
                       <Link href={`/admin/blog/${post.id}`}>
                         <Pencil aria-hidden /> {t.common.edit}
                       </Link>

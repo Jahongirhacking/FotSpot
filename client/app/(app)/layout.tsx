@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         avatarUrl={me?.avatarUrl ?? null}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
-      <footer className="text-muted border-border mt-auto border-t px-4 py-6 text-center text-xs">
+      <footer className="text-muted border-border mt-auto mb-[calc(4rem+env(safe-area-inset-bottom))] border-t px-4 py-6 text-center text-xs lg:mb-0">
         FotSpot · Grassroots → Academy
       </footer>
     </>

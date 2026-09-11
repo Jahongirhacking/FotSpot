@@ -54,7 +54,8 @@ export class SavePostDto {
   @IsOptional() @IsString() @MaxLength(200) coverAlt?: string;
   /** A category id; empty string clears. */
   @IsOptional() @IsString() @MaxLength(60) categoryId?: string;
-  @IsOptional() @IsString() @MaxLength(80) authorName?: string;
+  /** The academy that signs the post; empty string means the mascot signs it. */
+  @IsOptional() @IsString() @MaxLength(60) authorAcademyId?: string;
   /** Overrides the computed reading time; 0 or absent recomputes. */
   @IsOptional() @IsInt() @Min(0) @Max(120) readingMinutes?: number;
   @IsOptional() @IsBoolean() featured?: boolean;

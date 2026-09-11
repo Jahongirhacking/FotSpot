@@ -1162,10 +1162,12 @@ export interface BlogCategory {
   sortOrder?: number;
 }
 
-export interface BlogAuthor {
-  name: string;
-  avatarUrl: string | null;
-}
+/**
+ * Who signs a post: the academy an admin chose, or the mascot. Never an
+ * admin's account — see `authorDisplay` in lib/blog.ts for how each is drawn.
+ */
+export type BlogAuthor =
+  { kind: 'academy'; id: string; name: string; avatarUrl: string | null } | { kind: 'mascot' };
 
 /** A post as a listing draws it. */
 export interface BlogPostCard {
@@ -1224,7 +1226,8 @@ export interface AdminBlogPost {
   categoryId: string | null;
   category: Pick<BlogCategory, 'id' | 'slug' | 'name'> | null;
   authorUserId: string;
-  authorName: string | null;
+  /** The academy that signs the post; null means the mascot does. */
+  authorAcademyId: string | null;
   author: BlogAuthor;
   status: BlogPostStatus;
   publishedAt: string | null;
@@ -1269,6 +1272,8 @@ export interface SpotlightPlayer {
   primaryPosition: string | null;
   region: string | null;
   ageBand: AgeBand;
+  /** The card's star row, 0.5–5 in halves; the sidebar never shows a player under 0.5. */
+  stars: number;
 }
 
 export interface SpotlightAcademy {

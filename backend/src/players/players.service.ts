@@ -75,7 +75,7 @@ export class PlayersService {
    * card was otherwise fetching each player's assessments to recompute the same
    * five stars — a request per card on a screen that shows twenty.
    */
-  private async starsFor(playerIds: string[]): Promise<Map<string, number>> {
+  async starsFor(playerIds: string[]): Promise<Map<string, number>> {
     const stars = new Map<string, number>();
     if (playerIds.length === 0) return stars;
 

@@ -4,7 +4,7 @@ import type { BlogPostCard } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n/dictionaries/uz';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { Badge } from '@/components/ui/Badge';
-import { categoryPath, postPath } from '@/lib/blog';
+import { authorDisplay, categoryPath, postPath } from '@/lib/blog';
 import { formatDate } from '@/lib/utils';
 
 /**
@@ -50,7 +50,7 @@ export function FeaturedPost({ post, t }: { post: BlogPostCard; t: Dictionary })
         </h2>
         <p className="line-clamp-2 max-w-2xl text-sm text-white/85 sm:text-base">{post.excerpt}</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/75">
-          <span>{post.author.name}</span>
+          <span>{authorDisplay(post.author).name}</span>
           {post.publishedAt && (
             <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
           )}

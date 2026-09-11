@@ -7,6 +7,7 @@ import {
 import { Prisma, type BlogPostStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { PlayersService } from '../players/players.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import {
@@ -28,14 +29,12 @@ import type {
   SavePostDto,
 } from './dto/blog.dto';
 
-/** What a card and a page know about the author. */
-const AUTHOR_SELECT = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  username: true,
-  avatarKey: true,
-} as const;
+/**
+ * The academy a post is signed by. Nothing about the admin who typed it is
+ * ever selected for a reader: a post without an academy is signed by the
+ * mascot, and that is the client's to draw.
+ */
+const AUTHOR_SELECT = { id: true, name: true, logoKey: true } as const;
 
 const CATEGORY_SELECT = { id: true, slug: true, name: true } as const;
 
@@ -53,8 +52,7 @@ const CARD_SELECT = {
   likeCount: true,
   featured: true,
   category: { select: CATEGORY_SELECT },
-  author: { select: AUTHOR_SELECT },
-  authorName: true,
+  authorAcademy: { select: AUTHOR_SELECT },
 } as const;
 
 const PUBLISHED: Prisma.BlogPostWhereInput = { status: 'PUBLISHED', publishedAt: { not: null } };
@@ -67,6 +65,10 @@ function isImageType(contentType: string): boolean {
 /** How many players and how many academies an article's sidebar shows. */
 const SPOTLIGHT_SIZE = 6;
 const SPOTLIGHT_MAX = 12;
+/** A sidebar player needs a star row worth showing: half a star at least. */
+const SPOTLIGHT_MIN_STARS = 0.5;
+/** Candidates drawn per player wanted, since some fall under the star floor. */
+const SPOTLIGHT_OVERSAMPLE = 4;
 
 /** How many the listing's sections show. */
 const HOME_LATEST = 9;
@@ -75,6 +77,10 @@ const HOME_TOP = 5;
 const RELATED = 3;
 
 type CardRow = Prisma.BlogPostGetPayload<{ select: typeof CARD_SELECT }>;
+
+/** A post's signature as readers get it. */
+export type BlogAuthor =
+  { kind: 'academy'; id: string; name: string; avatarUrl: string | null } | { kind: 'mascot' };
 
 /**
  * The blog — README §1.16's organic half.
@@ -102,6 +108,7 @@ export class BlogService {
     private prisma: PrismaService,
     private storage: StorageService,
     private audit: AuditService,
+    private players: PlayersService,
   ) {}
 
   // ---------- Reading ----------
@@ -267,20 +274,34 @@ export class BlogService {
    * Random in the database (`ORDER BY random()`) over the same set the public
    * directory shows — no private accounts, no disabled ones, only verified
    * academies — and shaped lean on purpose: a name, a face, a position, the
-   * age band and a region. Never a date of birth (README §11.3), never
-   * contacts. Two id picks and two hydrations, four cheap queries, and no
-   * cache so every article view is a different six.
+   * age band, a region and the star row. Never a date of birth (README
+   * §11.3), never contacts. No cache, so every article view is a different six.
+   *
+   * A player needs at least half a star to be offered: an introduction to
+   * somebody with nothing on their card introduces nobody. Stars are computed,
+   * not stored, so the pick draws only players with public evidence (a rated
+   * verified clip or a coach assessment), oversamples, computes the row with
+   * the same code the profile uses, and keeps the first six over the floor.
    */
   async spotlight(limit = SPOTLIGHT_SIZE) {
     const take = Math.min(Math.max(1, limit), SPOTLIGHT_MAX);
-    const [playerIds, academyIds] = await Promise.all([
+    const [candidateIds, academyIds] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>`
         SELECT p."id"
         FROM "PlayerProfile" p
         JOIN "User" u ON u."id" = p."userId"
         WHERE u."isPrivate" = false AND u."isActive" = true
+          AND (
+            EXISTS (
+              SELECT 1 FROM "Media" m
+              WHERE m."playerId" = p."id" AND m."rating" IS NOT NULL
+                AND m."moderationStatus" = 'VERIFIED'
+                AND m."status" IN ('ACTIVE', 'PROCESSING', 'FAILED')
+            )
+            OR EXISTS (SELECT 1 FROM "CoachAssessment" c WHERE c."playerId" = p."id")
+          )
         ORDER BY random()
-        LIMIT ${take}`,
+        LIMIT ${take * SPOTLIGHT_OVERSAMPLE}`,
       this.prisma.$queryRaw<{ id: string }[]>`
         SELECT a."id"
         FROM "AcademyProfile" a
@@ -288,6 +309,11 @@ export class BlogService {
         ORDER BY random()
         LIMIT ${take}`,
     ]);
+
+    const stars = await this.players.starsFor(candidateIds.map((row) => row.id));
+    const playerIds = candidateIds
+      .filter((row) => (stars.get(row.id) ?? 0) >= SPOTLIGHT_MIN_STARS)
+      .slice(0, take);
 
     const [players, academies] = await Promise.all([
       this.prisma.playerProfile.findMany({
@@ -333,6 +359,7 @@ export class BlogService {
           primaryPosition: row.primaryPosition,
           region: row.region,
           ageBand: ageBandFor(ageAt(row.birthDate, now)),
+          stars: stars.get(row.id) ?? 0,
         })),
       academies: academies
         .sort((a, b) => (academyOrder.get(a.id) ?? 0) - (academyOrder.get(b.id) ?? 0))
@@ -426,7 +453,7 @@ export class BlogService {
   async adminGet(id: string) {
     const post = await this.prisma.blogPost.findUnique({
       where: { id },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (!post) throw new NotFoundException('Post not found');
     return this.toAdminPost(post);
@@ -450,7 +477,7 @@ export class BlogService {
         readingMinutes: dto.readingMinutes || readingMinutes(dto.content),
         authorUserId: actorId,
       },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (post.featured) await this.featureOnly(post.id);
 
@@ -502,7 +529,7 @@ export class BlogService {
               ? readingMinutes(content)
               : existing.readingMinutes,
       },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     if (post.featured && dto.featured) await this.featureOnly(post.id);
     return this.toAdminPost(post);
@@ -525,7 +552,7 @@ export class BlogService {
     const post = await this.prisma.blogPost.update({
       where: { id },
       data: { status: 'PUBLISHED', publishedAt: existing.publishedAt ?? new Date() },
-      include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+      include: { category: { select: CATEGORY_SELECT }, authorAcademy: { select: AUTHOR_SELECT } },
     });
     await this.audit.record(actorId, AuditAction.BLOG_POST_PUBLISHED, {
       postId: id,
@@ -539,7 +566,10 @@ export class BlogService {
       .update({
         where: { id },
         data: { status: 'DRAFT', featured: false },
-        include: { category: { select: CATEGORY_SELECT }, author: { select: AUTHOR_SELECT } },
+        include: {
+          category: { select: CATEGORY_SELECT },
+          authorAcademy: { select: AUTHOR_SELECT },
+        },
       })
       .catch(() => null);
     if (!post) throw new NotFoundException('Post not found');
@@ -783,7 +813,7 @@ export class BlogService {
       coverKey?: string | null;
       ogImageKey?: string | null;
       coverAlt?: string | null;
-      authorName?: string | null;
+      authorAcademyId?: string | null;
       featured?: boolean;
       seoTitle?: string | null;
       metaDescription?: string | null;
@@ -805,7 +835,21 @@ export class BlogService {
       data[field] = key;
     }
     if (dto.coverAlt !== undefined) data.coverAlt = dto.coverAlt.trim() || null;
-    if (dto.authorName !== undefined) data.authorName = dto.authorName.trim() || null;
+    if (dto.authorAcademyId !== undefined) {
+      // Only an academy signs a post — a local team or an unverified record
+      // would put a name on the blog that the directory does not vouch for.
+      if (dto.authorAcademyId === '') data.authorAcademyId = null;
+      else {
+        const academy = await this.prisma.academyProfile.findUnique({
+          where: { id: dto.authorAcademyId },
+          select: { kind: true, status: true },
+        });
+        if (!academy || academy.kind !== 'ACADEMY' || academy.status !== 'VERIFIED') {
+          throw new BadRequestException('Only a verified academy can sign a post');
+        }
+        data.authorAcademyId = dto.authorAcademyId;
+      }
+    }
     if (dto.featured !== undefined) data.featured = dto.featured;
     if (dto.seoTitle !== undefined) data.seoTitle = dto.seoTitle.trim() || null;
     if (dto.metaDescription !== undefined)
@@ -845,20 +889,25 @@ export class BlogService {
     return data;
   }
 
+  /**
+   * Who signs the post: the chosen academy, with its logo and a way to its
+   * page — or the mascot, which the client names and draws. An admin's own
+   * name is never here, whatever role saved the row.
+   */
   private authorOf(row: {
-    author: Prisma.UserGetPayload<{ select: typeof AUTHOR_SELECT }>;
-    authorName: string | null;
-  }) {
-    const name =
-      row.authorName?.trim() ||
-      [row.author.firstName, row.author.lastName].filter(Boolean).join(' ') ||
-      row.author.username ||
-      'FotSpot';
-    return { name, avatarUrl: this.storage.publicUrlOrNull(row.author.avatarKey) };
+    authorAcademy: Prisma.AcademyProfileGetPayload<{ select: typeof AUTHOR_SELECT }> | null;
+  }): BlogAuthor {
+    if (!row.authorAcademy) return { kind: 'mascot' };
+    return {
+      kind: 'academy',
+      id: row.authorAcademy.id,
+      name: row.authorAcademy.name,
+      avatarUrl: this.storage.publicUrlOrNull(row.authorAcademy.logoKey),
+    };
   }
 
   private toCard(row: CardRow) {
-    const { coverKey, author: _author, authorName: _authorName, ...rest } = row;
+    const { coverKey, authorAcademy: _authorAcademy, ...rest } = row;
     return {
       ...rest,
       coverUrl: this.storage.publicUrlOrNull(coverKey),
@@ -870,12 +919,13 @@ export class BlogService {
     post: Prisma.BlogPostGetPayload<{
       include: {
         category: { select: typeof CATEGORY_SELECT };
-        author: { select: typeof AUTHOR_SELECT };
+        authorAcademy: { select: typeof AUTHOR_SELECT };
       };
     }>,
   ) {
+    const { authorAcademy: _authorAcademy, ...rest } = post;
     return {
-      ...post,
+      ...rest,
       coverUrl: this.storage.publicUrlOrNull(post.coverKey),
       ogImageUrl: this.storage.publicUrlOrNull(post.ogImageKey),
       author: this.authorOf(post),

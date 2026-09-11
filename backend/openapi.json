@@ -9296,9 +9296,10 @@
             "description": "A category id; empty string clears.",
             "maxLength": 60
           },
-          "authorName": {
+          "authorAcademyId": {
             "type": "string",
-            "maxLength": 80
+            "description": "The academy that signs the post; empty string means the mascot signs it.",
+            "maxLength": 60
           },
           "readingMinutes": {
             "type": "number",

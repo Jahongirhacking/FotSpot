@@ -5,7 +5,14 @@ import * as DropdownPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export const Menu = DropdownPrimitive.Root;
+/**
+ * Non-modal: a dropdown is a small layer beside its button, not a dialog, and
+ * locking the page scroll behind it only produced a jump in the header. The
+ * layer still closes on outside press and Escape.
+ */
+export const Menu = (props: React.ComponentProps<typeof DropdownPrimitive.Root>) => (
+  <DropdownPrimitive.Root modal={false} {...props} />
+);
 export const MenuTrigger = DropdownPrimitive.Trigger;
 
 export function MenuContent({
