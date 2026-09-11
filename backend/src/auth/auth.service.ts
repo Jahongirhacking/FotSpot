@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import type { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -39,7 +40,31 @@ const OTP_TTL_SECONDS = 300;
 /** Longer than the login OTP: this one is typed once, mid-signup, from an inbox
  *  the user may have to go and open on another device. */
 const REGISTRATION_CODE_TTL_SECONDS = 900;
-const REFRESH_TTL_FALLBACK_DAYS = 30;
+/**
+ * The refresh session is a sliding inactivity window: every successful refresh
+ * pushes `Session.expiresAt` this far out again, so somebody who keeps using the
+ * app stays signed in, and only this long without a refresh ends it. The refresh
+ * JWT itself carries the same lifetime; the row is what actually decides.
+ */
+export const SESSION_INACTIVITY_DAYS = 21;
+const SESSION_INACTIVITY_MS = SESSION_INACTIVITY_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * How long a just-rotated refresh token is still honoured.
+ *
+ * Two tabs, a navigation and a background query, two Next.js workers — every
+ * one of them can present the same refresh token within the same second, each
+ * unaware of the other. Treating the second as theft revoked the session and
+ * signed the user out on the second or third expiry, about half an hour in.
+ * Within this window a retired token is answered with a fresh pair of its own
+ * instead; after it, presenting a retired token is the replay it looks like.
+ */
+export const REFRESH_REUSE_GRACE_MS = 60_000;
+
+/** The stored representation of a refresh token — never the token itself. */
+export function hashRefreshToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 /** Long enough to go and find the email, short enough that a leaked one ages out. */
 const RESET_CODE_TTL_SECONDS = 900;
 
@@ -47,6 +72,8 @@ const RESET_CODE_TTL_SECONDS = 900;
 interface RefreshClaims {
   sub: string;
   sid: string;
+  /** Random per token, so two rotations in the same second never mint the same string. */
+  jti: string;
 }
 
 /**
@@ -736,7 +763,20 @@ export class AuthService {
 
   /**
    * Rotates the refresh token for the *session* it was issued to, leaving the
-   * user's other devices untouched.
+   * user's other devices untouched, and pushes the session's inactivity expiry
+   * out by another `SESSION_INACTIVITY_DAYS`.
+   *
+   * ## The token family
+   *
+   * A session holds the hashes of the tokens it will accept (`active`) and of
+   * the ones the last rotation retired (`retiring`, with `retiredAt`). Presenting
+   * an active token rotates: it and its siblings retire together, and one new
+   * token becomes active. Presenting a retired token *inside* the grace window
+   * is what two tabs expiring together looks like, so it is answered with a
+   * fresh pair of its own — the new token joins the active family, and whichever
+   * of them the browser's cookie jar ends up holding works next time. Presenting
+   * a retired token *after* the grace window, or one this session never issued,
+   * is a replay: the whole session is revoked.
    */
   async refresh(dto: RefreshTokenDto, client: ClientInfo = {}) {
     let claims: RefreshClaims;
@@ -748,27 +788,72 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const session = await this.prisma.session.findUnique({ where: { id: claims.sid } });
-    if (!session || session.revokedAt || session.userId !== claims.sub) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-    if (session.expiresAt < new Date()) throw new UnauthorizedException('Refresh token expired');
+    /*
+     * The row is locked for the whole decision. Two refreshes of one session
+     * arriving together — the very case the family exists for — would otherwise
+     * both read the family before either wrote it, and the second write would
+     * drop the first's new token: a token the browser holds that the session
+     * has never heard of, which is the replay path. Serialised, the second sees
+     * the first's rotation and joins it.
+     */
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM "Session" WHERE id = ${claims.sid} FOR UPDATE`;
+      const session = await tx.session.findUnique({ where: { id: claims.sid } });
+      if (!session || session.revokedAt || session.userId !== claims.sub) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      const now = Date.now();
+      if (session.expiresAt.getTime() < now) throw new UnauthorizedException('Session expired');
 
-    const matches = await argon2.verify(session.refreshTokenHash, dto.refreshToken);
-    if (!matches) {
-      // A valid JWT whose hash no longer matches means the token was already
-      // rotated - i.e. replayed. Kill the session rather than reissuing.
+      const presented = hashRefreshToken(dto.refreshToken);
+      let active = session.activeRefreshHashes;
+      let retiring = session.retiringRefreshHashes;
+      let retiredAt = session.retiredAt;
+      const inGrace = retiredAt !== null && now - retiredAt.getTime() <= REFRESH_REUSE_GRACE_MS;
+
+      // A row from before the family existed holds one argon2 hash. Honoured
+      // once; the rotation below replaces it with the family.
+      if (active.length === 0 && session.refreshTokenHash.startsWith('$argon2')) {
+        if (await argon2.verify(session.refreshTokenHash, dto.refreshToken)) active = [presented];
+      }
+
+      if (active.includes(presented)) {
+        if (inGrace) {
+          // A sibling minted during the current burst, now used: it alone retires.
+          retiring = [...retiring, presented];
+          active = active.filter((hash) => hash !== presented);
+        } else {
+          retiring = active;
+          retiredAt = new Date(now);
+          active = [];
+        }
+      } else if (!(retiring.includes(presented) && inGrace)) {
+        // Already rotated and outside the grace — or never issued to this
+        // session. Either way it is a replay, and the session dies rather than
+        // reissuing. The revoke is written after the transaction commits: a
+        // throw in here would roll it back along with everything else.
+        return { replayed: session.id };
+      }
+
+      const user = await tx.user.findUnique({ where: { id: session.userId } });
+      if (!user || !user.isActive) throw new UnauthorizedException('Account disabled');
+
+      return this.issueTokens(
+        session.userId,
+        client,
+        { sessionId: session.id, active, retiring, retiredAt },
+        tx,
+      );
+    });
+
+    if ('replayed' in outcome) {
       await this.prisma.session.update({
-        where: { id: session.id },
+        where: { id: outcome.replayed },
         data: { revokedAt: new Date() },
       });
       throw new UnauthorizedException('Refresh token already used');
     }
-
-    const user = await this.prisma.user.findUnique({ where: { id: session.userId } });
-    if (!user || !user.isActive) throw new UnauthorizedException('Account disabled');
-
-    return this.issueTokens(session.userId, client, session.id);
+    return outcome;
   }
 
   /** Revokes the caller's current device, or every device when `allDevices`. */
@@ -806,23 +891,30 @@ export class AuthService {
   }
 
   /**
-   * Issues an access/refresh pair bound to a Session row. Passing `sessionId`
-   * rotates that session in place; omitting it opens a new one (a new device).
+   * Issues an access/refresh pair bound to a Session row. With a `rotation` the
+   * session is rotated in place — the new token joins the family it describes
+   * and the inactivity expiry moves out again; without one a new session opens
+   * (a new device).
    */
-  private async issueTokens(userId: string, client: ClientInfo = {}, sessionId?: string) {
+  private async issueTokens(
+    userId: string,
+    client: ClientInfo = {},
+    rotation?: {
+      sessionId: string;
+      active: string[];
+      retiring: string[];
+      retiredAt: Date | null;
+    },
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
     const { roles, permissions } = await this.rbac.getEffectiveAccess(userId);
 
-    const expiresAt = new Date(Date.now() + REFRESH_TTL_FALLBACK_DAYS * 24 * 60 * 60 * 1000);
-    const session = sessionId
-      ? await this.prisma.session.update({
-          where: { id: sessionId },
-          data: {
-            lastUsedAt: new Date(),
-            ipAddress: client.ipAddress,
-            userAgent: client.userAgent,
-          },
-        })
-      : await this.prisma.session.create({
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + SESSION_INACTIVITY_MS);
+    const sessionId =
+      rotation?.sessionId ??
+      (
+        await db.session.create({
           data: {
             userId,
             // Placeholder until the token below exists - the token embeds the
@@ -832,28 +924,42 @@ export class AuthService {
             ipAddress: client.ipAddress,
             expiresAt,
           },
-        });
+        })
+      ).id;
 
     const accessToken = await this.jwt.signAsync(
-      { sub: userId, sid: session.id, roles, permissions },
+      { sub: userId, sid: sessionId, roles, permissions },
       {
         secret: this.config.get('JWT_ACCESS_SECRET'),
         expiresIn: this.config.get('JWT_ACCESS_TTL') ?? '15m',
       },
     );
     const refreshToken = await this.jwt.signAsync(
-      { sub: userId, sid: session.id } satisfies RefreshClaims,
+      { sub: userId, sid: sessionId, jti: crypto.randomUUID() } satisfies RefreshClaims,
       {
         secret: this.config.get('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get('JWT_REFRESH_TTL') ?? '30d',
+        // The row's `expiresAt` is what actually decides; the claim only has to
+        // outlive it.
+        expiresIn: `${SESSION_INACTIVITY_DAYS}d`,
       },
     );
 
-    await this.prisma.session.update({
-      where: { id: session.id },
-      data: { refreshTokenHash: await argon2.hash(refreshToken) },
+    const hash = hashRefreshToken(refreshToken);
+    await db.session.update({
+      where: { id: sessionId },
+      data: {
+        refreshTokenHash: hash,
+        activeRefreshHashes: [...(rotation?.active ?? []), hash],
+        retiringRefreshHashes: rotation?.retiring ?? [],
+        retiredAt: rotation?.retiredAt ?? null,
+        // A successful refresh is the one thing that counts as activity.
+        expiresAt,
+        lastUsedAt: now,
+        ipAddress: client.ipAddress,
+        userAgent: client.userAgent,
+      },
     });
 
-    return { accessToken, refreshToken, sessionId: session.id, roles, permissions };
+    return { accessToken, refreshToken, sessionId, roles, permissions };
   }
 }

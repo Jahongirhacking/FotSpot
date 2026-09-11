@@ -598,6 +598,7 @@
             "bearer": []
           }
         ],
+        "summary": "Rotates the session. Every browser's refresh arrives from the Next server's\naddress unless `TRUST_PROXY_HOPS` lets the forwarded client address through,\nso this cap has to hold for everyone behind one proxy at once — a refresh is\nalready gated by a signed token, and the cap is only there against floods.",
         "tags": [
           "auth"
         ]

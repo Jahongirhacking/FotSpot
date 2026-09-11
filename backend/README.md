@@ -362,8 +362,19 @@ does not appear.
 - **Media engagement** (1.14): `media_views` (guest-attributable, never pushed
   over WebSocket per 1.17) and `media_comments` with author-only deletion.
 - **Sessions & device tracking** (1.21): one `Session` row per logged-in device,
-  refresh tokens carry their session id as `sid` and rotate per device. Reusing
-  an already-rotated refresh token revokes that session (replay detection).
+  refresh tokens carry their session id as `sid` and rotate per device. The
+  access token lives 15 minutes (`JWT_ACCESS_TTL`); the refresh session is a
+  sliding **21-day inactivity window** (`SESSION_INACTIVITY_DAYS`): every
+  successful refresh rotates the token and pushes `Session.expiresAt` out
+  again, so a user who keeps coming back never signs in again, and 21 days
+  without a refresh ends it. A session stores SHA-256 hashes of a small
+  *family* of tokens rather than exactly one: a token rotated within the last
+  minute (`REFRESH_REUSE_GRACE_MS`) is still honoured with a fresh pair of its
+  own, because two tabs, or a navigation and a background query, presenting
+  the same token together is not theft. Presenting a retired token after that
+  minute — or one the session never issued — revokes the whole session
+  (replay detection). Logout revokes the row; an issued access token stays
+  usable until it expires.
   `GET /auth/sessions` lists active devices; logout takes one device or all.
 - **Caching** (1.19): player and academy profile reads go through `RedisService`,
   invalidated on every write that could stale them (including media upload,
