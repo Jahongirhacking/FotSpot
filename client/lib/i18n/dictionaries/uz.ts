@@ -1826,7 +1826,7 @@ export const uz = {
     exploreAcademies: 'Tasdiqlangan akademiyalar va ular kimni izlayotgani.',
     exploreTrials: 'Bugunoq ariza berish mumkin bo‘lgan ochiq sinovlar.',
     /* Maqola yon paneli — har safar tasodifiy oltitadan. */
-    asidePlayers: 'Iste’dod',
+    asidePlayers: 'Iste’dodlar',
     asideAcademies: 'Akademiyalar',
     seeMore: 'Ko‘proq',
     asideOpenTrials: '{count} ta ochiq sinov',

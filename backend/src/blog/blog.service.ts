@@ -7,6 +7,7 @@ import {
 import { Prisma, type BlogPostStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { PlayersService } from '../players/players.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/audit.actions';
 import {
@@ -67,6 +68,10 @@ function isImageType(contentType: string): boolean {
 /** How many players and how many academies an article's sidebar shows. */
 const SPOTLIGHT_SIZE = 6;
 const SPOTLIGHT_MAX = 12;
+/** A sidebar player needs a star row worth showing: half a star at least. */
+const SPOTLIGHT_MIN_STARS = 0.5;
+/** Candidates drawn per player wanted, since some fall under the star floor. */
+const SPOTLIGHT_OVERSAMPLE = 4;
 
 /** How many the listing's sections show. */
 const HOME_LATEST = 9;
@@ -102,6 +107,7 @@ export class BlogService {
     private prisma: PrismaService,
     private storage: StorageService,
     private audit: AuditService,
+    private players: PlayersService,
   ) {}
 
   // ---------- Reading ----------
@@ -267,20 +273,34 @@ export class BlogService {
    * Random in the database (`ORDER BY random()`) over the same set the public
    * directory shows — no private accounts, no disabled ones, only verified
    * academies — and shaped lean on purpose: a name, a face, a position, the
-   * age band and a region. Never a date of birth (README §11.3), never
-   * contacts. Two id picks and two hydrations, four cheap queries, and no
-   * cache so every article view is a different six.
+   * age band, a region and the star row. Never a date of birth (README
+   * §11.3), never contacts. No cache, so every article view is a different six.
+   *
+   * A player needs at least half a star to be offered: an introduction to
+   * somebody with nothing on their card introduces nobody. Stars are computed,
+   * not stored, so the pick draws only players with public evidence (a rated
+   * verified clip or a coach assessment), oversamples, computes the row with
+   * the same code the profile uses, and keeps the first six over the floor.
    */
   async spotlight(limit = SPOTLIGHT_SIZE) {
     const take = Math.min(Math.max(1, limit), SPOTLIGHT_MAX);
-    const [playerIds, academyIds] = await Promise.all([
+    const [candidateIds, academyIds] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>`
         SELECT p."id"
         FROM "PlayerProfile" p
         JOIN "User" u ON u."id" = p."userId"
         WHERE u."isPrivate" = false AND u."isActive" = true
+          AND (
+            EXISTS (
+              SELECT 1 FROM "Media" m
+              WHERE m."playerId" = p."id" AND m."rating" IS NOT NULL
+                AND m."moderationStatus" = 'VERIFIED'
+                AND m."status" IN ('ACTIVE', 'PROCESSING', 'FAILED')
+            )
+            OR EXISTS (SELECT 1 FROM "CoachAssessment" c WHERE c."playerId" = p."id")
+          )
         ORDER BY random()
-        LIMIT ${take}`,
+        LIMIT ${take * SPOTLIGHT_OVERSAMPLE}`,
       this.prisma.$queryRaw<{ id: string }[]>`
         SELECT a."id"
         FROM "AcademyProfile" a
@@ -288,6 +308,11 @@ export class BlogService {
         ORDER BY random()
         LIMIT ${take}`,
     ]);
+
+    const stars = await this.players.starsFor(candidateIds.map((row) => row.id));
+    const playerIds = candidateIds
+      .filter((row) => (stars.get(row.id) ?? 0) >= SPOTLIGHT_MIN_STARS)
+      .slice(0, take);
 
     const [players, academies] = await Promise.all([
       this.prisma.playerProfile.findMany({
@@ -333,6 +358,7 @@ export class BlogService {
           primaryPosition: row.primaryPosition,
           region: row.region,
           ageBand: ageBandFor(ageAt(row.birthDate, now)),
+          stars: stars.get(row.id) ?? 0,
         })),
       academies: academies
         .sort((a, b) => (academyOrder.get(a.id) ?? 0) - (academyOrder.get(b.id) ?? 0))

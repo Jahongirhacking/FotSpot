@@ -100,7 +100,7 @@ function build(row: Record<string, unknown> | null = ROW) {
     ),
     // The random picks: first call players, second call academies.
     $queryRaw: jest.fn(async (..._args: unknown[]): Promise<{ id: string }[]> => []),
-    playerProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
+    playerProfile: { findMany: jest.fn(async (_args?: unknown): Promise<unknown[]> => []) },
     academyProfile: { findMany: jest.fn(async (): Promise<unknown[]> => []) },
     blogPostImage: {
       findMany: jest.fn(async (): Promise<unknown[]> => []),
@@ -128,8 +128,16 @@ function build(row: Record<string, unknown> | null = ROW) {
     })),
   };
   const audit = { record: jest.fn(async () => undefined) };
-  const service = new BlogService(prisma as never, storage as never, audit as never);
-  return { service, prisma, tx, storage, audit };
+  const players = {
+    starsFor: jest.fn(async (ids: string[]) => new Map(ids.map((id) => [id, 3]))),
+  };
+  const service = new BlogService(
+    prisma as never,
+    storage as never,
+    audit as never,
+    players as never,
+  );
+  return { service, prisma, tx, storage, audit, players };
 }
 
 describe('reading — only what is published', () => {
@@ -561,6 +569,7 @@ describe('spotlight — the sidebar picks', () => {
       primaryPosition: 'CM',
       region: 'Toshkent',
       ageBand: 'U16',
+      stars: 3,
     });
     expect(result.players[0].ageBand).toBe('Senior');
     expect(JSON.stringify(result)).not.toMatch(/birthDate|phone|email|Key"/);
@@ -576,7 +585,7 @@ describe('spotlight — the sidebar picks', () => {
     ]);
   });
 
-  it('asks the database for six of each, only public players and verified academies', async () => {
+  it('draws evidenced public players, oversampled, and six verified academies', async () => {
     const { service, prisma } = build();
 
     await service.spotlight();
@@ -585,14 +594,51 @@ describe('spotlight — the sidebar picks', () => {
       (call[0] as TemplateStringsArray).join('?'),
     );
     expect(players).toMatch(/"isPrivate" = false AND u."isActive" = true/);
+    expect(players).toMatch(/"moderationStatus" = 'VERIFIED'/);
+    expect(players).toMatch(/"CoachAssessment"/);
     expect(players).toMatch(/ORDER BY random\(\)/);
     expect(academies).toMatch(/"kind" = 'ACADEMY' AND a."status" = 'VERIFIED'/);
-    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(6);
+    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(24);
+    expect(prisma.$queryRaw.mock.calls[1][1]).toBe(6);
+  });
+
+  it('keeps only players with at least half a star, six at most, in the drawn order', async () => {
+    const { service, prisma, players } = build();
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    prisma.$queryRaw.mockResolvedValueOnce(ids.map((id) => ({ id }))).mockResolvedValueOnce([]);
+    players.starsFor.mockResolvedValue(
+      new Map([
+        ['a', 0],
+        ['b', 0.5],
+        ['c', 4],
+        ['d', 0],
+        ['e', 1],
+        ['f', 2.5],
+        ['g', 3],
+        ['h', 5],
+      ]),
+    );
+    prisma.playerProfile.findMany.mockImplementation(async (args?: unknown) =>
+      (args as { where: { id: { in: string[] } } }).where.id.in.map((id) => ({
+        id,
+        firstName: id,
+        lastName: '',
+        birthDate: new Date(`${year - 15}-01-01`),
+        primaryPosition: null,
+        region: null,
+        user: { username: null, avatarKey: null },
+      })),
+    );
+
+    const result = await service.spotlight();
+
+    expect(result.players.map((p) => p.id)).toEqual(['b', 'c', 'e', 'f', 'g', 'h']);
+    expect(result.players.every((p) => p.stars >= 0.5)).toBe(true);
   });
 
   it('caps a larger request', async () => {
     const { service, prisma } = build();
     await service.spotlight(50);
-    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(12);
+    expect(prisma.$queryRaw.mock.calls[0][1]).toBe(48);
   });
 });

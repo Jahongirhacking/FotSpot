@@ -1269,6 +1269,8 @@ export interface SpotlightPlayer {
   primaryPosition: string | null;
   region: string | null;
   ageBand: AgeBand;
+  /** The card's star row, 0.5–5 in halves; the sidebar never shows a player under 0.5. */
+  stars: number;
 }
 
 export interface SpotlightAcademy {
