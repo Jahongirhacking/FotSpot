@@ -281,11 +281,16 @@ does not appear.
   on a `PROCESSING`/`FAILED` clip (`PATCH /moderation/media/:id/retry`, same queue).
 - **Video review before publication** (1.7): every clip also carries
   `Media.moderationStatus`, defaulting to `UNVERIFIED`. **Visibility is decided
-  by moderation, not by processing**: a clip is public when
-  `moderationStatus = VERIFIED` and `status` is `ACTIVE`, `PROCESSING` or
-  `FAILED` (`WATCHABLE_STATUSES`), so a verified clip stays up while it is
-  being re-encoded; an unverified one is never served to anyone but its
-  uploader and the moderation queue. Nothing on the upload path can set it:
+  by moderation alone**: a clip is public exactly when
+  `moderationStatus = VERIFIED`. `status` (`PROCESSING`, `ACTIVE`, `FAILED`) is
+  the worker's report on the bytes and has no say in who may watch — a verified
+  clip stays up while it is being re-encoded and after a failed attempt (the
+  original stays under the same key); an unverified or blocked one is never
+  served to anyone but its uploader and the moderation queue, however far
+  processing got. `REMOVED` is a delete, not a state, and is the only value of
+  `status` any visibility query names. A flag (`…/flag`) writes `BLOCKED` as
+  well as `FLAGGED`, so it hides by the same rule; "make active" lifts both.
+  Nothing on the upload path can set it:
   only `PATCH /moderation/media/:id/verify` (admin or super admin) publishes a clip.
   `…/block` takes one down while keeping the row, its ratings and its engagement
   for the moderation record; `DELETE /moderation/media/:id` destroys the row and

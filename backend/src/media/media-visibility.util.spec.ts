@@ -21,47 +21,38 @@ import {
  * wrong in eleven places at once.
  */
 
-describe('isPubliclyVisible — both columns must agree', () => {
-  it('publishes a clip that is both ACTIVE and VERIFIED', () => {
-    expect(isPubliclyVisible({ status: 'ACTIVE', moderationStatus: 'VERIFIED' })).toBe(true);
-  });
+const PROCESSING_STATES = ['PROCESSING', 'ACTIVE', 'FAILED'] as const;
 
+describe('isPubliclyVisible — moderation alone decides', () => {
   /*
-   * The worker's optimised copy overwrites the same key the original sits
-   * under, so a verified clip is playable before processing ends — as the
-   * original — and switches to the optimised bytes when they land. The
-   * decision and the processing are independent.
+   * The one rule: visible ⇔ VERIFIED. The worker's progress on the bytes —
+   * still at it, done, gave up — is never consulted. The optimised copy
+   * overwrites the same key the original sits under, so a verified clip plays
+   * before processing ends, and a failed attempt leaves the original where it
+   * was; the verdict on who may watch is the moderator's, and it stands.
    */
-  it('publishes a VERIFIED clip the worker has not finished with', () => {
-    expect(isPubliclyVisible({ status: 'PROCESSING', moderationStatus: 'VERIFIED' })).toBe(true);
+  it.each(PROCESSING_STATES)('publishes a VERIFIED clip at %s', (status) => {
+    expect(isPubliclyVisible({ status, moderationStatus: 'VERIFIED' })).toBe(true);
   });
 
-  /* A failed attempt leaves the original under the key; the verdict on who
-     may watch it is the moderator's, and it stands. */
-  it('publishes a VERIFIED clip the worker gave up on, as the file it has', () => {
-    expect(isPubliclyVisible({ status: 'FAILED', moderationStatus: 'VERIFIED' })).toBe(true);
+  it.each(PROCESSING_STATES)('never publishes an UNVERIFIED clip at %s', (status) => {
+    expect(isPubliclyVisible({ status, moderationStatus: 'UNVERIFIED' })).toBe(false);
   });
 
-  it.each(['PROCESSING', 'FAILED', 'ACTIVE'] as const)(
-    'never publishes an UNVERIFIED clip at %s',
-    (status) => {
-      expect(isPubliclyVisible({ status, moderationStatus: 'UNVERIFIED' })).toBe(false);
-    },
-  );
+  it.each(PROCESSING_STATES)('never publishes a BLOCKED clip at %s', (status) => {
+    expect(isPubliclyVisible({ status, moderationStatus: 'BLOCKED' })).toBe(false);
+  });
 
-  it.each(['UNVERIFIED', 'BLOCKED'] as const)(
-    'hides an ACTIVE clip whose moderation status is %s',
-    (moderationStatus) => {
-      expect(isPubliclyVisible({ status: 'ACTIVE', moderationStatus })).toBe(false);
-    },
-  );
+  /* A delete is not a processing state: the objects are gone from the bucket. */
+  it('hides a clip that was deleted, whatever a moderator once said', () => {
+    expect(isPubliclyVisible({ status: 'REMOVED', moderationStatus: 'VERIFIED' })).toBe(false);
+  });
 
-  it.each(['FLAGGED', 'REMOVED'] as const)(
-    'hides a VERIFIED clip whose lifecycle status is %s',
-    (status) => {
-      expect(isPubliclyVisible({ status, moderationStatus: 'VERIFIED' })).toBe(false);
-    },
-  );
+  /* A flag hides through moderation — `flagMedia` writes BLOCKED alongside FLAGGED. */
+  it('hides a flagged clip because it is BLOCKED, not because it is FLAGGED', () => {
+    expect(isPubliclyVisible({ status: 'FLAGGED', moderationStatus: 'BLOCKED' })).toBe(false);
+    expect(isPubliclyVisible({ status: 'FLAGGED', moderationStatus: 'VERIFIED' })).toBe(true);
+  });
 
   it('hides a clip that does not exist', () => {
     expect(isPubliclyVisible(null)).toBe(false);
@@ -70,16 +61,17 @@ describe('isPubliclyVisible — both columns must agree', () => {
 });
 
 describe('the where clauses every query is built from', () => {
-  it('serves the public VERIFIED clips that are ACTIVE, PROCESSING or FAILED', () => {
+  it('serves the public every VERIFIED clip that was not deleted — no processing status named', () => {
     expect(PUBLIC_MEDIA_WHERE).toEqual({
-      status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] },
+      status: { not: 'REMOVED' },
       moderationStatus: 'VERIFIED',
     });
+    expect(JSON.stringify(PUBLIC_MEDIA_WHERE)).not.toMatch(/ACTIVE|PROCESSING|FAILED/);
   });
 
   it('offers moderators only the clips nobody has judged, whatever the worker said', () => {
     expect(MODERATION_QUEUE_WHERE).toEqual({
-      status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] },
+      status: { not: 'REMOVED' },
       moderationStatus: 'UNVERIFIED',
     });
   });
@@ -90,13 +82,9 @@ describe('the where clauses every query is built from', () => {
    * "my upload vanished" is never the experience. Adding a moderation filter here
    * would be the regression — hence asserting on the absence.
    */
-  it('constrains the owner by lifecycle only, never by moderation status', () => {
-    expect(OWN_MEDIA_WHERE).toEqual({ status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] } });
+  it('shows the owner everything but their own delete, never filtering on moderation', () => {
+    expect(OWN_MEDIA_WHERE).toEqual({ status: { not: 'REMOVED' } });
     expect(OWN_MEDIA_WHERE).not.toHaveProperty('moderationStatus');
-  });
-
-  it('never shows the owner a clip they themselves deleted', () => {
-    expect(OWN_MEDIA_WHERE.status.in).not.toContain('REMOVED');
   });
 });
 
@@ -150,6 +138,19 @@ describe('canViewMedia — the question every media endpoint asks', () => {
     moderationStatus: 'UNVERIFIED',
     playerId: 'player-1',
   } as const;
+
+  it.each(PROCESSING_STATES)(
+    'serves a VERIFIED clip at %s to a stranger, and hides an UNVERIFIED or BLOCKED one at the same stage',
+    (status) => {
+      expect(canViewMedia({ ...PENDING, status, moderationStatus: 'VERIFIED' }, null)).toBe(true);
+      expect(canViewMedia({ ...PENDING, status, moderationStatus: 'UNVERIFIED' }, 'other')).toBe(
+        false,
+      );
+      expect(canViewMedia({ ...PENDING, status, moderationStatus: 'BLOCKED' }, 'other')).toBe(
+        false,
+      );
+    },
+  );
 
   it('serves a verified clip to anybody, signed in or not', () => {
     expect(canViewMedia(VERIFIED, null)).toBe(true);

@@ -5,12 +5,11 @@ import type { MediaModerationStatus, MediaStatus, Prisma } from '@prisma/client'
  *
  * ## Why this is a file and not a `where` clause
  *
- * Visibility is now two columns, not one: `status` is the worker's verdict on
- * whether the bytes reached the bucket, `moderationStatus` is a moderator's
- * verdict on whether anyone may watch them. A clip is public only when both say
- * yes, and that conjunction has to hold in the feed, the profile read, the
- * search-adjacent card stars, the like, the view counter, the comment box and
- * the URL signer.
+ * Two columns describe a clip: `status` is the worker's verdict on whether
+ * the bytes reached the bucket, `moderationStatus` is a moderator's verdict
+ * on whether anyone may watch them. Only the second decides visibility, and
+ * that rule has to hold in the feed, the profile read, the search-adjacent
+ * card stars, the like, the view counter, the comment box and the URL signer.
  *
  * A rule written out eleven times is a rule that holds in ten of them, and the
  * one that gets missed is the one that publishes a minute of unreviewed footage
@@ -29,57 +28,41 @@ export type MediaVisibilityRow = {
 export type OwnedMediaRow = MediaVisibilityRow & { playerId: string };
 
 /**
- * The lifecycle states a clip may be watched in: the worker has confirmed the
- * bytes (ACTIVE), is still working on them (PROCESSING), or gave up on them
- * (FAILED). `moderationStatus` decides who may watch; `status` only says how
- * far processing got.
+ * ## The one rule
  *
- * ## Why PROCESSING and FAILED are watchable
+ *     visible to users  ⇔  moderationStatus === 'VERIFIED'
  *
- * Processing is an optimisation of a file that is already in the bucket: the
- * transcoder reads the object at `storageKey`, re-encodes it, and — only once
- * that has succeeded — replaces the object under the *same key*. There is no
- * second object and no "which version" column: whatever sits under the key
- * is what plays. So a clip a moderator has watched and approved is playable
- * now, as the original, and becomes the optimised copy the moment the worker
- * replaces it, with no re-upload and no second approval. A failed attempt
- * leaves the original exactly where it was, so a verified clip that failed
- * processing keeps playing too, and "Process again" can be pressed as often
- * as needed without the clip ever leaving view. The moderation decision and
- * the worker's progress are two facts about one row, and neither waits for
- * the other.
+ * `status` is the worker's report on the bytes in the bucket — PROCESSING (at
+ * it), ACTIVE (done), FAILED (gave up) — and has **no say** in who may watch.
+ * A verified clip plays while it is being re-encoded and after a failed
+ * attempt alike: the transcoder replaces the object under the *same* key only
+ * once it has succeeded, so whatever sits under the key is what plays, and a
+ * failed attempt leaves the original exactly where it was. Verifying a clip
+ * the worker has not confirmed is gated on the object existing
+ * (`ModerationService.decide` asks the bucket), so VERIFIED is always a file
+ * that arrived. The moderator's decision and the worker's progress are two
+ * facts about one row, and neither waits for the other.
  *
- * What neither must mean is "not there". Verifying a clip the worker has not
- * confirmed is gated on the object existing (`ModerationService.decide` asks
- * the bucket), so VERIFIED + PROCESSING or VERIFIED + FAILED is always a
- * file that arrived.
+ * Two values of `status` are not processing states at all and are treated as
+ * "the clip is gone", never as a visibility rule: REMOVED is a delete (the
+ * player's own, or a takedown) whose objects have already left the bucket,
+ * and FLAGGED is an admin's takedown pending a decision — which is why
+ * `flagMedia` also sets `moderationStatus = BLOCKED`, so the rule above is
+ * what hides it. Nothing here ever asks whether a clip is ACTIVE.
  */
-export const WATCHABLE_STATUSES = [
-  'ACTIVE',
-  'PROCESSING',
-  'FAILED',
-] as const satisfies readonly MediaStatus[];
+
+/** A row that still exists as a clip — everything but a delete. */
+const NOT_REMOVED = { status: { not: 'REMOVED' } } as const satisfies Prisma.MediaWhereInput;
 
 /**
  * What a signed-out visitor, a scout, a coach, an academy manager and every
- * player other than the owner may see. Nothing else is ever public: an
- * UNVERIFIED clip is invisible whatever the worker says about it.
+ * player other than the owner may see: verified, whatever the worker says.
  */
 export const PUBLIC_MEDIA_WHERE = {
-  status: { in: [...WATCHABLE_STATUSES] },
+  ...NOT_REMOVED,
   moderationStatus: 'VERIFIED',
 } as const satisfies Prisma.MediaWhereInput;
 
-/**
- * The admin moderation queue: clips nobody has judged yet, whether the
- * worker has finished with them, is still at them, or gave up.
- *
- * A clip still PROCESSING, or FAILED, is on the card as the file the player
- * uploaded — see `WATCHABLE_STATUSES` — so a moderator can review it before
- * the optimised copy exists, and a verified clip goes live at once rather
- * than waiting on a transcode. One that has not actually arrived cannot be
- * verified; the decision checks the bucket first.
- */
 /**
  * How a player's clips are listed everywhere they are a player's clips: by the
  * day they were filmed, newest first, upload time breaking ties. A clip filmed
@@ -91,24 +74,28 @@ export const MEDIA_ORDER = [
   { createdAt: 'desc' },
 ] as const satisfies Prisma.MediaOrderByWithRelationInput[];
 
+/**
+ * The admin moderation queue: clips nobody has judged yet, whether the
+ * worker has finished with them, is still at them, or gave up. A clip still
+ * PROCESSING, or FAILED, is on the card as the file the player uploaded, so a
+ * moderator can review it before the optimised copy exists. One that has not
+ * actually arrived cannot be verified; the decision checks the bucket first.
+ */
 export const MODERATION_QUEUE_WHERE = {
-  status: { in: [...WATCHABLE_STATUSES] },
+  ...NOT_REMOVED,
   moderationStatus: 'UNVERIFIED',
 } as const satisfies Prisma.MediaWhereInput;
 
 /**
- * Clips a moderator took down, for the super admin's review list.
- *
- * `status: ACTIVE` for the same reason the queue above uses it, and here it also
- * draws a line the two other ways a clip leaves circulation do not cross: a
- * player's own delete leaves `REMOVED` with its objects already gone from the
- * bucket, and a report takedown leaves `FLAGGED`. Neither is the Block button,
- * and neither has a video left to review. What this lists is exactly the clips an
- * admin blocked, which are the only ones still sitting in storage awaiting a
- * decision about whether to destroy them.
+ * Clips a moderator took down with the Block button, for the super admin's
+ * review list — at any stage of processing, since Block is offered wherever
+ * a verified clip is live. A flag (FLAGGED, also BLOCKED) has its own tab and
+ * its own two buttons, and a delete has nothing left to review, so neither
+ * is listed here. That is a workflow filter on an admin screen, not a rule
+ * about what users see.
  */
 export const BLOCKED_MEDIA_WHERE = {
-  status: 'ACTIVE',
+  status: { notIn: ['REMOVED', 'FLAGGED'] },
   moderationStatus: 'BLOCKED',
 } as const satisfies Prisma.MediaWhereInput;
 
@@ -119,19 +106,17 @@ export const BLOCKED_MEDIA_WHERE = {
  *
  * `FAILED` is the worker's verdict that a clip could not be confirmed — not
  * there after every retry, empty, oversized, not a video, or unreadable by
- * ffmpeg. It is kept rather than deleted so the *uploader* is told. But it was
- * kept nowhere an admin could see: the review queue wants ACTIVE and the blocked
- * list wants BLOCKED, so a failed upload was a row that existed for exactly one
- * person. When the failure is the platform's own — a missing binary on the
- * host — that is a child's video vanishing with no operator ever knowing.
+ * ffmpeg. It is kept rather than deleted so the *uploader* is told, and so an
+ * operator sees a failure that is the platform's own — a missing binary on the
+ * host — rather than a child's video vanishing with nobody knowing.
  *
  * ## `status` alone, on purpose
  *
- * No `moderationStatus` clause. A failed upload was never moderated and this is
- * not a moderation list; a clip here is UNVERIFIED because nobody could have
- * watched it, and filtering on that would hide the whole set. Videos only: an
- * IMAGE through this path is an avatar-adjacent still, not the platform's
- * content, and the retry it offers is a video retry.
+ * No `moderationStatus` clause. This is a processing list, not a moderation
+ * list: a verified clip that failed re-encoding is still live and still
+ * belongs here so it can be retried. Videos only: an IMAGE through this path
+ * is an avatar-adjacent still, not the platform's content, and the retry it
+ * offers is a video retry.
  */
 export const FAILED_UPLOADS_WHERE = {
   type: 'VIDEO',
@@ -141,24 +126,18 @@ export const FAILED_UPLOADS_WHERE = {
 /**
  * What the owner sees on their own profile.
  *
- * Every moderation state, including BLOCKED. A player whose clip was taken down
- * is the one person who should be told: the alternative is a video that silently
- * disappears, which is indistinguishable from a bug and is the moment they
- * upload it again. `REMOVED` is excluded because that is the player's own
+ * Every moderation state, including BLOCKED and a flag. A player whose clip
+ * was taken down is the one person who should be told: the alternative is a
+ * video that silently disappears, which is indistinguishable from a bug and
+ * is the moment they upload it again. `REMOVED` is excluded because that is a
  * delete — they asked for it to be gone, and its objects are already deleted
  * from the bucket.
  */
-export const OWN_MEDIA_WHERE = {
-  status: { in: ['ACTIVE', 'PROCESSING', 'FAILED'] },
-} as const satisfies Prisma.MediaWhereInput;
+export const OWN_MEDIA_WHERE = NOT_REMOVED;
 
-/** The same conjunction as `PUBLIC_MEDIA_WHERE`, for a row already in hand. */
+/** The same rule as `PUBLIC_MEDIA_WHERE`, for a row already in hand. */
 export function isPubliclyVisible(media: MediaVisibilityRow | null | undefined): boolean {
-  return (
-    !!media &&
-    (WATCHABLE_STATUSES as readonly MediaStatus[]).includes(media.status) &&
-    media.moderationStatus === 'VERIFIED'
-  );
+  return !!media && media.status !== 'REMOVED' && media.moderationStatus === 'VERIFIED';
 }
 
 /**
@@ -167,11 +146,12 @@ export function isPubliclyVisible(media: MediaVisibilityRow | null | undefined):
  * ## This is not an exception to the public rule, it is a second rule
  *
  * The two are deliberately separate predicates rather than one with an `OR`
- * inside it. `status = 'ACTIVE' OR moderationStatus = 'UNVERIFIED'` is the shape
- * this must never take: it reads as an owner allowance and behaves as a public
- * one, publishing every unreviewed clip on the platform to everybody. The owner
- * clause is meaningless unless it is bound to an identity, so identity is a
- * required argument here and there is no way to call it without one.
+ * inside it. `moderationStatus = 'VERIFIED' OR moderationStatus = 'UNVERIFIED'`
+ * is the shape this must never take: it reads as an owner allowance and
+ * behaves as a public one, publishing every unreviewed clip on the platform
+ * to everybody. The owner clause is meaningless unless it is bound to an
+ * identity, so identity is a required argument here and there is no way to
+ * call it without one.
  *
  * `ownedPlayerId` is the caller's *own* PlayerProfile id, resolved from the
  * authenticated user server-side — never anything the client sent. A caller with

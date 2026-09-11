@@ -211,7 +211,7 @@ describe("listBlockedMedia — the super admin's takedown inventory", () => {
 
     expect(prisma.media.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: 'ACTIVE', moderationStatus: 'BLOCKED' },
+        where: { status: { notIn: ['REMOVED', 'FLAGGED'] }, moderationStatus: 'BLOCKED' },
       }),
     );
   });
@@ -238,9 +238,10 @@ describe("listBlockedMedia — the super admin's takedown inventory", () => {
 
   /*
    * A player's own delete leaves REMOVED with its objects already gone, and a
-   * report takedown leaves FLAGGED. Neither is the Block button, and neither has
-   * a video left to review — listing them would be rows a super admin cannot act
-   * on.
+   * flag leaves FLAGGED with its own tab. Neither is the Block button — listing
+   * them here would be rows a super admin cannot act on from this list. A
+   * blocked clip still PROCESSING or FAILED is listed: Block is offered
+   * wherever a verified clip is live, and that is any processing state.
    */
   it('excludes clips that left circulation some other way', async () => {
     const { service, prisma } = build();
@@ -248,9 +249,9 @@ describe("listBlockedMedia — the super admin's takedown inventory", () => {
     await service.listBlockedMedia({});
 
     const [call] = prisma.media.findMany.mock.calls[0] as unknown as [
-      { where: { status: string } },
+      { where: { status: unknown } },
     ];
-    expect(call.where.status).toBe('ACTIVE');
+    expect(call.where.status).toEqual({ notIn: ['REMOVED', 'FLAGGED'] });
   });
 
   it('paginates, because nothing but a permanent delete shortens this list', async () => {
@@ -852,15 +853,24 @@ describe('second decisions from the status lists', () => {
     expect(prisma.media.updateMany).not.toHaveBeenCalled();
   });
 
-  it('restores a flagged clip to ACTIVE and removes one to REMOVED, never touching moderation', async () => {
-    const restored = build({ status: 'FLAGGED', moderationStatus: 'VERIFIED' });
+  it('a flag hides the clip through moderation: FLAGGED on the row, BLOCKED for the public', async () => {
+    const { service, prisma } = build({ status: 'ACTIVE', moderationStatus: 'VERIFIED' });
+    await service.flagMedia('admin-1', 'clip-1');
+    expect(prisma.media.update).toHaveBeenCalledWith({
+      where: { id: 'clip-1' },
+      data: { status: 'FLAGGED', moderationStatus: 'BLOCKED' },
+    });
+  });
+
+  it('restores a flagged clip to ACTIVE and public, and removes one to REMOVED', async () => {
+    const restored = build({ status: 'FLAGGED', moderationStatus: 'BLOCKED' });
     await restored.service.restoreFlaggedMedia('admin-1', 'clip-1');
     expect(restored.prisma.media.updateMany).toHaveBeenCalledWith({
       where: { id: 'clip-1', status: 'FLAGGED' },
-      data: { status: 'ACTIVE' },
+      data: { status: 'ACTIVE', moderationStatus: 'VERIFIED' },
     });
 
-    const removed = build({ status: 'FLAGGED', moderationStatus: 'VERIFIED' });
+    const removed = build({ status: 'FLAGGED', moderationStatus: 'BLOCKED' });
     await removed.service.removeFlaggedMedia('admin-1', 'clip-1');
     expect(removed.prisma.media.updateMany).toHaveBeenCalledWith({
       where: { id: 'clip-1', status: 'FLAGGED' },

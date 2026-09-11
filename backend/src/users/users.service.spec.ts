@@ -253,9 +253,8 @@ describe('the profile clip count', () => {
    * profile card depends on and a change to the constant should fail *here*
    * too — the two files are otherwise free to drift.
    */
-  it('uses a filter that excludes a removed clip', () => {
-    expect(OWN_MEDIA_WHERE.status.in).not.toContain('REMOVED');
-    expect(OWN_MEDIA_WHERE.status.in).toContain('ACTIVE');
+  it('uses a filter that excludes a removed clip and nothing else', () => {
+    expect(OWN_MEDIA_WHERE.status).toEqual({ not: 'REMOVED' });
   });
 
   it('reports the filtered count as mediaCount', async () => {
