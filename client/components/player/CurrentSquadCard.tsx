@@ -1,11 +1,11 @@
-import Link from 'next/link';
-import { Building2, History, ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { PlayerMemberships, SquadMembership } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
 import { formatDate } from '@/lib/utils';
+import { Building2, History, ShieldCheck, Users } from 'lucide-react';
+import Link from 'next/link';
 import { LeaveTeamButton } from './LeaveTeamButton';
 
 /**
@@ -70,7 +70,7 @@ export function CurrentSquadCard({
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="text-primary size-4" aria-hidden /> {t.academy?.localTeams}
-            {localTeams.length > 0 && (
+            {localTeams?.length > 0 && (
               <span className="text-muted text-xs font-normal">{localTeams.length}</span>
             )}
           </CardTitle>

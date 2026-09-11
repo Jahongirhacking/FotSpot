@@ -1,3 +1,4 @@
+import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
@@ -10,7 +11,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { EditPlayerDetails } from './EditPlayerDetails';
-import { CurrentSquadCard } from '@/components/player/CurrentSquadCard';
 
 export const metadata: Metadata = { title: 'Player details' };
 
@@ -43,12 +43,6 @@ export default async function PlayerDetailsPage() {
         </Alert>
       ) : (
         <>
-          {/* Read-only here: which squad you are in is not something the player
-              edits, it is the result of an invitation somebody else sent. It is
-              on this screen because this is where a player checks what the rest
-              of the platform currently says about them. */}
-          <CurrentSquadCard memberships={player?.memberships} t={t} canLeave />
-
           <Card>
             <CardHeader>
               <CardTitle>{t.profile.cardDetails}</CardTitle>
@@ -58,6 +52,12 @@ export default async function PlayerDetailsPage() {
               <EditPlayerDetails player={player} />
             </CardContent>
           </Card>
+
+          {/* Read-only here: which squad you are in is not something the player
+              edits, it is the result of an invitation somebody else sent. It is
+              on this screen because this is where a player checks what the rest
+              of the platform currently says about them. */}
+          <CurrentSquadCard memberships={player?.memberships} t={t} canLeave />
         </>
       )}
     </div>
