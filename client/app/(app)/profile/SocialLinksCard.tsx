@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { Check, ExternalLink, Link2, Pencil, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, Link2, Pencil, Phone, Trash2, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { PlayerProfile, PlayerSocialLinks } from '@/lib/api/types';
 import { SOCIAL_PLATFORMS } from '@/lib/social-links';
@@ -14,8 +14,16 @@ import { Alert } from '@/components/ui/Feedback';
 import { Input } from '@/components/ui/Field';
 
 /**
- * The player's own links — Instagram, Telegram, YouTube, Transfermarkt — on
- * their profile, each edited and cleared on its own row.
+ * The player's own contact rows — a phone number to be called on, then
+ * Instagram, Telegram, YouTube, Transfermarkt — on their profile, each edited
+ * and cleared on its own row.
+ *
+ * ## The phone is not the sign-in phone
+ *
+ * It is a number the player hands out for an academy manager to call, kept
+ * like a link: unverified, private, theirs to add and remove. The only rule
+ * is the shape — `+` and the country code first — checked here before the
+ * request and again by the API, so what a manager taps actually dials.
  *
  * ## One row, one link
  *
@@ -32,13 +40,36 @@ import { Input } from '@/components/ui/Field';
  * trial with (README §11) — said here, under the card, so a fifteen-year-old
  * knows who is on the other side of what they paste.
  */
+type ContactField = keyof PlayerSocialLinks | 'contactPhone';
+type ContactValues = Record<ContactField, string | null>;
+
+/** `+`, a country code, then digits — E.164, what a phone can dial. */
+const E164 = /^\+[1-9]\d{6,14}$/;
+
 export function SocialLinksCard({ player }: { player: PlayerProfile }) {
   const { t } = useI18n();
   const router = useRouter();
-  const [links, setLinks] = React.useState<PlayerSocialLinks>(() => pick(player));
-  const [editing, setEditing] = React.useState<keyof PlayerSocialLinks | null>(null);
+  const [links, setLinks] = React.useState<ContactValues>(() => pick(player));
+  const [editing, setEditing] = React.useState<ContactField | null>(null);
   const [draft, setDraft] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+
+  const rows: readonly {
+    field: ContactField;
+    kind: 'phone' | 'url';
+    label: string;
+    hint: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    {
+      field: 'contactPhone',
+      kind: 'phone',
+      label: t.profile.contactPhone,
+      hint: '+998 90 123 45 67',
+      icon: Phone,
+    },
+    ...SOCIAL_PLATFORMS.map((platform) => ({ ...platform, kind: 'url' as const })),
+  ];
 
   // The server is the source of truth after a refresh; keep the row in step.
   const [syncedFrom, setSyncedFrom] = React.useState(player);
@@ -48,7 +79,7 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
   }
 
   const save = useMutation({
-    mutationFn: (body: { field: keyof PlayerSocialLinks; value: string }) =>
+    mutationFn: (body: { field: ContactField; value: string }) =>
       browserFetch<PlayerProfile>('/players/me', {
         method: 'PATCH',
         body: { [body.field]: body.value },
@@ -64,10 +95,24 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
     meta: { success: t.profile.socialSaved },
   });
 
-  const begin = (field: keyof PlayerSocialLinks) => {
+  const begin = (field: ContactField) => {
     setEditing(field);
     setDraft(links[field] ?? '');
     setError(null);
+  };
+
+  /** The same shape the API demands, checked before the round trip. */
+  const submit = (field: ContactField, kind: 'phone' | 'url', raw: string) => {
+    if (kind === 'phone') {
+      const compact = raw.replace(/[\s().-]/g, '');
+      if (compact !== '' && !E164.test(compact)) {
+        setError(t.profile.contactPhoneInvalid);
+        return;
+      }
+      save.mutate({ field, value: compact });
+      return;
+    }
+    save.mutate({ field, value: raw.trim() });
   };
 
   return (
@@ -82,7 +127,7 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
         {error && <Alert tone="danger">{error}</Alert>}
 
         <ul className="divide-border divide-y">
-          {SOCIAL_PLATFORMS.map((platform) => {
+          {rows.map((platform) => {
             const Icon = platform.icon;
             const value = links[platform.field];
             const isEditing = editing === platform.field;
@@ -103,7 +148,7 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
                       className="mt-1 flex items-center gap-2"
                       onSubmit={(event) => {
                         event.preventDefault();
-                        save.mutate({ field: platform.field, value: draft.trim() });
+                        submit(platform.field, platform.kind, draft);
                       }}
                     >
                       <Input
@@ -112,7 +157,9 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
                         placeholder={platform.hint}
                         aria-label={platform.label}
                         autoFocus
-                        maxLength={300}
+                        maxLength={platform.kind === 'phone' ? 40 : 300}
+                        inputMode={platform.kind === 'phone' ? 'tel' : undefined}
+                        type={platform.kind === 'phone' ? 'tel' : undefined}
                         className="min-w-0 flex-1"
                       />
                       <Button size="sm" type="submit" loading={busy}>
@@ -131,6 +178,13 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
                         <X aria-hidden />
                       </Button>
                     </form>
+                  ) : value && platform.kind === 'phone' ? (
+                    <p className="text-xs">
+                      <a href={`tel:${value}`} className="text-primary hover:underline">
+                        {value}
+                      </a>
+                      <span className="text-muted"> · {t.profile.contactPhoneHint}</span>
+                    </p>
                   ) : value ? (
                     <a
                       href={value}
@@ -181,8 +235,9 @@ export function SocialLinksCard({ player }: { player: PlayerProfile }) {
   );
 }
 
-function pick(player: PlayerProfile): PlayerSocialLinks {
+function pick(player: PlayerProfile): ContactValues {
   return {
+    contactPhone: player.contactPhone ?? null,
     instagramUrl: player.instagramUrl ?? null,
     telegramUrl: player.telegramUrl ?? null,
     youtubeUrl: player.youtubeUrl ?? null,

@@ -255,12 +255,23 @@ model Session {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  /// SHA-256 of the newest refresh token. Rows minted before the token family
+  /// below existed hold an argon2 hash here, honoured once and then replaced.
   refreshTokenHash String
+  /// The refresh tokens this session will accept: normally one, and briefly more
+  /// when two tabs rotated the same token inside the reuse grace — see
+  /// `AuthService.refresh`. SHA-256 hex, never the token itself.
+  activeRefreshHashes   String[] @default([])
+  /// The tokens the last rotation retired, accepted only within the grace window.
+  retiringRefreshHashes String[] @default([])
+  /// When `retiringRefreshHashes` were retired: the start of the grace window.
+  retiredAt             DateTime?
   deviceId         String?
   userAgent        String?
   ipAddress        String?
 
   lastUsedAt DateTime  @default(now())
+  /// Inactivity expiry: pushed 21 days out by every successful refresh.
   expiresAt  DateTime
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
@@ -415,6 +426,10 @@ model PlayerProfile {
   telegramUrl      String?
   youtubeUrl       String?
   transfermarktUrl String?
+  /// A number the player gives out for an academy manager to call — E.164,
+  /// `+` and country code first. Not the sign-in phone and not verified by
+  /// the platform; private like the links above, served only inside `contacts`.
+  contactPhone     String?
 
   matches        Int    @default(0)
   goals          Int    @default(0)

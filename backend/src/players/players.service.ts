@@ -12,6 +12,7 @@ import { ageAt, ageBandFor } from '../common/age.util';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 import { isValidRegionDistrict, normaliseDistrict, normaliseRegion } from '../common/uzbekistan';
 import { MEDIA_ORDER, PUBLIC_MEDIA_WHERE } from '../media/media-visibility.util';
+import { normaliseContactPhone } from './contact-phone.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RbacService } from '../rbac/rbac.service';
 import { CacheTtl, RedisKeys } from '../redis/redis.keys';
@@ -439,11 +440,15 @@ export class PlayersService {
     const contactAccess = manages
       ? await this.contactAccessFor(viewer!, profile.id, owner.userId)
       : null;
-    const { instagramUrl, telegramUrl, youtubeUrl, transfermarktUrl, ...shared } = profile;
+    const { instagramUrl, telegramUrl, youtubeUrl, transfermarktUrl, contactPhone, ...shared } =
+      profile;
     const contacts =
       contactAccess === 'GRANTED'
         ? {
             ...(await this.contactsFor(owner.userId)),
+            // The number the player gave out to be called on — unverified,
+            // and distinct from the sign-in phone above it.
+            contactPhone: contactPhone ?? null,
             social: { instagramUrl, telegramUrl, youtubeUrl, transfermarktUrl },
           }
         : null;
@@ -633,6 +638,9 @@ export class PlayersService {
         // Canonical spellings, after the merged pair was checked.
         ...location,
         ...socials,
+        ...(dto.contactPhone !== undefined
+          ? { contactPhone: normaliseContactPhone(dto.contactPhone) }
+          : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(updated.id));

@@ -81,6 +81,10 @@ export async function proxy(request: NextRequest) {
   const auth = await resolveAuth(
     request.cookies.get(ACCESS_COOKIE)?.value,
     request.cookies.get(REFRESH_COOKIE)?.value,
+    {
+      userAgent: request.headers.get('user-agent'),
+      forwardedFor: request.headers.get('x-forwarded-for'),
+    },
   );
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));

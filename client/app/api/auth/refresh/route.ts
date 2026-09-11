@@ -1,16 +1,19 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { apiFetch, ApiError } from '@/lib/api/client';
+import { mintSession } from '@/lib/auth/bootstrap';
 import { clearSessionCookies, writeSessionCookies } from '@/lib/cookies';
 import { REFRESH_COOKIE } from '@/lib/session';
-import type { AuthSession } from '@/lib/api/types';
 
 /**
- * Rotates the session. The backend revokes the whole session if a refresh token is
- * replayed, so this must never be called speculatively in parallel — one call per
- * detected 401.
+ * Rotates the session for a browser whose access token died mid-page.
+ *
+ * Goes through `mintSession`, the same single-flight the proxy uses for
+ * navigations: a page that navigates and fires a background query at the same
+ * expiry used to spend the token twice — once here, once in the proxy — and the
+ * backend read the second as a replay and revoked the session. One flight per
+ * token per process means one rotation, whoever asked.
  */
-export async function POST() {
+export async function POST(request: Request) {
   const store = await cookies();
   const refreshToken = store.get(REFRESH_COOKIE)?.value;
 
@@ -18,33 +21,30 @@ export async function POST() {
     return NextResponse.json({ message: 'No session' }, { status: 401 });
   }
 
-  try {
-    const session = await apiFetch<AuthSession>('/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    });
-    const response = NextResponse.json({ roles: session.roles });
-    writeSessionCookies(response, session);
-    return response;
-  } catch (error) {
-    const status = error instanceof ApiError ? error.status : 502;
+  const result = await mintSession(refreshToken, {
+    userAgent: request.headers.get('user-agent'),
+    forwardedFor: request.headers.get('x-forwarded-for'),
+  });
 
-    /*
-     * Only the backend refusing the token ends the session.
-     *
-     * This used to clear cookies on *any* error, so an API restart signed out
-     * every user whose access token happened to expire during it — their
-     * credentials were fine and logging them out was not even a remedy.
-     * `AuthService.refresh` answers 401 for every genuine failure (invalid,
-     * revoked, expired, replayed, disabled); anything else is the server having
-     * a problem, and the session outlives it.
-     */
-    const refused = status === 401 || status === 403;
-    const response = NextResponse.json(
-      { message: refused ? 'Session expired' : 'Could not reach the server.' },
-      { status },
-    );
-    if (refused) clearSessionCookies(response);
+  if (result.outcome === 'session') {
+    const response = NextResponse.json({ roles: result.session.roles });
+    writeSessionCookies(response, result.session);
     return response;
   }
+
+  /*
+   * Only the backend refusing the token ends the session.
+   *
+   * `AuthService.refresh` answers 401 for every genuine failure (invalid,
+   * revoked, expired, replayed, disabled); anything else — a timeout, a 502
+   * from a deploying API — is the server having a problem, and the session
+   * outlives it. Clearing cookies on that used to sign everybody out whose
+   * token happened to expire during a restart.
+   */
+  if (result.outcome === 'rejected') {
+    const response = NextResponse.json({ message: 'Session expired' }, { status: 401 });
+    clearSessionCookies(response);
+    return response;
+  }
+  return NextResponse.json({ message: 'Could not reach the server.' }, { status: 503 });
 }

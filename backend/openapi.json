@@ -598,6 +598,7 @@
             "bearer": []
           }
         ],
+        "summary": "Rotates the session. Every browser's refresh arrives from the Next server's\naddress unless `TRUST_PROXY_HOPS` lets the forwarded client address through,\nso this cap has to hold for everyone behind one proxy at once — a refresh is\nalready gated by a signed token, and the cap is only there against floods.",
         "tags": [
           "auth"
         ]
@@ -9120,6 +9121,11 @@
           "transfermarktUrl": {
             "type": "string",
             "maxLength": 300
+          },
+          "contactPhone": {
+            "type": "string",
+            "description": "A number for an academy manager to call — not the sign-in phone, not\nverified. Stored as E.164 (`normaliseContactPhone`); an empty string\nclears it. Private: served only inside `contacts`.",
+            "maxLength": 40
           }
         }
       },

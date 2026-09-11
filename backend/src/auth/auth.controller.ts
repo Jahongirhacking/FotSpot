@@ -163,9 +163,15 @@ export class AuthController {
     return this.authService.telegramLogin(dto, client);
   }
 
+  /**
+   * Rotates the session. Every browser's refresh arrives from the Next server's
+   * address unless `TRUST_PROXY_HOPS` lets the forwarded client address through,
+   * so this cap has to hold for everyone behind one proxy at once — a refresh is
+   * already gated by a signed token, and the cap is only there against floods.
+   */
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ limit: 30, windowSeconds: 60 })
+  @Throttle({ limit: 300, windowSeconds: 60 })
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto, @ClientInfoParam() client: ClientInfo) {
     return this.authService.refresh(dto, client);

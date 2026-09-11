@@ -39,6 +39,14 @@ export function ContactCard({
       value: contacts.phone,
       href: `tel:${contacts.phone}`,
     },
+    // The number the player handed out to be called on: not verified, and
+    // not the sign-in phone above it.
+    contacts?.contactPhone && {
+      icon: Phone,
+      label: t.player.contactPhoneGiven,
+      value: contacts.contactPhone,
+      href: `tel:${contacts.contactPhone}`,
+    },
     contacts?.email && {
       icon: Mail,
       label: t.player.contactEmail,
