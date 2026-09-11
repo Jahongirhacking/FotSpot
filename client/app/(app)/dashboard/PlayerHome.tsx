@@ -82,10 +82,10 @@ export async function PlayerHome({
     ),
     safe(() => trials?.listUpcoming({}, { revalidate: 300 }), []),
   ]);
-  // A clip that failed to process is not a clip the player has. Counted from the
-  // first page, which is newest-first and holds twenty — plenty to answer
-  // "is there at least one".
-  const usableClips = clips?.filter((clip) => clip?.status !== 'FAILED').length;
+  // Counted from the first page, which is newest-first and holds twenty —
+  // plenty to answer "is there at least one". The worker's progress on a clip
+  // does not make it less of a clip.
+  const usableClips = clips?.length ?? 0;
   const completion = cardCompletion(profile, t, usableClips);
 
   return (

@@ -141,11 +141,17 @@ export class ModerationService {
     return resolved;
   }
 
-  /** Admin-only: flag media without a formal report (e.g. proactive moderation). */
+  /**
+   * Admin-only: flag media without a formal report (e.g. proactive moderation).
+   *
+   * What hides a clip is `moderationStatus`, and only that (`PUBLIC_MEDIA_WHERE`),
+   * so a flag is written as BLOCKED too; FLAGGED on `status` is what gives it
+   * its own tab and its two buttons, restore and remove.
+   */
   async flagMedia(actorId: string, mediaId: string) {
     const media = await this.prisma.media.update({
       where: { id: mediaId },
-      data: { status: 'FLAGGED' },
+      data: { status: 'FLAGGED', moderationStatus: 'BLOCKED' },
     });
     await this.audit.record(actorId, AuditAction.MEDIA_TAKEN_DOWN, { mediaId, flaggedOnly: true });
     // A flagged clip has just left every public surface, and the profile read is
@@ -487,7 +493,7 @@ export class ModerationService {
     /*
      * A clip the worker has not confirmed — still at it, or gave up — is
      * verified as the file the player uploaded, and goes live as that; the
-     * optimised copy replaces the same key later (`WATCHABLE_STATUSES`). What
+     * optimised copy replaces the same key later (`PUBLIC_MEDIA_WHERE`). What
      * must never go live is a key with nothing under it: the API never saw
      * the bytes, so before the one write that publishes such a clip, the
      * bucket is asked whether the file is there. "Not there" is a 409 the
@@ -595,8 +601,11 @@ export class ModerationService {
     );
   }
 
+  /** "Make active": the flag is lifted and the clip is public again — a moderation decision. */
   async restoreFlaggedMedia(actorId: string, mediaId: string) {
-    return this.moveStatus(actorId, mediaId, 'FLAGGED', 'ACTIVE', AuditAction.MEDIA_RESTORED);
+    return this.moveStatus(actorId, mediaId, 'FLAGGED', 'ACTIVE', AuditAction.MEDIA_RESTORED, {
+      moderationStatus: 'VERIFIED',
+    });
   }
 
   async removeFlaggedMedia(actorId: string, mediaId: string) {
@@ -655,6 +664,7 @@ export class ModerationService {
     from: MediaStatus,
     to: MediaStatus,
     action: AuditActionKey,
+    also: { moderationStatus?: MediaModerationStatus } = {},
   ) {
     const media = await this.prisma.media.findUnique({
       where: { id: mediaId },
@@ -668,7 +678,7 @@ export class ModerationService {
     }
     const { count } = await this.prisma.media.updateMany({
       where: { id: mediaId, status: from },
-      data: { status: to },
+      data: { status: to, ...also },
     });
     if (count === 0) {
       throw new ConflictException(

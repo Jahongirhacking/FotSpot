@@ -219,9 +219,15 @@ function StatusCard({
   // Offered for anything not yet confirmed: the API answers a live job with a
   // "still processing" 409, which is a better answer than a hidden button.
   const retryable = canRetry && (clip.status === 'FAILED' || clip.status === 'PROCESSING');
-  // Only a clip that is actually live can be taken down from here; an
-  // unverified ACTIVE one still belongs to the review queue.
-  const blockable = canBlock && clip.status === 'ACTIVE' && clip.moderationStatus === 'VERIFIED';
+  // Only a clip that is actually live can be taken down from here — and live
+  // is a moderation fact, not a processing one: a verified clip still
+  // processing, or failed, is public and can be blocked. An unverified one
+  // still belongs to the review queue; a flag has its own two buttons.
+  const blockable =
+    canBlock &&
+    clip.moderationStatus === 'VERIFIED' &&
+    clip.status !== 'FLAGGED' &&
+    clip.status !== 'REMOVED';
   const flagged = canModerateFlagged && clip.status === 'FLAGGED';
 
   return (
@@ -254,7 +260,7 @@ function StatusCard({
             ) : null}{' '}
             {t.admin.statusLabels[clip.status]}
           </Badge>
-          {clip.status === 'ACTIVE' && clip.moderationStatus && (
+          {clip.moderationStatus && (
             <Badge variant="neutral">{t.admin.moderationLabels[clip.moderationStatus]}</Badge>
           )}
           <Badge variant="neutral">{label}</Badge>

@@ -254,7 +254,7 @@ describe('a player profile — who is asking decides what comes back', () => {
       { where: Record<string, unknown> },
     ];
     expect(call.where).not.toHaveProperty('moderationStatus');
-    expect(call.where.status).toEqual({ in: ['ACTIVE', 'PROCESSING', 'FAILED'] });
+    expect(call.where.status).toEqual({ not: 'REMOVED' });
   });
 });
 
@@ -279,7 +279,7 @@ describe('the ranked feed', () => {
    * could be forgotten without any type error, which is why it is asserted on the
    * statement text itself.
    */
-  it('demands a watchable status and VERIFIED in the SQL — the same population the count uses', async () => {
+  it('demands VERIFIED in the SQL and never a processing status — the same population the count uses', async () => {
     const { service, prisma } = build();
     const queryRaw = jest.fn(async () => []);
     (prisma as Record<string, unknown>).$queryRaw = queryRaw;
@@ -288,8 +288,9 @@ describe('the ranked feed', () => {
 
     const [statement] = queryRaw.mock.calls[0] as unknown as [{ strings: string[] }];
     const sql = statement.strings.join('?');
-    expect(sql).toContain("m.status IN ('ACTIVE', 'PROCESSING', 'FAILED')");
     expect(sql).toContain(`m."moderationStatus" = 'VERIFIED'`);
+    expect(sql).toContain("m.status <> 'REMOVED'");
+    expect(sql).not.toMatch(/m\.status (IN|=) \(?'(ACTIVE|PROCESSING|FAILED)/);
   });
 
   it('counts the same population it lists, as of the session snapshot', async () => {

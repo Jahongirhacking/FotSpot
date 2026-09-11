@@ -5345,6 +5345,27 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated list of statuses to keep.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "APPLIED",
+                  "INVITED",
+                  "CONFIRMED",
+                  "PASSED",
+                  "FAILED",
+                  "REJECTED",
+                  "ACCEPTED"
+                ]
+              }
+            }
           }
         ],
         "responses": {

@@ -752,10 +752,10 @@ export class MediaService {
           GROUP BY lm.category
         ) aff ON aff.category = m.category
         -- The moderation gate, in the one query that cannot express it in Prisma.
-        -- Two verdicts (the bytes arrived / a person watched them), both
-        -- demanded; PROCESSING counts for the same reason it does in
-        -- PUBLIC_MEDIA_WHERE, and this must list what the count below counts.
-        WHERE m.status IN ('ACTIVE', 'PROCESSING', 'FAILED') AND m."moderationStatus" = 'VERIFIED'
+        -- A person watched it and said yes; the worker's progress does not
+        -- matter (PUBLIC_MEDIA_WHERE), and this must list what the count below
+        -- counts. REMOVED is a delete, not a state.
+        WHERE m.status <> 'REMOVED' AND m."moderationStatus" = 'VERIFIED'
           AND m.type = 'VIDEO' AND u."isPrivate" = false
           AND m."createdAt" <= ${since}
       ),

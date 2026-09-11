@@ -1284,6 +1284,20 @@ describe('TrialsService.listMyApplications — a page, not the lot', () => {
     });
   });
 
+  it('keeps only the statuses asked for — the open invitations, for the trials board', async () => {
+    const { service, prisma } = build();
+    prisma.playerProfile.findUnique.mockResolvedValueOnce({ id: 'player-1' } as never);
+
+    await service.listMyApplications('user-1', { status: ['INVITED', 'CONFIRMED'], pageSize: 50 });
+
+    expect(prisma.trialApplication.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { playerId: 'player-1', status: { in: ['INVITED', 'CONFIRMED'] } },
+        take: 50,
+      }),
+    );
+  });
+
   it('refuses an account with no player profile', async () => {
     const { service, prisma } = build();
     prisma.playerProfile.findUnique.mockResolvedValueOnce(null as never);
