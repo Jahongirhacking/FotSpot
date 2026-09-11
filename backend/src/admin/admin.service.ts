@@ -18,7 +18,13 @@ import { RbacService } from '../rbac/rbac.service';
 import { StorageService } from '../storage/storage.service';
 import { pageOf, toSkipTake } from '../common/dto/pagination.dto';
 import { generatePassword, generateUsername } from '../academies/manager-credentials.util';
-import { CreateAdminDto, SearchUsersDto } from './dto/admin.dto';
+import {
+  CreateAdminDto,
+  ListAdminChatsDto,
+  ListAdminThreadDto,
+  SearchUsersDto,
+  SendAdminMessageDto,
+} from './dto/admin.dto';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { OWN_MEDIA_WHERE } from '../media/media-visibility.util';
 
@@ -36,6 +42,181 @@ export class AdminService {
     private audit: AuditService,
     private tariffs: TariffsService,
   ) {}
+
+  // ---- Messages to users ----
+  //
+  // One-way by design: an admin writes, the user receives it as a notification
+  // (in the app, on the socket, and on Telegram if linked) and answers through
+  // the channels the product already has — support requests and the contact
+  // page. "Chat" on the admin side is these rows grouped by recipient, so an
+  // admin can see what was said to whom before writing again.
+
+  /** What a chat row and a thread row carry about the person. */
+  private static readonly MESSAGE_USER_SELECT = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    username: true,
+    avatarKey: true,
+  } as const;
+
+  async sendMessage(actorId: string, dto: SendAdminMessageDto) {
+    const body = dto.body.trim();
+    if (!body) throw new BadRequestException('A message needs some text');
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: dto.recipientUserId },
+      select: { id: true, isActive: true },
+    });
+    if (!recipient) throw new NotFoundException('User not found');
+    if (recipient.id === actorId) throw new BadRequestException('You cannot message yourself');
+
+    const message = await this.prisma.adminMessage.create({
+      data: { senderUserId: actorId, recipientUserId: recipient.id, body },
+      include: {
+        recipient: { select: AdminService.MESSAGE_USER_SELECT },
+        sender: { select: AdminService.MESSAGE_USER_SELECT },
+      },
+    });
+    await this.notifications.notify(
+      recipient.id,
+      'ADMIN_MESSAGE',
+      { message: body, messageId: message.id },
+      { userId: actorId, role: 'admin' },
+    );
+    await this.audit.record(actorId, AuditAction.ADMIN_MESSAGE_SENT, {
+      messageId: message.id,
+      recipientUserId: recipient.id,
+      length: body.length,
+    });
+    return this.toMessage(message);
+  }
+
+  /**
+   * The history: one row per person any admin has written to, newest message
+   * first, paginated. Shared across admins — the platform is the sender as far
+   * as the user is concerned, so a second admin should see what the first said.
+   */
+  async listChats(dto: ListAdminChatsDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const [rows, distinct] = await Promise.all([
+      this.prisma.$queryRaw<{ recipientUserId: string; lastAt: Date; count: number }[]>(
+        Prisma.sql`
+          SELECT "recipientUserId", MAX("createdAt") AS "lastAt", COUNT(*)::int AS count
+          FROM "AdminMessage"
+          GROUP BY "recipientUserId"
+          ORDER BY MAX("createdAt") DESC
+          LIMIT ${take} OFFSET ${skip}`,
+      ),
+      this.prisma.$queryRaw<{ total: number }[]>(
+        Prisma.sql`SELECT COUNT(DISTINCT "recipientUserId")::int AS total FROM "AdminMessage"`,
+      ),
+    ]);
+    const ids = rows.map((row) => row.recipientUserId);
+    const [users, latest] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: AdminService.MESSAGE_USER_SELECT,
+      }),
+      Promise.all(
+        ids.map((recipientUserId) =>
+          this.prisma.adminMessage.findFirst({
+            where: { recipientUserId },
+            orderBy: { createdAt: 'desc' },
+            include: { sender: { select: AdminService.MESSAGE_USER_SELECT } },
+          }),
+        ),
+      ),
+    ]);
+    const byId = new Map(users.map((user) => [user.id, user]));
+    const items = rows.map((row, index) => {
+      const user = byId.get(row.recipientUserId);
+      const last = latest[index];
+      return {
+        user: user ? this.toMessageUser(user) : null,
+        messageCount: row.count,
+        lastAt: row.lastAt,
+        lastMessage: last
+          ? {
+              id: last.id,
+              body: last.body,
+              createdAt: last.createdAt,
+              sender: this.toMessageUser(last.sender),
+            }
+          : null,
+      };
+    });
+    return pageOf(items, distinct[0]?.total ?? 0, { page, pageSize });
+  }
+
+  /** Everything written to one person, newest first. */
+  async listThread(recipientUserId: string, dto: ListAdminThreadDto = {}) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: recipientUserId },
+      select: AdminService.MESSAGE_USER_SELECT,
+    });
+    if (!user) throw new NotFoundException('User not found');
+    const { skip, take, page, pageSize } = toSkipTake(dto);
+    const [rows, total] = await Promise.all([
+      this.prisma.adminMessage.findMany({
+        where: { recipientUserId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        include: {
+          sender: { select: AdminService.MESSAGE_USER_SELECT },
+          recipient: { select: AdminService.MESSAGE_USER_SELECT },
+        },
+      }),
+      this.prisma.adminMessage.count({ where: { recipientUserId } }),
+    ]);
+    return {
+      user: this.toMessageUser(user),
+      ...pageOf(
+        rows.map((row) => this.toMessage(row)),
+        total,
+        { page, pageSize },
+      ),
+    };
+  }
+
+  private toMessageUser(user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    username: string | null;
+    avatarKey: string | null;
+  }) {
+    const { avatarKey, ...rest } = user;
+    return { ...rest, avatarUrl: this.storage.publicUrlOrNull(avatarKey) };
+  }
+
+  private toMessage(row: {
+    id: string;
+    body: string;
+    createdAt: Date;
+    sender: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+      avatarKey: string | null;
+    };
+    recipient: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      username: string | null;
+      avatarKey: string | null;
+    };
+  }) {
+    return {
+      id: row.id,
+      body: row.body,
+      createdAt: row.createdAt,
+      sender: this.toMessageUser(row.sender),
+      recipient: this.toMessageUser(row.recipient),
+    };
+  }
 
   // ---- Admin (1.2: Verify coaches, Verify academies, Moderate) ----
   // `actorId` is threaded down so the audit row names the admin who acted (1.21),

@@ -314,6 +314,19 @@ does not appear.
   sidebar — age band, never a birth date. `/blog/admin/*` is
   `admin`/`super_admin` only: drafts, publish/unpublish (the first publish date
   is kept), categories, and presigned cover/OG uploads under `public/blog/<post>/`.
+- **Second decisions on clips** (1.13): the queue's verify/block are first
+  decisions and stay terminal. From the status lists an admin may `restore` a
+  FLAGGED clip to ACTIVE or `remove` it (REMOVED, row and trail kept), and a
+  super admin may `block-active` a live verified clip or `unblock` a blocked
+  one (`PATCH /moderation/media/:id/{restore,remove,block-active,unblock}`).
+  Each is conditional on the row still being in the state the admin saw and
+  audited under its own key.
+- **Messages to users** (`POST /admin/messages`, `GET /admin/messages/chats`,
+  `GET /admin/messages/chats/:userId`): an admin writes to one user; the user
+  receives it as an `ADMIN_MESSAGE` notification (in-app, socket, Telegram if
+  linked). One-way by design — replies come through support requests. The
+  history is one row per recipient with the last message and a count, paged;
+  the client shows it from a floating button for accounts acting as admin.
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
   plain admins can verify coaches/academies/moderate/view audit logs but
   cannot create admins or manage roles/permissions — only `super_admin` can.

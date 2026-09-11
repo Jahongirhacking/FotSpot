@@ -7,10 +7,13 @@ import {
   CreateAdminDto,
   CreatePermissionDto,
   GrantRolePermissionDto,
-  VerifyDto,
+  ListAdminChatsDto,
+  ListAdminThreadDto,
+  SearchUsersDto,
+  SendAdminMessageDto,
   SetUserActiveDto,
   SetUserRoleDto,
-  SearchUsersDto,
+  VerifyDto,
 } from './dto/admin.dto';
 import { SetUserPlanDto } from '../tariffs/dto/tariff.dto';
 
@@ -139,5 +142,25 @@ export class AdminController {
   @Post('roles/permissions')
   grantRolePermission(@CurrentUser() user: AuthUser, @Body() dto: GrantRolePermissionDto) {
     return this.adminService.grantRolePermission(user.userId, dto.roleId, dto.permissionId);
+  }
+
+  // ---- Messages to users ----
+
+  /** Writes to one user; they receive it as a notification. */
+  @Post('messages')
+  sendMessage(@CurrentUser() user: AuthUser, @Body() dto: SendAdminMessageDto) {
+    return this.adminService.sendMessage(user.userId, dto);
+  }
+
+  /** The chat history: one row per person written to, newest first, paginated. */
+  @Get('messages/chats')
+  listChats(@Query() dto: ListAdminChatsDto) {
+    return this.adminService.listChats(dto);
+  }
+
+  /** One person's thread, newest first, paginated. */
+  @Get('messages/chats/:userId')
+  listThread(@Param('userId') userId: string, @Query() dto: ListAdminThreadDto) {
+    return this.adminService.listThread(userId, dto);
   }
 }
