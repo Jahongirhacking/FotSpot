@@ -61,6 +61,7 @@ export const en: Dictionary = {
   },
 
   nav: {
+    more: 'More',
     blog: 'Blog',
     squad: 'Squad',
     groups: 'Groups',
@@ -1963,6 +1964,11 @@ export const en: Dictionary = {
     localTeamMessage: 'Hello! I would like to create a local team on FotSpot.',
 
     safetyTitle: 'For players under 18 — safety comes first.',
+    /* The blog on the landing page: the three newest posts and a way to the rest. */
+    blogTitle: 'From the FotSpot blog',
+    blogBody:
+      'News from academies and trials, young players worth watching, and what changed on the platform.',
+    blogCta: 'Read our blog',
     safetyBody:
       'Profiles of underage players are private by default. FotSpot does not allow private messaging between adults and children. We never sell the visibility of a child’s profile or access to their information.',
     privacyPolicy: 'Privacy policy',

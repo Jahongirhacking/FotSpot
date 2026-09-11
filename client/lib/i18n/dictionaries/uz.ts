@@ -74,6 +74,7 @@ export const uz = {
   },
 
   nav: {
+    more: 'Yana',
     blog: 'Blog',
     squad: 'Tarkib',
     groups: 'Guruhlar',
@@ -2034,6 +2035,11 @@ export const uz = {
     localTeamMessage: 'Assalomu alaykum! Men FotSpot’da mahalliy jamoa ochmoqchiman.',
 
     safetyTitle: '18 yoshgacha bo‘lganlar uchun — xavfsizlik birinchi o‘rinda.',
+    /* Bosh sahifadagi blog: eng yangi uchta maqola va qolganlariga yo‘l. */
+    blogTitle: 'FotSpot blogidan',
+    blogBody:
+      'Akademiyalar va sinovlar yangiliklari, kuzatishga arziydigan yosh futbolchilar va platformadagi o‘zgarishlar.',
+    blogCta: 'Blogimizni o‘qing',
     safetyBody:
       'Voyaga yetmagan o‘yinchilar profillari sukut bo‘yicha yopiq bo‘ladi. FotSpot’da kattalar va bolalar o‘rtasida shaxsiy yozishmalar mavjud emas. Biz hech qachon bola profilining ko‘rinishini yoki unga kirishni sotmaymiz.',
     privacyPolicy: 'Maxfiylik siyosati',
