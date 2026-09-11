@@ -1240,8 +1240,11 @@ export const trials = {
   apply: (trialId: string, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/${trialId}/apply`, { method: 'POST', ...opts }),
 
-  myApplications: (opts: Opts = {}) =>
-    apiFetch<TrialApplication[]>('/trials/applications/mine', opts),
+  /** The player's own applications, newest first, a page at a time; `trialId` narrows to one trial. */
+  myApplications: (
+    params: { page?: number; pageSize?: number; trialId?: string } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<TrialApplication>>(`/trials/applications/mine${toQuery({ ...params })}`, opts),
 
   /**
    * Manager: every private trial of the academy, open and archived, with the

@@ -18,12 +18,18 @@ export const metadata: Metadata = { title: 'Home' };
  * /scout/home, … : switching roles then needs no navigation, and every deep link
  * into the app keeps working after a switch.
  */
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ trialsPage?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect('/login?next=/dashboard');
 
   const { activeRole, roles, onboarded } = session;
   const { t } = await getServerT();
+  const params = await searchParams;
+  const trialsPage = Math.max(1, Number(params?.trialsPage) || 1);
 
   return (
     <div className="space-y-6">
@@ -35,7 +41,9 @@ export default async function DashboardPage() {
       */}
       {!onboarded && activeRole === 'scout' && !roles.includes('player') && <RoleIntentCard />}
 
-      {activeRole === 'player' && <PlayerHome token={session?.accessToken} t={t} />}
+      {activeRole === 'player' && (
+        <PlayerHome token={session?.accessToken} t={t} trialsPage={trialsPage} />
+      )}
       {activeRole === 'scout' && <ScoutHome token={session?.accessToken} t={t} />}
       {activeRole === 'coach' && <CoachHome token={session?.accessToken} t={t} />}
       {activeRole === 'academy_manager' && <AcademyHome token={session?.accessToken} t={t} />}

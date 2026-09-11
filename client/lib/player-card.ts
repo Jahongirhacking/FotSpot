@@ -126,32 +126,33 @@ export function currentClaim(clips: Media[], key: AttributeKey): Media | null {
   return newestFirst.find((clip) => clip.reportedBy === 'VERIFIED') ?? newestFirst[0] ?? null;
 }
 
-export const PROVENANCE_META: Record<
-  Provenance,
-  { label: string; short: string; className: string }
-> = {
-  combine: {
-    label: 'Combine-measured',
-    short: 'Measured',
-    className: 'bg-prov-combine/15 text-prov-combine',
-  },
-  coach: {
-    label: 'Coach-verified',
-    short: 'Verified',
-    className: 'bg-prov-coach/15 text-prov-coach',
-  },
-  relative: {
-    label: 'Relative — rated in review, not yet by a coach',
-    short: 'Relative',
-    className: 'bg-prov-self/15 text-prov-self',
-  },
-  self: {
-    label: 'Self-reported',
-    short: 'Self',
-    className: 'bg-prov-self/15 text-prov-self',
-  },
-  none: { label: 'No data yet', short: '—', className: 'bg-surface-3 text-muted' },
+/** The pill's colours per source; its words come from the dictionary (`provenanceCopy`). */
+export const PROVENANCE_META: Record<Provenance, { className: string }> = {
+  combine: { className: 'bg-prov-combine/15 text-prov-combine' },
+  coach: { className: 'bg-prov-coach/15 text-prov-coach' },
+  relative: { className: 'bg-prov-self/15 text-prov-self' },
+  self: { className: 'bg-prov-self/15 text-prov-self' },
+  none: { className: 'bg-surface-3 text-muted' },
 };
+
+/** What the pill says, in the reader's language: the full name and the short form. */
+export function provenanceCopy(
+  provenance: Provenance,
+  t: Dictionary,
+): { label: string; short: string } {
+  switch (provenance) {
+    case 'combine':
+      return { label: t.player.combineMeasured, short: t.player.measured };
+    case 'coach':
+      return { label: t.player.coachVerified, short: t.player.verifiedShort };
+    case 'relative':
+      return { label: t.player.relativeRated, short: t.player.relativeShort };
+    case 'self':
+      return { label: t.player.selfReported, short: t.player.selfShort };
+    default:
+      return { label: t.player.noDataYet, short: '—' };
+  }
+}
 
 /** Average of the coach assessments provided, per 1–10 category, scaled to 0–100. */
 function coachAverage(

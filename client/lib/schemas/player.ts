@@ -79,15 +79,37 @@ export const playerIdentitySchema = z.object({
 export type PlayerIdentityValues = z.infer<typeof playerIdentitySchema>;
 
 /** Step 2: football detail. All optional — a thin profile still beats no profile. */
+/**
+ * Every field on the football step is optional, and a form control that was
+ * left alone reports '' — not undefined. Without this an untouched select
+ * fails its enum and a blank measurement coerces to 0 and fails its minimum,
+ * silently, and "Create my card" does nothing.
+ */
+const blankAsAbsent = <T>(value: T | '') => (value === '' ? undefined : value);
+
+function optionalChoice<const T extends readonly [string, ...string[]]>(values: T) {
+  return z
+    .union([z.literal(''), z.enum(values)])
+    .optional()
+    .transform(blankAsAbsent);
+}
+
+function optionalNumber(min: number, max: number) {
+  return z
+    .union([z.literal(''), z.coerce.number().min(min).max(max)])
+    .optional()
+    .transform(blankAsAbsent);
+}
+
 export const playerFootballSchema = z.object({
-  primaryPosition: z.enum(POSITIONS).optional(),
-  secondaryPosition: z.enum(POSITIONS).optional(),
-  dominantFoot: z.enum(['LEFT', 'RIGHT', 'BOTH']).optional(),
-  playingStyle: z.enum(ALL_PLAYING_STYLES as unknown as [string, ...string[]]).optional(),
+  primaryPosition: optionalChoice(POSITIONS),
+  secondaryPosition: optionalChoice(POSITIONS),
+  dominantFoot: optionalChoice(['LEFT', 'RIGHT', 'BOTH']),
+  playingStyle: optionalChoice(ALL_PLAYING_STYLES as unknown as [string, ...string[]]),
   region: z.string().optional(),
   district: z.string().trim().max(80).optional(),
-  height: z.coerce.number().min(80).max(230).optional(),
-  weight: z.coerce.number().min(20).max(150).optional(),
+  height: optionalNumber(80, 230),
+  weight: optionalNumber(20, 150),
 });
 /**
  * Zod 4 note: `z.coerce.number()` has an *input* type of `unknown` (it accepts

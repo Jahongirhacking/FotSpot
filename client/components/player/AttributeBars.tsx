@@ -3,8 +3,9 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import {
-  deriveAttributes,
   PROVENANCE_META,
+  deriveAttributes,
+  provenanceCopy,
   type Attribute,
   type AttributeKey,
 } from '@/lib/player-card';
@@ -75,8 +76,11 @@ function AttributeRow({
   selected: boolean;
   onSelect?: (key: AttributeKey) => void;
 }) {
-  const { t } = useI18n();
-  const provenance = PROVENANCE_META[attribute.provenance];
+  const { t, f } = useI18n();
+  const provenance = {
+    ...PROVENANCE_META[attribute.provenance],
+    ...provenanceCopy(attribute.provenance, t),
+  };
   const hasValue = attribute.value !== null;
 
   const body = (
@@ -91,7 +95,11 @@ function AttributeRow({
         aria-valuenow={attribute.value ?? undefined}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${label}: ${hasValue ? `${attribute.value} out of 100, ${provenance.label}` : 'no data yet'}`}
+        aria-label={`${label}: ${
+          hasValue
+            ? f(t.player.barValue, { value: String(attribute.value), source: provenance.label })
+            : t.player.noDataYet
+        }`}
       >
         {hasValue && (
           <span

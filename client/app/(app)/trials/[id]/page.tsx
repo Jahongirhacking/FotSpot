@@ -100,14 +100,16 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
    * manager's trial form is: somebody who coaches and also plays sees the screen
    * belonging to the hat they are wearing (§1.2.1).
    */
-  const applications =
+  const existing =
     session?.activeRole === 'player'
       ? await trials
-          ?.myApplications({ token: session?.accessToken, cache: 'no-store' })
-          .catch(() => [])
-      : [];
-
-  const existing = applications?.find((application) => application?.trialId === id);
+          ?.myApplications(
+            { trialId: id, pageSize: 1 },
+            { token: session?.accessToken, cache: 'no-store' },
+          )
+          .then((page) => page.items[0])
+          .catch(() => undefined)
+      : undefined;
 
   /*
    * The hosting academy sees who applied; everyone else sees the apply button.
