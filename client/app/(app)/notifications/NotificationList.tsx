@@ -16,6 +16,8 @@ import {
   Building2,
   CalendarCheck,
   CheckCheck,
+  MessageSquare,
+  Scale,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -211,6 +213,48 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       href: '/trials',
       idKey: 'trialId',
     },
+    // A message from the platform team. The text is the whole content and is
+    // shown under the title; there is nowhere else to go for it.
+    ADMIN_MESSAGE: {
+      icon: MessageSquare,
+      title: t.notifications.adminMessage,
+      tone: 'text-primary',
+      href: '/notifications',
+    },
+    // The answer to an appeal: the number changed, or it stands. The
+    // moderator's note, if any, is the detail line; the card is where the
+    // new number shows.
+    RATING_APPEAL_RESOLVED: {
+      icon: Scale,
+      title: t.notifications.ratingAppealResolved,
+      tone: 'text-info',
+      href: '/dashboard',
+      titleFor: (payload) =>
+        payload?.changed === true
+          ? f(t.notifications.ratingAppealChanged, {
+              from: String(payload?.previousRating ?? '—'),
+              to: String(payload?.rating ?? '—'),
+            })
+          : payload?.changed === false
+            ? f(t.notifications.ratingAppealKept, { rating: String(payload?.rating ?? '—') })
+            : undefined,
+      toneFor: (payload) => (payload?.changed === true ? 'text-success' : undefined),
+    },
+    // A player appealed a moderator's relative rating; only a super admin
+    // sees this, and it takes them to the queue that answers it.
+    RATING_APPEAL_FILED: {
+      icon: Scale,
+      title: t.notifications.ratingAppealFiled,
+      tone: 'text-warning',
+      href: '/admin/moderation/appealed-rating',
+      titleFor: (payload) =>
+        payload?.playerName
+          ? f(t.notifications.ratingAppealFiledBy, {
+              name: String(payload.playerName),
+              rating: String(payload?.rating ?? '—'),
+            })
+          : undefined,
+    },
   };
 
   const queryClient = useQueryClient();
@@ -293,6 +337,7 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
             notification?.payload?.academyName,
             notification?.payload?.trialTitle,
             notification?.payload?.note,
+            notification?.payload?.message,
           ]
             .filter((part): part is string => typeof part === 'string' && part.length > 0)
             .join(' · ');

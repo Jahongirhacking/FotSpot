@@ -4,9 +4,9 @@ import {
   IsOptional,
   IsPhoneNumber,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
-  IsUUID,
 } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -72,3 +72,15 @@ export class SetUserRoleDto {
 
   @IsBoolean() grant: boolean;
 }
+
+/** One message from an admin to one user. */
+export class SendAdminMessageDto {
+  @IsUUID() recipientUserId: string;
+  @IsString() @MinLength(1) @MaxLength(2000) body: string;
+}
+
+/** The admin's chat history — one row per person written to, newest first. */
+export class ListAdminChatsDto extends PaginationDto {}
+
+/** One person's thread, newest first. */
+export class ListAdminThreadDto extends PaginationDto {}

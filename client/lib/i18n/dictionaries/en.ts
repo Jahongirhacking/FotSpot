@@ -708,9 +708,22 @@ export const en: Dictionary = {
 
   clips: {
     coachRating: "Coach's rating",
-    ratedBySelf: 'Right now this is the player’s own number.',
     ratedByCoach: 'A coach set this rating.',
     saveRating: 'Save rating',
+    ratedByAdmin:
+      'A moderator set this rating in review. It is relative until a coach rates the clip.',
+    ratedByOthersHint:
+      'You do not rate your own clips. A coach who works with you, or a moderator in review, puts the number on it — and you can appeal it.',
+    refileDropsRating:
+      'Filing the clip under another skill drops its rating; it will be rated again.',
+    appealRating: 'Appeal rating',
+    appealPending: 'Appeal pending',
+    appealTitle: 'Appeal this rating',
+    appealHint:
+      'Say why the number is wrong. A moderator watches the clip again and answers you here.',
+    appealReason: 'Reason',
+    appealPlaceholder: 'If you disagree with the rating you were given, write why…',
+    appealSend: 'Send appeal',
     noStorageOrigin:
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
@@ -879,6 +892,9 @@ export const en: Dictionary = {
     measured: 'Measured',
     verifiedShort: 'Verified',
     selfShort: 'Self',
+    relativeRated: 'Relative — rated in review, not yet by a coach',
+    relativeShort: 'Relative',
+    barValue: '{value} out of 100, {source}',
     noDataYet: 'No data yet',
     comparedWithin: 'Bars are compared within {band} only — never across age groups.',
     follow: 'Follow',
@@ -1286,6 +1302,12 @@ export const en: Dictionary = {
     candidacyClosed: 'Squad candidacy closed',
     applicationClosed: 'The academy closed your application',
     verificationResult: 'Verification update',
+    adminMessage: 'Message from FotSpot',
+    ratingAppealResolved: 'Your appeal was answered',
+    ratingAppealChanged: 'Rating changed from {from} to {to} after your appeal',
+    ratingAppealKept: 'Rating kept at {rating} after your appeal',
+    ratingAppealFiled: 'A rating was appealed',
+    ratingAppealFiledBy: '{name} appealed a rating of {rating}',
   },
 
   dashboard: {
@@ -1610,7 +1632,66 @@ export const en: Dictionary = {
     clipBlocked: 'Video blocked.',
     clipDeleted: 'Video permanently deleted.',
 
+    /* Rating in review, and appeals. */
+    attributeLabel: 'Skill shown',
+    attributeHint: 'What the footage actually shows. Re-filing drops the rating.',
+    moderationRating: 'Rating',
+    highlightsNoRating: 'Highlights carry no rating — verify or block as they are.',
+    verifyNeedsRating: 'Save a rating before verifying.',
+    ratingSaved: 'Rating saved.',
+    ratingUnsaved: 'Not saved yet.',
+    appealedRatings: 'Appealed ratings',
+    appealedRatingsHint:
+      'Players who say the number on their clip is wrong. Watch again, then keep the rating or save a new one; they are told either way.',
+    appealsPending: 'Pending',
+    appealsResolved: 'Answered',
+    appealsSuperAdminOnly:
+      'Only a super admin answers appeals — they are appeals against an admin’s rating.',
+    noAppeals: 'No appeals here.',
+    noAppealsHint: 'A player can appeal a rating from their own clip view.',
+    appealReason: 'The player writes',
+    ratingAtAppeal: 'rated',
+    currentRating: 'Current rating',
+    newRating: 'New rating',
+    decisionNote: 'Note to the player',
+    keepRating: 'Keep rating',
+    saveNewRating: 'Save new rating',
+    decisionChanged: 'Changed:',
+    decisionKept: 'Kept at',
     blockedVideos: 'Blocked videos',
+    /* Second decisions from the status lists. */
+    blockActiveClip: 'Block',
+    blockActiveTitle: 'Block this live video?',
+    blockActiveBody:
+      'It leaves every public surface at once — the feed, the profile, search. Only a super admin can put it back.',
+    makeActiveClip: 'Make active',
+    unblockTitle: 'Put this video back?',
+    unblockBody:
+      'It returns to the feed and the profile as it was. The block stays in the audit trail.',
+    restoreTitle: 'Clear the flag on this video?',
+    restoreBody: 'It returns to the feed and the profile. The flag stays in the audit trail.',
+    removeClip: 'Remove',
+    removeTitle: 'Remove this video?',
+    removeBody:
+      'It is taken down for good: the row and its history stay for the record, the player cannot bring it back.',
+    /* The admin chat: messages to users, delivered as notifications. */
+    chatTitle: 'Messages',
+    chatOpen: 'Message a user',
+    chatHistory: 'History',
+    chatNew: 'New chat',
+    chatHistoryHint: 'Everyone the team has written to, newest first.',
+    chatNewHint: 'The person receives it as a notification in the app, and on Telegram if linked.',
+    chatPickUser: 'Who is it for?',
+    chatPickUserPlaceholder: 'Search by name, email or username…',
+    chatMessage: 'Message',
+    chatMessagePlaceholder: 'Write the message…',
+    chatSend: 'Send',
+    chatSent: 'Sent',
+    chatNoHistory: 'Nobody has been written to yet.',
+    chatMessages: '{count} messages',
+    chatBack: 'All chats',
+    chatOlder: 'Older',
+    chatNewer: 'Newer',
     blockedVideosHint:
       'Videos an admin has blocked. They are visible to nobody, but the record is kept for moderation history. Only a super admin can delete them permanently.',
     noBlockedVideos: 'No blocked videos.',

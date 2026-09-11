@@ -227,6 +227,9 @@ model User {
   verificationCodes      VerificationCode[]
   blogPosts              BlogPost[]           @relation("BlogAuthors")
   blogLikes              BlogPostLike[]
+  adminMessagesSent      AdminMessage[]       @relation("AdminMessagesSent")
+  adminMessagesReceived  AdminMessage[]       @relation("AdminMessagesReceived")
+  ratingAppealsResolved  RatingAppeal[]       @relation("RatingAppealResolvers")
   passwordResetCodes     PasswordResetCode[]
   auditLogs              AuditLog[]
   reportsFiled           Report[]             @relation("ReportsFiled")
@@ -425,6 +428,7 @@ model PlayerProfile {
   recommendationWeight PlayerRecommendationWeight?
   academyWeights       PlayerAcademyRecommendationWeight[]
   coachAssessments     CoachAssessment[]
+  ratingAppeals        RatingAppeal[]
   trialApplications    TrialApplication[]
 
   createdAt DateTime @default(now())
@@ -852,11 +856,46 @@ enum MediaCategory {
 }
 
 /**
- * Whether a rating on a clip is the player's claim or a coach's judgement.
+ * Who put the number on a clip. A coach's rating is verified; a moderator's,
+ * given in review or after an appeal, is relative — it stands until a coach
+ * who works with the player replaces it, and it weighs half on the card.
+ * Players do not rate their own clips.
  */
 enum RatingSource {
-  SELF
-  COACH
+  VERIFIED
+  RELATIVE
+}
+
+enum RatingAppealStatus {
+  PENDING
+  RESOLVED
+}
+
+/// A player disputing the rating a coach or a moderator put on their clip.
+/// Reviewed on /admin/moderation/appealed-rating; the decision — a new
+/// rating or the same one — is recorded here and told to the player.
+model RatingAppeal {
+  id       String        @id @default(uuid())
+  mediaId  String
+  media    Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  playerId String
+  player   PlayerProfile @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  reason           String
+  status           RatingAppealStatus @default(PENDING)
+  /// The rating the player disputed, kept so the decision reads against it.
+  ratingAtAppeal   Int?
+  /// The rating after the decision — the same number when it was kept.
+  decisionRating   Int?
+  decisionNote     String?
+  resolvedByUserId String?
+  resolvedBy       User?              @relation("RatingAppealResolvers", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([mediaId, status])
 }
 
 /**
@@ -1039,17 +1078,18 @@ model Media {
 
   /// Who put `rating` there.
   ///
-  /// A player's number is a claim; a coach watching the same clip can replace it,
-  /// and then it is evidence (§1.6). One column rather than two nullable ones
-  /// because a clip has exactly one current rating — storing both invites a UI
-  /// that shows a stale claim beside the coach's correction and leaves the reader
-  /// to guess which is live.
+  /// A moderator's number is relative; a coach watching the same clip can
+  /// replace it, and then it is verified (§1.6). One column rather than two
+  /// nullable ones because a clip has exactly one current rating — storing both
+  /// invites a UI that shows a stale number beside the coach's correction and
+  /// leaves the reader to guess which is live.
   ///
   /// The previous value is not overwritten silently: `RatingRevision` keeps what
   /// it was, who changed it and when.
-  reportedBy RatingSource @default(SELF)
+  reportedBy RatingSource @default(RELATIVE)
 
   revisions RatingRevision[]
+  appeals   RatingAppeal[]
 
   likes    MediaLike[]
   views    MediaView[]
@@ -1777,6 +1817,28 @@ enum NotificationEvent {
    */
   SQUAD_LEFT
   VERIFICATION_RESULT
+  /// A message written to this person by an admin, delivered here and nowhere else.
+  ADMIN_MESSAGE
+  /// A moderator answered the player's appeal against a clip's rating.
+  RATING_APPEAL_RESOLVED
+  /// A player appealed a relative rating; sent to every super admin, who alone answer appeals.
+  RATING_APPEAL_FILED
+}
+
+/// A message an admin sent to one user. The user reads it as a notification;
+/// the admin's "chat" history is these rows grouped by recipient.
+model AdminMessage {
+  id              String @id @default(uuid())
+  senderUserId    String
+  sender          User   @relation("AdminMessagesSent", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipientUserId String
+  recipient       User   @relation("AdminMessagesReceived", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  body            String
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientUserId, createdAt])
+  @@index([senderUserId, createdAt])
 }
 
 model Notification {

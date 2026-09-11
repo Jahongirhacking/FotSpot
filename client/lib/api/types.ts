@@ -117,10 +117,10 @@ export interface Media {
   /** The 0–100 rating this clip evidences. Null for highlights. */
   rating?: number | null;
   /**
-   * Who put `rating` there. A player's number is a claim; a coach watching the
-   * same clip can replace it, and then it is evidence (§1.6).
+   * Who put `rating` there: a coach (VERIFIED) or a moderator in review or
+   * after an appeal (RELATIVE). Players do not rate their own clips.
    */
-  reportedBy?: 'SELF' | 'COACH';
+  reportedBy?: 'VERIFIED' | 'RELATIVE';
   /**
    * Permanent URL of the video. Null only when the server has no public storage
    * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
@@ -159,6 +159,13 @@ export interface FeedPage {
   total: number;
   page: number;
   pageSize: number;
+  /**
+   * The session's ranking snapshot: send both back with every next page so
+   * page two is cut from the same order as page one. Absent from older
+   * responses, in which case the next page starts a session of its own.
+   */
+  seed?: string;
+  since?: string;
 }
 
 /**
@@ -294,9 +301,9 @@ export interface RatingRevision {
   id: string;
   mediaId: string;
   previousRating: number | null;
-  previousReportedBy: 'SELF' | 'COACH';
+  previousReportedBy: 'VERIFIED' | 'RELATIVE';
   rating: number;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
   actorUserId: string;
   createdAt: string;
 }
@@ -1065,7 +1072,62 @@ export type NotificationEvent =
   | 'TRIAL_RESULT'
   | 'SQUAD_JOINED'
   | 'SQUAD_LEFT'
-  | 'VERIFICATION_RESULT';
+  | 'VERIFICATION_RESULT'
+  | 'ADMIN_MESSAGE'
+  | 'RATING_APPEAL_RESOLVED'
+  | 'RATING_APPEAL_FILED';
+
+/** A player's appeal against the rating on one of their clips. */
+export interface RatingAppeal {
+  id: string;
+  mediaId: string;
+  playerId: string;
+  reason: string;
+  status: 'PENDING' | 'RESOLVED';
+  ratingAtAppeal: number | null;
+  decisionRating: number | null;
+  decisionNote: string | null;
+  resolvedByUserId: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+/** An appeal as the moderation page reads it: with the clip and its player. */
+export interface AppealedClip extends RatingAppeal {
+  clip: PendingClip;
+  resolvedBy: { id: string; firstName: string | null; lastName: string | null } | null;
+}
+
+/** Somebody in an admin message: the writer or the person written to. */
+export interface AdminMessageUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+}
+
+/** One message from an admin to a user. The user reads it as a notification. */
+export interface AdminMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  sender: AdminMessageUser;
+  recipient: AdminMessageUser;
+}
+
+/** One row of the admin's chat history: a person, and the last thing said to them. */
+export interface AdminChat {
+  user: AdminMessageUser | null;
+  messageCount: number;
+  lastAt: string;
+  lastMessage: {
+    id: string;
+    body: string;
+    createdAt: string;
+    sender: AdminMessageUser;
+  } | null;
+}
 
 export interface AppNotification {
   id: string;

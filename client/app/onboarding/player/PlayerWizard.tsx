@@ -24,7 +24,6 @@ import {
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Check } from 'lucide-react';
-import Link from 'next/link';
 import * as React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 
@@ -77,6 +76,7 @@ export function PlayerWizard({
       {step === 'football' && identity && (
         <FootballStep
           identity={identity}
+          knownName={knownName}
           onBack={() => setStep('identity')}
           onError={setServerError}
         />
@@ -156,6 +156,14 @@ function IdentityStep({
    * dropped on the profile page having lost the step you were on.
    */
   const nameIsKnown = Boolean(knownName.firstName.trim() && knownName.lastName.trim());
+  // "Change name" opens the two fields right here; the name is saved with the
+  // rest of the step, so nobody is sent to another page and back.
+  const [editingName, setEditingName] = React.useState(
+    Boolean(
+      defaults &&
+      (defaults.firstName !== knownName.firstName || defaults.lastName !== knownName.lastName),
+    ),
+  );
 
   const form = useForm<PlayerIdentityValues>({
     resolver: zodResolver(playerIdentitySchema),
@@ -175,7 +183,7 @@ function IdentityStep({
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onDone)} className="space-y-4" noValidate>
-          {nameIsKnown ? (
+          {nameIsKnown && !editingName ? (
             <div className="border-border bg-surface-2 flex items-center justify-between gap-3 rounded-lg border p-3">
               <div className="min-w-0">
                 <p className="text-muted text-xs">
@@ -185,12 +193,13 @@ function IdentityStep({
                   {knownName.firstName} {knownName.lastName}
                 </p>
               </div>
-              <Link
-                href="/profile/edit?next=%2Fonboarding%2Fplayer"
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
                 className="text-primary shrink-0 text-xs font-medium hover:underline"
               >
                 {t.profile.changeName}
-              </Link>
+              </button>
               <input type="hidden" {...form.register('firstName')} />
               <input type="hidden" {...form.register('lastName')} />
             </div>
@@ -204,6 +213,7 @@ function IdentityStep({
               >
                 <Input
                   id="firstName"
+                  autoFocus={editingName}
                   {...form.register('firstName')}
                   placeholder={t.placeholders.firstName}
                 />
@@ -239,13 +249,13 @@ function IdentityStep({
             error={form.formState.errors.gender?.message}
           >
             <Select id="gender" {...form.register('gender')}>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
+              <option value="male">{t.onboarding.male}</option>
+              <option value="female">{t.onboarding.female}</option>
             </Select>
           </Field>
 
           <Button type="submit" className="w-full">
-            Continue
+            {t.common.continue}
           </Button>
         </form>
       </CardContent>
@@ -255,10 +265,12 @@ function IdentityStep({
 
 function FootballStep({
   identity,
+  knownName,
   onBack,
   onError,
 }: {
   identity: PlayerIdentityValues;
+  knownName: { firstName: string; lastName: string };
   onBack: () => void;
   onError: (message: string | null) => void;
 }) {
@@ -289,6 +301,16 @@ function FootballStep({
           birthDate: new Date(identity.birthDate).toISOString(),
         },
       });
+
+      // The account only adopts a name it did not have. A name corrected in
+      // the first step is written to the account explicitly, so the header
+      // and the card agree with what the player just typed.
+      if (identity.firstName !== knownName.firstName || identity.lastName !== knownName.lastName) {
+        await browserFetch('/users/me', {
+          method: 'PATCH',
+          body: { firstName: identity.firstName, lastName: identity.lastName },
+        });
+      }
 
       // Creating the profile granted the `player` role server-side, but the
       // current token still claims only the roles held at login. Without this the

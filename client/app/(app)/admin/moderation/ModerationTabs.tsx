@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Flag, ShieldOff, Video } from 'lucide-react';
+import { Flag, Scale, ShieldOff, Video } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +31,15 @@ export function ModerationTabs({ canSeeBlocked = false }: { canSeeBlocked?: bool
   const tabs = [
     { href: '/admin/moderation', label: t.admin.reviewReports, icon: Flag },
     { href: '/admin/moderation/videos', label: t.admin.videoReview, icon: Video },
+    // The super admin's own tabs: appeals against an admin's rating, and the
+    // clips admins took down.
     ...(canSeeBlocked
       ? [
+          {
+            href: '/admin/moderation/appealed-rating',
+            label: t.admin.appealedRatings,
+            icon: Scale,
+          },
           {
             href: '/admin/moderation/blocked-videos',
             label: t.admin.blockedVideos,

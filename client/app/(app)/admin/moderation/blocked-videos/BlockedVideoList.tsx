@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { ShieldOff, Trash2, TriangleAlert } from 'lucide-react';
+import { Check, ShieldOff, Trash2, TriangleAlert } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { PendingClip } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
@@ -51,6 +51,18 @@ export function BlockedVideoList({ clips }: { clips: PendingClip[] }) {
   const [error, setError] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState<PendingClip | null>(null);
 
+  const [restoring, setRestoring] = React.useState<PendingClip | null>(null);
+  const unblock = useMutation({
+    mutationFn: (id: string) =>
+      browserFetch(`/moderation/media/${id}/unblock`, { method: 'PATCH' }),
+    onSuccess: () => {
+      setRestoring(null);
+      setError(null);
+      router.refresh();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
   const destroy = useMutation({
     mutationFn: (id: string) => browserFetch(`/moderation/media/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -82,8 +94,33 @@ export function BlockedVideoList({ clips }: { clips: PendingClip[] }) {
           clip={clip}
           busy={destroy.isPending}
           onDelete={() => setDeleting(clip)}
+          onRestore={() => setRestoring(clip)}
         />
       ))}
+
+      {/* Putting a clip back is a deliberate second act — see the transition
+          table — so it asks once, like blocking did. */}
+      <Dialog open={restoring !== null} onOpenChange={(open) => !open && setRestoring(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="text-success size-5" aria-hidden /> {t.admin.unblockTitle}
+            </DialogTitle>
+            <DialogDescription>{t.admin.unblockBody}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRestoring(null)}>
+              {t.common.cancel}
+            </Button>
+            <Button
+              loading={unblock.isPending}
+              onClick={() => restoring && unblock.mutate(restoring.id)}
+            >
+              <Check aria-hidden /> {t.admin.makeActiveClip}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DeleteClipDialog
         clip={deleting}
@@ -106,10 +143,12 @@ function BlockedCard({
   clip,
   busy,
   onDelete,
+  onRestore,
 }: {
   clip: PendingClip;
   busy: boolean;
   onDelete: () => void;
+  onRestore: () => void;
 }) {
   const { t } = useI18n();
   const attribute = CATEGORY_ATTRIBUTE[clip.category];
@@ -175,15 +214,20 @@ function BlockedCard({
           <p className="text-muted text-xs">
             {t.admin.uploadedAt}: {formatDate(clip.createdAt)}
           </p>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-danger ml-auto"
-            disabled={busy}
-            onClick={onDelete}
-          >
-            <Trash2 aria-hidden /> {t.admin.deleteClip}
-          </Button>
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            <Button size="sm" disabled={busy} onClick={onRestore}>
+              <Check aria-hidden /> {t.admin.makeActiveClip}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-danger"
+              disabled={busy}
+              onClick={onDelete}
+            >
+              <Trash2 aria-hidden /> {t.admin.deleteClip}
+            </Button>
+          </span>
         </div>
       </CardContent>
     </Card>

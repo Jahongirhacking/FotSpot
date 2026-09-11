@@ -4,11 +4,12 @@ import { MediaCategory } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   IsBoolean,
-  IsIn,
   IsISO8601,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -58,13 +59,11 @@ export class ConfirmUploadDto {
   category: (typeof CATEGORIES)[number];
 
   /**
-   * The player's own 0–100 claim for this attribute, evidenced by the clip.
-   *
-   * Required for every attribute category and rejected for MATCH_HIGHLIGHTS — enforced in the service, because "required unless the
-   * value of another field is X" is not something class-validator states
-   * clearly enough to be worth the custom constraint.
+   * Accepted and ignored. Players no longer rate their own clips: a rating is
+   * put on a clip by a coach or by a moderator in review. The field stays so
+   * an older app that still sends it is not refused by the whitelist pipe.
    */
-  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 100, deprecated: true })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -169,6 +168,18 @@ export class FeedDto {
   @Min(1)
   @Max(24)
   pageSize?: number;
+
+  /**
+   * The session's seed for the exploration term. Returned by the first page;
+   * sent back with every next page so the noise — and so the order — holds.
+   */
+  @IsOptional() @IsString() @Matches(/^[A-Za-z0-9_-]{1,32}$/) seed?: string;
+
+  /**
+   * When the session began. Every count and penalty is read as of this
+   * moment, so page two agrees with page one. Returned by the first page.
+   */
+  @IsOptional() @IsISO8601() since?: string;
 }
 
 export class CreateMediaCommentDto {
@@ -179,3 +190,8 @@ export class CreateMediaCommentDto {
 }
 
 export class ListMediaCommentsDto extends PaginationDto {}
+
+/** A player disputing the rating a coach or a moderator put on their clip. */
+export class AppealRatingDto {
+  @IsString() @MinLength(5) @MaxLength(1000) reason: string;
+}

@@ -13,7 +13,13 @@ import type { Dictionary } from '@/lib/i18n';
  * a card, a search row, or a future PNG export.
  */
 
-export type Provenance = 'combine' | 'coach' | 'self' | 'none';
+/**
+ * `coach` is a verified number — an assessment or a coach's rating of a clip.
+ * `relative` is a moderator's rating of a clip, given in review: it stands
+ * until a coach replaces it and weighs half. `self` survives only for the
+ * legacy numbers a player typed into their profile (sprint time, juggling).
+ */
+export type Provenance = 'combine' | 'coach' | 'relative' | 'self' | 'none';
 
 export type AttributeKey =
   'pace' | 'dribbling' | 'passing' | 'finishing' | 'physical' | 'technique' | 'goalkeeping';
@@ -79,49 +85,74 @@ export function countsTowardsRating(clip: Media): boolean {
   );
 }
 
+/** Oldest filmed first; the upload breaks a same-day tie. */
+const byClaimDate = (a: Media, b: Media) =>
+  Date.parse(claimDate(a)) - Date.parse(claimDate(b)) ||
+  Date.parse(a.createdAt) - Date.parse(b.createdAt);
+
 /**
- * Every verified claim the player has made for one attribute, oldest first
- * by the day it was filmed.
+ * A player's clips the way every tab lists them: by the day they were filmed,
+ * newest first. The API serves them so; this keeps an optimistic insert in
+ * its place.
+ */
+export function sortClipsNewestFilmed(clips: Media[]): Media[] {
+  return [...clips].sort((a, b) => byClaimDate(b, a));
+}
+
+/**
+ * Every rated, public clip for one attribute, oldest first by the day it was
+ * filmed.
  *
  * Nothing is overwritten on upload, so this is the whole story — "pace 70 in
  * July, 85 in September" — and it is what the history chart draws. Removing a
- * clip steps the bar back to the claim before it, which falls out of this
+ * clip steps the bar back to the one before it, which falls out of this
  * filter rather than needing bookkeeping.
  */
 export function attributeHistory(clips: Media[], key: AttributeKey) {
   const category = ATTRIBUTE_CATEGORY[key];
   return clips
     .filter((clip) => clip.category === category && countsTowardsRating(clip))
-    .sort((a, b) => Date.parse(claimDate(a)) - Date.parse(claimDate(b)));
+    .sort(byClaimDate);
 }
 
-/** The newest claim — the one the bar currently shows. */
+/**
+ * The clip the bar currently shows: the newest **verified** one by the day it
+ * was filmed, and only when no coach has rated this skill the newest of any
+ * kind. A coach's older 30 stands over a moderator's newer 40 — the verified
+ * number is the one a scout is shown.
+ */
 export function currentClaim(clips: Media[], key: AttributeKey): Media | null {
-  const history = attributeHistory(clips, key);
-  return history.length > 0 ? history[history.length - 1] : null;
+  const newestFirst = attributeHistory(clips, key).reverse();
+  return newestFirst.find((clip) => clip.reportedBy === 'VERIFIED') ?? newestFirst[0] ?? null;
 }
 
-export const PROVENANCE_META: Record<
-  Provenance,
-  { label: string; short: string; className: string }
-> = {
-  combine: {
-    label: 'Combine-measured',
-    short: 'Measured',
-    className: 'bg-prov-combine/15 text-prov-combine',
-  },
-  coach: {
-    label: 'Coach-verified',
-    short: 'Verified',
-    className: 'bg-prov-coach/15 text-prov-coach',
-  },
-  self: {
-    label: 'Self-reported',
-    short: 'Self',
-    className: 'bg-prov-self/15 text-prov-self',
-  },
-  none: { label: 'No data yet', short: '—', className: 'bg-surface-3 text-muted' },
+/** The pill's colours per source; its words come from the dictionary (`provenanceCopy`). */
+export const PROVENANCE_META: Record<Provenance, { className: string }> = {
+  combine: { className: 'bg-prov-combine/15 text-prov-combine' },
+  coach: { className: 'bg-prov-coach/15 text-prov-coach' },
+  relative: { className: 'bg-prov-self/15 text-prov-self' },
+  self: { className: 'bg-prov-self/15 text-prov-self' },
+  none: { className: 'bg-surface-3 text-muted' },
 };
+
+/** What the pill says, in the reader's language: the full name and the short form. */
+export function provenanceCopy(
+  provenance: Provenance,
+  t: Dictionary,
+): { label: string; short: string } {
+  switch (provenance) {
+    case 'combine':
+      return { label: t.player.combineMeasured, short: t.player.measured };
+    case 'coach':
+      return { label: t.player.coachVerified, short: t.player.verifiedShort };
+    case 'relative':
+      return { label: t.player.relativeRated, short: t.player.relativeShort };
+    case 'self':
+      return { label: t.player.selfReported, short: t.player.selfShort };
+    default:
+      return { label: t.player.noDataYet, short: '—' };
+  }
+}
 
 /** Average of the coach assessments provided, per 1–10 category, scaled to 0–100. */
 function coachAverage(
@@ -199,13 +230,13 @@ const SOURCES: Record<
 /**
  * Every bar, each from the strongest source available.
  *
- * Precedence is **coach → clip → legacy self-reported number**, and it is not
- * arbitrary. A coach assessment is somebody else's judgement, which is the only
- * kind the platform treats as verified (§1.6). A clip-backed self-rating is the
- * player's own claim with evidence attached — better than a bare number because a
- * scout can watch it and disagree, but still self-reported, and the card draws it
- * dashed to say so. Attaching a video does not make a claim true, and a UI that
- * implied otherwise would hollow out the distinction the whole product rests on.
+ * Precedence is **coach assessment → clip → legacy self-reported number**, and
+ * it is not arbitrary. A coach assessment is somebody else's judgement of the
+ * player, which the platform treats as verified (§1.6). A clip's rating is
+ * verified when a coach put it there and relative when a moderator did in
+ * review — the card draws a relative number dashed to say a coach has not yet
+ * confirmed it. Which clip stands for a skill is `currentClaim`'s rule: the
+ * newest verified one, else the newest of any kind.
  *
  * `clips` defaults to the media embedded in the profile, so callers that already
  * have it (the public profile endpoint) need pass nothing.
@@ -227,10 +258,10 @@ export function deriveAttributes(
       return {
         key,
         label: source.label,
-        // A clip carries who rated it: the player claimed a number, or a coach
-        // watched the same clip and replaced it. The bar says which.
+        // A clip carries who rated it: a coach, or a moderator in review. The
+        // bar says which.
         value: claim.rating,
-        provenance: claim.reportedBy === 'COACH' ? ('coach' as const) : ('self' as const),
+        provenance: claim.reportedBy === 'VERIFIED' ? ('coach' as const) : ('relative' as const),
         evidence: claim,
       };
     }
@@ -401,38 +432,39 @@ export function cardEvidence(
 
   /*
    * Both kinds of rating count, at different weights: a coach's number at face
-   * value, the player's own halved. The latest of each is what counts — a clip
-   * uploaded today replaces the claim made last season, and so does the newest
-   * assessment, because a rating that never expires stops describing the player.
+   * value, a moderator's relative number halved. Per skill the clip that counts
+   * is the one the board shows — the newest verified, else the newest of any
+   * kind — and the newest assessment replaces older ones, because a rating that
+   * never expires stops describing the player.
    *
    * A clip's rating lands on whichever side `reportedBy` says: once a coach has
-   * corrected the number on that clip, it stops being a claim and counts in full.
-   * That is the whole point of letting them change it — a coach's 60 should not
-   * be quietly halved as though the player had written it.
+   * put the number on that clip it is verified and counts in full. A coach's 60
+   * must not be quietly halved as though a reviewer had guessed it.
    *
    * The two are added rather than one replacing the other, so a player with no
    * coach yet still has a filling star row and something to raise.
    */
-  let selfSum = 0;
+  let relativeSum = 0;
   let coachSum = 0;
   for (const key of ATTRIBUTE_KEYS) {
     const claim = currentClaim(clips, key);
     if (claim?.rating != null) {
-      if (claim.reportedBy === 'COACH') coachSum += claim.rating;
-      else selfSum += claim.rating;
+      if (claim.reportedBy === 'VERIFIED') coachSum += claim.rating;
+      else relativeSum += claim.rating;
     }
 
-    // A formal assessment still counts, and wins the attribute when both exist:
-    // it is a judgement of the player, not of one clip.
+    // A formal assessment still counts, and wins the attribute when the clip's
+    // number is only relative: it is a judgement of the player, not of one clip.
     const coach = latestCoachRating(assessments, SOURCES[key].coach);
-    if (coach !== null && claim?.reportedBy !== 'COACH') coachSum += coach;
+    if (coach !== null && claim?.reportedBy !== 'VERIFIED') coachSum += coach;
   }
 
-  // Clamped because the numerator can exceed the denominator two ways: a card
-  // that is both fully self-rated and fully coach-rated, and a keeper whose
+  // Half of every relative rating, the whole of every verified one. Clamped
+  // because the numerator can exceed the denominator two ways: a card that is
+  // both fully relative-rated and fully coach-rated, and a keeper whose
   // goalkeeping evidence counts without being required. Neither should show
   // more than five stars.
-  const score = selfSum / 2 + coachSum;
+  const score = relativeSum / 2 + coachSum;
   const stars = Math.max(0, Math.min(5, Math.round((score / EVIDENCE_MAX) * 5)));
 
   const tier: EvidenceTier =

@@ -1224,6 +1224,25 @@
               "maximum": 24,
               "type": "number"
             }
+          },
+          {
+            "name": "seed",
+            "required": false,
+            "in": "query",
+            "description": "The session's seed for the exploration term. Returned by the first page;\nsent back with every next page so the noise — and so the order — holds.",
+            "schema": {
+              "pattern": "/^[A-Za-z0-9_-]{1,32}$/",
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "When the session began. Every count and penalty is read as of this\nmoment, so page two agrees with page one. Returned by the first page.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1454,6 +1473,79 @@
         ]
       }
     },
+    "/api/v1/media/{id}/appeal": {
+      "post": {
+        "operationId": "media_appealRating",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What that rating was before each change. Gated like the clip itself.",
+        "tags": [
+          "media"
+        ]
+      },
+      "get": {
+        "operationId": "media_latestAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The owner's latest appeal on the clip, or null.",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/media/{id}/rating/history": {
       "get": {
         "operationId": "media_ratingHistory",
@@ -1477,7 +1569,6 @@
             "bearer": []
           }
         ],
-        "summary": "What that rating was before each change. Gated like the clip itself.",
         "tags": [
           "media"
         ]
@@ -5225,20 +5316,40 @@
     "/api/v1/trials/applications/mine": {
       "get": {
         "operationId": "trials_listMyApplications",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "trialId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "security": [
@@ -6023,6 +6134,308 @@
         ]
       }
     },
+    "/api/v1/moderation/media/{id}/block-active": {
+      "patch": {
+        "operationId": "moderation_blockActiveMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Takes a live, verified clip down. Super admin only: the queue's Block is a\nfirst decision on something nobody has seen; this undoes a decision on\nsomething people have.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/unblock": {
+      "patch": {
+        "operationId": "moderation_unblockMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Puts a blocked clip back on the public surfaces. Super admin only.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/restore": {
+      "patch": {
+        "operationId": "moderation_restoreFlaggedMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A flagged clip, cleared: back to ACTIVE.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/remove": {
+      "patch": {
+        "operationId": "moderation_removeFlaggedMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A flagged clip, taken down for good: REMOVED, row and trail kept.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/rating": {
+      "patch": {
+        "operationId": "moderation_rateMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerateRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/media/{id}/category": {
+      "patch": {
+        "operationId": "moderation_recategoriseMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Re-files the clip under the attribute the footage shows.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/appeals": {
+      "get": {
+        "operationId": "moderation_listAppeals",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "PENDING",
+              "enum": [
+                "ALL",
+                "PENDING",
+                "RESOLVED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Players' appeals against ratings, pending first. Super admins alone answer them.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation/appeals/{id}": {
+      "patch": {
+        "operationId": "moderation_resolveAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answers an appeal with a new rating or the same one, and tells the player.",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/admin/coaches/{id}/verify": {
       "patch": {
         "operationId": "admin_verifyCoach",
@@ -6506,6 +6919,127 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages": {
+      "post": {
+        "operationId": "admin_sendMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendAdminMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages/chats": {
+      "get": {
+        "operationId": "admin_listChats",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The chat history: one row per person written to, newest first, paginated.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/messages/chats/{userId}": {
+      "get": {
+        "operationId": "admin_listThread",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One person's thread, newest first, paginated.",
         "tags": [
           "admin"
         ]
@@ -7927,9 +8461,10 @@
           },
           "rating": {
             "type": "number",
-            "description": "The player's own 0–100 claim for this attribute, evidenced by the clip.\n\nRequired for every attribute category and rejected for MATCH_HIGHLIGHTS — enforced in the service, because \"required unless the\nvalue of another field is X\" is not something class-validator states\nclearly enough to be worth the custom constraint.",
+            "description": "Accepted and ignored. Players no longer rate their own clips: a rating is\nput on a clip by a coach or by a moderator in review. The field stays so\nan older app that still sends it is not refused by the whitelist pipe.",
             "minimum": 0,
-            "maximum": 100
+            "maximum": 100,
+            "deprecated": true
           },
           "recordedAt": {
             "type": "string",
@@ -8004,6 +8539,19 @@
             "maximum": 100
           }
         }
+      },
+      "AppealRatingDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "CreateMediaCommentDto": {
         "type": "object",
@@ -9146,6 +9694,45 @@
           "status"
         ]
       },
+      "ModerateRatingDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "rating"
+        ]
+      },
+      "ModerateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MediaCategory"
+              }
+            ]
+          }
+        }
+      },
+      "ResolveAppealDto": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
       "VerifyDto": {
         "type": "object",
         "properties": {
@@ -9252,6 +9839,23 @@
         "required": [
           "roleId",
           "permissionId"
+        ]
+      },
+      "SendAdminMessageDto": {
+        "type": "object",
+        "properties": {
+          "recipientUserId": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "recipientUserId",
+          "body"
         ]
       },
       "BlogPostStatus": {

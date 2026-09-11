@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { FEED_RANKING_TTL_MS, patchFeedPages } from './feed-cache';
+import { FEED_RANKING_TTL_MS, nextFeedPageParam, patchFeedPages, uniqueClips } from './feed-cache';
 import type { FeedClip, FeedPage } from '@/lib/api/types';
 
 const clip = (id: string, likes = 0): FeedClip =>
@@ -87,4 +87,32 @@ test('is a no-op on an empty cache and for an unknown clip', () => {
 /* The snapshot lifetime is an hour, and it is a stale time, not a timer. */
 test('holds a ranking for an hour', () => {
   assert.equal(FEED_RANKING_TTL_MS, 60 * 60 * 1000);
+});
+
+/*
+ * Pagination over a ranked order: the next page carries the session the first
+ * page was cut from, and a repeat across pages is dropped on the client.
+ */
+test('the next page keeps the session snapshot and stops at the end', () => {
+  const first = { ...page(1, [clip('a')]), total: 3, pageSize: 1, seed: 's1', since: 'T0' };
+  assert.deepEqual(nextFeedPageParam(first), { page: 2, seed: 's1', since: 'T0' });
+  assert.equal(nextFeedPageParam({ ...first, page: 3 }), undefined);
+  // A response from before the snapshot existed still pages, without one.
+  assert.deepEqual(nextFeedPageParam(page(1, [clip('a')])), {
+    page: 2,
+    seed: undefined,
+    since: undefined,
+  });
+});
+
+test('a clip that comes back on a later page is shown once, in its first position', () => {
+  const pages = [
+    page(1, [clip('a'), clip('b'), clip('c')]),
+    page(2, [clip('c'), clip('d'), clip('a')]),
+  ];
+  assert.deepEqual(
+    uniqueClips(pages).map((c) => c.id),
+    ['a', 'b', 'c', 'd'],
+  );
+  assert.deepEqual(uniqueClips(undefined), []);
 });

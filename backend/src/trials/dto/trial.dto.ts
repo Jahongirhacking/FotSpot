@@ -264,6 +264,19 @@ export class ListApplicationsQueryDto extends PaginationDto {
   stage?: ApplicationStage;
 }
 
+/**
+ * A player's own applications, a page at a time — the dashboard shows five
+ * and a player who has been to many trials should not download all of them
+ * to see the latest. `trialId` narrows to one trial, for the trial page that
+ * only needs to know whether this player already applied.
+ */
+export class MyApplicationsQueryDto extends PaginationDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  trialId?: string;
+}
+
 export class CoachQueueQueryDto extends PaginationDto {
   @ApiPropertyOptional({ enum: TrialType, enumName: 'TrialType' })
   @IsOptional()

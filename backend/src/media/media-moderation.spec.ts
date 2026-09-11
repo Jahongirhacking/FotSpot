@@ -6,6 +6,7 @@ import type { MediaModerationStatus, MediaStatus } from '@prisma/client';
 import { MediaService, toMediaResponse } from './media.service';
 import type { MediaFinaliserService } from './media-finaliser.service';
 import type { GroupsService } from '../academies/groups.service';
+import type { NotificationsService } from '../notifications/notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { StorageService } from '../storage/storage.service';
@@ -34,7 +35,7 @@ const CLIP: {
   storageKey: string;
   posterKey: string | null;
   rating: number | null;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
 } = {
   id: 'clip-1',
   playerId: PLAYER_ID,
@@ -44,7 +45,7 @@ const CLIP: {
   storageKey: `private/players/${PLAYER_ID}/clip.mp4`,
   posterKey: null,
   rating: 70,
-  reportedBy: 'SELF',
+  reportedBy: 'RELATIVE',
 };
 
 /**
@@ -114,6 +115,8 @@ function build(clip: Partial<typeof CLIP> = {}) {
     {} as unknown as MediaFinaliserService,
     // Only reached from confirmUpload for a VIDEO; inert here.
     { announce: jest.fn(async () => undefined) } as unknown as TelegramAdminAlertsService,
+    // Only reached from appealRating; inert here.
+    { notify: jest.fn(async () => undefined) } as unknown as NotificationsService,
   );
 
   return { service, prisma, storage };
@@ -210,6 +213,20 @@ describe('a player profile — who is asking decides what comes back', () => {
     );
   });
 
+  it('lists clips by the day they were filmed, newest first, for every skill tab', async () => {
+    const { service, prisma } = build();
+
+    await service.listForPlayer(PLAYER_ID, {}, undefined);
+    await service.listForPlayer(PLAYER_ID, { category: 'PACE' }, undefined);
+
+    for (const call of prisma.media.findMany.mock.calls as unknown as [{ orderBy: unknown }][]) {
+      expect(call[0].orderBy).toEqual([{ recordedAt: 'desc' }, { createdAt: 'desc' }]);
+    }
+    expect(prisma.media.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ category: 'PACE' }) }),
+    );
+  });
+
   it('serves another signed-in user verified clips only', async () => {
     const { service, prisma } = build();
 
@@ -275,15 +292,91 @@ describe('the ranked feed', () => {
     expect(sql).toContain(`m."moderationStatus" = 'VERIFIED'`);
   });
 
-  it('counts the same population it lists', async () => {
+  it('counts the same population it lists, as of the session snapshot', async () => {
     const { service, prisma } = build();
     (prisma as Record<string, unknown>).$queryRaw = jest.fn(async () => []);
 
-    await service.feed('scout-user-1', {});
+    const since = new Date(Date.now() - 60_000).toISOString();
+    await service.feed('scout-user-1', { since, seed: 'abc123' });
 
     expect(prisma.media.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
+      where: expect.objectContaining({
+        ...PUBLIC_MEDIA_WHERE,
+        createdAt: { lte: new Date(since) },
+      }),
     });
+  });
+
+  /*
+   * Scoring happens in the database, before the page is cut: the ORDER BY is
+   * the score and LIMIT/OFFSET come after it. Ranking a fetched window in
+   * memory would make page two a different question from page one.
+   */
+  it('scores every candidate in SQL and paginates after the ORDER BY', async () => {
+    const { service, prisma } = build();
+    const queryRaw = jest.fn(async () => []);
+    (prisma as Record<string, unknown>).$queryRaw = queryRaw;
+
+    await service.feed('scout-user-1', { page: 3, pageSize: 6 });
+
+    const [statement] = queryRaw.mock.calls[0] as unknown as [
+      { strings: string[]; values: unknown[] },
+    ];
+    const sql = statement.strings.join('?');
+    expect(sql.indexOf('ORDER BY score')).toBeGreaterThan(sql.indexOf('AS score'));
+    expect(sql.indexOf('LIMIT')).toBeGreaterThan(sql.indexOf('ORDER BY score'));
+    expect(statement.values.slice(-2)).toEqual([6, 12]);
+    // The terms that make a new account's feed: freshness, recent engagement,
+    // rate, exploration and the diversity step are all in the statement.
+    expect(sql).toContain('ln(1 + COALESCE(lr.likes, 0)');
+    expect(sql).toContain('LEAST(1, COALESCE(l.likes, 0)::float / (COALESCE(v.views, 0) +');
+    expect(sql).toContain('substr(md5(m.id::text || ?), 1, 8)');
+    expect(sql).toContain('ROW_NUMBER() OVER (PARTITION BY "playerId"');
+    expect(sql).toContain('LEAST("playerRank" - 1,');
+  });
+
+  it('reads every count and the candidate set as of the session start, so pages agree', async () => {
+    const { service, prisma } = build();
+    const queryRaw = jest.fn(async () => []);
+    (prisma as Record<string, unknown>).$queryRaw = queryRaw;
+    const since = new Date(Date.now() - 5 * 60_000);
+
+    const result = await service.feed('scout-user-1', {
+      since: since.toISOString(),
+      seed: 'abc123',
+    });
+
+    const [statement] = queryRaw.mock.calls[0] as unknown as [
+      { strings: string[]; values: unknown[] },
+    ];
+    const sql = statement.strings.join('?');
+    expect(sql).toContain('AND m."createdAt" <= ?');
+    expect((sql.match(/"createdAt" <= \?/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(statement.values).toContain('abc123');
+    expect(
+      statement.values.filter((v) => v instanceof Date && v.getTime() === since.getTime()).length,
+    ).toBeGreaterThan(5);
+    expect(result.seed).toBe('abc123');
+    expect(result.since).toBe(since.toISOString());
+  });
+
+  it('starts a new session when none is given, or the given one is stale or in the future', async () => {
+    const { service, prisma } = build();
+    (prisma as Record<string, unknown>).$queryRaw = jest.fn(async () => []);
+
+    const fresh = await service.feed('scout-user-1', {});
+    expect(fresh.seed).toMatch(/^[0-9a-f]{12}$/);
+    expect(Date.now() - Date.parse(fresh.since)).toBeLessThan(5_000);
+
+    const stale = await service.feed('scout-user-1', {
+      since: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+    });
+    expect(Date.now() - Date.parse(stale.since)).toBeLessThan(5_000);
+
+    const future = await service.feed('scout-user-1', {
+      since: new Date(Date.now() + 3600_000).toISOString(),
+    });
+    expect(Date.parse(future.since)).toBeLessThanOrEqual(Date.now());
   });
 });
 

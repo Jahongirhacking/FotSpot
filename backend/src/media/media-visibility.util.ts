@@ -80,6 +80,17 @@ export const PUBLIC_MEDIA_WHERE = {
  * than waiting on a transcode. One that has not actually arrived cannot be
  * verified; the decision checks the bucket first.
  */
+/**
+ * How a player's clips are listed everywhere they are a player's clips: by the
+ * day they were filmed, newest first, upload time breaking ties. A clip filmed
+ * in May and uploaded in September is a May clip; the profile, every skill
+ * tab and the card read time the same way.
+ */
+export const MEDIA_ORDER = [
+  { recordedAt: 'desc' },
+  { createdAt: 'desc' },
+] as const satisfies Prisma.MediaOrderByWithRelationInput[];
+
 export const MODERATION_QUEUE_WHERE = {
   status: { in: [...WATCHABLE_STATUSES] },
   moderationStatus: 'UNVERIFIED',

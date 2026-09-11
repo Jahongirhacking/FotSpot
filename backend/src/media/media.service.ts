@@ -1,6 +1,7 @@
 import {
   Logger,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -24,7 +25,10 @@ import {
 import { StorageService } from '../storage/storage.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { TelegramAdminAlertsService } from '../telegram/telegram-admin-alerts.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { FEED_SCORE } from './feed-score.util';
 import {
+  AppealRatingDto,
   ConfirmUploadDto,
   CreateMediaCommentDto,
   FeedDto,
@@ -36,10 +40,11 @@ import {
 } from './dto/media.dto';
 import { MediaFinaliserService } from './media-finaliser.service';
 import {
-  canViewMedia,
-  isPubliclyVisible,
+  MEDIA_ORDER,
   OWN_MEDIA_WHERE,
   PUBLIC_MEDIA_WHERE,
+  canViewMedia,
+  isPubliclyVisible,
 } from './media-visibility.util';
 import {
   FINALISE_ATTEMPTS,
@@ -150,72 +155,10 @@ export async function toMediaResponse<
 }
 
 /**
- * Feed scoring weights. Relative size is the whole design: earned weight leads,
- * a follow is worth roughly what a well-liked clip is worth, and freshness can
- * lift a brand-new clip above an older one of similar standing but never above a
- * strongly recommended player.
+ * The feed's weights live in `feed-score.util.ts`, beside a TypeScript mirror
+ * of the SQL expression below, so the ranking can be read and unit-tested as
+ * arithmetic. Change a weight there; the SQL reads the same constants.
  */
-const FEED_WEIGHT_TERM = 3;
-const FEED_FOLLOW_TERM = 2;
-const FEED_LIKES_TERM = 0.8;
-const FEED_FRESHNESS_TERM = 1.5;
-/** One week, in seconds — the half-life of the freshness term. */
-const FEED_HALF_LIFE_SECONDS = 7 * 24 * 60 * 60;
-
-/**
- * How hard a clip the viewer has already watched is pushed down.
- *
- * Large enough to outweigh every positive term combined: the strongest possible
- * signal that a clip is not worth this viewer's next sixty seconds is that they
- * have already spent sixty seconds on it. A feed that keeps re-showing the same
- * video is the complaint this answers, and a gentle nudge would not fix it —
- * a clip with a Legendary Scout behind it would still climb straight back.
- */
-const FEED_SEEN_PENALTY = 12;
-
-/**
- * How long a watched clip stays fully suppressed.
- *
- * An hour, then the penalty tapers off. Not permanent exclusion: a scout does
- * come back to a player they are weighing up, and a clip they saw last week is
- * a legitimate thing to surface again — just not the thing to open with.
- */
-const FEED_SEEN_COOLDOWN_SECONDS = 60 * 60;
-
-/**
- * A liked clip is done with, more so than a watched one.
- *
- * Liking is the most deliberate signal the product has: the viewer looked, made
- * up their mind and said so. Showing it again asks a question they have already
- * answered. It still counts *toward* what they are shown next — see the affinity
- * term, which is built entirely from likes.
- */
-const FEED_LIKED_PENALTY = 20;
-
-/**
- * Weight on "this looks like the clips you have liked".
- *
- * Affinity is measured by category, which is the one axis of similarity the data
- * actually carries: every clip is filed under the attribute it evidences (§21.1),
- * so a viewer who keeps liking FINISHING clips is telling us what they are
- * scouting for. Normalised against their own like count, so it says "what
- * fraction of your likes were this kind" rather than rewarding heavy users.
- *
- * Deliberately smaller than the earned-weight term: it should colour the order,
- * not narrow the feed to one attribute and hide every other player from view.
- */
-const FEED_AFFINITY_TERM = 1.8;
-
-/**
- * Extra lift for an unseen clip from somebody the viewer follows.
- *
- * On top of the flat follow bonus, and conditional on *unseen*: "a new video
- * from someone I follow" is the single most reliable thing a feed can offer, and
- * separating it from the plain follow term is what stops an old clip from a
- * followed player crowding out their new one.
- */
-const FEED_FOLLOWED_UNSEEN_TERM = 2.5;
-
 /** One row of the feed query, before URLs are signed onto it. */
 interface FeedRow {
   id: string;
@@ -224,7 +167,7 @@ interface FeedRow {
   storageKey: string;
   posterKey: string | null;
   rating: number | null;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
   title: string | null;
   description: string | null;
   createdAt: Date;
@@ -241,7 +184,14 @@ interface FeedRow {
   following: boolean;
   /** Whether this viewer has already watched it — drives the seen penalty. */
   seenByMe: boolean;
+  /** The clip's rank among its player's clips on this ranking — the diversity step. */
+  playerRank: number;
 }
+
+/** The longest a feed session may run on one snapshot before it is restarted. */
+const FEED_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** A seed the server picks when the client sends none: 12 hex characters. */
+const freshSeed = () => Math.random().toString(16).slice(2, 14).padEnd(12, '0');
 
 @Injectable()
 export class MediaService {
@@ -256,6 +206,7 @@ export class MediaService {
     @InjectQueue(MEDIA_QUEUE) private queue: Queue<FinaliseClipJob>,
     private finaliser: MediaFinaliserService,
     private adminAlerts: TelegramAdminAlertsService,
+    private notifications: NotificationsService,
   ) {}
 
   private async ownPlayerProfile(userId: string) {
@@ -387,14 +338,10 @@ export class MediaService {
     const profile = await this.ownPlayerProfile(userId);
     // The row is what the plan limits, so this is the check that matters.
     await this.tariffs.assertCanUploadClip(userId);
-    const isAttribute = ATTRIBUTE_CATEGORIES.includes(dto.category as MediaCategory);
 
-    if (isAttribute && dto.rating === undefined) {
-      throw new BadRequestException('Rate the attribute this clip is evidence for');
-    }
-    if (!isAttribute && dto.rating !== undefined) {
-      throw new BadRequestException('Highlights are not evidence for a single attribute');
-    }
+    // No self-rating any more: a clip arrives unrated and a coach or a
+    // moderator puts the number on it. `dto.rating` from an older app is
+    // accepted and ignored rather than refused.
 
     // The key made a round trip through the browser, so it comes back
     // attacker-controlled: re-check it addresses *this* player's own directory
@@ -413,7 +360,7 @@ export class MediaService {
         // in the product's time zone, so it can be late but never ahead of the
         // upload. `createdAt` stays the server's own fact about the upload.
         recordedAt: parseRecordedAt(dto.recordedAt),
-        rating: isAttribute ? dto.rating : null,
+        rating: null,
         title: dto.title ?? null,
         description: dto.description ?? null,
         // PROCESSING and UNVERIFIED, both by column default and never written
@@ -600,7 +547,7 @@ export class MediaService {
     };
 
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.media.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.media.findMany({ where, orderBy: MEDIA_ORDER, skip, take }),
       this.prisma.media.count({ where }),
     ]);
 
@@ -658,160 +605,179 @@ export class MediaService {
   }
 
   /**
-   * The ranked feed: every player's clips, ordered by who has earned attention.
+   * The ranked feed: what this viewer should watch next.
    *
-   * ## What "ranked" means here
+   * ## The score
    *
-   * A scout opening the app should see the clips most worth their next sixty
-   * seconds, and the platform's own answer to "who is worth watching" already
-   * exists: `PlayerRecommendationWeight.globalWeight`, the sum of what scouts
-   * have staked on that player (§1.5). The feed leans on it rather than
-   * inventing a second, competing notion of merit.
+   * The ordering *is* a computed score, specified and unit-tested in
+   * `feed-score.util.ts` and written here in SQL term for term. In short: fresh
+   * clips and recent engagement lead, engagement *rate* counts more than raw
+   * views, lifetime counts are damped, scout-earned weight and follower count
+   * say who is worth watching, a followed player's unseen clip is the strongest
+   * positive term, watched and liked clips are pushed down hard, and a
+   * per-session random term plus a lift for under-exposed clips give new
+   * uploads a chance and keep two readers from getting the same page. A
+   * player's second and third clips on one page are stepped down so a page
+   * shows several players.
    *
-   * ## What the viewer has already done outranks everything else
+   * ## A session is a snapshot
    *
-   * The two strongest signals in the score are negative, because the loudest
-   * complaint a feed can produce is "why am I being shown this again". A clip
-   * the viewer has **watched** is suppressed for an hour and demoted after that;
-   * a clip they have **liked** is demoted harder still and effectively does not
-   * come back. Liking is the most deliberate judgement the product offers — the
-   * viewer looked, decided, and said so — and re-showing it asks a question they
-   * have already answered.
-   *
-   * Those likes are not discarded, they change direction: they become the
-   * affinity term, which is how "more like the ones you liked" is expressed.
-   *
-   * ## The terms, in order of how much they move the result
-   *
-   * - **Seen penalty** (negative). Full strength within the hour after viewing,
-   *   tapering afterwards, so a clip can eventually resurface without being the
-   *   thing the feed opens with.
-   * - **Liked penalty** (negative), flat and larger. No cooldown: a decided clip
-   *   stays decided.
-   * - **Earned weight**, `ln(1 + globalWeight)`. Logarithmic on purpose: the
-   *   weights are geometric (1, 3, 8, 20, 50, 125), so untransformed they would
-   *   let a handful of Legendary Scout picks own the feed outright and bury every
-   *   player nobody has recommended yet — which is precisely the child this
-   *   product exists to surface.
-   * - **New from a followed player**. A follow bonus, plus an extra lift when the
-   *   clip is also unseen — which is what makes "somebody I follow posted
-   *   something new" the reliable top of the feed rather than the same followed
-   *   clip every visit.
-   * - **Affinity**, the share of the viewer's own likes that fell in this clip's
-   *   category. Category is the one axis of similarity the data really carries:
-   *   every clip is filed under the attribute it evidences (§21.1), so a viewer
-   *   who keeps liking FINISHING clips has said what they are scouting for.
-   *   Normalised by their like count, so it is a proportion rather than a reward
-   *   for volume, and weighted below earned merit so it colours the order instead
-   *   of narrowing the feed to a single attribute.
-   * - **Likes**, `ln(1 + likes)`, damped for the same reason as weight. With the
-   *   seen penalty beside it this is what surfaces *popular clips the viewer has
-   *   not watched yet*.
-   * - **Freshness**, an exponential decay with a one-week half-life. Without it a
-   *   good clip from March outranks everything uploaded since, forever.
+   * Pages are offsets into one ordering, so the ordering must not move between
+   * page one and page two — or a clip already shown comes back and another is
+   * skipped. Every input is therefore read *as of `since`*: counts, penalties,
+   * the candidate set, and the noise (seeded). The client sends both back with
+   * each next page; a new page load starts a new session and sees everything
+   * that happened in the meantime. A session older than a day is restarted.
    *
    * ## Why raw SQL, in a codebase that has none
    *
-   * The ordering *is* the score, and the score is computed from four tables. Doing
-   * it in Prisma means fetching a candidate window and ranking in memory, which
-   * makes page 2 an incoherent question — items would reshuffle between pages and
-   * the same clip could appear twice or never. The database can sort a computed
-   * expression; it is the only thing here that can.
-   *
-   * Interpolations are parameterised by `Prisma.sql`, so the viewer id and paging
-   * numbers cannot be anything but values.
+   * The score is computed from six tables and the database sorts it before
+   * paginating. Ranking in memory would mean fetching every candidate for every
+   * page. Interpolations are parameterised by `Prisma.sql`, so the viewer id,
+   * the seed and the paging numbers cannot be anything but values.
    */
   async feed(viewerUserId: string, dto: FeedDto = {}) {
     const page = Math.max(1, dto.page ?? 1);
     const pageSize = Math.min(24, Math.max(1, dto.pageSize ?? 6));
     const skip = (page - 1) * pageSize;
+    const seed = dto.seed ?? freshSeed();
+    const now = Date.now();
+    const requested = dto.since ? Date.parse(dto.since) : NaN;
+    const since =
+      Number.isFinite(requested) && requested <= now && now - requested < FEED_SESSION_MAX_AGE_MS
+        ? new Date(requested)
+        : new Date(now);
+    const w = FEED_SCORE;
 
     const rows = await this.prisma.$queryRaw<FeedRow[]>(Prisma.sql`
-      SELECT
-        m.id, m.type, m.category, m."storageKey", m."posterKey", m.rating, m."reportedBy",
-        m.title, m.description, m."createdAt",
-        p.id AS "playerId", p."firstName", p."lastName", p."birthDate",
-        p."primaryPosition", p.region,
-        u."avatarKey",
-        COALESCE(l.likes, 0)::int AS likes,
-        COALESCE(v.views, 0)::int AS views,
-        (ml."userId" IS NOT NULL) AS "likedByMe",
-        (f.id IS NOT NULL) AS following,
-        (mv."lastViewedAt" IS NOT NULL) AS "seenByMe"
-      FROM "Media" m
-      JOIN "PlayerProfile" p ON p.id = m."playerId"
-      JOIN "User" u ON u.id = p."userId"
-      LEFT JOIN "PlayerRecommendationWeight" w ON w."playerId" = p.id
-      LEFT JOIN (SELECT "mediaId", COUNT(*) AS likes FROM "MediaLike" GROUP BY "mediaId") l
-        ON l."mediaId" = m.id
-      LEFT JOIN (SELECT "mediaId", COUNT(*) AS views FROM "MediaView" GROUP BY "mediaId") v
-        ON v."mediaId" = m.id
-      LEFT JOIN "MediaLike" ml ON ml."mediaId" = m.id AND ml."userId" = ${viewerUserId}
-      LEFT JOIN "Follow" f
-        ON f."followerId" = ${viewerUserId} AND f."targetType" = 'PLAYER' AND f."targetId" = p.id
-      -- When this viewer last watched this clip. MediaView is an event log with
-      -- a row per viewing, so the *most recent* one is what the cooldown reads.
-      LEFT JOIN (
-        SELECT "mediaId", MAX("createdAt") AS "lastViewedAt"
-        FROM "MediaView"
-        WHERE "userId" = ${viewerUserId}
-        GROUP BY "mediaId"
-      ) mv ON mv."mediaId" = m.id
-      -- What share of this viewer's likes fell in each category. One pass over
-      -- their own likes, joined by category rather than per row.
-      --
-      -- Not moderation-filtered, deliberately: this reads the viewer's *own*
-      -- history to learn what they scout for, and a clip that was later blocked
-      -- still tells us they were watching finishing clips. Nothing about the clip
-      -- leaves the subquery — only a per-category proportion.
-      LEFT JOIN (
-        SELECT lm.category,
-               COUNT(*)::float / NULLIF(SUM(COUNT(*)) OVER (), 0) AS affinity
-        FROM "MediaLike" lk
-        JOIN "Media" lm ON lm.id = lk."mediaId"
-        WHERE lk."userId" = ${viewerUserId}
-        GROUP BY lm.category
-      ) aff ON aff.category = m.category
-      -- The moderation gate, in the one query that cannot express it in Prisma.
-      -- Kept alongside the status check rather than folded into it: they are
-      -- two different verdicts (the bytes arrived / a person watched them) and
-      -- a reader of this SQL should see both being demanded. PROCESSING counts
-      -- for the same reason it does in PUBLIC_MEDIA_WHERE — the optimised copy
-      -- overwrites the same key — and this must list what the count below counts.
-      WHERE m.status IN ('ACTIVE', 'PROCESSING', 'FAILED') AND m."moderationStatus" = 'VERIFIED'
-        AND m.type = 'VIDEO' AND u."isPrivate" = false
-      ORDER BY
-        ${FEED_WEIGHT_TERM} * ln(1 + COALESCE(w."globalWeight", 0))
-        + ${FEED_FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
-        -- "Something new from someone I follow" — the follow bonus only counts
-        -- twice while the clip is still unwatched.
-        + ${FEED_FOLLOWED_UNSEEN_TERM}
-          * (CASE WHEN f.id IS NOT NULL AND mv."lastViewedAt" IS NULL THEN 1 ELSE 0 END)
-        + ${FEED_AFFINITY_TERM} * COALESCE(aff.affinity, 0)
-        + ${FEED_LIKES_TERM} * ln(1 + COALESCE(l.likes, 0))
-        + ${FEED_FRESHNESS_TERM}
-          * exp(-EXTRACT(EPOCH FROM (now() - m."createdAt")) / ${FEED_HALF_LIFE_SECONDS})
-        -- Already watched: full penalty for the first hour, then decaying, so a
-        -- clip can resurface later without ever opening the feed.
-        - ${FEED_SEEN_PENALTY}
-          * (CASE
-               WHEN mv."lastViewedAt" IS NULL THEN 0
-               WHEN now() - mv."lastViewedAt"
-                    < make_interval(secs => ${FEED_SEEN_COOLDOWN_SECONDS}) THEN 1
-               ELSE exp(
-                 -(EXTRACT(EPOCH FROM (now() - mv."lastViewedAt")) - ${FEED_SEEN_COOLDOWN_SECONDS})
-                 / ${FEED_HALF_LIFE_SECONDS}
-               )
-             END)
-        -- Already liked: decided, and it stays decided.
-        - ${FEED_LIKED_PENALTY} * (CASE WHEN ml."userId" IS NULL THEN 0 ELSE 1 END)
-        DESC,
-        m."createdAt" DESC
+      WITH scored AS (
+        SELECT
+          m.id, m.type, m.category, m."storageKey", m."posterKey", m.rating, m."reportedBy",
+          m.title, m.description, m."createdAt",
+          p.id AS "playerId", p."firstName", p."lastName", p."birthDate",
+          p."primaryPosition", p.region,
+          u."avatarKey",
+          COALESCE(l.likes, 0)::int AS likes,
+          COALESCE(v.views, 0)::int AS views,
+          (ml."userId" IS NOT NULL) AS "likedByMe",
+          (f.id IS NOT NULL) AS following,
+          (mv."lastViewedAt" IS NOT NULL) AS "seenByMe",
+          (
+            -- Fresh: worth the most on the day of upload, gone within two weeks.
+            ${w.FRESH_TERM} * exp(-GREATEST(0, EXTRACT(EPOCH FROM (${since} - m."createdAt"))) / ${w.FRESH_DECAY_SECONDS})
+            -- Recent engagement: likes and views in the last seven days.
+            + ${w.VELOCITY_TERM} * ln(1 + COALESCE(lr.likes, 0) + ${w.VIEW_AS_LIKE} * COALESCE(vr.views, 0))
+            -- Engagement rate, smoothed: likes per view, never raw views.
+            + ${w.RATE_TERM} * LEAST(1, COALESCE(l.likes, 0)::float / (COALESCE(v.views, 0) + ${w.RATE_PRIOR_VIEWS}))
+            -- Lifetime likes, damped and weak.
+            + ${w.LIFETIME_LIKES_TERM} * ln(1 + COALESCE(l.likes, 0))
+            -- Scout-earned weight, damped.
+            + ${w.EARNED_TERM} * ln(1 + GREATEST(0, COALESCE(w."globalWeight", 0)))
+            -- How many people follow the player.
+            + ${w.POPULARITY_TERM} * ln(1 + COALESCE(fc.followers, 0))
+            + ${w.FOLLOW_TERM} * (CASE WHEN f.id IS NULL THEN 0 ELSE 1 END)
+            -- "Something new from someone I follow" — only while it is unwatched.
+            + ${w.FOLLOWED_UNSEEN_TERM}
+              * (CASE WHEN f.id IS NOT NULL AND mv."lastViewedAt" IS NULL THEN 1 ELSE 0 END)
+            + ${w.AFFINITY_TERM} * COALESCE(aff.affinity, 0)
+            -- Exploration: per-session noise in [0, 1), the same for the whole session.
+            + ${w.EXPLORE_TERM}
+              * ((('x' || substr(md5(m.id::text || ${seed}), 1, 8))::bit(32)::int) / 4294967296.0 + 0.5)
+            -- A clip few people have seen gets tested.
+            + ${w.UNDER_EXPOSED_TERM} * exp(-COALESCE(v.views, 0)::float / ${w.UNDER_EXPOSED_VIEWS})
+            -- Already watched: full penalty for the first hour, then decaying.
+            - ${w.SEEN_PENALTY}
+              * (CASE
+                   WHEN mv."lastViewedAt" IS NULL THEN 0
+                   WHEN ${since} - mv."lastViewedAt"
+                        < make_interval(secs => ${w.SEEN_COOLDOWN_SECONDS}) THEN 1
+                   ELSE exp(
+                     -(EXTRACT(EPOCH FROM (${since} - mv."lastViewedAt")) - ${w.SEEN_COOLDOWN_SECONDS})
+                     / ${w.SEEN_DECAY_SECONDS}
+                   )
+                 END)
+            -- Already liked: decided, and it stays decided.
+            - ${w.LIKED_PENALTY} * (CASE WHEN ml."userId" IS NULL THEN 0 ELSE 1 END)
+          ) AS score
+        FROM "Media" m
+        JOIN "PlayerProfile" p ON p.id = m."playerId"
+        JOIN "User" u ON u.id = p."userId"
+        LEFT JOIN "PlayerRecommendationWeight" w ON w."playerId" = p.id
+        -- Every count is as of the session's start, so pages agree with each other.
+        LEFT JOIN (
+          SELECT "mediaId", COUNT(*) AS likes FROM "MediaLike"
+          WHERE "createdAt" <= ${since} GROUP BY "mediaId"
+        ) l ON l."mediaId" = m.id
+        LEFT JOIN (
+          SELECT "mediaId", COUNT(*) AS views FROM "MediaView"
+          WHERE "createdAt" <= ${since} GROUP BY "mediaId"
+        ) v ON v."mediaId" = m.id
+        LEFT JOIN (
+          SELECT "mediaId", COUNT(*) AS likes FROM "MediaLike"
+          WHERE "createdAt" <= ${since}
+            AND "createdAt" > ${since} - make_interval(secs => ${w.RECENT_WINDOW_SECONDS})
+          GROUP BY "mediaId"
+        ) lr ON lr."mediaId" = m.id
+        LEFT JOIN (
+          SELECT "mediaId", COUNT(*) AS views FROM "MediaView"
+          WHERE "createdAt" <= ${since}
+            AND "createdAt" > ${since} - make_interval(secs => ${w.RECENT_WINDOW_SECONDS})
+          GROUP BY "mediaId"
+        ) vr ON vr."mediaId" = m.id
+        LEFT JOIN (
+          SELECT "targetId", COUNT(*) AS followers FROM "Follow"
+          WHERE "targetType" = 'PLAYER' AND "createdAt" <= ${since}
+          GROUP BY "targetId"
+        ) fc ON fc."targetId" = p.id
+        LEFT JOIN "MediaLike" ml
+          ON ml."mediaId" = m.id AND ml."userId" = ${viewerUserId} AND ml."createdAt" <= ${since}
+        LEFT JOIN "Follow" f
+          ON f."followerId" = ${viewerUserId} AND f."targetType" = 'PLAYER' AND f."targetId" = p.id
+        -- When this viewer last watched this clip before the session began.
+        LEFT JOIN (
+          SELECT "mediaId", MAX("createdAt") AS "lastViewedAt"
+          FROM "MediaView"
+          WHERE "userId" = ${viewerUserId} AND "createdAt" <= ${since}
+          GROUP BY "mediaId"
+        ) mv ON mv."mediaId" = m.id
+        -- What share of this viewer's likes fell in each category. Reads the
+        -- viewer's *own* history, unfiltered: a clip later blocked still says
+        -- they were watching finishing clips. Only a proportion leaves it.
+        LEFT JOIN (
+          SELECT lm.category,
+                 COUNT(*)::float / NULLIF(SUM(COUNT(*)) OVER (), 0) AS affinity
+          FROM "MediaLike" lk
+          JOIN "Media" lm ON lm.id = lk."mediaId"
+          WHERE lk."userId" = ${viewerUserId} AND lk."createdAt" <= ${since}
+          GROUP BY lm.category
+        ) aff ON aff.category = m.category
+        -- The moderation gate, in the one query that cannot express it in Prisma.
+        -- Two verdicts (the bytes arrived / a person watched them), both
+        -- demanded; PROCESSING counts for the same reason it does in
+        -- PUBLIC_MEDIA_WHERE, and this must list what the count below counts.
+        WHERE m.status IN ('ACTIVE', 'PROCESSING', 'FAILED') AND m."moderationStatus" = 'VERIFIED'
+          AND m.type = 'VIDEO' AND u."isPrivate" = false
+          AND m."createdAt" <= ${since}
+      ),
+      ranked AS (
+        SELECT scored.*,
+               ROW_NUMBER() OVER (PARTITION BY "playerId" ORDER BY score DESC, "createdAt" DESC, id) AS "playerRank"
+        FROM scored
+      )
+      SELECT * FROM ranked
+      -- Diversity: a player's second clip on the page steps down, the third two steps, up to the cap.
+      ORDER BY score - ${w.DIVERSITY_PENALTY} * LEAST("playerRank" - 1, ${w.DIVERSITY_MAX_STEPS}) DESC,
+               "createdAt" DESC, id
       LIMIT ${pageSize} OFFSET ${skip}
     `);
 
     const total = await this.prisma.media.count({
-      where: { ...PUBLIC_MEDIA_WHERE, type: 'VIDEO', player: { user: { isPrivate: false } } },
+      where: {
+        ...PUBLIC_MEDIA_WHERE,
+        type: 'VIDEO',
+        player: { user: { isPrivate: false } },
+        createdAt: { lte: since },
+      },
     });
 
     const items = await Promise.all(
@@ -828,6 +794,8 @@ export class MediaService {
           views,
           likedByMe,
           following,
+          seenByMe: _seenByMe,
+          playerRank: _playerRank,
           ...media
         }) => ({
           ...(await toMediaResponse(media, this.storage)),
@@ -848,7 +816,7 @@ export class MediaService {
       ),
     );
 
-    return { items, total, page, pageSize };
+    return { items, total, page, pageSize, seed, since: since.toISOString() };
   }
 
   /**
@@ -928,14 +896,6 @@ export class MediaService {
      */
     const nextCategory = dto.category ?? media.category;
     const categoryChanged = nextCategory !== media.category;
-    const nextIsAttribute = ATTRIBUTE_CATEGORIES.includes(nextCategory);
-    if (dto.rating !== undefined && !nextIsAttribute) {
-      throw new BadRequestException('Highlights are not evidence for a single attribute');
-    }
-    const nextRating = nextIsAttribute ? (dto.rating ?? media.rating) : null;
-    if (nextIsAttribute && nextRating === null) {
-      throw new BadRequestException('Rate the attribute this clip is evidence for');
-    }
 
     const updated = await this.prisma.media.update({
       where: { id: mediaId },
@@ -943,14 +903,11 @@ export class MediaService {
         ...(dto.title !== undefined ? { title: dto.title.trim() || null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
         ...(categoryChanged ? { category: nextCategory } : {}),
-        // A player editing their own clip is making a claim again, even if a
-        // coach had corrected it — so the source goes back to SELF and the
-        // coach's number is kept in the revision trail rather than silently lost.
-        // A re-filed clip is a new claim for the same reason: the coach's number
-        // was about the attribute it used to argue for.
-        ...(categoryChanged || dto.rating !== undefined
-          ? { rating: nextRating, reportedBy: 'SELF' as const }
-          : {}),
+        // A re-filed clip is a new claim: whoever rated it was rating the
+        // attribute it used to argue for, so the number goes with the old
+        // filing and the clip waits for a new one. `dto.rating` is ignored —
+        // players no longer rate their own clips.
+        ...(categoryChanged ? { rating: null, reportedBy: 'RELATIVE' as const } : {}),
       },
     });
     await this.redis.del(RedisKeys.playerProfile(profile.id));
@@ -998,20 +955,116 @@ export class MediaService {
           previousRating: media.rating,
           previousReportedBy: media.reportedBy,
           rating: dto.rating,
-          reportedBy: 'COACH',
+          reportedBy: 'VERIFIED',
           actorUserId: userId,
         },
       });
 
       return tx.media.update({
         where: { id: mediaId },
-        data: { rating: dto.rating, reportedBy: 'COACH' },
+        data: { rating: dto.rating, reportedBy: 'VERIFIED' },
       });
     });
 
     // The card and the bars are drawn from this player's cached profile.
     await this.redis.del(RedisKeys.playerProfile(media.playerId));
     return toMediaResponse(updated, this.storage);
+  }
+
+  /**
+   * The player disputes the rating on their clip.
+   *
+   * Only a rating somebody else put there can be appealed — a coach's or a
+   * moderator's — and only once at a time: a second appeal while the first
+   * is unanswered would be the same question twice. The appeal is read on
+   * /admin/moderation/appealed-rating and the decision comes back as a
+   * notification.
+   */
+  async appealRating(userId: string, mediaId: string, dto: AppealRatingDto) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({ where: { id: mediaId } });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) {
+      throw new ForbiddenException('You can only appeal the rating on your own clips');
+    }
+    if (!ATTRIBUTE_CATEGORIES.includes(media.category)) {
+      throw new BadRequestException('Highlights carry no rating to appeal');
+    }
+    // A coach's number is verified — it is the judgement the platform stands
+    // on, and there is nobody above a coach to appeal to. A moderator's is
+    // relative, and a super admin can look again.
+    if (media.rating === null || media.reportedBy !== 'RELATIVE') {
+      throw new BadRequestException(
+        media.rating === null
+          ? 'There is no rating to appeal yet'
+          : 'A coach’s rating is verified and cannot be appealed',
+      );
+    }
+    const pending = await this.prisma.ratingAppeal.findFirst({
+      where: { mediaId, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (pending) throw new ConflictException('This rating is already under appeal');
+
+    const appeal = await this.prisma.ratingAppeal.create({
+      data: {
+        mediaId,
+        playerId: profile.id,
+        reason: dto.reason.trim(),
+        ratingAtAppeal: media.rating,
+      },
+    });
+
+    // Only super admins answer appeals, so only they are told — in the app,
+    // and in the operator chat, which is where they actually look.
+    const name = `${profile.firstName} ${profile.lastName}`.trim();
+    const superAdmins = await this.prisma.user.findMany({
+      where: { isActive: true, roles: { some: { role: { name: 'super_admin' } } } },
+      select: { id: true },
+    });
+    await Promise.all(
+      superAdmins.map((admin) =>
+        this.notifications.notify(
+          admin.id,
+          'RATING_APPEAL_FILED',
+          {
+            appealId: appeal.id,
+            mediaId,
+            clipTitle: media.title,
+            category: media.category,
+            rating: media.rating,
+            playerId: profile.id,
+            playerName: name,
+            reason: appeal.reason,
+          },
+          { userId, role: 'player' },
+        ),
+      ),
+    );
+    void this.adminAlerts.announce({
+      kind: 'RATING_APPEALED',
+      name,
+      category: media.category,
+      rating: media.rating,
+      reason: appeal.reason,
+    });
+
+    return appeal;
+  }
+
+  /** The owner's latest appeal on a clip, or null — what the clip view shows. */
+  async latestAppeal(userId: string, mediaId: string) {
+    const profile = await this.ownPlayerProfile(userId);
+    const media = await this.prisma.media.findUnique({
+      where: { id: mediaId },
+      select: { playerId: true, status: true },
+    });
+    if (!media || media.status === 'REMOVED') throw new NotFoundException('Clip not found');
+    if (media.playerId !== profile.id) throw new ForbiddenException();
+    return this.prisma.ratingAppeal.findFirst({
+      where: { mediaId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   /**

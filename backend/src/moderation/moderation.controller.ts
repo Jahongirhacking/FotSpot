@@ -2,7 +2,15 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { ModerationService } from './moderation.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CreateReportDto, ListMediaDto, ResolveReportDto } from './dto/moderation.dto';
+import {
+  CreateReportDto,
+  ListAppealsDto,
+  ListMediaDto,
+  ModerateCategoryDto,
+  ModerateRatingDto,
+  ResolveAppealDto,
+  ResolveReportDto,
+} from './dto/moderation.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -141,5 +149,79 @@ export class ModerationController {
   @Delete('media/:id')
   deleteMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.moderationService.deleteMedia(user.userId, id);
+  }
+
+  /**
+   * Takes a live, verified clip down. Super admin only: the queue's Block is a
+   * first decision on something nobody has seen; this undoes a decision on
+   * something people have.
+   */
+  @Roles('super_admin')
+  @Patch('media/:id/block-active')
+  blockActiveMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.blockActiveMedia(user.userId, id);
+  }
+
+  /** Puts a blocked clip back on the public surfaces. Super admin only. */
+  @Roles('super_admin')
+  @Patch('media/:id/unblock')
+  unblockMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.unblockMedia(user.userId, id);
+  }
+
+  /** A flagged clip, cleared: back to ACTIVE. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/restore')
+  restoreFlaggedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.restoreFlaggedMedia(user.userId, id);
+  }
+
+  /** A flagged clip, taken down for good: REMOVED, row and trail kept. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/remove')
+  removeFlaggedMedia(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.moderationService.removeFlaggedMedia(user.userId, id);
+  }
+
+  // ---- Rating in review, and appeals ----
+
+  /** A moderator's rating on the clip under review; a clip cannot be verified without one. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/rating')
+  rateMedia(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ModerateRatingDto,
+  ) {
+    return this.moderationService.rateMedia(user.userId, id, dto);
+  }
+
+  /** Re-files the clip under the attribute the footage shows. */
+  @Roles('admin', 'super_admin')
+  @Patch('media/:id/category')
+  recategoriseMedia(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ModerateCategoryDto,
+  ) {
+    return this.moderationService.recategoriseMedia(user.userId, id, dto);
+  }
+
+  /** Players' appeals against ratings, pending first. Super admins alone answer them. */
+  @Roles('super_admin')
+  @Get('appeals')
+  listAppeals(@Query() dto: ListAppealsDto) {
+    return this.moderationService.listAppeals(dto);
+  }
+
+  /** Answers an appeal with a new rating or the same one, and tells the player. */
+  @Roles('super_admin')
+  @Patch('appeals/:id')
+  resolveAppeal(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ResolveAppealDto,
+  ) {
+    return this.moderationService.resolveAppeal(user.userId, id, dto);
   }
 }

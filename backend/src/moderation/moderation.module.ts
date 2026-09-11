@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
 import { ModerationController } from './moderation.controller';
 import { MediaModule } from '../media/media.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   // MediaModule for MediaFinaliserService — see ModerationService.retryFailedMedia.
-  imports: [MediaModule],
+  // Notifications: an answered appeal is told to the player.
+  imports: [MediaModule, NotificationsModule],
   controllers: [ModerationController],
   providers: [ModerationService],
   exports: [ModerationService],

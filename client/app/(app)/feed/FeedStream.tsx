@@ -13,7 +13,14 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { ShortViewer } from './ShortViewer';
-import { FEED_QUERY_KEY, FEED_RANKING_TTL_MS, patchFeedClip } from './feed-cache';
+import {
+  FEED_QUERY_KEY,
+  FEED_RANKING_TTL_MS,
+  nextFeedPageParam,
+  patchFeedClip,
+  uniqueClips,
+  type FeedPageParam,
+} from './feed-cache';
 import { ageBand, cn, initials } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
@@ -58,18 +65,35 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
      * appends regardless of freshness.
      */
     staleTime: FEED_RANKING_TTL_MS,
-    initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      browserFetch<FeedPage>(`/media/feed?page=${pageParam}&pageSize=${PAGE_SIZE}`),
-    getNextPageParam: (last) =>
-      last.page * last.pageSize < last.total ? last.page + 1 : undefined,
-    initialData: { pages: [initialPage], pageParams: [1] },
+    /*
+     * Every next page carries the session the first page was cut from (`seed`,
+     * `since`), so the server ranks page two on the same snapshot as page one
+     * and nothing shifts across the boundary. See feed-cache.ts.
+     */
+    initialPageParam: {
+      page: 1,
+      seed: initialPage.seed,
+      since: initialPage.since,
+    } as FeedPageParam,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({
+        page: String(pageParam.page),
+        pageSize: String(PAGE_SIZE),
+      });
+      if (pageParam.seed) params.set('seed', pageParam.seed);
+      if (pageParam.since) params.set('since', pageParam.since);
+      return browserFetch<FeedPage>(`/media/feed?${params}`);
+    },
+    getNextPageParam: nextFeedPageParam,
+    initialData: {
+      pages: [initialPage],
+      pageParams: [{ page: 1, seed: initialPage.seed, since: initialPage.since }],
+    },
   });
 
-  const clips = React.useMemo(
-    () => query.data?.pages.flatMap((page) => page.items) ?? [],
-    [query.data],
-  );
+  // Each clip once, whatever the pages say — a repeat would be two rows with
+  // one key, and a reader shown the same clip twice.
+  const clips = React.useMemo(() => uniqueClips(query.data?.pages), [query.data]);
 
   const { containerRef, start, end, offsets, totalSize, measureRef, centerIndex } = useWindowedList(
     { count: clips?.length, estimate: ROW_ESTIMATE },

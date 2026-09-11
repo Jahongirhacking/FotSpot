@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { Clock, RefreshCw, TriangleAlert, Video } from 'lucide-react';
+import { Check, Clock, RefreshCw, ShieldOff, Trash2, TriangleAlert, Video } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Media, MediaStatus, PendingClip } from '@/lib/api/types';
 import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
@@ -14,6 +14,14 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog';
 import { ageBand, formatDateTime, initials, relativeTime } from '@/lib/utils';
 
 /** Server-side bound on restarts; shown as "n / 3" so an admin knows when it gave up. */
@@ -45,11 +53,54 @@ const STATUS_TONE: Record<MediaStatus, 'info' | 'success' | 'warning' | 'danger'
  * queues the same job the upload queued, and the row stays PROCESSING until
  * that job answers. Nothing here can publish a clip whose file was never found.
  */
-export function StatusVideoList({ clips, canRetry }: { clips: PendingClip[]; canRetry: boolean }) {
+/** A second decision on a clip from a status list, each confirmed before it is sent. */
+type Move = 'block-active' | 'restore' | 'remove';
+
+export function StatusVideoList({
+  clips,
+  canRetry,
+  canBlock = false,
+  canModerateFlagged = false,
+}: {
+  clips: PendingClip[];
+  canRetry: boolean;
+  /** Super admin only: take a live, verified clip down. */
+  canBlock?: boolean;
+  /** Both admin roles: clear or finish a takedown on a flagged clip. */
+  canModerateFlagged?: boolean;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState<{ clip: PendingClip; move: Move } | null>(null);
+
+  const move = useMutation({
+    mutationFn: ({ id, move }: { id: string; move: Move }) =>
+      browserFetch<Media>(`/moderation/media/${id}/${move}`, { method: 'PATCH' }),
+    onSuccess: () => {
+      setError(null);
+      setNotice(null);
+      setPending(null);
+      // Server-rendered list: the server says what the row looks like now.
+      router.refresh();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const dialogText: Record<Move, { title: string; body: string; label: string }> = {
+    'block-active': {
+      title: t.admin.blockActiveTitle,
+      body: t.admin.blockActiveBody,
+      label: t.admin.blockActiveClip,
+    },
+    restore: {
+      title: t.admin.restoreTitle,
+      body: t.admin.restoreBody,
+      label: t.admin.makeActiveClip,
+    },
+    remove: { title: t.admin.removeTitle, body: t.admin.removeBody, label: t.admin.removeClip },
+  };
 
   const retry = useMutation({
     mutationFn: (id: string) =>
@@ -89,10 +140,49 @@ export function StatusVideoList({ clips, canRetry }: { clips: PendingClip[]; can
           key={clip.id}
           clip={clip}
           canRetry={canRetry}
-          busy={retry.isPending && retry.variables === clip.id}
+          canBlock={canBlock}
+          canModerateFlagged={canModerateFlagged}
+          busy={
+            (retry.isPending && retry.variables === clip.id) ||
+            (move.isPending && move.variables?.id === clip.id)
+          }
           onRetry={() => retry.mutate(clip.id)}
+          onMove={(next) => setPending({ clip, move: next })}
         />
       ))}
+
+      {/* One deliberate confirmation per move, stating what it does. */}
+      <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <DialogContent>
+          {pending && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {pending.move === 'restore' ? (
+                    <Check className="text-success size-5" aria-hidden />
+                  ) : (
+                    <ShieldOff className="text-danger size-5" aria-hidden />
+                  )}{' '}
+                  {dialogText[pending.move].title}
+                </DialogTitle>
+                <DialogDescription>{dialogText[pending.move].body}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setPending(null)}>
+                  {t.common.cancel}
+                </Button>
+                <Button
+                  variant={pending.move === 'restore' ? 'primary' : 'danger'}
+                  loading={move.isPending}
+                  onClick={() => move.mutate({ id: pending.clip.id, move: pending.move })}
+                >
+                  {dialogText[pending.move].label}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -100,13 +190,19 @@ export function StatusVideoList({ clips, canRetry }: { clips: PendingClip[]; can
 function StatusCard({
   clip,
   canRetry,
+  canBlock,
+  canModerateFlagged,
   busy,
   onRetry,
+  onMove,
 }: {
   clip: PendingClip;
   canRetry: boolean;
+  canBlock: boolean;
+  canModerateFlagged: boolean;
   busy: boolean;
   onRetry: () => void;
+  onMove: (move: Move) => void;
 }) {
   const { t } = useI18n();
   const attribute = CATEGORY_ATTRIBUTE[clip.category];
@@ -123,6 +219,10 @@ function StatusCard({
   // Offered for anything not yet confirmed: the API answers a live job with a
   // "still processing" 409, which is a better answer than a hidden button.
   const retryable = canRetry && (clip.status === 'FAILED' || clip.status === 'PROCESSING');
+  // Only a clip that is actually live can be taken down from here; an
+  // unverified ACTIVE one still belongs to the review queue.
+  const blockable = canBlock && clip.status === 'ACTIVE' && clip.moderationStatus === 'VERIFIED';
+  const flagged = canModerateFlagged && clip.status === 'FLAGGED';
 
   return (
     <Card className={stuck || clip.status === 'FAILED' ? 'border-warning/40' : undefined}>
@@ -181,6 +281,33 @@ function StatusCard({
             <Button size="sm" className="ml-auto" loading={busy} onClick={onRetry}>
               <RefreshCw aria-hidden /> {t.admin.retryProcessing}
             </Button>
+          )}
+          {blockable && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-danger ml-auto"
+              disabled={busy}
+              onClick={() => onMove('block-active')}
+            >
+              <ShieldOff aria-hidden /> {t.admin.blockActiveClip}
+            </Button>
+          )}
+          {flagged && (
+            <span className="ml-auto flex flex-wrap items-center gap-2">
+              <Button size="sm" disabled={busy} onClick={() => onMove('restore')}>
+                <Check aria-hidden /> {t.admin.makeActiveClip}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-danger"
+                disabled={busy}
+                onClick={() => onMove('remove')}
+              >
+                <Trash2 aria-hidden /> {t.admin.removeClip}
+              </Button>
+            </span>
           )}
         </div>
       </CardContent>

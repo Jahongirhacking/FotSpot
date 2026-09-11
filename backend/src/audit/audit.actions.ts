@@ -49,6 +49,8 @@ export const AuditAction = {
   TARIFF_PLAN_UPDATED: 'tariff_plan.updated',
   REPORT_RESOLVED: 'report.resolved',
   MEDIA_TAKEN_DOWN: 'media.taken_down',
+  /** An admin wrote to a user; the text is the notification, the id is here. */
+  ADMIN_MESSAGE_SENT: 'admin.message_sent',
   /**
    * The three video-moderation decisions (§1.7 review).
    *
@@ -60,9 +62,23 @@ export const AuditAction = {
    */
   MEDIA_VERIFIED: 'media.verified',
   MEDIA_BLOCKED: 'media.blocked',
+  /** A verified clip taken down by a super admin, after it had been live. */
+  MEDIA_BLOCKED_ACTIVE: 'media.blocked_active',
+  /** A blocked clip put back, by a super admin — a deliberate second act. */
+  MEDIA_UNBLOCKED: 'media.unblocked',
+  /** A flagged clip returned to the public surfaces. */
+  MEDIA_RESTORED: 'media.restored',
+  /** A flagged clip taken down for good, keeping its row and its trail. */
+  MEDIA_REMOVED: 'media.removed',
   MEDIA_DELETED: 'media.deleted',
   /** A super admin re-ran finalisation on an upload the worker had given up on. */
   MEDIA_RETRIED: 'media.retried',
+  /** A moderator put a rating on a clip, in review or on appeal. */
+  MEDIA_RATED_BY_ADMIN: 'media.rated_by_admin',
+  /** A moderator re-filed a clip under the attribute the footage actually shows. */
+  MEDIA_RECATEGORISED: 'media.recategorised',
+  /** A player's appeal against a rating was answered. */
+  RATING_APPEAL_RESOLVED: 'media.rating_appeal_resolved',
 
   // ---- Blog ----
   BLOG_POST_CREATED: 'blog.post_created',

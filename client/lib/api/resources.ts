@@ -65,6 +65,10 @@ import type {
   BlogSitemapEntry,
   BlogPostImage,
   BlogSpotlight,
+  AdminChat,
+  AppealedClip,
+  AdminMessage,
+  AdminMessageUser,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -765,6 +769,29 @@ export const admin = {
     opts: Opts = {},
   ) => apiFetch<Page<PendingClip>>(`/moderation/media${toQuery({ ...params })}`, opts),
 
+  // ---- Messages to users ----
+  sendMessage: (body: { recipientUserId: string; body: string }, opts: Opts = {}) =>
+    apiFetch<AdminMessage>('/admin/messages', { method: 'POST', body, ...opts }),
+  /** One row per person written to, newest first. */
+  listChats: (params: { page?: number; pageSize?: number } = {}, opts: Opts = {}) =>
+    apiFetch<Page<AdminChat>>(`/admin/messages/chats${toQuery({ ...params })}`, opts),
+  /** One person's thread, newest first. */
+  listThread: (
+    userId: string,
+    params: { page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) =>
+    apiFetch<Page<AdminMessage> & { user: AdminMessageUser }>(
+      `/admin/messages/chats/${userId}${toQuery({ ...params })}`,
+      opts,
+    ),
+
+  /** Players' appeals against ratings, pending by default. */
+  listAppeals: (
+    params: { status?: 'PENDING' | 'RESOLVED' | 'ALL'; page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<AppealedClip>>(`/moderation/appeals${toQuery({ ...params })}`, opts),
+
   /** How many videos sit in each processing status, for the filter chips. */
   mediaCounts: (opts: Opts = {}) =>
     apiFetch<Record<MediaStatusFilter, number>>('/moderation/media/counts', opts),
@@ -1213,8 +1240,11 @@ export const trials = {
   apply: (trialId: string, opts: Opts = {}) =>
     apiFetch<TrialApplication>(`/trials/${trialId}/apply`, { method: 'POST', ...opts }),
 
-  myApplications: (opts: Opts = {}) =>
-    apiFetch<TrialApplication[]>('/trials/applications/mine', opts),
+  /** The player's own applications, newest first, a page at a time; `trialId` narrows to one trial. */
+  myApplications: (
+    params: { page?: number; pageSize?: number; trialId?: string } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<TrialApplication>>(`/trials/applications/mine${toQuery({ ...params })}`, opts),
 
   /**
    * Manager: every private trial of the academy, open and archived, with the
@@ -1297,8 +1327,12 @@ export interface InvitePlayerBody {
 
 export const media = {
   /** One page of the ranked feed. Personalised, so never cached. */
-  feed: (page: number, pageSize: number, opts: Opts = {}) =>
-    apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize })}`, opts),
+  feed: (
+    page: number,
+    pageSize: number,
+    opts: Opts = {},
+    session: { seed?: string; since?: string } = {},
+  ) => apiFetch<FeedPage>(`/media/feed${toQuery({ page, pageSize, ...session })}`, opts),
 
   suggestedPlayers: (limit: number, opts: Opts = {}) =>
     apiFetch<SuggestedPlayer[]>(`/media/feed/suggested-players${toQuery({ limit })}`, opts),

@@ -54,6 +54,47 @@ export function patchFeedPages(
   };
 }
 
+/**
+ * One page-fetch address: the page number plus the session the order belongs to.
+ *
+ * The snapshot (`seed`, `since`) comes from the first page and rides along on
+ * every next one, so the server cuts each page from the same order. A cache
+ * from before the snapshot existed carries neither, and the server then starts
+ * a session per page — which the dedupe below still keeps honest.
+ */
+export interface FeedPageParam {
+  page: number;
+  seed?: string;
+  since?: string;
+}
+
+/** The address of the page after `last`, or undefined at the end. */
+export function nextFeedPageParam(last: FeedPage): FeedPageParam | undefined {
+  if (last.page * last.pageSize >= last.total) return undefined;
+  return { page: last.page + 1, seed: last.seed, since: last.since };
+}
+
+/**
+ * The loaded pages as one list, each clip once.
+ *
+ * Offsets over a live order can hand the same clip back on two pages: the
+ * snapshot above is what stops the order moving, and this is the belt to its
+ * braces. First occurrence wins, so a clip keeps the position the reader saw
+ * it in, and later pages simply lose the repeat.
+ */
+export function uniqueClips(pages: readonly FeedPage[] | undefined): FeedClip[] {
+  const seen = new Set<string>();
+  const out: FeedClip[] = [];
+  for (const page of pages ?? []) {
+    for (const clip of page.items) {
+      if (seen.has(clip.id)) continue;
+      seen.add(clip.id);
+      out.push(clip);
+    }
+  }
+  return out;
+}
+
 /** `patchFeedPages` applied to the live cache. */
 export function patchFeedClip(
   queryClient: QueryClient,

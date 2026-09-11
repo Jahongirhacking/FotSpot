@@ -737,9 +737,22 @@ export const uz = {
 
   clips: {
     coachRating: 'Murabbiy bahosi',
-    ratedBySelf: 'Hozircha o‘yinchining o‘z bahosi.',
     ratedByCoach: 'Bu bahoni murabbiy qo‘ygan.',
     saveRating: 'Bahoni saqlash',
+    ratedByAdmin:
+      'Bu bahoni tekshiruvda moderator qo‘ygan. Murabbiy baholamaguncha u nisbiy hisoblanadi.',
+    ratedByOthersHint:
+      'O‘z videongizga o‘zingiz baho qo‘ymaysiz. Siz bilan ishlaydigan murabbiy yoki tekshiruvdagi moderator baho qo‘yadi — unga e’tiroz bildirishingiz mumkin.',
+    refileDropsRating:
+      'Videoni boshqa ko‘nikma ostiga o‘tkazsangiz bahosi o‘chadi; u qayta baholanadi.',
+    appealRating: 'Bahoga e’tiroz',
+    appealPending: 'E’tiroz ko‘rilmoqda',
+    appealTitle: 'Bu bahoga e’tiroz bildirish',
+    appealHint:
+      'Nega baho noto‘g‘ri ekanini yozing. Moderator videoni qayta ko‘rib, shu yerda javob beradi.',
+    appealReason: 'Sabab',
+    appealPlaceholder: 'Agar sizga berilgan reytingdan norozi bo‘lsangiz, sababini yozing...',
+    appealSend: 'E’tiroz yuborish',
     noStorageOrigin:
       'Serverda media saqlash sozlanmagan, shuning uchun bu lavha hozircha ijro etilmaydi. Lavhaning o‘zi saqlangan.',
     pause: 'Pauza',
@@ -913,6 +926,9 @@ export const uz = {
     measured: 'O‘lchangan',
     verifiedShort: 'Tasdiq',
     selfShort: 'O‘zi',
+    relativeRated: 'Nisbiy — tekshiruvda baholangan, murabbiy hali tasdiqlamagan',
+    relativeShort: 'Nisbiy',
+    barValue: '100 dan {value}, {source}',
     noDataYet: 'Hali ma’lumot yo‘q',
     comparedWithin: 'Ustunlar faqat {band} ichida taqqoslanadi — yosh guruhlari o‘rtasida emas.',
     follow: 'Kuzatish',
@@ -1330,6 +1346,12 @@ export const uz = {
     candidacyClosed: 'Tarkibga nomzodlik yopildi',
     applicationClosed: 'Akademiya arizangizni yopdi',
     verificationResult: 'Tasdiqlash yangiligi',
+    adminMessage: 'FotSpotdan xabar',
+    ratingAppealResolved: 'E’tirozingizga javob berildi',
+    ratingAppealChanged: 'E’tirozingizdan so‘ng baho {from} dan {to} ga o‘zgardi',
+    ratingAppealKept: 'E’tirozingizdan so‘ng baho {rating} da qoldirildi',
+    ratingAppealFiled: 'Bahoga e’tiroz bildirildi',
+    ratingAppealFiledBy: '{name} {rating} bahoga e’tiroz bildirdi',
   },
 
   dashboard: {
@@ -1674,7 +1696,65 @@ export const uz = {
     clipBlocked: 'Video bloklandi.',
     clipDeleted: 'Video butunlay o‘chirildi.',
 
+    /* Tekshiruvdagi baho va e’tirozlar. */
+    attributeLabel: 'Ko‘rsatilgan ko‘nikma',
+    attributeHint: 'Videoda aslida nima ko‘rinadi. Qayta joylash bahoni o‘chiradi.',
+    moderationRating: 'Baho',
+    highlightsNoRating: 'Eng sara lahzalar bahosiz — shundayligicha tasdiqlang yoki bloklang.',
+    verifyNeedsRating: 'Tasdiqlashdan oldin baho saqlang.',
+    ratingSaved: 'Baho saqlandi.',
+    ratingUnsaved: 'Hali saqlanmadi.',
+    appealedRatings: 'E’tirozli baholar',
+    appealedRatingsHint:
+      'Videosidagi baho noto‘g‘ri deyayotgan futbolchilar. Qayta ko‘ring, keyin bahoni qoldiring yoki yangisini saqlang; ular har holda xabardor qilinadi.',
+    appealsPending: 'Kutilmoqda',
+    appealsResolved: 'Javob berilgan',
+    appealsSuperAdminOnly:
+      'E’tirozlarga faqat super admin javob beradi — ular admin qo‘ygan bahoga e’tirozlar.',
+    noAppeals: 'Bu yerda e’tiroz yo‘q.',
+    noAppealsHint: 'Futbolchi o‘z videosi oynasidan bahoga e’tiroz bildira oladi.',
+    appealReason: 'Futbolchi yozadi',
+    ratingAtAppeal: 'baho',
+    currentRating: 'Joriy baho',
+    newRating: 'Yangi baho',
+    decisionNote: 'Futbolchiga izoh',
+    keepRating: 'Bahoni qoldirish',
+    saveNewRating: 'Yangi bahoni saqlash',
+    decisionChanged: 'O‘zgardi:',
+    decisionKept: 'Qoldirildi:',
     blockedVideos: 'Bloklangan videolar',
+    /* Holat ro‘yxatlaridagi ikkinchi qarorlar. */
+    blockActiveClip: 'Bloklash',
+    blockActiveTitle: 'Bu jonli video bloklansinmi?',
+    blockActiveBody:
+      'U darhol barcha ochiq joylardan — lenta, profil, qidiruv — chiqib ketadi. Qaytarish faqat super adminning qo‘lida.',
+    makeActiveClip: 'Faollashtirish',
+    unblockTitle: 'Bu video qaytarilsinmi?',
+    unblockBody: 'U lentaga va profilga avvalgidek qaytadi. Blok audit izida qoladi.',
+    restoreTitle: 'Bu videodagi belgi olib tashlansinmi?',
+    restoreBody: 'U lentaga va profilga qaytadi. Belgi audit izida qoladi.',
+    removeClip: 'Olib tashlash',
+    removeTitle: 'Bu video olib tashlansinmi?',
+    removeBody:
+      'U butunlay olib tashlanadi: yozuv va tarixi hisob uchun qoladi, futbolchi uni qaytara olmaydi.',
+    /* Admin chati: foydalanuvchilarga xabarlar, bildirishnoma sifatida yetadi. */
+    chatTitle: 'Xabarlar',
+    chatOpen: 'Foydalanuvchiga yozish',
+    chatHistory: 'Tarix',
+    chatNew: 'Yangi chat',
+    chatHistoryHint: 'Jamoa yozgan barcha odamlar, eng yangisi birinchi.',
+    chatNewHint: 'Odam uni ilovada bildirishnoma sifatida, ulangan bo‘lsa Telegramda ham oladi.',
+    chatPickUser: 'Kimga?',
+    chatPickUserPlaceholder: 'Ism, email yoki username bo‘yicha qidiring…',
+    chatMessage: 'Xabar',
+    chatMessagePlaceholder: 'Xabarni yozing…',
+    chatSend: 'Yuborish',
+    chatSent: 'Yuborildi',
+    chatNoHistory: 'Hali hech kimga yozilmagan.',
+    chatMessages: '{count} ta xabar',
+    chatBack: 'Barcha chatlar',
+    chatOlder: 'Eskiroq',
+    chatNewer: 'Yangiroq',
     blockedVideosHint:
       'Administratorlar bloklagan videolar. Ular hech kimga ko‘rinmaydi, lekin moderatsiya tarixi uchun saqlanadi. Faqat super administrator ularni butunlay o‘chira oladi.',
     noBlockedVideos: 'Bloklangan video yo‘q.',

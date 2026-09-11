@@ -298,6 +298,28 @@ does not appear.
   clip is verified it is served to exactly one account, its uploader, and signed
   for fifteen minutes rather than seven days so a block takes effect when it is
   pressed.
+- **Rating in review, and appeals**: a player no longer rates their own clip —
+  uploads land with `rating = null` (a `rating` in the confirm body is accepted
+  and ignored for older apps) and the number is put on by a coach or, in the
+  queue, by a moderator. `RatingSource` has two values: `VERIFIED` (a coach's
+  number) and `RELATIVE` (a moderator's, from `PATCH /moderation/media/:id/rating`
+  in review or after an appeal); the migration that retired `SELF` turned every
+  old self rating into `RELATIVE`. `…/category` re-files a clip under the skill
+  the footage actually shows, dropping any rating. On the card
+  (`card-stars.util.ts`) each skill shows the newest **verified** clip by the day
+  it was filmed, and the newest clip of any kind only when no coach has rated
+  that skill; a verified number counts in full and a relative one for half, the
+  weight a self rating used to carry. A player's clips are listed by
+  `recordedAt` desc everywhere (`MEDIA_ORDER`), upload time breaking ties.
+  The player can dispute a **relative** rating once per open case — a coach's
+  verified number is not appealable: `POST /media/:id/appeal` files a
+  `RatingAppeal` (PENDING; 409 while one is open) and tells every active super
+  admin (`RATING_APPEAL_FILED` in-app, plus a `#rating_appeal` operator alert
+  to `TELEGRAM_ADMIN_CHAT_ID`); `GET /media/:id/appeal` reads it back. Only a
+  **super admin** answers, from `GET /moderation/appeals` with
+  `PATCH /moderation/appeals/:id` — an optional new rating and a note — which
+  resolves it and sends the player a `RATING_APPEAL_RESOLVED` notification
+  saying whether the number changed.
 - **Blog** (`blog/`): public `GET /blog/home|posts|categories|posts/:slug|sitemap`
   return published posts only; drafts 404 everywhere. Posts are Markdown,
   rendered to sanitised HTML on save (`blog-markdown.util.ts`), with a slug made
@@ -314,6 +336,19 @@ does not appear.
   sidebar — age band, never a birth date. `/blog/admin/*` is
   `admin`/`super_admin` only: drafts, publish/unpublish (the first publish date
   is kept), categories, and presigned cover/OG uploads under `public/blog/<post>/`.
+- **Second decisions on clips** (1.13): the queue's verify/block are first
+  decisions and stay terminal. From the status lists an admin may `restore` a
+  FLAGGED clip to ACTIVE or `remove` it (REMOVED, row and trail kept), and a
+  super admin may `block-active` a live verified clip or `unblock` a blocked
+  one (`PATCH /moderation/media/:id/{restore,remove,block-active,unblock}`).
+  Each is conditional on the row still being in the state the admin saw and
+  audited under its own key.
+- **Messages to users** (`POST /admin/messages`, `GET /admin/messages/chats`,
+  `GET /admin/messages/chats/:userId`): an admin writes to one user; the user
+  receives it as an `ADMIN_MESSAGE` notification (in-app, socket, Telegram if
+  linked). One-way by design — replies come through support requests. The
+  history is one row per recipient with the last message and a count, paged;
+  the client shows it from a floating button for accounts acting as admin.
 - **Admin vs Super Admin** (1.2): `admin`/`super_admin`-gated routes;
   plain admins can verify coaches/academies/moderate/view audit logs but
   cannot create admins or manage roles/permissions — only `super_admin` can.

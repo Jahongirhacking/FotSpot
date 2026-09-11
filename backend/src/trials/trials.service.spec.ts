@@ -1249,3 +1249,44 @@ describe('TrialsService.apply — who the trial is for', () => {
     expect(prisma.trialApplication.upsert).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('TrialsService.listMyApplications — a page, not the lot', () => {
+  it('pages the player’s own applications newest first, five at a time when asked', async () => {
+    const { service, prisma } = build();
+    prisma.playerProfile.findUnique.mockResolvedValueOnce({ id: 'player-1' } as never);
+    prisma.trialApplication.findMany.mockResolvedValueOnce([{ id: 'app-1' }] as never);
+    prisma.trialApplication.count.mockResolvedValueOnce(7);
+
+    const page = await service.listMyApplications('user-1', { page: 2, pageSize: 5 });
+
+    expect(prisma.trialApplication.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { playerId: 'player-1' },
+        orderBy: { createdAt: 'desc' },
+        skip: 5,
+        take: 5,
+      }),
+    );
+    expect(page).toEqual({ items: [{ id: 'app-1' }], total: 7, page: 2, pageSize: 5 });
+  });
+
+  it('narrows to one trial when the trial page asks whether this player applied', async () => {
+    const { service, prisma } = build();
+    prisma.playerProfile.findUnique.mockResolvedValueOnce({ id: 'player-1' } as never);
+
+    await service.listMyApplications('user-1', { trialId: 'trial-9', pageSize: 1 });
+
+    expect(prisma.trialApplication.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { playerId: 'player-1', trialId: 'trial-9' }, take: 1 }),
+    );
+    expect(prisma.trialApplication.count).toHaveBeenCalledWith({
+      where: { playerId: 'player-1', trialId: 'trial-9' },
+    });
+  });
+
+  it('refuses an account with no player profile', async () => {
+    const { service, prisma } = build();
+    prisma.playerProfile.findUnique.mockResolvedValueOnce(null as never);
+    await expect(service.listMyApplications('user-1')).rejects.toMatchObject({ status: 403 });
+  });
+});

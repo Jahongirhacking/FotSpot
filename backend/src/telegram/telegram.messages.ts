@@ -136,6 +136,14 @@ export type AdminAlert =
   | { kind: 'SCOUT_SIGNED_UP'; name: string; region?: string | null }
   | { kind: 'CLIP_UPLOADED'; name: string; category: string; title?: string | null }
   | {
+      /** A player appealed a moderator's relative rating; only a super admin can answer. */
+      kind: 'RATING_APPEALED';
+      name: string;
+      category: string;
+      rating: number;
+      reason: string;
+    }
+  | {
       /** A player accepted an academy's squad invitation and is now on its books. */
       kind: 'PLAYER_JOINED_ACADEMY';
       name: string;
@@ -189,6 +197,8 @@ export function adminAlertMessage(alert: AdminAlert): string {
       const what = alert.title ? `\n${escapeHtml(alert.title)}` : '';
       return `#new_clip\n🎬 Yangi video: ${name} — ${escapeHtml(alert.category)}${what}`;
     }
+    case 'RATING_APPEALED':
+      return `#rating_appeal\n⚖️ Bahoga e'tiroz: ${name} — ${escapeHtml(alert.category)} (${alert.rating})\n${escapeHtml(alert.reason)}`;
     case 'PLAYER_JOINED_ACADEMY':
       return `#new_signing\n🤝 ${name} ${escapeHtml(alert.academy)} akademiyasiga qo'shildi`;
     case 'TRIAL_CREATED': {

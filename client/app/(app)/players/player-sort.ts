@@ -30,8 +30,8 @@ export type SortOrder = 'asc' | 'desc';
  * Stars rank highest-first (`PlayersService.searchByStars`); every column sort
  * runs ascending (`searchOrderBy`).
  */
-export function defaultOrderFor(choice: string): SortOrder {
-  return choice === 'stars' ? 'desc' : 'asc';
+export function defaultOrderFor(choice: PlayerSortChoice): SortOrder {
+  return choice === 'stars' || choice === 'recommendations' ? 'desc' : 'asc';
 }
 
 export interface ResolvedPlayerSort {

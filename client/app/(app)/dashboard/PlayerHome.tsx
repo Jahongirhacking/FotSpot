@@ -13,12 +13,24 @@ import { interpolate, type Dictionary } from '@/lib/i18n';
 import { cardCompletion } from '@/lib/player-card';
 import { CalendarDays, Sparkles, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
+import { Pagination } from '@/components/shared/Pagination';
 
 /**
  * The player's home screen IS their card (README §21.6) — not a subpage, not a feed.
  * A Server Component: all of this is known at request time.
  */
-export async function PlayerHome({ token, t }: { token: string; t: Dictionary }) {
+/** Enough trials to see where things stand; the rest is a page away. */
+const TRIALS_PAGE_SIZE = 5;
+
+export async function PlayerHome({
+  token,
+  t,
+  trialsPage = 1,
+}: {
+  token: string;
+  t: Dictionary;
+  trialsPage?: number;
+}) {
   let profile: PlayerProfile | null = null;
   try {
     profile = await players?.getMine({ token, cache: 'no-store' });
@@ -60,7 +72,14 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
           .then((p) => p.items),
       [],
     ),
-    safe(() => trials?.myApplications({ token, cache: 'no-store' }), []),
+    safe(
+      () =>
+        trials?.myApplications(
+          { page: trialsPage, pageSize: TRIALS_PAGE_SIZE },
+          { token, cache: 'no-store' },
+        ),
+      { items: [], total: 0, page: trialsPage, pageSize: TRIALS_PAGE_SIZE },
+    ),
     safe(() => trials?.listUpcoming({}, { revalidate: 300 }), []),
   ]);
   // A clip that failed to process is not a clip the player has. Counted from the
@@ -143,7 +162,7 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {applications?.length === 0 ? (
+            {applications.items.length === 0 ? (
               <>
                 <p className="text-muted text-sm">{t.trials.noApplications}</p>
                 <Button asChild variant="outline" size="sm" className="w-full">
@@ -153,24 +172,32 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
                 </Button>
               </>
             ) : (
-              <ul className="space-y-2">
-                {applications?.slice(0, 5).map((application) => (
-                  <li
-                    key={application?.id}
-                    className="flex items-center justify-between gap-2 text-sm"
-                  >
-                    <Link
-                      href={`/trials/${application?.trialId}`}
-                      className="truncate hover:underline"
+              <>
+                <ul className="space-y-2">
+                  {applications.items.map((application) => (
+                    <li
+                      key={application?.id}
+                      className="flex items-center justify-between gap-2 text-sm"
                     >
-                      {titleFor(application, upcoming, t.trials.trial)}
-                    </Link>
-                    <Badge variant={statusTone(application?.status)}>
-                      {application?.status.toLowerCase()}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+                      <Link
+                        href={`/trials/${application?.trialId}`}
+                        className="truncate hover:underline"
+                      >
+                        {titleFor(application, upcoming, t.trials.trial)}
+                      </Link>
+                      <Badge variant={statusTone(application?.status)}>
+                        {statusLabel(application?.status, t)}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+                <Pagination
+                  page={applications.page}
+                  pageSize={applications.pageSize}
+                  total={applications.total}
+                  param="trialsPage"
+                />
+              </>
             )}
           </CardContent>
         </Card>
@@ -186,14 +213,55 @@ export async function PlayerHome({ token, t }: { token: string; t: Dictionary })
 }
 
 function titleFor(application: TrialApplication, upcoming: Trial[], fallback: string) {
-  return upcoming.find((trial) => trial?.id === application?.trialId)?.title ?? fallback;
+  return (
+    application?.trial?.title ??
+    upcoming.find((trial) => trial?.id === application?.trialId)?.title ??
+    fallback
+  );
 }
 
+/** The same words the academy's applicant list uses for each status. */
+function statusLabel(status: TrialApplication['status'], t: Dictionary) {
+  switch (status) {
+    case 'APPLIED':
+      return t.trials.statusApplied;
+    case 'INVITED':
+      return t.trials.statusInvited;
+    case 'CONFIRMED':
+      return t.trials.statusConfirmed;
+    case 'PASSED':
+      return t.trials.statusPassed;
+    case 'FAILED':
+      return t.trials.statusFailed;
+    case 'REJECTED':
+      return t.trials.statusRejected;
+    case 'ACCEPTED':
+      return t.trials.statusAccepted;
+    default:
+      return status;
+  }
+}
+
+/** One colour per outcome, so a glance tells applied from passed from failed. */
 function statusTone(status: TrialApplication['status']) {
-  if (status === 'ACCEPTED') return 'success' as const;
-  if (status === 'REJECTED') return 'danger' as const;
-  if (status === 'INVITED') return 'primary' as const;
-  return 'neutral' as const;
+  switch (status) {
+    case 'APPLIED':
+      return 'info' as const;
+    case 'INVITED':
+      return 'primary' as const;
+    case 'CONFIRMED':
+      return 'warning' as const;
+    case 'PASSED':
+      return 'success' as const;
+    case 'ACCEPTED':
+      return 'accent' as const;
+    case 'FAILED':
+      return 'danger' as const;
+    case 'REJECTED':
+      return 'outline' as const;
+    default:
+      return 'neutral' as const;
+  }
 }
 
 /** Dashboard widgets degrade individually — one failing panel must not blank the page. */
