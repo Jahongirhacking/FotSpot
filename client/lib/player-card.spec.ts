@@ -4,8 +4,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { Media } from './api/types';
-import { attributeHistory, claimDate, countsTowardsRating, currentClaim } from './player-card';
+import type { Media, PlayerProfile } from './api/types';
+import {
+  attributeHistory,
+  cardEvidence,
+  claimDate,
+  countsTowardsRating,
+  currentClaim,
+  deriveAttributes,
+  sortClipsNewestFilmed,
+} from './player-card';
 
 const clip = (overrides: Partial<Media>): Media =>
   ({
@@ -73,4 +81,89 @@ test('a clip that does not say when it was filmed is dated by its upload', () =>
     claimDate(clip({ createdAt: '2026-09-01T00:00:00.000Z' })),
     '2026-09-01T00:00:00.000Z',
   );
+});
+
+const at = (day: string) => `2026-${day}T00:00:00.000Z`;
+const rated = (
+  category: Media['category'],
+  rating: number,
+  reportedBy: 'VERIFIED' | 'RELATIVE',
+  recordedAt: string,
+  createdAt = recordedAt,
+) => clip({ id: `${category}-${rating}`, category, rating, reportedBy, recordedAt, createdAt });
+
+// The brief's example, newest filmed first.
+const BOARD = [
+  rated('DRIBBLING', 40, 'RELATIVE', at('05-05')),
+  rated('PACE', 70, 'VERIFIED', at('05-04')),
+  rated('DRIBBLING', 30, 'VERIFIED', at('05-03')),
+  rated('FINISHING', 60, 'RELATIVE', at('05-02')),
+  rated('PACE', 80, 'VERIFIED', at('05-01')),
+];
+const player = { media: [] } as unknown as PlayerProfile;
+
+test('a bar shows the newest verified clip, and the newest of any kind only when no coach rated the skill', () => {
+  assert.deepEqual(
+    ['dribbling', 'finishing', 'pace', 'passing'].map(
+      (key) => currentClaim(BOARD, key as 'dribbling')?.rating ?? null,
+    ),
+    [30, 60, 70, null],
+  );
+  const bars = Object.fromEntries(
+    deriveAttributes(player, [], BOARD).map((bar) => [bar.key, [bar.value, bar.provenance]]),
+  );
+  assert.deepEqual(bars.dribbling, [30, 'coach']);
+  assert.deepEqual(bars.finishing, [60, 'relative']);
+  assert.deepEqual(bars.pace, [70, 'coach']);
+  assert.deepEqual(bars.passing, [null, 'none']);
+});
+
+test('"newest" is the day filmed, upload breaking a tie', () => {
+  const clips = [
+    rated('PACE', 90, 'VERIFIED', at('01-01'), at('09-01')),
+    rated('PACE', 50, 'VERIFIED', at('06-01')),
+    rated('PACE', 55, 'VERIFIED', at('06-01'), '2026-06-01T12:00:00.000Z'),
+  ];
+  assert.equal(currentClaim(clips, 'pace')?.rating, 55);
+});
+
+test('every tab lists clips by the day filmed, newest first', () => {
+  const ids = sortClipsNewestFilmed([
+    clip({ id: 'uploaded-last', recordedAt: at('03-01'), createdAt: at('09-01') }),
+    clip({ id: 'filmed-last', recordedAt: at('08-01'), createdAt: at('08-02') }),
+    clip({
+      id: 'highlight',
+      category: 'MATCH_HIGHLIGHTS',
+      recordedAt: at('05-01'),
+      createdAt: at('05-01'),
+    }),
+  ]).map((row) => row.id);
+  assert.deepEqual(ids, ['filmed-last', 'highlight', 'uploaded-last']);
+});
+
+test('stars: a verified rating counts in full, a relative one for half, from the clips the board shows', () => {
+  const verified = cardEvidence(player, [], [rated('PACE', 100, 'VERIFIED', at('01-01'))]).stars;
+  const relative = cardEvidence(player, [], [rated('PACE', 100, 'RELATIVE', at('01-01'))]).stars;
+  assert.equal(verified, Math.round((100 / 600) * 5));
+  assert.equal(relative, Math.round((50 / 600) * 5));
+
+  // Dribbling: the verified 30 counts, not half of the newer relative 40.
+  const board = cardEvidence(player, [], BOARD);
+  const same = cardEvidence(
+    player,
+    [],
+    [
+      rated('DRIBBLING', 30, 'VERIFIED', at('05-03')),
+      rated('PACE', 70, 'VERIFIED', at('05-04')),
+      rated('FINISHING', 60, 'RELATIVE', at('05-02')),
+    ],
+  );
+  assert.equal(board.stars, same.stars);
+});
+
+test('a formal assessment stands in for a relative number, not for a verified one', () => {
+  const assessed = [{ id: 'a1', playerId: 'player-1', speed: 10, createdAt: at('05-01') }] as never;
+  const relative = cardEvidence(player, assessed, [rated('PACE', 40, 'RELATIVE', at('01-01'))]);
+  const verified = cardEvidence(player, assessed, [rated('PACE', 40, 'VERIFIED', at('01-01'))]);
+  assert.ok(relative.stars >= verified.stars);
 });

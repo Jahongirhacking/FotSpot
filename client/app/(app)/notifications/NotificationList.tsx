@@ -240,6 +240,21 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
             : undefined,
       toneFor: (payload) => (payload?.changed === true ? 'text-success' : undefined),
     },
+    // A player appealed a moderator's relative rating; only a super admin
+    // sees this, and it takes them to the queue that answers it.
+    RATING_APPEAL_FILED: {
+      icon: Scale,
+      title: t.notifications.ratingAppealFiled,
+      tone: 'text-warning',
+      href: '/admin/moderation/appealed-rating',
+      titleFor: (payload) =>
+        payload?.playerName
+          ? f(t.notifications.ratingAppealFiledBy, {
+              name: String(payload.playerName),
+              rating: String(payload?.rating ?? '—'),
+            })
+          : undefined,
+    },
   };
 
   const queryClient = useQueryClient();

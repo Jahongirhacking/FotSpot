@@ -117,10 +117,10 @@ export interface Media {
   /** The 0–100 rating this clip evidences. Null for highlights. */
   rating?: number | null;
   /**
-   * Who put `rating` there. A player's number is a claim; a coach watching the
-   * same clip can replace it, and then it is evidence (§1.6).
+   * Who put `rating` there: a coach (VERIFIED) or a moderator in review or
+   * after an appeal (RELATIVE). Players do not rate their own clips.
    */
-  reportedBy?: 'SELF' | 'COACH' | 'ADMIN';
+  reportedBy?: 'VERIFIED' | 'RELATIVE';
   /**
    * Permanent URL of the video. Null only when the server has no public storage
    * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
@@ -301,9 +301,9 @@ export interface RatingRevision {
   id: string;
   mediaId: string;
   previousRating: number | null;
-  previousReportedBy: 'SELF' | 'COACH';
+  previousReportedBy: 'VERIFIED' | 'RELATIVE';
   rating: number;
-  reportedBy: 'SELF' | 'COACH' | 'ADMIN';
+  reportedBy: 'VERIFIED' | 'RELATIVE';
   actorUserId: string;
   createdAt: string;
 }
@@ -1074,7 +1074,8 @@ export type NotificationEvent =
   | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT'
   | 'ADMIN_MESSAGE'
-  | 'RATING_APPEAL_RESOLVED';
+  | 'RATING_APPEAL_RESOLVED'
+  | 'RATING_APPEAL_FILED';
 
 /** A player's appeal against the rating on one of their clips. */
 export interface RatingAppeal {

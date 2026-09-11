@@ -737,10 +737,10 @@ export const uz = {
 
   clips: {
     coachRating: 'Murabbiy bahosi',
-    ratedBySelf: 'Hozircha o‘yinchining o‘z bahosi.',
     ratedByCoach: 'Bu bahoni murabbiy qo‘ygan.',
     saveRating: 'Bahoni saqlash',
-    ratedByAdmin: 'Bu bahoni moderator qo‘ygan.',
+    ratedByAdmin:
+      'Bu bahoni tekshiruvda moderator qo‘ygan. Murabbiy baholamaguncha u nisbiy hisoblanadi.',
     ratedByOthersHint:
       'O‘z videongizga o‘zingiz baho qo‘ymaysiz. Siz bilan ishlaydigan murabbiy yoki tekshiruvdagi moderator baho qo‘yadi — unga e’tiroz bildirishingiz mumkin.',
     refileDropsRating:
@@ -1347,6 +1347,8 @@ export const uz = {
     ratingAppealResolved: 'E’tirozingizga javob berildi',
     ratingAppealChanged: 'E’tirozingizdan so‘ng baho {from} dan {to} ga o‘zgardi',
     ratingAppealKept: 'E’tirozingizdan so‘ng baho {rating} da qoldirildi',
+    ratingAppealFiled: 'Bahoga e’tiroz bildirildi',
+    ratingAppealFiledBy: '{name} {rating} bahoga e’tiroz bildirdi',
   },
 
   dashboard: {
@@ -1704,6 +1706,8 @@ export const uz = {
       'Videosidagi baho noto‘g‘ri deyayotgan futbolchilar. Qayta ko‘ring, keyin bahoni qoldiring yoki yangisini saqlang; ular har holda xabardor qilinadi.',
     appealsPending: 'Kutilmoqda',
     appealsResolved: 'Javob berilgan',
+    appealsSuperAdminOnly:
+      'E’tirozlarga faqat super admin javob beradi — ular admin qo‘ygan bahoga e’tirozlar.',
     noAppeals: 'Bu yerda e’tiroz yo‘q.',
     noAppealsHint: 'Futbolchi o‘z videosi oynasidan bahoga e’tiroz bildira oladi.',
     appealReason: 'Futbolchi yozadi',

@@ -23,6 +23,7 @@ import {
   ATTRIBUTE_KEYS,
   attributeHistory,
   type AttributeKey,
+  sortClipsNewestFilmed,
 } from '@/lib/player-card';
 import { cn } from '@/lib/utils';
 import { GraduationCap, Plus, Trophy, Video } from 'lucide-react';
@@ -75,7 +76,11 @@ export function AttributeBoard({
   }
 
   const selectedAttribute = ATTRIBUTE_KEYS.find((key) => ATTRIBUTE_CATEGORY[key] === filter);
-  const visible = filter === 'ALL' ? items : items?.filter((clip) => clip?.category === filter);
+  // Every tab, All included, by the day the clip was filmed — the order the
+  // API serves and the one a just-uploaded clip must fall into as well.
+  const visible = sortClipsNewestFilmed(
+    filter === 'ALL' ? (items ?? []) : (items?.filter((clip) => clip?.category === filter) ?? []),
+  );
 
   const countFor = (category: MediaCategory) =>
     items?.filter((clip) => clip?.category === category).length;

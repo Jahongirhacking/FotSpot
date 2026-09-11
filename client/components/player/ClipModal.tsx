@@ -163,16 +163,10 @@ export function ClipModal({
                   <span
                     className={cn(
                       'font-mono text-lg font-bold',
-                      clip?.reportedBy && clip.reportedBy !== 'SELF'
-                        ? 'text-prov-coach'
-                        : 'text-prov-self',
+                      clip?.reportedBy === 'VERIFIED' ? 'text-prov-coach' : 'text-prov-self',
                     )}
                     title={
-                      clip?.reportedBy === 'ADMIN'
-                        ? t.clips.ratedByAdmin
-                        : clip?.reportedBy === 'COACH'
-                          ? t.clips.ratedByCoach
-                          : t.clips.ratedBySelf
+                      clip?.reportedBy === 'VERIFIED' ? t.clips.ratedByCoach : t.clips.ratedByAdmin
                     }
                   >
                     {clip?.rating}
@@ -221,7 +215,8 @@ export function ClipModal({
 
             {canEdit && (
               <div className="ml-auto flex flex-wrap justify-end gap-1">
-                {clip?.rating != null && clip?.reportedBy && clip.reportedBy !== 'SELF' && (
+                {/* A coach's number is verified; only a moderator's relative one can be appealed. */}
+                {clip?.rating != null && clip?.reportedBy === 'RELATIVE' && (
                   <AppealButton clip={clip} />
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditing((was) => !was)}>
@@ -585,11 +580,7 @@ function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) =
         className="accent-primary h-9 w-full"
       />
       <p className="text-muted text-xs">
-        {clip?.reportedBy === 'COACH'
-          ? t.clips.ratedByCoach
-          : clip?.reportedBy === 'ADMIN'
-            ? t.clips.ratedByAdmin
-            : t.clips.ratedBySelf}
+        {clip?.reportedBy === 'VERIFIED' ? t.clips.ratedByCoach : t.clips.ratedByAdmin}
       </p>
       <div className="flex justify-end">
         <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>

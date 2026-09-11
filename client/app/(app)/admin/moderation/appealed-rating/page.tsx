@@ -5,7 +5,7 @@ import { admin } from '@/lib/api/resources';
 import type { AppealedClip } from '@/lib/api/types';
 import type { Page } from '@/lib/api/client';
 import { getSession } from '@/lib/session';
-import { isAdminActing, isSuperAdminActing } from '@/lib/roles';
+import { isSuperAdminActing } from '@/lib/roles';
 import { getServerT } from '@/lib/i18n/server';
 import { Alert } from '@/components/ui/Feedback';
 import { Pagination } from '@/components/shared/Pagination';
@@ -36,8 +36,9 @@ export default async function AppealedRatingPage({
   const session = await getSession();
   if (!session) redirect('/login?next=/admin/moderation/appealed-rating');
   const { t } = await getServerT();
-  if (!isAdminActing(session.activeRole)) {
-    return <Alert tone="warning">{t.academy.adminOnly}</Alert>;
+  // Appeals are against an admin's own rating, so an admin does not sit on them.
+  if (!isSuperAdminActing(session.activeRole)) {
+    return <Alert tone="warning">{t.admin.appealsSuperAdminOnly}</Alert>;
   }
 
   const params = await searchParams;
@@ -60,7 +61,7 @@ export default async function AppealedRatingPage({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header className="space-y-3">
-        <ModerationTabs canSeeBlocked={isSuperAdminActing(session.activeRole)} />
+        <ModerationTabs canSeeBlocked />
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold">
             <Scale className="text-primary size-5" aria-hidden /> {t.admin.appealedRatings}

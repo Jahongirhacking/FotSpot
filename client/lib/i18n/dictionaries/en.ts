@@ -708,10 +708,10 @@ export const en: Dictionary = {
 
   clips: {
     coachRating: "Coach's rating",
-    ratedBySelf: 'Right now this is the player’s own number.',
     ratedByCoach: 'A coach set this rating.',
     saveRating: 'Save rating',
-    ratedByAdmin: 'A moderator set this rating.',
+    ratedByAdmin:
+      'A moderator set this rating in review. It is relative until a coach rates the clip.',
     ratedByOthersHint:
       'You do not rate your own clips. A coach who works with you, or a moderator in review, puts the number on it — and you can appeal it.',
     refileDropsRating:
@@ -1303,6 +1303,8 @@ export const en: Dictionary = {
     ratingAppealResolved: 'Your appeal was answered',
     ratingAppealChanged: 'Rating changed from {from} to {to} after your appeal',
     ratingAppealKept: 'Rating kept at {rating} after your appeal',
+    ratingAppealFiled: 'A rating was appealed',
+    ratingAppealFiledBy: '{name} appealed a rating of {rating}',
   },
 
   dashboard: {
@@ -1640,6 +1642,8 @@ export const en: Dictionary = {
       'Players who say the number on their clip is wrong. Watch again, then keep the rating or save a new one; they are told either way.',
     appealsPending: 'Pending',
     appealsResolved: 'Answered',
+    appealsSuperAdminOnly:
+      'Only a super admin answers appeals — they are appeals against an admin’s rating.',
     noAppeals: 'No appeals here.',
     noAppealsHint: 'A player can appeal a rating from their own clip view.',
     appealReason: 'The player writes',

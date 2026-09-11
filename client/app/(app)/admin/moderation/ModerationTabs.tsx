@@ -31,9 +31,15 @@ export function ModerationTabs({ canSeeBlocked = false }: { canSeeBlocked?: bool
   const tabs = [
     { href: '/admin/moderation', label: t.admin.reviewReports, icon: Flag },
     { href: '/admin/moderation/videos', label: t.admin.videoReview, icon: Video },
-    { href: '/admin/moderation/appealed-rating', label: t.admin.appealedRatings, icon: Scale },
+    // The super admin's own tabs: appeals against an admin's rating, and the
+    // clips admins took down.
     ...(canSeeBlocked
       ? [
+          {
+            href: '/admin/moderation/appealed-rating',
+            label: t.admin.appealedRatings,
+            icon: Scale,
+          },
           {
             href: '/admin/moderation/blocked-videos',
             label: t.admin.blockedVideos,

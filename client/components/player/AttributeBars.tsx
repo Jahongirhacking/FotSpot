@@ -102,7 +102,7 @@ function AttributeRow({
               // A self-reported bar is visibly weaker than a measured one — that is
               // what makes verification something a player wants (§21.1). Attaching
               // a clip raises the claim, not its standing.
-              attribute.provenance === 'self' &&
+              (attribute.provenance === 'relative' || attribute.provenance === 'self') &&
                 'bg-prov-self/50 outline-prov-self/40 outline-1 -outline-offset-1 outline-dashed',
             )}
             style={{ width: `${attribute.value}%` }}
@@ -124,9 +124,9 @@ function AttributeRow({
           'hidden w-20 shrink-0 rounded-full px-2 py-0.5 text-center text-[10px] font-medium sm:block',
           provenance.className,
         )}
-        title={provenance.label}
+        title={provenance?.label}
       >
-        {provenance.short}
+        {provenance?.short}
       </span>
     </>
   );
