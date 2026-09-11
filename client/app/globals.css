@@ -307,24 +307,6 @@
     overflow-x: hidden;
   }
 
-  /*
-   * No jump when a menu or dialog opens.
-   *
-   * Radix locks the page behind an open layer by hiding the scrollbar and
-   * adding its width as a right margin on <body>, so the text does not
-   * shift. The sticky header is inside <body>, so it shrank by that margin
-   * and its controls slid left, leaving a bare strip where the scrollbar had
-   * been. Keeping the gutter reserved at all times means hiding the scrollbar
-   * changes nothing, and the compensating margin is then the jump — so it
-   * goes. Phones have overlay scrollbars and a zero gutter either way.
-   */
-  html {
-    scrollbar-gutter: stable;
-  }
-  body[data-scroll-locked] {
-    margin-right: 0 !important;
-  }
-
   body {
     background: var(--background);
     color: var(--foreground);
