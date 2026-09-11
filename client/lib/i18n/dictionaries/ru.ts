@@ -264,7 +264,10 @@ export const ru: Dictionary = {
     /* The player's own social links — see profile/SocialLinksCard. */
     socialLinks: 'Соцсети',
     socialLinksHint:
-      'Instagram, Telegram, YouTube и Transfermarkt — добавляйте, меняйте и удаляйте сами.',
+      'Телефон для звонка, Instagram, Telegram, YouTube и Transfermarkt — добавляйте, меняйте и удаляйте сами.',
+    contactPhone: 'Контактный телефон',
+    contactPhoneHint: 'не проверен — чтобы менеджер академии мог позвонить',
+    contactPhoneInvalid: 'Начните с + и кода страны, только цифры — например +998901234567.',
     socialNotSet: 'Пока не добавлено',
     socialAdd: 'Добавить',
     socialRemove: 'Удалить ссылку',
@@ -831,6 +834,7 @@ export const ru: Dictionary = {
     address: 'Проживает',
     contactsHint: 'Точный возраст, адрес и контакты видны только вам как менеджеру академии.',
     contactPhone: 'Телефон',
+    contactPhoneGiven: 'Контактный номер (указан игроком)',
     contactEmail: 'Эл. почта',
     contactTelegram: 'Telegram',
     openInTelegram: 'Открыть чат',

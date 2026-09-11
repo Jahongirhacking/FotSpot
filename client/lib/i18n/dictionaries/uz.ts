@@ -287,7 +287,10 @@ export const uz = {
     /* The player's own social links — see profile/SocialLinksCard. */
     socialLinks: 'Ijtimoiy tarmoqlar',
     socialLinksHint:
-      'Instagram, Telegram, YouTube va Transfermarkt — qo‘shish, o‘zgartirish va o‘chirish sizning qo‘lingizda.',
+      'Qo‘ng‘iroq uchun telefon raqami, Instagram, Telegram, YouTube va Transfermarkt — qo‘shish, o‘zgartirish va o‘chirish sizning qo‘lingizda.',
+    contactPhone: 'Aloqa telefoni',
+    contactPhoneHint: 'tasdiqlanmagan — akademiya menejeri qo‘ng‘iroq qilishi uchun',
+    contactPhoneInvalid: '+ va mamlakat kodi bilan, faqat raqamlar — masalan +998901234567.',
     socialNotSet: 'Hali qo‘shilmagan',
     socialAdd: 'Qo‘shish',
     socialRemove: 'Havolani o‘chirish',
@@ -865,6 +868,7 @@ export const uz = {
     contactsHint:
       'Aniq yosh, manzil va aloqa ma’lumotlari faqat sizga — akademiya menejeri sifatida — ko‘rinadi.',
     contactPhone: 'Telefon',
+    contactPhoneGiven: 'Aloqa raqami (futbolchi bergan)',
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
     openInTelegram: 'Chatni ochish',

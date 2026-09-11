@@ -464,6 +464,8 @@ export interface PlayerContacts {
   phone: string | null;
   /** A `tg://user?id=` link, when the account is connected to Telegram. */
   telegram: string | null;
+  /** The number the player gave out to be called on — not the sign-in phone, not verified. */
+  contactPhone?: string | null;
   /** The player's social links — present with the rest, or absent on an older response. */
   social?: PlayerSocialLinks;
 }
@@ -489,6 +491,8 @@ export interface PlayerProfile {
   telegramUrl?: string | null;
   youtubeUrl?: string | null;
   transfermarktUrl?: string | null;
+  /** A number for an academy manager to call — E.164, not the sign-in phone, not verified. */
+  contactPhone?: string | null;
   /**
    * The exact date of birth, the age it makes, and where the player lives —
    * for an academy's manager only. Everybody else gets the age band and no

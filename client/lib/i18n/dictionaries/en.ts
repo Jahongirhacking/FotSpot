@@ -266,7 +266,11 @@ export const en: Dictionary = {
     /* The player's own social links — see profile/SocialLinksCard. */
     socialLinks: 'Social links',
     socialLinksHint:
-      'Instagram, Telegram, YouTube and Transfermarkt — yours to add, change or remove.',
+      'A phone number to be called on, Instagram, Telegram, YouTube and Transfermarkt — yours to add, change or remove.',
+    contactPhone: 'Contact phone',
+    contactPhoneHint: 'not verified — for an academy manager to call',
+    contactPhoneInvalid:
+      'Start with + and the country code, digits only — for example +998901234567.',
     socialNotSet: 'Not added yet',
     socialAdd: 'Add',
     socialRemove: 'Remove link',
@@ -834,6 +838,7 @@ export const en: Dictionary = {
     contactsHint:
       'The exact age, address and contacts are visible to you as the academy’s manager, and to nobody else.',
     contactPhone: 'Phone',
+    contactPhoneGiven: 'Contact number (given by the player)',
     contactEmail: 'Email',
     contactTelegram: 'Telegram',
     openInTelegram: 'Open chat',
