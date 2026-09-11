@@ -66,6 +66,7 @@ import type {
   BlogPostImage,
   BlogSpotlight,
   AdminChat,
+  AppealedClip,
   AdminMessage,
   AdminMessageUser,
 } from './types';
@@ -784,6 +785,12 @@ export const admin = {
       `/admin/messages/chats/${userId}${toQuery({ ...params })}`,
       opts,
     ),
+
+  /** Players' appeals against ratings, pending by default. */
+  listAppeals: (
+    params: { status?: 'PENDING' | 'RESOLVED' | 'ALL'; page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<AppealedClip>>(`/moderation/appeals${toQuery({ ...params })}`, opts),
 
   /** How many videos sit in each processing status, for the filter chips. */
   mediaCounts: (opts: Opts = {}) =>

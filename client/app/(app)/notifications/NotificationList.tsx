@@ -17,6 +17,7 @@ import {
   CalendarCheck,
   CheckCheck,
   MessageSquare,
+  Scale,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -219,6 +220,25 @@ export function NotificationList({ initial }: { initial: AppNotification[] }) {
       title: t.notifications.adminMessage,
       tone: 'text-primary',
       href: '/notifications',
+    },
+    // The answer to an appeal: the number changed, or it stands. The
+    // moderator's note, if any, is the detail line; the card is where the
+    // new number shows.
+    RATING_APPEAL_RESOLVED: {
+      icon: Scale,
+      title: t.notifications.ratingAppealResolved,
+      tone: 'text-info',
+      href: '/dashboard',
+      titleFor: (payload) =>
+        payload?.changed === true
+          ? f(t.notifications.ratingAppealChanged, {
+              from: String(payload?.previousRating ?? '—'),
+              to: String(payload?.rating ?? '—'),
+            })
+          : payload?.changed === false
+            ? f(t.notifications.ratingAppealKept, { rating: String(payload?.rating ?? '—') })
+            : undefined,
+      toneFor: (payload) => (payload?.changed === true ? 'text-success' : undefined),
     },
   };
 

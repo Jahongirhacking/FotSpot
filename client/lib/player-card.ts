@@ -230,7 +230,10 @@ export function deriveAttributes(
         // A clip carries who rated it: the player claimed a number, or a coach
         // watched the same clip and replaced it. The bar says which.
         value: claim.rating,
-        provenance: claim.reportedBy === 'COACH' ? ('coach' as const) : ('self' as const),
+        // Anyone but the player — a coach, or a moderator in review — is the
+        // verified side of the bar.
+        provenance:
+          claim.reportedBy && claim.reportedBy !== 'SELF' ? ('coach' as const) : ('self' as const),
         evidence: claim,
       };
     }
@@ -418,14 +421,14 @@ export function cardEvidence(
   for (const key of ATTRIBUTE_KEYS) {
     const claim = currentClaim(clips, key);
     if (claim?.rating != null) {
-      if (claim.reportedBy === 'COACH') coachSum += claim.rating;
+      if (claim.reportedBy && claim.reportedBy !== 'SELF') coachSum += claim.rating;
       else selfSum += claim.rating;
     }
 
     // A formal assessment still counts, and wins the attribute when both exist:
     // it is a judgement of the player, not of one clip.
     const coach = latestCoachRating(assessments, SOURCES[key].coach);
-    if (coach !== null && claim?.reportedBy !== 'COACH') coachSum += coach;
+    if (coach !== null && (!claim?.reportedBy || claim.reportedBy === 'SELF')) coachSum += coach;
   }
 
   // Clamped because the numerator can exceed the denominator two ways: a card

@@ -6,12 +6,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Clock, ShieldOff, Trash2, TriangleAlert, Video } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import type { Page } from '@/lib/api/client';
-import type { PendingClip } from '@/lib/api/types';
-import { CATEGORY_ATTRIBUTE } from '@/lib/player-card';
+import type { Media, MediaCategory, PendingClip } from '@/lib/api/types';
+import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS, CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { RatingInput } from '@/components/player/RatingInput';
 import { Card, CardContent } from '@/components/ui/Card';
 import {
   Dialog,
@@ -22,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/Dialog';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, Select } from '@/components/ui/Field';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Pagination } from '@/components/shared/Pagination';
 import { ageBand, formatDate, initials } from '@/lib/utils';
@@ -108,6 +109,38 @@ export function VideoReviewQueue({
     onError: (err: Error) => setError(err.message),
   });
 
+  /*
+   * What the moderator says about the clip before deciding on it: which
+   * attribute the footage actually shows, and the number. Both are saved on
+   * their own and the queue re-fetched, so Verify can read the row as it now
+   * is — a clip cannot be verified without a rating (highlights excepted:
+   * they carry none).
+   */
+  const refile = useMutation({
+    mutationFn: ({ id, category }: { id: string; category: MediaCategory }) =>
+      browserFetch<Media>(`/moderation/media/${id}/category`, {
+        method: 'PATCH',
+        body: { category },
+      }),
+    onSuccess: () => {
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ['pending-clips'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+  const rate = useMutation({
+    mutationFn: ({ id, rating }: { id: string; rating: number }) =>
+      browserFetch<Media>(`/moderation/media/${id}/rating`, {
+        method: 'PATCH',
+        body: { rating },
+      }),
+    onSuccess: () => {
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ['pending-clips'] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
   const clips = data?.items ?? [];
   const total = data?.total ?? 0;
 
@@ -127,10 +160,16 @@ export function VideoReviewQueue({
             key={clip.id}
             clip={clip}
             busy={decide.isPending}
+            saving={
+              (refile.isPending && refile.variables?.id === clip.id) ||
+              (rate.isPending && rate.variables?.id === clip.id)
+            }
             canDelete={canDelete}
             onVerify={() => decide.mutate({ id: clip.id, action: 'verify' })}
             onBlock={() => setBlocking(clip)}
             onDelete={() => setDeleting(clip)}
+            onRefile={(category) => refile.mutate({ id: clip.id, category })}
+            onRate={(rating) => rate.mutate({ id: clip.id, rating })}
           />
         ))
       )}
@@ -184,19 +223,31 @@ export function VideoReviewQueue({
 function ReviewCard({
   clip,
   busy,
+  saving,
   canDelete,
   onVerify,
   onBlock,
   onDelete,
+  onRefile,
+  onRate,
 }: {
   clip: PendingClip;
   busy: boolean;
+  saving: boolean;
   canDelete: boolean;
   onVerify: () => void;
   onBlock: () => void;
   onDelete: () => void;
+  onRefile: (category: MediaCategory) => void;
+  onRate: (rating: number) => void;
 }) {
   const { t } = useI18n();
+  const isHighlight = clip.category === 'MATCH_HIGHLIGHTS';
+  // The slider starts on the clip's rating, or in the middle; saving is a press.
+  const [draftRating, setDraftRating] = React.useState(clip.rating ?? 50);
+  const ratingSaved = clip.rating != null && draftRating === clip.rating;
+  // Verify waits for a rating. Highlights carry none, so they are verified as they are.
+  const canVerify = isHighlight || clip.rating != null;
   const attribute = CATEGORY_ATTRIBUTE[clip.category];
   const label =
     clip.category === 'MATCH_HIGHLIGHTS'
@@ -291,10 +342,73 @@ function ReviewCard({
           {t.admin.uploadedAt}: {formatDate(clip.createdAt)}
         </p>
 
+        {/* The moderator's judgement, before the decision: which skill the
+            footage shows, and the number. The player picked the attribute and
+            can no longer rate; both are corrected here. */}
+        <div className="border-border grid gap-4 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <Field
+            label={t.admin.attributeLabel}
+            htmlFor={`attr-${clip.id}`}
+            hint={t.admin.attributeHint}
+          >
+            <Select
+              id={`attr-${clip.id}`}
+              value={clip.category}
+              disabled={saving || busy}
+              onChange={(event) => onRefile(event.target.value as MediaCategory)}
+            >
+              {ATTRIBUTE_KEYS.map((key) => (
+                <option key={key} value={ATTRIBUTE_CATEGORY[key]}>
+                  {t.attributes[key]}
+                </option>
+              ))}
+              <option value="MATCH_HIGHLIGHTS">{t.attributes.highlights}</option>
+            </Select>
+          </Field>
+          {isHighlight ? (
+            <p className="text-muted self-center text-xs">{t.admin.highlightsNoRating}</p>
+          ) : (
+            <div className="space-y-2">
+              <RatingInput
+                id={`rating-${clip.id}`}
+                category={clip.category}
+                value={draftRating}
+                onChange={setDraftRating}
+                label={t.admin.moderationRating}
+                disabled={saving || busy}
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted text-xs">
+                  {clip.rating == null
+                    ? t.admin.verifyNeedsRating
+                    : ratingSaved
+                      ? t.admin.ratingSaved
+                      : t.admin.ratingUnsaved}
+                </span>
+                <Button
+                  size="sm"
+                  variant={ratingSaved ? 'outline' : 'primary'}
+                  loading={saving}
+                  disabled={busy || ratingSaved}
+                  onClick={() => onRate(draftRating)}
+                >
+                  <Check aria-hidden /> {t.clips.saveRating}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-2">
           {/* No dialog. Verifying is the ordinary outcome and the queue has to be
-              workable at speed — see the note on VideoReviewQueue. */}
-          <Button size="sm" disabled={busy} onClick={onVerify}>
+              workable at speed — see the note on VideoReviewQueue. Disabled, not
+              hidden, until the clip has a rating: the button says what is missing. */}
+          <Button
+            size="sm"
+            disabled={busy || !canVerify}
+            title={canVerify ? undefined : t.admin.verifyNeedsRating}
+            onClick={onVerify}
+          >
             <Check aria-hidden /> {t.admin.verifyClip}
           </Button>
 

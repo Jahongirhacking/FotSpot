@@ -711,6 +711,19 @@ export const en: Dictionary = {
     ratedBySelf: 'Right now this is the player’s own number.',
     ratedByCoach: 'A coach set this rating.',
     saveRating: 'Save rating',
+    ratedByAdmin: 'A moderator set this rating.',
+    ratedByOthersHint:
+      'You do not rate your own clips. A coach who works with you, or a moderator in review, puts the number on it — and you can appeal it.',
+    refileDropsRating:
+      'Filing the clip under another skill drops its rating; it will be rated again.',
+    appealRating: 'Appeal rating',
+    appealPending: 'Appeal pending',
+    appealTitle: 'Appeal this rating',
+    appealHint:
+      'Say why the number is wrong. A moderator watches the clip again and answers you here.',
+    appealReason: 'Reason',
+    appealPlaceholder: 'If you disagree with the rating you were given, write why…',
+    appealSend: 'Send appeal',
     noStorageOrigin:
       'Media storage is not configured on the server, so this clip cannot play yet. The clip itself is saved.',
     pause: 'Pause',
@@ -1287,6 +1300,9 @@ export const en: Dictionary = {
     applicationClosed: 'The academy closed your application',
     verificationResult: 'Verification update',
     adminMessage: 'Message from FotSpot',
+    ratingAppealResolved: 'Your appeal was answered',
+    ratingAppealChanged: 'Rating changed from {from} to {to} after your appeal',
+    ratingAppealKept: 'Rating kept at {rating} after your appeal',
   },
 
   dashboard: {
@@ -1611,6 +1627,30 @@ export const en: Dictionary = {
     clipBlocked: 'Video blocked.',
     clipDeleted: 'Video permanently deleted.',
 
+    /* Rating in review, and appeals. */
+    attributeLabel: 'Skill shown',
+    attributeHint: 'What the footage actually shows. Re-filing drops the rating.',
+    moderationRating: 'Rating',
+    highlightsNoRating: 'Highlights carry no rating — verify or block as they are.',
+    verifyNeedsRating: 'Save a rating before verifying.',
+    ratingSaved: 'Rating saved.',
+    ratingUnsaved: 'Not saved yet.',
+    appealedRatings: 'Appealed ratings',
+    appealedRatingsHint:
+      'Players who say the number on their clip is wrong. Watch again, then keep the rating or save a new one; they are told either way.',
+    appealsPending: 'Pending',
+    appealsResolved: 'Answered',
+    noAppeals: 'No appeals here.',
+    noAppealsHint: 'A player can appeal a rating from their own clip view.',
+    appealReason: 'The player writes',
+    ratingAtAppeal: 'rated',
+    currentRating: 'Current rating',
+    newRating: 'New rating',
+    decisionNote: 'Note to the player',
+    keepRating: 'Keep rating',
+    saveNewRating: 'Save new rating',
+    decisionChanged: 'Changed:',
+    decisionKept: 'Kept at',
     blockedVideos: 'Blocked videos',
     /* Second decisions from the status lists. */
     blockActiveClip: 'Block',

@@ -5,11 +5,19 @@ import { useSession } from '@/components/layout/SessionProvider';
 import { ClipModerationNote, useClipModerationCopy } from '@/components/player/ClipModerationBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Dialog, DialogContent } from '@/components/ui/Dialog';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/Dialog';
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { browserFetch } from '@/lib/api/browser';
-import type { Media, MediaCategory } from '@/lib/api/types';
+import type { Media, MediaCategory, RatingAppeal } from '@/lib/api/types';
 import { ATTRIBUTE_CATEGORY, ATTRIBUTE_KEYS, CATEGORY_ATTRIBUTE } from '@/lib/player-card';
 import { cn, formatDate } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +28,8 @@ import {
   Pause,
   Pencil,
   Play,
+  Scale,
+  Send,
   Trash2,
   TriangleAlert,
   Trophy,
@@ -150,7 +160,23 @@ export function ClipModal({
               <>
                 <Badge variant="primary">{label}</Badge>
                 {clip?.rating != null && (
-                  <span className="text-prov-self font-mono text-lg font-bold">{clip?.rating}</span>
+                  <span
+                    className={cn(
+                      'font-mono text-lg font-bold',
+                      clip?.reportedBy && clip.reportedBy !== 'SELF'
+                        ? 'text-prov-coach'
+                        : 'text-prov-self',
+                    )}
+                    title={
+                      clip?.reportedBy === 'ADMIN'
+                        ? t.clips.ratedByAdmin
+                        : clip?.reportedBy === 'COACH'
+                          ? t.clips.ratedByCoach
+                          : t.clips.ratedBySelf
+                    }
+                  >
+                    {clip?.rating}
+                  </span>
                 )}
               </>
             )}
@@ -194,7 +220,10 @@ export function ClipModal({
             </button>
 
             {canEdit && (
-              <div className="ml-auto flex gap-1">
+              <div className="ml-auto flex flex-wrap justify-end gap-1">
+                {clip?.rating != null && clip?.reportedBy && clip.reportedBy !== 'SELF' && (
+                  <AppealButton clip={clip} />
+                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditing((was) => !was)}>
                   <Pencil aria-hidden /> {t.common.edit}
                 </Button>
@@ -412,7 +441,6 @@ function EditClipForm({
   const { t } = useI18n();
   const [title, setTitle] = React.useState(clip?.title ?? '');
   const [description, setDescription] = React.useState(clip?.description ?? '');
-  const [rating, setRating] = React.useState(clip?.rating ?? 50);
   const [category, setCategory] = React.useState<MediaCategory>(clip?.category);
   const isHighlight = category === 'MATCH_HIGHLIGHTS';
 
@@ -423,10 +451,9 @@ function EditClipForm({
         body: {
           title: title.trim(),
           description: description.trim(),
-          // Only when it changed: an unchanged category with an unchanged
-          // rating must stay exactly the edit it has always been.
+          // Only when it changed: re-filing drops the rating, so an unchanged
+          // category must stay exactly the edit it has always been.
           ...(category !== clip?.category ? { category } : {}),
-          ...(isHighlight ? {} : { rating: rating }),
         },
       }),
     onSuccess: onSaved,
@@ -478,22 +505,8 @@ function EditClipForm({
         />
       </Field>
 
-      {!isHighlight && (
-        <Field
-          label={`${t.clips.yourRating}: ${rating}`}
-          htmlFor="edit-rating"
-          hint={t.clips.ratingHint}
-        >
-          <input
-            id="edit-rating"
-            type="range"
-            min={0}
-            max={100}
-            value={rating}
-            onChange={(event) => setRating(Number(event.target.value))}
-            className="accent-primary w-full"
-          />
-        </Field>
+      {!isHighlight && category !== clip?.category && (
+        <p className="text-muted text-xs">{t.clips.refileDropsRating}</p>
       )}
 
       <div className="flex gap-2">
@@ -572,7 +585,11 @@ function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) =
         className="accent-primary h-9 w-full"
       />
       <p className="text-muted text-xs">
-        {clip?.reportedBy === 'COACH' ? t.clips.ratedByCoach : t.clips.ratedBySelf}
+        {clip?.reportedBy === 'COACH'
+          ? t.clips.ratedByCoach
+          : clip?.reportedBy === 'ADMIN'
+            ? t.clips.ratedByAdmin
+            : t.clips.ratedBySelf}
       </p>
       <div className="flex justify-end">
         <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>
@@ -580,5 +597,93 @@ function CoachRating({ clip, onRated }: { clip: Media; onRated: (media: Media) =
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * The player disputes the number a coach or a moderator put on their clip.
+ *
+ * One press opens a box for the reason; the appeal lands on
+ * /admin/moderation/appealed-rating and the decision comes back as a
+ * notification. While one is pending the button says so and does nothing —
+ * the same question is not asked twice.
+ */
+function AppealButton({ clip }: { clip: Media }) {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = React.useState(false);
+  const [reason, setReason] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+
+  const latest = useQuery({
+    queryKey: ['clip-appeal', clip?.id],
+    queryFn: () => browserFetch<RatingAppeal | null>(`/media/${clip?.id}/appeal`),
+  });
+  const pending = latest.data?.status === 'PENDING';
+
+  const send = useMutation({
+    mutationFn: () =>
+      browserFetch<RatingAppeal>(`/media/${clip?.id}/appeal`, {
+        method: 'POST',
+        body: { reason: reason.trim() },
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      setReason('');
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ['clip-appeal', clip?.id] });
+    },
+    onError: (problem: Error) => setError(problem.message),
+  });
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={pending || latest.isPending}
+        title={pending ? t.clips.appealPending : t.clips.appealRating}
+        onClick={() => setOpen(true)}
+      >
+        <Scale aria-hidden /> {pending ? t.clips.appealPending : t.clips.appealRating}
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scale className="text-primary size-5" aria-hidden /> {t.clips.appealTitle}
+            </DialogTitle>
+            <DialogDescription>{t.clips.appealHint}</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <Field label={t.clips.appealReason} htmlFor="appeal-reason">
+              <Textarea
+                id="appeal-reason"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder={t.clips.appealPlaceholder}
+                rows={4}
+                maxLength={1000}
+                required
+              />
+            </Field>
+            {error && <Alert tone="danger">{error}</Alert>}
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t.common.cancel}
+            </Button>
+            <Button
+              loading={send.isPending}
+              disabled={reason.trim().length < 5}
+              onClick={() => send.mutate()}
+            >
+              <Send aria-hidden /> {t.clips.appealSend}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

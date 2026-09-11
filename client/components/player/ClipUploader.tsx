@@ -102,7 +102,6 @@ export function ClipUploader({
   }>({ status: 'idle', progress: 0, result: null });
   const compressionRef = React.useRef<AbortController | null>(null);
   const [category, setCategory] = React.useState<Category | null>(null);
-  const [rating, setRating] = React.useState(50);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   /*
@@ -266,7 +265,6 @@ export function ClipUploader({
            * "compress it there".
            */
           optimised: optimised.result?.status === 'compressed',
-          ...(category === 'MATCH_HIGHLIGHTS' ? {} : { rating: rating }),
           ...(title.trim() ? { title: title.trim() } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
           // Omitted means today, server-side; a picked date goes as a bare day.
@@ -438,28 +436,10 @@ export function ClipUploader({
                   <Alert tone="danger">{t.clips.processingFailed}</Alert>
                 )}
 
-                {/* Step 3 — the self review, with what a top score means for this
-                    skill in particular. Highlights evidence no single attribute,
-                    so they carry no rating at all. */}
-                {!isHighlight && (
-                  <Field
-                    label={`${t.clips.yourRating}: ${rating}`}
-                    htmlFor="clip-rating"
-                    hint={t.clips.ratingHint}
-                  >
-                    <input
-                      id="clip-rating"
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={rating}
-                      onChange={(event) => setRating(Number(event.target.value))}
-                      className="accent-primary w-full"
-                    />
-                    <SelfRatingGuide category={category} rating={rating} />
-                  </Field>
-                )}
+                {/* No self-rating. The clip goes up unrated; a coach who works
+                    with the player, or a moderator in review, puts the number
+                    on it — and the player can appeal that number. */}
+                {!isHighlight && <p className="text-muted text-xs">{t.clips.ratedByOthersHint}</p>}
 
                 {/* Step 4 — the optional metadata, last because it is optional. */}
                 <Field label={t.clips.clipTitle} htmlFor="clip-title" hint={t.common.optional}>
@@ -1294,50 +1274,6 @@ function RecorderOverlay({
  * The band the slider currently sits in is marked, so the panel reads as a
  * response to what they just chose rather than a wall of advice.
  */
-const RATING_BANDS = [
-  { from: 30, key: 'low' },
-  { from: 60, key: 'mid' },
-  { from: 90, key: 'high' },
-] as const;
-
-function SelfRatingGuide({ category, rating }: { category: Category; rating: number }) {
-  const { t } = useI18n();
-  const tips = t.clipTips[category as keyof typeof t.clipTips];
-
-  // Guards a category added to the enum before its copy is written.
-  if (!tips || typeof tips === 'string' || !tips.bands) return null;
-
-  // The highest band the rating has reached, or none while it is still below 30.
-  const reached = [...RATING_BANDS].reverse().find((band) => rating >= band.from);
-
-  return (
-    <div className="border-border bg-surface-2 mt-2 space-y-1.5 rounded-lg border p-2.5">
-      {RATING_BANDS.map((band) => {
-        const active = reached?.key === band.key;
-        return (
-          <p
-            key={band.key}
-            className={cn(
-              'flex gap-2 text-xs leading-snug transition-colors',
-              active ? 'text-foreground' : 'text-muted',
-            )}
-          >
-            <span
-              className={cn(
-                'w-9 shrink-0 text-right font-semibold tabular-nums',
-                active && 'text-primary',
-              )}
-            >
-              {band.from}+
-            </span>
-            <span>{tips.bands[band.key]}</span>
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
 function ClipTips({ category }: { category: Category }) {
   const { t } = useI18n();
   const tips = t.clipTips[category as keyof typeof t.clipTips];

@@ -710,6 +710,17 @@ export const ru: Dictionary = {
     ratedBySelf: 'Сейчас это оценка самого игрока.',
     ratedByCoach: 'Эту оценку поставил тренер.',
     saveRating: 'Сохранить оценку',
+    ratedByAdmin: 'Эту оценку поставил модератор.',
+    ratedByOthersHint:
+      'Вы не оцениваете свои клипы сами. Оценку ставит тренер, который с вами работает, или модератор при проверке — и её можно оспорить.',
+    refileDropsRating: 'Перенос клипа под другой навык снимает оценку; его оценят заново.',
+    appealRating: 'Оспорить оценку',
+    appealPending: 'Апелляция на рассмотрении',
+    appealTitle: 'Оспорить эту оценку',
+    appealHint: 'Напишите, почему оценка неверна. Модератор пересмотрит клип и ответит вам здесь.',
+    appealReason: 'Причина',
+    appealPlaceholder: 'Если вы не согласны с поставленной оценкой, напишите почему…',
+    appealSend: 'Отправить апелляцию',
     noStorageOrigin:
       'На сервере не настроено хранилище медиа, поэтому клип пока не воспроизводится. Сам клип сохранён.',
     pause: 'Пауза',
@@ -1291,6 +1302,9 @@ export const ru: Dictionary = {
     applicationClosed: 'Академия закрыла вашу заявку',
     verificationResult: 'Обновление верификации',
     adminMessage: 'Сообщение от FotSpot',
+    ratingAppealResolved: 'На вашу апелляцию ответили',
+    ratingAppealChanged: 'После апелляции оценка изменена с {from} на {to}',
+    ratingAppealKept: 'После апелляции оценка оставлена: {rating}',
   },
 
   dashboard: {
@@ -1617,6 +1631,30 @@ export const ru: Dictionary = {
     clipBlocked: 'Видео заблокировано.',
     clipDeleted: 'Видео удалено навсегда.',
 
+    /* Оценка при проверке и апелляции. */
+    attributeLabel: 'Показанный навык',
+    attributeHint: 'Что на самом деле видно в клипе. Перенос снимает оценку.',
+    moderationRating: 'Оценка',
+    highlightsNoRating: 'Лучшие моменты без оценки — одобрите или заблокируйте как есть.',
+    verifyNeedsRating: 'Сохраните оценку перед одобрением.',
+    ratingSaved: 'Оценка сохранена.',
+    ratingUnsaved: 'Ещё не сохранено.',
+    appealedRatings: 'Оспоренные оценки',
+    appealedRatingsHint:
+      'Игроки, которые считают оценку клипа неверной. Пересмотрите, затем оставьте оценку или сохраните новую; игроку сообщат в любом случае.',
+    appealsPending: 'Ожидают',
+    appealsResolved: 'Отвечены',
+    noAppeals: 'Апелляций нет.',
+    noAppealsHint: 'Игрок может оспорить оценку из окна своего клипа.',
+    appealReason: 'Игрок пишет',
+    ratingAtAppeal: 'оценка',
+    currentRating: 'Текущая оценка',
+    newRating: 'Новая оценка',
+    decisionNote: 'Комментарий игроку',
+    keepRating: 'Оставить оценку',
+    saveNewRating: 'Сохранить новую оценку',
+    decisionChanged: 'Изменена:',
+    decisionKept: 'Оставлена:',
     blockedVideos: 'Заблокированные видео',
     /* Повторные решения из списков по статусу. */
     blockActiveClip: 'Заблокировать',

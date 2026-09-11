@@ -120,7 +120,7 @@ export interface Media {
    * Who put `rating` there. A player's number is a claim; a coach watching the
    * same clip can replace it, and then it is evidence (§1.6).
    */
-  reportedBy?: 'SELF' | 'COACH';
+  reportedBy?: 'SELF' | 'COACH' | 'ADMIN';
   /**
    * Permanent URL of the video. Null only when the server has no public storage
    * origin configured (`R2_PUBLIC_BASE_URL`) — the clip exists, it just has no
@@ -303,7 +303,7 @@ export interface RatingRevision {
   previousRating: number | null;
   previousReportedBy: 'SELF' | 'COACH';
   rating: number;
-  reportedBy: 'SELF' | 'COACH';
+  reportedBy: 'SELF' | 'COACH' | 'ADMIN';
   actorUserId: string;
   createdAt: string;
 }
@@ -1073,7 +1073,29 @@ export type NotificationEvent =
   | 'SQUAD_JOINED'
   | 'SQUAD_LEFT'
   | 'VERIFICATION_RESULT'
-  | 'ADMIN_MESSAGE';
+  | 'ADMIN_MESSAGE'
+  | 'RATING_APPEAL_RESOLVED';
+
+/** A player's appeal against the rating on one of their clips. */
+export interface RatingAppeal {
+  id: string;
+  mediaId: string;
+  playerId: string;
+  reason: string;
+  status: 'PENDING' | 'RESOLVED';
+  ratingAtAppeal: number | null;
+  decisionRating: number | null;
+  decisionNote: string | null;
+  resolvedByUserId: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+/** An appeal as the moderation page reads it: with the clip and its player. */
+export interface AppealedClip extends RatingAppeal {
+  clip: PendingClip;
+  resolvedBy: { id: string; firstName: string | null; lastName: string | null } | null;
+}
 
 /** Somebody in an admin message: the writer or the person written to. */
 export interface AdminMessageUser {
