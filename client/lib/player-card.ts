@@ -70,17 +70,17 @@ export function claimDate(clip: Media): string {
  * Whether a clip's rating counts towards the bar.
  *
  * The same rule the API serves the public by: a moderator has verified it,
- * and the bytes are there — confirmed (ACTIVE) or still being optimised
- * (PROCESSING, which plays as the original until the optimised copy replaces
- * it under the same key). An unverified or blocked clip never moves a number,
- * even on the uploader's own card: the bar is what a scout is shown, and it
- * must not read higher for the owner than for everybody else. `moderationStatus`
- * is absent only on an older cached response, which the API already filtered.
+ * and nothing else. The worker's progress on the bytes — processing, done,
+ * failed — is not consulted: the optimised copy replaces the original under
+ * the same key, so a verified clip plays at every stage. An unverified or
+ * blocked clip never moves a number, even on the uploader's own card: the bar
+ * is what a scout is shown, and it must not read higher for the owner than
+ * for everybody else. `moderationStatus` is absent only on an older cached
+ * response, which the API already filtered.
  */
 export function countsTowardsRating(clip: Media): boolean {
   return (
     clip.rating != null &&
-    (clip.status === 'ACTIVE' || clip.status === 'PROCESSING') &&
     (clip.moderationStatus === undefined || clip.moderationStatus === 'VERIFIED')
   );
 }

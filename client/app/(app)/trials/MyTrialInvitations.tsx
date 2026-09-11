@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, CalendarCheck, MapPin, X } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
+import type { Page } from '@/lib/api/client';
 import type { TrialApplication } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Badge } from '@/components/ui/Badge';
@@ -24,9 +25,14 @@ export function MyTrialInvitations() {
   const { t } = useI18n();
   const queryClient = useQueryClient();
 
+  // The endpoint is paginated; the open invitations are asked for by status,
+  // so a player with a long trial history still sees every one of them.
   const mine = useQuery({
-    queryKey: ['my-trial-applications'],
-    queryFn: () => browserFetch<TrialApplication[]>('/trials/applications/mine'),
+    queryKey: ['my-trial-applications', 'open-invitations'],
+    queryFn: () =>
+      browserFetch<Page<TrialApplication>>(
+        '/trials/applications/mine?status=INVITED,CONFIRMED&pageSize=50',
+      ),
   });
 
   const respond = useMutation({
@@ -39,7 +45,7 @@ export function MyTrialInvitations() {
     },
   });
 
-  const rows = (mine.data ?? []).filter(
+  const rows = (mine.data?.items ?? []).filter(
     (row) => row?.trial?.type === 'PRIVATE' && ['INVITED', 'CONFIRMED'].includes(row?.status),
   );
   if (rows?.length === 0) return null;

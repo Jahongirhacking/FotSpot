@@ -28,23 +28,24 @@ const clip = (overrides: Partial<Media>): Media =>
     ...overrides,
   }) as Media;
 
-test('a verified clip still being optimised moves the bar — it plays as the original', () => {
-  assert.equal(countsTowardsRating(clip({ status: 'PROCESSING' })), true);
-  assert.equal(currentClaim([clip({ status: 'PROCESSING', rating: 80 })], 'dribbling')?.rating, 80);
+const PROCESSING_STATES = ['PROCESSING', 'ACTIVE', 'FAILED'] as const;
+
+test('a verified clip moves the bar at every stage of processing — it plays as the file it has', () => {
+  for (const status of PROCESSING_STATES) {
+    assert.equal(countsTowardsRating(clip({ status })), true, status);
+    assert.equal(currentClaim([clip({ status, rating: 80 })], 'dribbling')?.rating, 80, status);
+  }
 });
 
-test('an unverified or blocked clip never moves the bar, whatever its status', () => {
-  assert.equal(countsTowardsRating(clip({ moderationStatus: 'UNVERIFIED' })), false);
-  assert.equal(
-    countsTowardsRating(clip({ status: 'PROCESSING', moderationStatus: 'UNVERIFIED' })),
-    false,
-  );
-  assert.equal(countsTowardsRating(clip({ moderationStatus: 'BLOCKED' })), false);
-});
-
-test('a failed, flagged or removed clip does not count', () => {
-  for (const status of ['FAILED', 'FLAGGED', 'REMOVED'] as const) {
-    assert.equal(countsTowardsRating(clip({ status })), false, status);
+test('an unverified or blocked clip never moves the bar, whatever the worker says', () => {
+  for (const moderationStatus of ['UNVERIFIED', 'BLOCKED'] as const) {
+    for (const status of PROCESSING_STATES) {
+      assert.equal(
+        countsTowardsRating(clip({ status, moderationStatus })),
+        false,
+        `${moderationStatus} ${status}`,
+      );
+    }
   }
 });
 
