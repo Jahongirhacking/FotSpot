@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 
-import { resolveAuth } from './bootstrap';
+import { mintSession, resolveAuth } from './bootstrap';
 import { isAccessTokenUsable } from './access-token';
 
 /** A JWT with the given expiry. Unsigned — nothing here verifies signatures. */
@@ -259,4 +259,37 @@ test('isAccessTokenUsable refuses a token about to expire mid-render', () => {
 test('isAccessTokenUsable accepts a token that carries no expiry', () => {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
   assert.equal(isAccessTokenUsable(`${encode({})}.${encode({ sub: 'u' })}.sig`), true);
+});
+
+/*
+ * The proxy and the /api/auth/refresh route both mint through `mintSession`.
+ * A navigation and a 401-driven XHR at the same expiry must therefore spend
+ * the token once — the second use of a rotated token is what the backend
+ * reads as a replay after its grace window.
+ */
+test('the proxy and the refresh route share one flight for the same token', async () => {
+  refreshReply = { delayMs: 20 };
+
+  const [fromProxy, fromRoute] = await Promise.all([
+    resolveAuth(EXPIRED(), 'refresh-1'),
+    mintSession('refresh-1'),
+  ]);
+
+  assert.equal(refreshCalls.length, 1);
+  assert.equal(fromProxy.status, 'refreshed');
+  assert.equal(fromRoute.outcome, 'session');
+});
+
+test('the browser behind a refresh is forwarded, not the Next server', async () => {
+  let headers: Record<string, string> = {};
+  const previous = global.fetch;
+  global.fetch = (async (url: string, init: RequestInit) => {
+    headers = init.headers as Record<string, string>;
+    return previous(url, init);
+  }) as unknown as typeof fetch;
+
+  await mintSession('refresh-9', { userAgent: 'Mobile Safari', forwardedFor: '203.0.113.9' });
+
+  assert.equal(headers['user-agent'], 'Mobile Safari');
+  assert.equal(headers['x-forwarded-for'], '203.0.113.9');
 });

@@ -60,6 +60,7 @@ export type AuthState =
 export async function resolveAuth(
   accessToken: string | undefined,
   refreshToken: string | undefined,
+  client: ClientContext = {},
 ): Promise<AuthState> {
   // Case 1. The overwhelmingly common one, and it must cost nothing: a valid
   // token is not refreshed, so a busy tab does not rotate on every navigation.
@@ -72,7 +73,7 @@ export async function resolveAuth(
 
   // Cases 2 and 3 — the access token is gone or dead and there is a refresh
   // token, so use it. This is the call that never used to happen.
-  const result = await mintSession(refreshToken);
+  const result = await mintSession(refreshToken, client);
 
   if (result.outcome === 'session') return { status: 'refreshed', session: result.session };
 
@@ -82,6 +83,15 @@ export async function resolveAuth(
   if (result.outcome === 'rejected') return { status: 'expired' };
 
   return { status: 'unavailable' };
+}
+
+/**
+ * The browser behind a refresh, forwarded so the backend's device list shows
+ * the user's browser rather than this Next server.
+ */
+export interface ClientContext {
+  userAgent?: string | null;
+  forwardedFor?: string | null;
 }
 
 /**
@@ -117,7 +127,7 @@ const inFlight = new Map<string, Promise<RefreshResult>>();
  * Three outcomes, not two, because "it did not work" conflates a dead token with
  * a dead server and only one of those is about the session.
  */
-type RefreshResult =
+export type RefreshResult =
   | { outcome: 'session'; session: AuthSession }
   /** The backend refused the token: 401 or 403. The session is over. */
   | { outcome: 'rejected' }
@@ -133,12 +143,21 @@ type RefreshResult =
  */
 const REFRESH_TIMEOUT_MS = 8000;
 
-/** Exchanges a refresh token for a new pair, or says why it could not. */
-function mintSession(refreshToken: string): Promise<RefreshResult> {
+/**
+ * Exchanges a refresh token for a new pair, or says why it could not.
+ *
+ * Shared by the proxy (document and RSC navigations) and the `/api/auth/refresh`
+ * route (a 401-driven XHR), so a navigation and a background query that expire
+ * together spend the token once, not twice.
+ */
+export function mintSession(
+  refreshToken: string,
+  client: ClientContext = {},
+): Promise<RefreshResult> {
   const existing = inFlight.get(refreshToken);
   if (existing) return existing;
 
-  const flight = requestSession(refreshToken).finally(() => {
+  const flight = requestSession(refreshToken, client).finally(() => {
     // Released so the *next* expiry refreshes again rather than reusing a settled
     // promise — a flight never cleared would make one refresh the only one this
     // process ever performs for that token.
@@ -149,13 +168,17 @@ function mintSession(refreshToken: string): Promise<RefreshResult> {
   return flight;
 }
 
-async function requestSession(refreshToken: string): Promise<RefreshResult> {
+async function requestSession(refreshToken: string, client: ClientContext): Promise<RefreshResult> {
   let response: Response;
 
   try {
     response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(client.userAgent ? { 'user-agent': client.userAgent } : {}),
+        ...(client.forwardedFor ? { 'x-forwarded-for': client.forwardedFor } : {}),
+      },
       body: JSON.stringify({ refreshToken }),
       // A rotated token must never be served from a cache, and an intermediary
       // caching this response would hand the same new pair to two sessions.

@@ -12,8 +12,12 @@ const SESSION_COOKIE = {
   path: '/',
 } as const;
 
-/** Long-lived, matching the backend's 30-day refresh TTL (`JWT_REFRESH_TTL`). */
-const REFRESH_MAX_AGE = 30 * 24 * 60 * 60;
+/**
+ * Matches the backend's sliding 21-day inactivity window
+ * (`SESSION_INACTIVITY_DAYS`). Rewritten on every refresh, so the cookie slides
+ * with the session rather than counting down from login.
+ */
+const REFRESH_MAX_AGE = 21 * 24 * 60 * 60;
 
 /**
  * The access cookie must not outlive the token inside it.

@@ -99,3 +99,47 @@ test('a dead refresh token does not loop', async () => {
   assert.equal(calls.refresh, 1);
   assert.equal(calls.proxy, 1);
 });
+
+test('a refresh the server could not complete keeps the session and reports 503, with no redirect', async () => {
+  const calls = harness();
+  globalThis.fetch = (async (input: FetchArgs[0]) => {
+    if (String(input) === '/api/auth/refresh') {
+      calls.refresh += 1;
+      return new Response('{}', { status: 503 });
+    }
+    calls.proxy += 1;
+    return new Response('', { status: 401 });
+  }) as typeof fetch;
+  let redirectedTo: string | null = null;
+  globalThis.window = {
+    location: {
+      pathname: '/dashboard',
+      set href(v: string) {
+        redirectedTo = v;
+      },
+    },
+  } as unknown as Window & typeof globalThis;
+  const { browserFetch } = await import('./browser');
+
+  await assert.rejects(browserFetch('/x'), (error: { status: number }) => error.status === 503);
+  assert.equal(calls.refresh, 1);
+  assert.equal(redirectedTo, null, 'an outage is not a sign-out');
+});
+
+test('a second 401 after a successful refresh is not retried again — no loop', async () => {
+  const calls = { refresh: 0, proxy: 0 };
+  globalThis.document = { cookie: 'fs_roles=%5B%5D' } as Document;
+  globalThis.fetch = (async (input: FetchArgs[0]) => {
+    if (String(input) === '/api/auth/refresh') {
+      calls.refresh += 1;
+      return new Response('{}', { status: 200 });
+    }
+    calls.proxy += 1;
+    return new Response('', { status: 401 });
+  }) as typeof fetch;
+  const { browserFetch } = await import('./browser');
+
+  await assert.rejects(browserFetch('/x'), (error: { status: number }) => error.status === 401);
+  assert.equal(calls.refresh, 1);
+  assert.equal(calls.proxy, 2, 'the original request, and exactly one retry');
+});
