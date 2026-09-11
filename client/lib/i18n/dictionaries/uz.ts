@@ -702,7 +702,7 @@ export const uz = {
     discipline: 'Intizom',
     pace: 'Tezlik',
     dribbling: 'Dribling',
-    passing: 'Uzatish',
+    passing: 'Uzatma',
     finishing: 'Zarba',
     physical: 'Jismoniy',
     technique: 'Texnika',
