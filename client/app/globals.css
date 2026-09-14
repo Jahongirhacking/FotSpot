@@ -48,6 +48,11 @@
   --ring: oklch(52% 0.14 152);
   --radius: 0.75rem;
 
+  /* The scrollbar thumb: a shade of the surface it slides on, never a colour
+     of its own, so it reads as part of the page rather than a control. */
+  --scrollbar-thumb: oklch(78% 0.014 150);
+  --scrollbar-thumb-hover: oklch(66% 0.02 150);
+
   /* Native controls — scrollbars, date pickers, the video scrubber — follow this
      rather than staying stubbornly light on a dark page. */
   color-scheme: light;
@@ -62,6 +67,8 @@
     --background: oklch(15% 0.018 165);
     --surface: oklch(19% 0.021 165);
     --surface-2: oklch(23% 0.024 165);
+    --scrollbar-thumb: oklch(36% 0.02 165);
+    --scrollbar-thumb-hover: oklch(46% 0.022 165);
     --surface-3: oklch(28% 0.026 165);
     --foreground: oklch(96% 0.008 150);
     --muted: oklch(70% 0.022 155);
@@ -97,6 +104,8 @@
   --background: oklch(98.5% 0.006 145);
   --surface: oklch(100% 0 0);
   --surface-2: oklch(97% 0.008 145);
+  --scrollbar-thumb: oklch(78% 0.014 150);
+  --scrollbar-thumb-hover: oklch(66% 0.02 150);
   --surface-3: oklch(93.5% 0.012 145);
   --foreground: oklch(20% 0.025 160);
   --muted: oklch(50% 0.02 160);
@@ -119,6 +128,8 @@
   --background: oklch(15% 0.018 165);
   --surface: oklch(19% 0.021 165);
   --surface-2: oklch(23% 0.024 165);
+  --scrollbar-thumb: oklch(36% 0.02 165);
+  --scrollbar-thumb-hover: oklch(46% 0.022 165);
   --surface-3: oklch(28% 0.026 165);
   --foreground: oklch(96% 0.008 150);
   --muted: oklch(70% 0.022 155);
@@ -541,7 +552,42 @@
      page body never scrolls horizontally on a phone. */
   .scroll-x {
     overflow-x: auto;
+  }
+
+  /* One thin, quiet scrollbar everywhere — the page, a drawer, a table, a
+     dialog body — in the theme's own greys. The standard properties cover
+     Firefox and current Chromium; the -webkit- rules are for Safari, which
+     ignores the first two. No `scrollbar-gutter`: reserving the gutter drew a
+     strip beside full-bleed sections. */
+  * {
     scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  /* A scroller that shows no bar at all — the full-screen short viewer, where
+     the slides are the whole screen and a bar beside them is noise. Scrolling
+     itself is untouched. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /*
@@ -693,4 +739,81 @@
 }
 :root.theme-reveal::view-transition-new(root) {
   z-index: 2;
+}
+
+/* The academies map's pins and popup — Leaflet mounts these from strings, so
+   they cannot be Tailwind classes on a component. */
+.fs-pin {
+  display: block;
+  width: 40px;
+  height: 44px;
+  position: relative;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+.fs-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, 40%) rotate(45deg);
+  background: var(--primary);
+}
+.fs-pin-face {
+  position: absolute;
+  inset: 0 0 4px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 3px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+.leaflet-popup-tip {
+  background: var(--surface);
+}
+.leaflet-popup-content {
+  margin: 0.75rem;
+}
+.fs-pin-card {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 180px;
+}
+.fs-pin-card img {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fs-pin-card-body {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+.fs-pin-card-body strong {
+  font-weight: 600;
+}
+.fs-pin-card-body span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.fs-pin-card-body a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

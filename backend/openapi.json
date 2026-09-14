@@ -1833,9 +1833,28 @@
         "parameters": [
           {
             "name": "region",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "district",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 80,
               "type": "string"
             }
           }
@@ -4978,8 +4997,43 @@
             "name": "position",
             "required": false,
             "in": "query",
+            "description": "Kept for older clients; the board no longer offers it. Position is informational, not a gate.",
             "schema": {
               "maxLength": 8,
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "Words from the trial's title.",
+            "schema": {
+              "maxLength": 80,
+              "type": "string"
+            }
+          },
+          {
+            "name": "academyId",
+            "required": false,
+            "in": "query",
+            "description": "Only this academy's trials.",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "gender",
+            "required": false,
+            "in": "query",
+            "description": "Who the player is: `male` shows boys' and general trials, `female` girls'\nand general, `general` only the ones open to both.",
+            "schema": {
+              "enum": [
+                "male",
+                "female",
+                "general"
+              ],
               "type": "string"
             }
           },

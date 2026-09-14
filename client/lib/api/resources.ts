@@ -421,8 +421,10 @@ export const academies = {
       ...opts,
     }),
 
-  listPublic: (region?: string, opts: Opts = {}) =>
-    apiFetch<AcademyProfile[]>(`/academies${toQuery({ region })}`, opts),
+  listPublic: (
+    params: { region?: string; district?: string; query?: string } = {},
+    opts: Opts = {},
+  ) => apiFetch<AcademyProfile[]>(`/academies${toQuery({ ...params })}`, opts),
 
   getById: (id: string, opts: Opts = {}) => apiFetch<AcademyProfile>(`/academies/${id}`, opts),
 

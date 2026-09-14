@@ -25,9 +25,7 @@ export default async function NewBlogPostPage() {
     blog
       .categories({ token: session.accessToken, cache: 'no-store' })
       .catch(() => [] as BlogCategory[]),
-    academies
-      .listPublic(undefined, { token: session.accessToken, cache: 'no-store' })
-      .catch(() => []),
+    academies.listPublic({}, { token: session.accessToken, cache: 'no-store' }).catch(() => []),
   ]);
 
   return (

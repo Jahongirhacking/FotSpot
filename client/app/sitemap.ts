@@ -43,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [playerPage, academyList, trialList, posts] = await Promise.all([
     players.search({ pageSize: 200 }, { revalidate }).catch(() => ({ items: [] })),
-    academiesApi.listPublic(undefined, { revalidate }).catch(() => []),
+    academiesApi.listPublic({}, { revalidate }).catch(() => []),
     trials.listUpcoming({}, { revalidate }).catch(() => []),
     // Published posts only — the endpoint never lists a draft.
     blog.sitemap({ revalidate }).catch(() => []),

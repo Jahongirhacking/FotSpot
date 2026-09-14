@@ -748,8 +748,9 @@ export class PlayersService {
    * ## Why this is not just `orderBy`
    *
    * Stars are computed, not stored: `computeCardStars` reads the newest rated
-   * clip per attribute and the newest coach assessment, halves the player's own
-   * numbers and rounds the result to 0–5. There is no column to sort on, and
+   * clip per attribute and the newest coach assessment, halves the moderator's
+   * numbers and scales the result to 0–5 — precise, so two players a tenth
+   * apart rank apart. There is no column to sort on, and
    * reimplementing that in SQL would be a second copy of the one calculation the
    * whole card rests on — so this reuses `starsFor` exactly as every other
    * surface does.

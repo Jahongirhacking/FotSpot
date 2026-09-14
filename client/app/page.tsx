@@ -56,19 +56,22 @@ export default async function LandingPage() {
   const { t } = await getServerT();
 
   // Every fetch is optional: this page must render with the API down.
-  const [recent, academyList, trialList, clips, posts] = await Promise.all([
-    players?.search({ pageSize: 6 }, { revalidate: 600 }).catch(() => ({
-      items: [] as PlayerProfile[],
-      total: 0,
-      page: 1,
-      pageSize: 6,
-    })),
-    academies.listPublic(undefined, { revalidate: 600 }).catch(() => []),
+  const [ranked, academyList, trialList, clips, posts] = await Promise.all([
+    // The talents: the star ranking search already offers, top of the list, of
+    // whom six are drawn at random below. `total` doubles as the player count.
+    players
+      ?.search({ sort: 'stars', order: 'desc', pageSize: TALENT_POOL }, { revalidate: 600 })
+      .catch(() => ({
+        items: [] as PlayerProfile[],
+        total: 0,
+        page: 1,
+        pageSize: TALENT_POOL,
+      })),
+    academies.listPublic({}, { revalidate: 600 }).catch(() => []),
     trials?.listUpcoming({}, { revalidate: 600 }).catch(() => []),
-    // One request for the strip. This used to fetch a page of players and then
-    // one media request per player — seven round trips, on the most-visited page
-    // in the product, for visitors on the worst connections it ever serves.
-    media?.listRecent(8, { revalidate: 600 }).catch(() => [] as RecentClip[]),
+    // One request for the strip, in the feed's own order — the API ranks it
+    // with no viewer, so this is what is trending rather than what is newest.
+    media?.listRecent(TRENDING_CLIPS, { revalidate: 600 }).catch(() => [] as RecentClip[]),
     // The three newest published posts; a blog with nothing in it shows no section.
     blog
       .home({ revalidate: 600 })
@@ -78,6 +81,7 @@ export default async function LandingPage() {
   ]);
 
   const cta = await resolvePlayerCta(session);
+  const talents = pickTalents(ranked.items);
 
   return (
     <>
@@ -213,7 +217,7 @@ export default async function LandingPage() {
                 </div>
               ) : (
                 <ul className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-                  {clips?.map((item) => (
+                  {clips?.slice(0, TRENDING_CLIPS).map((item) => (
                     <li key={item?.id}>
                       <Link
                         href={`/players/${item?.player.id}`}
@@ -284,7 +288,7 @@ export default async function LandingPage() {
           </LandingSection>
         </Reveal>
 
-        {recent?.items?.length > 0 && (
+        {talents.length > 0 && (
           <Reveal>
             <LandingSection tone="base">
               <LandingContainer>
@@ -292,11 +296,11 @@ export default async function LandingPage() {
                   icon={Sparkles}
                   title={t.landing.recentlyJoined}
                   body={t.landing.recentlyJoinedBody}
-                  actionHref="/players?sort=newest"
+                  actionHref="/players"
                   actionLabel={t.common.seeAll}
                 />
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {recent.items.slice(0, 3).map((player) => (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {talents.map((player) => (
                     <Card
                       key={player?.id}
                       className="group hover:border-primary/50 rounded-2xl transition-[transform,translate,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg"
@@ -372,7 +376,7 @@ export default async function LandingPage() {
             honest early state, so these only render once there is something to
             show. Three links to three screens, as a list (see StatCard for why
             each is a photograph). */}
-              {(recent.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
+              {(ranked.total > 0 || academyList?.length > 0 || trialList?.length > 0) && (
                 <Reveal>
                   <LandingSection tone="base" className="pt-2 sm:pt-4">
                     <LandingContainer>
@@ -385,7 +389,7 @@ export default async function LandingPage() {
                             <StatCard
                               icon={Users}
                               label={t.landing.statPlayers}
-                              value={recent.total}
+                              value={ranked.total}
                               focus="18% 45%"
                               bgImg="/images/stats/players.png"
                             />
@@ -576,6 +580,31 @@ export default async function LandingPage() {
       </footer>
     </>
   );
+}
+
+/** The strip shows this many, in the feed's order. */
+const TRENDING_CLIPS = 8;
+/** How many of the top-ranked players the talents are drawn from. */
+const TALENT_POOL = 24;
+/** How many talents the section shows. */
+const TALENTS_SHOWN = 6;
+/** The bar a talent has to clear — precise stars, the value the API ranks by. */
+const TALENT_MIN_STARS = 0.5;
+
+/**
+ * Up to six players with at least half a star, in a different order each time.
+ *
+ * Random only in *which* of the qualifying players are shown: the pool is the
+ * top of the star ranking, the bar is compared against the precise value, and
+ * nothing else about a player is touched.
+ */
+function pickTalents(pool: PlayerProfile[]): PlayerProfile[] {
+  const qualifying = pool.filter((player) => (player?.stars ?? 0) >= TALENT_MIN_STARS);
+  for (let i = qualifying.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [qualifying[i], qualifying[j]] = [qualifying[j], qualifying[i]];
+  }
+  return qualifying.slice(0, TALENTS_SHOWN);
 }
 
 /**

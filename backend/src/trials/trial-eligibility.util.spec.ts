@@ -3,6 +3,7 @@ import {
   assertGenderEligible,
   genderIneligibilityMessage,
   isGenderEligible,
+  genderOptionsFor,
 } from './trial-eligibility.util';
 
 /**
@@ -57,5 +58,17 @@ describe('assertGenderEligible — the refusal', () => {
   it('lets an eligible player through silently', () => {
     expect(() => assertGenderEligible({ gender: 'general' }, { gender: 'male' })).not.toThrow();
     expect(() => assertGenderEligible({ gender: 'male' }, { gender: 'male' })).not.toThrow();
+  });
+});
+
+describe('genderOptionsFor — what the board shows for a filter', () => {
+  it('shows a boy the boys’ trials and the general ones', () => {
+    expect(genderOptionsFor('male')).toEqual(['male', 'general']);
+  });
+  it('shows a girl the girls’ trials and the general ones', () => {
+    expect(genderOptionsFor('female')).toEqual(['female', 'general']);
+  });
+  it('shows only the trials open to both when asked for general', () => {
+    expect(genderOptionsFor('general')).toEqual(['general']);
   });
 });

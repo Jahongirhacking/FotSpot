@@ -96,15 +96,26 @@ function latestAssessed(assessments: StarAssessment[], columns: readonly string[
  * Rounds to the nearest half star, halves rounding up: 1.25 → 1.5, 1.2 → 1,
  * 0.3 → 0.5, 0.2 → 0, 4.4 → 4.5. The row draws half stars, so a card can say
  * "three and a half" rather than rounding a whole star away.
+ *
+ * **Display only.** Every service, filter, sort and threshold reads the precise
+ * value `computeCardStars` returns; rounding before comparing would let a 0.3
+ * pass a "half a star" bar it never reached, and would tie players a scout
+ * wanted ranked. The client rounds when it draws the row (`displayStars`).
  */
 export function roundToNearestHalf(value: number): number {
   return Math.round(value * 2) / 2;
 }
 
+/** What the star row draws: the precise value, clamped, to the nearest half. */
+export function displayStars(value: number): number {
+  return roundToNearestHalf(Math.max(0, Math.min(STARS, value)));
+}
+
 /**
- * 0–5 in halves. `sum / (attributes × 100)` scaled to five stars and rounded
- * to the nearest half; clamped, since the two halves can exceed the
- * denominator together.
+ * 0–5, precise. `sum / (attributes × 100)` scaled to five stars and clamped,
+ * since the two halves can exceed the denominator together. Not rounded: this
+ * is the number the platform ranks, filters and compares by; `displayStars`
+ * is what a card shows.
  */
 export function computeCardStars(clips: StarClip[] = [], assessments: StarAssessment[] = []) {
   let relativeSum = 0;
@@ -128,5 +139,5 @@ export function computeCardStars(clips: StarClip[] = [], assessments: StarAssess
   // Half of every relative rating, the whole of every verified one.
   const score = relativeSum / 2 + coachSum;
   const raw = (score / STARS_MAX_SCORE) * STARS;
-  return Math.max(0, Math.min(STARS, roundToNearestHalf(raw)));
+  return Math.max(0, Math.min(STARS, raw));
 }

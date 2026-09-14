@@ -7,6 +7,7 @@ import type { Dictionary } from '@/lib/i18n/dictionaries/uz';
 import { initials } from '@/lib/utils';
 import { ArrowRight, Building2, CalendarDays, Star, Users } from 'lucide-react';
 import Link from 'next/link';
+import { displayStars } from '@/lib/player-card';
 
 /**
  * The column beside an article: six players and six academies, chosen at
@@ -122,7 +123,7 @@ function PlayerRow({ player }: { player: SpotlightPlayer }) {
       {/* The star row, as a number: six rows of five stars would be noise. */}
       <span className="text-accent inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold">
         <Star className="size-3.5 fill-current" aria-hidden />
-        {player.stars.toFixed(1).replace(/\.0$/, '')}
+        {displayStars(player.stars).toFixed(1).replace(/\.0$/, '')}
       </span>
     </Link>
   );

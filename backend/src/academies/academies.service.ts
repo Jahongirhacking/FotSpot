@@ -35,15 +35,16 @@ const ACADEMY_HANDLE_MESSAGE = {
 } as const;
 import {
   AddAcademyPhotoDto,
-  SetFeaturedDto,
+  CreateAcademyDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
-  UpdateMemberDto,
-  CreateAcademyDto,
+  ListPublicAcademiesDto,
   NewManagerDto,
+  SetFeaturedDto,
   SetManagerDto,
   UpdateAcademyDto,
+  UpdateMemberDto,
 } from './dto/academy.dto';
 
 /** Returned exactly once, at creation. Only the password's hash is stored. */
@@ -445,12 +446,21 @@ export class AcademiesService {
    * begin with (§18): a cache that holds rows it must not serve is one refactor
    * away from serving them.
    */
-  async listPublic(region?: string) {
+  async listPublic({ region, district, query }: ListPublicAcademiesDto = {}) {
     const rows = await this.redis.wrap(RedisKeys.academyList(region), CacheTtl.academyList, () =>
       this.prisma.academyProfile.findMany({
         where: { kind: 'ACADEMY', status: 'VERIFIED', ...(region ? { region } : {}) },
         orderBy: { createdAt: 'desc' },
       }),
+    );
+
+    // District and name narrow the cached province list in memory — a few
+    // dozen rows, and a cache key per province rather than per keystroke.
+    const needle = query?.trim().toLowerCase();
+    const narrowed = rows.filter(
+      (row) =>
+        (!district || row.district === district) &&
+        (!needle || row.name.toLowerCase().includes(needle)),
     );
 
     /*
@@ -466,7 +476,7 @@ export class AcademiesService {
      * stays provider-agnostic, so changing `R2_PUBLIC_BASE_URL` takes effect on
      * the next read instead of waiting out a TTL of stale absolute URLs.
      */
-    return rows.map(({ logoKey, ...rest }) => ({
+    return narrowed.map(({ logoKey, ...rest }) => ({
       ...rest,
       logoUrl: this.storage.publicUrlOrNull(logoKey),
     }));
