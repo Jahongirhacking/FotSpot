@@ -34,11 +34,18 @@ function profileHref(person: AcademyFeatured): string | null {
  * ordering carried, and leaves the reader guessing whether the sequence means
  * anything. So the position is drawn, and the list is an `<ol>`.
  */
-export function AcademyFeaturedList({ people }: { people: AcademyFeatured[] }) {
+export function AcademyFeaturedList({
+  people,
+  compact = false,
+}: {
+  people: AcademyFeatured[];
+  /** One column and tighter rows — for a sidebar card. */
+  compact?: boolean;
+}) {
   if (!people?.length) return null;
 
   return (
-    <ol className="grid gap-2 sm:grid-cols-2">
+    <ol className={compact ? 'grid gap-1.5' : 'grid gap-2 sm:grid-cols-2'}>
       {people.map((person, index) => {
         const href = profileHref(person);
         const name = [person?.firstName, person?.lastName].filter(Boolean).join(' ');
@@ -53,13 +60,13 @@ export function AcademyFeaturedList({ people }: { people: AcademyFeatured[] }) {
             <Avatar
               src={person?.avatarUrl}
               fallback={initials(person?.firstName, person?.lastName)}
-              className="size-9"
+              className={compact ? 'size-8' : 'size-9'}
             />
             <span className="min-w-0 truncate text-sm font-medium">{name}</span>
           </>
         );
 
-        const shared = 'flex items-center gap-3 rounded-lg border p-2.5 border-border';
+        const shared = `flex items-center gap-3 rounded-lg border border-border ${compact ? 'p-2' : 'p-2.5'}`;
 
         return (
           <li key={`${person?.role}-${person?.memberId}`}>

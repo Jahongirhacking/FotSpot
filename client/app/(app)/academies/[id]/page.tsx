@@ -13,6 +13,7 @@ import { academies, academyRoster, trials } from '@/lib/api/resources';
 import type {
   AcademyFeatured,
   AcademyMember,
+  AcademyMemberRef,
   AcademyPhoto,
   AcademyProfile,
   Trial,
@@ -34,7 +35,9 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Search,
   Trophy,
+  UserCog,
   Users,
 } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -291,7 +294,6 @@ export default async function AcademyDetailPage({
   const players = featuredBy('PLAYER');
   const coaches = featuredBy('COACH');
   const scouts = featuredBy('SCOUT');
-  const hasFeatured = players.length + coaches.length + scouts.length > 0;
 
   const located = typeof academy?.latitude === 'number' && typeof academy?.longitude === 'number';
 
@@ -504,59 +506,37 @@ export default async function AcademyDetailPage({
       )}
 
       {!editing && (
-        <>
-          {academy?.description && (
-            <Card>
-              <CardContent className="p-5 text-sm leading-relaxed">
-                {academy?.description}
-              </CardContent>
-            </Card>
-          )}
+        /*
+         * One grid, two columns on a laptop, one on a phone — and nothing in it
+         * reserves space it has no content for. Each card decides for itself
+         * whether it exists; a missing section is simply absent, and the column
+         * closes up around what is left. `items-start` keeps a short card short
+         * rather than stretching it to its neighbour's height.
+         */
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="min-w-0 space-y-4">
+            {academy?.description && (
+              <Card>
+                <CardContent className="p-4 text-sm leading-relaxed sm:p-5">
+                  {academy?.description}
+                </CardContent>
+              </Card>
+            )}
 
-          <AcademyContactCard academy={academy} t={t} />
-
-          {/* ---------- Gallery ---------- */}
-          {photos?.length > 0 && (
-            <Section
-              icon={<Images className="text-primary size-4" aria-hidden />}
-              title={t.academy?.galleryTitle}
-            >
-              <AcademyGallery photos={photos} />
-            </Section>
-          )}
-
-          {/* ---------- Featured people ----------
-          One card per role rather than three columns of a shared grid: the lists
-          are 10, 5 and 3 long, so equal columns would leave two of them mostly
-          white space on a wide screen. */}
-          {hasFeatured && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <FeaturedCard
-                className={
-                  players.length > 0 && coaches.length + scouts.length > 0 ? 'lg:row-span-2' : ''
-                }
-                title={t.academy?.featuredPlayersTitle}
-                people={players}
-              />
-              <FeaturedCard title={t.academy?.featuredCoachesTitle} people={coaches} />
-              <FeaturedCard title={t.academy?.featuredScoutsTitle} people={scouts} />
-            </div>
-          )}
-
-          {/* ---------- Trials, and where to find them ---------- */}
-          <div
-            className={
-              isLocalTeam
-                ? 'grid gap-6'
-                : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start'
-            }
-          >
+            {/* ---------- Trials ----------
+                A local team holds no trials, so the page has no trials card.
+                Hidden rather than shown empty: "No trials right now" is true of
+                an academy between trials and misleading about an organisation
+                that will never hold any. */}
             {!isLocalTeam && (
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <CalendarDays className="text-primary size-4" aria-hidden />{' '}
                     {t.trials?.openTrials}
+                    {academyTrials?.length > 0 && (
+                      <span className="text-muted text-xs font-normal">{academyTrials.length}</span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -570,7 +550,7 @@ export default async function AcademyDetailPage({
                       description={
                         isManager ? t.academy.noTrialsNowManagerHint : t.academy.noTrialsNowHint
                       }
-                      className="py-8"
+                      className="py-6"
                       action={
                         isManager ? (
                           <Button asChild size="sm">
@@ -613,40 +593,52 @@ export default async function AcademyDetailPage({
               </Card>
             )}
 
-            <div className="space-y-4">
-              {located && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <MapPin className="text-primary size-4" aria-hidden />{' '}
-                      {t.academy?.locationLabel}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <AcademyMap
-                      latitude={academy?.latitude}
-                      longitude={academy?.longitude}
-                      name={academy?.name}
-                      locale={locale}
-                      openLabel={t.academy.openInMaps}
-                    />
-                  </CardContent>
-                </Card>
-              )}
+            {/* ---------- Gallery ---------- */}
+            {photos?.length > 0 && (
+              <Section
+                icon={<Images className="text-primary size-4" aria-hidden />}
+                title={t.academy?.galleryTitle}
+              >
+                <AcademyGallery photos={photos} />
+              </Section>
+            )}
 
+            {/* ---------- Featured players ----------
+                The long list (up to ten) takes the wide column; the coaches and
+                scouts, a handful each, live in the team card beside it, so no
+                column is mostly white space. */}
+            <FeaturedCard title={t.academy?.featuredPlayersTitle} people={players} />
+          </div>
+
+          <aside className="min-w-0 space-y-4">
+            <AcademyContactCard academy={academy} t={t} />
+
+            {/* The map only when there is a point to show. Without one the
+                header already says the region, and a box saying "not set"
+                would take the height of a map to say less. */}
+            {located && (
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Users className="text-primary size-4" aria-hidden /> {t.academy?.staffTitle}
+                    <MapPin className="text-primary size-4" aria-hidden />{' '}
+                    {t.academy?.locationLabel}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted text-sm">{t.academy?.staffHint}</p>
+                  <AcademyMap
+                    latitude={academy?.latitude}
+                    longitude={academy?.longitude}
+                    name={academy?.name}
+                    locale={locale}
+                    openLabel={t.academy.openInMaps}
+                  />
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        </>
+            )}
+
+            <TeamCard members={academy?.members ?? []} coaches={coaches} scouts={scouts} t={t} />
+          </aside>
+        </div>
       )}
     </div>
   );
@@ -690,6 +682,94 @@ function AcademyContactCard({ academy, t }: { academy: AcademyProfile; t: Dictio
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Who runs the academy: the roles it has filled, with the featured coaches and
+ * scouts named under them.
+ *
+ * The profile embeds members as ids and roles, not people, so what can be said
+ * for everybody is *how many* of each — and only the roles that exist: an
+ * academy with a manager and two coaches gets two rows, not a third saying
+ * "0 scouts". The names come from the manager's featured picks. With nobody at
+ * all it says so in one compact state rather than a card of blank rows.
+ */
+function TeamCard({
+  members,
+  coaches,
+  scouts,
+  t,
+}: {
+  members: AcademyMemberRef[];
+  coaches: AcademyFeatured[];
+  scouts: AcademyFeatured[];
+  t: Dictionary;
+}) {
+  const count = (role: AcademyMemberRef['role']) =>
+    members.filter((member) => member?.role === role).length;
+  const rows = [
+    { key: 'MANAGER', label: t.academy.roleManagers, icon: UserCog, count: count('MANAGER') },
+    { key: 'COACH', label: t.academy.roleCoaches, icon: Users, count: count('COACH') },
+    { key: 'SCOUT', label: t.academy.roleScouts, icon: Search, count: count('SCOUT') },
+  ].filter((row) => row.count > 0);
+  const empty = rows.length === 0 && coaches.length === 0 && scouts.length === 0;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="text-primary size-4" aria-hidden /> {t.academy?.staffTitle}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {empty ? (
+          <EmptyState
+            icon={Users}
+            title={t.academy.teamEmptyTitle}
+            description={t.academy.teamEmptyHint}
+            className="gap-2 px-4 py-5"
+          />
+        ) : (
+          <>
+            {rows.length > 0 && (
+              <ul className="divide-border divide-y">
+                {rows.map((row) => (
+                  <li key={row.key} className="flex items-center gap-2.5 py-2 text-sm">
+                    <span className="bg-primary/12 text-primary grid size-8 shrink-0 place-items-center rounded-lg">
+                      <row.icon className="size-4" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                    <Badge variant="neutral" className="tabular-nums">
+                      {row.count}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {coaches.length > 0 && (
+              <FeaturedGroup title={t.academy?.featuredCoachesTitle} people={coaches} />
+            )}
+            {scouts.length > 0 && (
+              <FeaturedGroup title={t.academy?.featuredScoutsTitle} people={scouts} />
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A named handful inside the team card — a heading and the list, no card of its own. */
+function FeaturedGroup({ title, people }: { title: string; people: AcademyFeatured[] }) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-muted flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+        <Trophy className="size-3.5" aria-hidden /> {title}
+        <span className="font-normal">{people.length}</span>
+      </h3>
+      <AcademyFeaturedList people={people} compact />
+    </div>
   );
 }
 
