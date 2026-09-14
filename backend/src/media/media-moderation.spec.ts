@@ -259,15 +259,24 @@ describe('a player profile — who is asking decides what comes back', () => {
 });
 
 describe('the public strip on the landing page', () => {
-  it('asks for verified clips only', async () => {
+  it('is the feed’s own ranking with no viewer, over verified clips only', async () => {
     const { service, prisma } = build();
+    const queryRaw = jest.fn(async () => []);
+    (prisma as Record<string, unknown>).$queryRaw = queryRaw;
 
     await service.listRecent(8);
 
-    expect(prisma.media.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }),
-      }),
+    const [statement, ...values] = queryRaw.mock.calls[0] as unknown as [
+      { strings: string[]; values: unknown[] },
+    ];
+    const sql = statement.strings.join('?');
+    expect(sql).toContain(`m."moderationStatus" = 'VERIFIED'`);
+    expect(sql).toContain('u."isPrivate" = false');
+    // No viewer: the personal joins compare against NULL and match nothing.
+    expect(statement.values).toContain(null);
+    void values;
+    expect(prisma.media.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...PUBLIC_MEDIA_WHERE }) }),
     );
   });
 });

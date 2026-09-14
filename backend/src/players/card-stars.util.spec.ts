@@ -1,6 +1,7 @@
 import {
   computeCardStars,
   currentClip,
+  displayStars,
   roundToNearestHalf,
   STARS_MAX_SCORE,
 } from './card-stars.util';
@@ -34,11 +35,13 @@ describe('computeCardStars', () => {
   });
 
   it("counts a coach's rating in full and a moderator's relative one halved", () => {
-    // 100/2 = 50 → 0.42 → half a star; 100 → 0.83 → one star.
+    // 100/2 = 50 → 50/600 × 5 = 0.4167; 100 → 0.8333. Precise, not rounded:
+    // a scout sorting by stars must see the coach-rated card ahead.
     const relative = computeCardStars([clip('PACE', 100, 'RELATIVE')], []);
     const verified = computeCardStars([clip('PACE', 100, 'VERIFIED')], []);
-    expect(relative).toBe(0.5);
-    expect(verified).toBe(1);
+    expect(relative).toBeCloseTo(50 / 120, 6);
+    expect(verified).toBeCloseTo(100 / 120, 6);
+    expect(verified).toBeCloseTo(relative * 2, 6);
   });
 
   it('uses the newest rating for an attribute, not the first or the best', () => {
@@ -46,8 +49,8 @@ describe('computeCardStars', () => {
       clip('PACE', 100, 'RELATIVE', '2026-01-01T00:00:00.000Z'),
       clip('PACE', 20, 'RELATIVE', '2026-06-01T00:00:00.000Z'),
     ];
-    // 20/2 = 10 → still zero stars; the 100 must not be what counts.
-    expect(computeCardStars(clips, [])).toBe(0);
+    // 20/2 = 10 → 10/600 × 5; the 100 must not be what counts.
+    expect(computeCardStars(clips, [])).toBeCloseTo(10 / 120, 6);
   });
 
   it('ignores clips with no rating, and categories it does not track', () => {
@@ -57,9 +60,11 @@ describe('computeCardStars', () => {
   it('takes a formal assessment when the clip’s number is only relative', () => {
     const clips = [clip('PACE', 40, 'RELATIVE')];
     const assessed = [{ createdAt: '2026-05-01T00:00:00.000Z', speed: 100 }];
-    // 40/2 + 100 = 120 → 1 star, where the relative number alone would be 0.
-    expect(computeCardStars(clips, assessed)).toBe(1);
-    expect(computeCardStars(clips, [])).toBe(0);
+    // 40/2 + 100 = 120 → exactly one star, where the relative number alone is
+    // 20/600 × 5 — a sixth of a star, drawn as none.
+    expect(computeCardStars(clips, assessed)).toBeCloseTo(1, 10);
+    expect(computeCardStars(clips, [])).toBeCloseTo(20 / 120, 6);
+    expect(displayStars(computeCardStars(clips, []))).toBe(0);
   });
 
   it('lets a coach-rated clip stand instead of double-counting the assessment', () => {
@@ -111,26 +116,43 @@ describe('roundToNearestHalf', () => {
   });
 });
 
-describe('computeCardStars — half stars', () => {
-  it('reads half a star from a single relative rating', () => {
-    // 100/2 = 50 → 50/600 × 5 = 0.42 → 0.5
-    expect(computeCardStars([clip('PACE', 100)], [])).toBe(0.5);
+describe('the precise value, and the half stars a card draws', () => {
+  it('is precise in services: two players a tenth of a star apart are not tied', () => {
+    const a = computeCardStars(
+      [clip('PACE', 100, 'VERIFIED'), clip('DRIBBLING', 12, 'VERIFIED')],
+      [],
+    );
+    const b = computeCardStars([clip('PACE', 100, 'VERIFIED')], []);
+    expect(a).toBeGreaterThan(b);
+    expect(displayStars(a)).toBe(displayStars(b));
   });
 
-  it('says "two and a half" rather than rounding a whole star away', () => {
+  it('draws half a star for a single relative rating', () => {
+    // 100/2 = 50 → 50/600 × 5 = 0.42 → drawn as 0.5
+    expect(displayStars(computeCardStars([clip('PACE', 100)], []))).toBe(0.5);
+  });
+
+  it('draws "two and a half" rather than rounding a whole star away', () => {
     // Three coach-rated attributes at 100 → 300/600 × 5 = 2.5
     const clips = ['PACE', 'DRIBBLING', 'PASSING'].map((c) => clip(c, 100, 'VERIFIED'));
-    expect(computeCardStars(clips, [])).toBe(2.5);
+    expect(displayStars(computeCardStars(clips, []))).toBe(2.5);
   });
 
-  it('only ever answers a multiple of a half, within 0–5', () => {
+  it('the drawn value is always a multiple of a half, within 0–5', () => {
     for (const rating of [3, 17, 33, 51, 66, 81, 99, 100]) {
       const clips = ALL.map((c) => clip(c, rating, 'VERIFIED'));
-      const stars = computeCardStars(clips, []);
+      const stars = displayStars(computeCardStars(clips, []));
       expect(stars * 2).toBe(Math.round(stars * 2));
       expect(stars).toBeGreaterThanOrEqual(0);
       expect(stars).toBeLessThanOrEqual(5);
     }
+  });
+
+  it('a threshold compares the precise value, so a 0.3 does not pass as half a star', () => {
+    // 36/600 × 5 = 0.3: drawn as half a star, but under a 0.5 bar.
+    const stars = computeCardStars([clip('PACE', 36, 'VERIFIED')], []);
+    expect(displayStars(stars)).toBe(0.5);
+    expect(stars >= 0.5).toBe(false);
   });
 });
 

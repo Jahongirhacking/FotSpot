@@ -569,39 +569,15 @@ export class MediaService {
    * rather than hidden in a loop over the database.
    *
    * It also asked the wrong question. "Clips belonging to the six newest players"
-   * is not what a *recent clips* strip means, and it goes empty the moment those
-   * six happen not to have uploaded anything. This asks for what the strip
-   * actually shows, and gets it in one indexed query ordered by `createdAt`.
+   * is not what a strip on the front page means. This is the feed's own
+   * ranking — the one calculation, not a second copy — asked with no viewer:
+   * nothing followed, liked or already watched, so what is left is what is
+   * trending on the platform. Verified only, like everything else public; the
+   * seed is fresh per call, and the page in front of it is cached.
    */
   async listRecent(limit = 8) {
-    const items = await this.prisma.media.findMany({
-      // The landing page, so guests: verified only, like everything else public.
-      where: { ...PUBLIC_MEDIA_WHERE, player: { user: { isPrivate: false } } },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(limit, 24),
-      include: {
-        player: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            birthDate: true,
-            primaryPosition: true,
-            region: true,
-            // The uploader's picture, in the same query as the clip — the
-            // landing page shows who the footage belongs to beside its cover.
-            user: { select: { avatarKey: true } },
-          },
-        },
-      },
-    });
-
-    return Promise.all(
-      items.map(async ({ player: { user, ...player }, ...media }) => ({
-        ...(await toMediaResponse(media, this.storage)),
-        player: { ...player, avatarUrl: this.storage.publicUrlOrNull(user?.avatarKey) },
-      })),
-    );
+    const { items } = await this.feed(null, { page: 1, pageSize: Math.min(limit, 24) });
+    return items;
   }
 
   /**
@@ -636,7 +612,7 @@ export class MediaService {
    * page. Interpolations are parameterised by `Prisma.sql`, so the viewer id,
    * the seed and the paging numbers cannot be anything but values.
    */
-  async feed(viewerUserId: string, dto: FeedDto = {}) {
+  async feed(viewerUserId: string | null, dto: FeedDto = {}) {
     const page = Math.max(1, dto.page ?? 1);
     const pageSize = Math.min(24, Math.max(1, dto.pageSize ?? 6));
     const skip = (page - 1) * pageSize;
