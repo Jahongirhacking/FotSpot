@@ -42,11 +42,12 @@ export default async function TrialsPage({
 }: {
   searchParams: Promise<{
     edit?: string;
+    q?: string;
     region?: string;
     district?: string;
     age?: string;
-    position?: string;
-    sort?: string;
+    gender?: string;
+    academyId?: string;
   }>;
 }) {
   const session = await getSession();
@@ -58,18 +59,19 @@ export default async function TrialsPage({
    * Handed straight to the API rather than filtered here.
    *
    * The endpoint is unpaginated, so filtering on this side would mean fetching
-   * every trial in the country in order to discard most of them — and
-   * `sort=recommended` needs the viewer's player card, which only the API can
-   * see. Values are passed through unvalidated on purpose: the DTO rejects a
-   * nonsense one with a 400, which is a better answer than a board silently
-   * showing everything.
+   * every trial in the country in order to discard most of them. Values are
+   * passed through unvalidated on purpose: the DTO rejects a nonsense one with
+   * a 400, which is a better answer than a board silently showing everything.
+   * Newest first, always — the board offers no other order.
    */
+  const gender = (['male', 'female', 'general'] as const).find((value) => value === params?.gender);
   const filters = {
+    query: params?.q,
     region: params?.region,
     district: params?.district,
     age: params?.age,
-    position: params?.position,
-    sort: params?.sort as 'newest' | 'recommended' | undefined,
+    academyId: params?.academyId,
+    gender,
   };
 
   /*
@@ -98,20 +100,33 @@ export default async function TrialsPage({
     );
   }
 
-  /** Whether the board is narrowed — `sort` is not a filter. */
-  const filtered = Boolean(params?.region || params?.district || params?.age || params?.position);
+  /** Whether the board is narrowed. */
+  const filtered = Boolean(
+    params?.q ||
+    params?.region ||
+    params?.district ||
+    params?.age ||
+    params?.gender ||
+    params?.academyId,
+  );
 
-  const list = await trials
-    .listUpcoming(
-      filters,
-      /*
-       * Never cached once there is a session: `sort=recommended` is computed for
-       * *this* player, so a shared cache entry would hand one player's ranking to
-       * another. A signed-out board is the same for everybody and can be.
-       */
-      session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
-    )
-    .catch(() => []);
+  const [list, academyOptions] = await Promise.all([
+    trials
+      .listUpcoming(
+        filters,
+        // A signed-out board is the same for everybody and can be cached; a
+        // signed-in one is read fresh, so a trial applied to a moment ago
+        // reads as it now is.
+        session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
+      )
+      .catch(() => []),
+    // The academies the board can be narrowed to — the public directory, which
+    // is the same list for everybody.
+    academies
+      .listPublic({}, { revalidate: 300 })
+      .then((rows) => rows.map((row) => ({ id: row.id, name: row.name })))
+      .catch(() => [] as { id: string; name: string }[]),
+  ]);
 
   /*
    * A manager's own trials come first, above everyone else's. The academy is
@@ -232,7 +247,7 @@ export default async function TrialsPage({
         Only on the public board. A manager's screen is their own two lists, and
         filtering somebody else's trials is not what they came for.
       */}
-      {!managed && <TrialFilters />}
+      {!managed && <TrialFilters academies={academyOptions} />}
 
       {!managed &&
         (list?.length === 0 ? (

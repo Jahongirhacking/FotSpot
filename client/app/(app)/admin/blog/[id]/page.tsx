@@ -41,7 +41,7 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
   const [categories, images, academyOptions] = await Promise.all([
     blog.categories(opts).catch(() => [] as BlogCategory[]),
     blog.listImages(id, opts).catch(() => [] as BlogPostImage[]),
-    academies.listPublic(undefined, opts).catch(() => []),
+    academies.listPublic({}, opts).catch(() => []),
   ]);
 
   return (

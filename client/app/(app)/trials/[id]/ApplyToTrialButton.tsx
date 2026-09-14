@@ -12,7 +12,7 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Feedback';
 import { Card, CardContent } from '@/components/ui/Card';
-import { formatDate } from '@/lib/utils';
+import { ageFrom, formatDate } from '@/lib/utils';
 
 /**
  * Only players apply. A non-player sees the route to becoming one instead of a
@@ -25,6 +25,9 @@ export function ApplyToTrialButton({
   applicationId,
   ageRange,
   applyDeadline,
+  trialDate,
+  trialGender,
+  player,
 }: {
   trialId: string;
   existingStatus: TrialApplicationStatus | null;
@@ -34,8 +37,31 @@ export function ApplyToTrialButton({
   ageRange: { min: number; max: number } | null;
   /** Null on trials written before deadlines existed — those stay open. */
   applyDeadline?: string | null;
+  /** When the trial is held: the day the player's age is measured on. Null runs until archived. */
+  trialDate?: string | null;
+  /** Who the trial is for; `general` and null are open to both. */
+  trialGender?: string | null;
+  /** The viewer's own card, when they are a player — what the two checks read. */
+  player?: { birthDate: string | null; gender: string | null } | null;
 }) {
   const { t, f } = useI18n();
+
+  /*
+   * Eligibility, decided here the way the server decides it: age on the day
+   * of the trial against the stated range, and gender against who the trial
+   * is for, a general trial being open to both. Position is not checked, by
+   * either side — a player may want to try out of position.
+   */
+  const trialFor = (trialGender ?? '').trim().toLowerCase();
+  const playerGender = (player?.gender ?? '').trim().toLowerCase();
+  const genderBlocked =
+    (trialFor === 'male' || trialFor === 'female') && !!player && playerGender !== trialFor;
+  const ageNow =
+    player?.birthDate != null
+      ? ageFrom(player.birthDate, trialDate ? new Date(trialDate) : new Date())
+      : null;
+  const ageBlocked =
+    ageRange !== null && ageNow !== null && (ageNow < ageRange.min || ageNow > ageRange.max);
   const { hasRole, isAuthenticated } = useSession();
   const requireAuth = useRequireAuth();
   const router = useRouter();
@@ -175,10 +201,29 @@ export function ApplyToTrialButton({
   return (
     <div className="space-y-3">
       {apply.isError && <Alert tone="danger">{(apply.error as Error).message}</Alert>}
-      <Button size="lg" className="w-full" loading={apply.isPending} onClick={() => apply.mutate()}>
+      {/* The reason is on screen before the press, and the button says no with it. */}
+      {genderBlocked && (
+        <Alert tone="warning">
+          {f(t.trials.notEligibleGender, {
+            gender: trialFor === 'female' ? t.trials.genderFemale : t.trials.genderMale,
+          })}
+        </Alert>
+      )}
+      {ageBlocked && ageRange && (
+        <Alert tone="warning">
+          {f(t.trials.notEligibleAge, { min: ageRange.min, max: ageRange.max, age: ageNow ?? '' })}
+        </Alert>
+      )}
+      <Button
+        size="lg"
+        className="w-full"
+        loading={apply.isPending}
+        disabled={genderBlocked || ageBlocked}
+        onClick={() => apply.mutate()}
+      >
         {apply.isSuccess ? <Check aria-hidden /> : <Send aria-hidden />} {t.trials.apply}
       </Button>
-      {ageRange && (
+      {ageRange && !ageBlocked && (
         <p className="text-muted text-center text-xs">
           {f(t.trials.ageCheckedAutomatically, { min: ageRange.min, max: ageRange.max })}
         </p>

@@ -846,8 +846,15 @@ export interface TrialListFilters {
   region?: string;
   district?: string;
   age?: number | string;
+  /** Kept for older links; the board no longer offers it. */
   position?: string;
   sort?: 'newest' | 'recommended';
+  /** Words from the title. */
+  query?: string;
+  /** Only this academy's trials. */
+  academyId?: string;
+  /** `male` shows boys' and general trials, `female` girls' and general, `general` only those. */
+  gender?: 'male' | 'female' | 'general';
 }
 
 export interface TrialAcademy {

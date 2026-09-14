@@ -67,7 +67,7 @@ export default async function LandingPage() {
         page: 1,
         pageSize: TALENT_POOL,
       })),
-    academies.listPublic(undefined, { revalidate: 600 }).catch(() => []),
+    academies.listPublic({}, { revalidate: 600 }).catch(() => []),
     trials?.listUpcoming({}, { revalidate: 600 }).catch(() => []),
     // One request for the strip, in the feed's own order — the API ranks it
     // with no viewer, so this is what is trending rather than what is newest.

@@ -12,6 +12,9 @@ import { Building2, MapPin } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { AcademyFilters } from './AcademyFilters';
+import { AcademiesMapSection } from './AcademiesMapSection';
+import { mappable } from '@/lib/academies-map';
 
 /**
  * The directory, described by what is actually in it.
@@ -61,9 +64,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AcademiesPage() {
+/** NOTE (Next 16): `searchParams` is a Promise. */
+export default async function AcademiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; region?: string; district?: string }>;
+}) {
   const session = await getSession();
   const { t } = await getServerT();
+  const params = await searchParams;
+  const filters = { query: params?.q, region: params?.region, district: params?.district };
+  const filtered = Boolean(params?.q || params?.region || params?.district);
 
   // Academies are onboarded by the platform team, not self-registered — there are
   // only ~50 in the country. The console is where that happens; there is no
@@ -74,7 +85,7 @@ export default async function AcademiesPage() {
 
   const list = await academies
     .listPublic(
-      undefined,
+      filters,
       session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 300 },
     )
     .catch(() => []);
@@ -122,11 +133,13 @@ export default async function AcademiesPage() {
         )}
       </header>
 
+      <AcademyFilters />
+
       {list?.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title={t.academy.noneListed}
-          description={t.academy.adminOnly}
+          title={filtered ? t.academy.noMatches : t.academy.noneListed}
+          description={filtered ? t.academy.noMatchesHint : t.academy.adminOnly}
           action={
             isAdmin ? (
               <Button asChild>
@@ -181,6 +194,10 @@ export default async function AcademiesPage() {
           ))}
         </ul>
       )}
+
+      {/* Its own section, after the list: the list is what the page is for
+          and arrives with the HTML; the map fills in when its library does. */}
+      <AcademiesMapSection academies={mappable(list)} />
     </div>
   );
 }

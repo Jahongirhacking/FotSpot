@@ -740,3 +740,80 @@
 :root.theme-reveal::view-transition-new(root) {
   z-index: 2;
 }
+
+/* The academies map's pins and popup — Leaflet mounts these from strings, so
+   they cannot be Tailwind classes on a component. */
+.fs-pin {
+  display: block;
+  width: 40px;
+  height: 44px;
+  position: relative;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+.fs-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, 40%) rotate(45deg);
+  background: var(--primary);
+}
+.fs-pin-face {
+  position: absolute;
+  inset: 0 0 4px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 3px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+.leaflet-popup-tip {
+  background: var(--surface);
+}
+.leaflet-popup-content {
+  margin: 0.75rem;
+}
+.fs-pin-card {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 180px;
+}
+.fs-pin-card img {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fs-pin-card-body {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+.fs-pin-card-body strong {
+  font-weight: 600;
+}
+.fs-pin-card-body span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.fs-pin-card-body a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

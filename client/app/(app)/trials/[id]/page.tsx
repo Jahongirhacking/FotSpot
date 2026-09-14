@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Building2, CalendarDays, ClipboardList, Clock, Hourglass, MapPin } from 'lucide-react';
 import { ApiError } from '@/lib/api/client';
-import { academies, trials } from '@/lib/api/resources';
+import { academies, players, trials } from '@/lib/api/resources';
 import { getSession } from '@/lib/session';
 import { getServerT } from '@/lib/i18n/server';
 import type { Trial } from '@/lib/api/types';
@@ -110,6 +110,21 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
           .then((page) => page.items[0])
           .catch(() => undefined)
       : undefined;
+
+  /*
+   * The player's own card, so the button can say before it is pressed whether
+   * the trial is for them: age against the trial's range, gender against who
+   * the trial is for. The server refuses either anyway; this is so the screen
+   * agrees with it rather than failing under the press. Position is not part
+   * of it — a player may want to try a trial out of position.
+   */
+  const viewer =
+    session?.activeRole === 'player'
+      ? await players
+          .getMine({ token: session?.accessToken, cache: 'no-store' })
+          .then((me) => ({ birthDate: me.birthDate, gender: me.gender }))
+          .catch(() => null)
+      : null;
 
   /*
    * The hosting academy sees who applied; everyone else sees the apply button.
@@ -409,6 +424,9 @@ export default async function TrialDetailPage({ params }: { params: Promise<{ id
                 : null
             }
             applyDeadline={trial?.applyDeadline}
+            trialDate={trial?.date}
+            trialGender={trial?.gender ?? null}
+            player={viewer}
           />
         ))}
     </div>

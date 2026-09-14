@@ -631,6 +631,14 @@ export const uz = {
     directorySummary:
       'O‘zbekiston bo‘ylab {count} ta tasdiqlangan futbol akademiyasi — {regions}. Har birining tarkibi, sinovlari va aloqa ma’lumotlari.',
     noneListed: 'Hali akademiyalar yo‘q',
+    noMatches: 'Bu filtrlarga mos akademiya topilmadi',
+    noMatchesHint: 'Boshqa nom, viloyat yoki tumanni sinab ko‘ring yoki filtrlarni tozalang.',
+    searchName: 'Akademiya nomi bo‘yicha qidirish',
+    mapTitle: 'Akademiyalar xaritada',
+    mapHint:
+      'Faqat joylashuvini ko‘rsatgan akademiyalar ko‘rinadi. Akademiyani ochish uchun belgini bosing.',
+    noneOnMap: 'Hali birorta akademiya joylashuvini ko‘rsatmagan.',
+    openProfile: 'Profilni ochish',
     adminOnly:
       'Akademiyalar platforma jamoasi tomonidan qo‘shiladi. O‘zbekistonda ~50 akademiya bor, shuning uchun ularni faqat administrator ro‘yxatga oladi. Akademiyangizni qo‘shish uchun biz bilan bog‘laning.',
     managerUser: 'Rahbar (foydalanuvchi ID)',
@@ -1095,6 +1103,15 @@ export const uz = {
     applicationsClosedOn:
       'Muddat {date} da tugagan. Sinovni ko‘rishingiz mumkin, lekin ariza bera olmaysiz.',
     ageCheckedAutomatically: 'Yoshingiz {min}–{max} oralig‘iga avtomatik tekshiriladi.',
+    notEligibleAge: 'Bu sinov {min}–{max} yoshdagilar uchun; siz {age} yoshdasiz.',
+    notEligibleGender: 'Bu sinov faqat {gender} uchun.',
+    searchTrials: 'Sinov nomi bo‘yicha qidirish',
+    academyFilter: 'Akademiya',
+    anyAcademy: 'Istalgan akademiya',
+    anyGender: 'Istalgan jins',
+    genderOptionMale: 'Erkak',
+    genderOptionFemale: 'Ayol',
+    genderOptionGeneral: 'Umumiy',
     applyBefore: '{date} gacha ariza bering.',
     statusPassed: 'O‘tdi',
     statusFailed: 'O‘tmadi',
