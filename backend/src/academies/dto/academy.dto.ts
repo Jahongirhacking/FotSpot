@@ -29,6 +29,13 @@ import {
  * choosing the password for someone else's account is how "Parol123" ends up
  * guarding a database of children.
  */
+/** The public directory's filters. Region and district are the listing buckets; `query` is words from the name. */
+export class ListPublicAcademiesDto {
+  @IsOptional() @IsString() @MaxLength(64) region?: string;
+  @IsOptional() @IsString() @MaxLength(64) district?: string;
+  @IsOptional() @IsString() @MaxLength(80) query?: string;
+}
+
 export class NewManagerDto {
   @IsString() @MinLength(1) @MaxLength(60) firstName: string;
   @IsString() @MinLength(1) @MaxLength(60) lastName: string;

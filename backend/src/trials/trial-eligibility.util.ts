@@ -68,3 +68,12 @@ export function genderFilterFor(
   if (trial !== 'male' && trial !== 'female') return null;
   return { gender: { equals: trial, mode: 'insensitive' } };
 }
+
+/**
+ * Which trials a player of this gender may be shown: their own, and the
+ * general ones, which are open to both. Asking for `general` is asking for
+ * only those.
+ */
+export function genderOptionsFor(gender: TrialGender): string[] {
+  return gender === 'general' ? ['general'] : [gender, 'general'];
+}

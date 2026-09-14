@@ -339,7 +339,20 @@ export class ListTrialsQueryDto {
    */
   @IsOptional() @Type(() => Number) @IsInt() @Min(4) @Max(60) age?: number;
 
+  /** Kept for older clients; the board no longer offers it. Position is informational, not a gate. */
   @IsOptional() @IsString() @MaxLength(8) position?: string;
+
+  /** Words from the trial's title. */
+  @IsOptional() @IsString() @MaxLength(80) query?: string;
+
+  /** Only this academy's trials. */
+  @IsOptional() @IsString() @MaxLength(64) academyId?: string;
+
+  /**
+   * Who the player is: `male` shows boys' and general trials, `female` girls'
+   * and general, `general` only the ones open to both.
+   */
+  @IsOptional() @IsIn(['male', 'female', 'general']) gender?: 'male' | 'female' | 'general';
 
   /**
    * `newest` (default) or `recommended`.

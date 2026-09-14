@@ -17,17 +17,18 @@ import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
-  AddAcademyPhotoDto,
   AcademyImageUploadDto,
-  ReorderDto,
-  SetFeaturedDto,
+  AddAcademyPhotoDto,
+  CreateAcademyDto,
   CreateCoachDto,
   ImportMemberDto,
   ListMembersDto,
-  UpdateMemberDto,
-  CreateAcademyDto,
+  ListPublicAcademiesDto,
+  ReorderDto,
+  SetFeaturedDto,
   SetManagerDto,
   UpdateAcademyDto,
+  UpdateMemberDto,
 } from './dto/academy.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -57,8 +58,8 @@ export class AcademiesController {
 
   @Public()
   @Get()
-  listPublic(@Query('region') region?: string) {
-    return this.academiesService.listPublic(region);
+  listPublic(@Query() dto: ListPublicAcademiesDto) {
+    return this.academiesService.listPublic(dto);
   }
 
   /**

@@ -71,6 +71,7 @@ function fakePrisma() {
     $transaction: jest.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
     trial: {
       findUnique: jest.fn(async (): Promise<unknown> => TRIAL),
+      findMany: jest.fn(async (): Promise<unknown[]> => []),
       // Only `create` needs a fixture: it is the one write the local-team check
       // guards, and asserting it was *not* called is how "refused" is proved.
       create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -1302,5 +1303,39 @@ describe('TrialsService.listMyApplications — a page, not the lot', () => {
     const { service, prisma } = build();
     prisma.playerProfile.findUnique.mockResolvedValueOnce(null as never);
     await expect(service.listMyApplications('user-1')).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe('TrialsService.listUpcoming — the board’s filters', () => {
+  const whereOf = (prisma: ReturnType<typeof build>['prisma']) =>
+    (prisma.trial.findMany.mock.calls[0] as unknown as [{ where: Record<string, unknown> }])[0]
+      .where;
+
+  it('shows a boy the boys’ trials and the general ones, a girl hers and the general ones', async () => {
+    const boys = build();
+    await boys.service.listUpcoming({ gender: 'male' });
+    expect(whereOf(boys.prisma).gender).toEqual({ in: ['male', 'general'], mode: 'insensitive' });
+
+    const girls = build();
+    await girls.service.listUpcoming({ gender: 'female' });
+    expect(whereOf(girls.prisma).gender).toEqual({
+      in: ['female', 'general'],
+      mode: 'insensitive',
+    });
+  });
+
+  it('shows only the trials open to both when asked for general', async () => {
+    const { service, prisma } = build();
+    await service.listUpcoming({ gender: 'general' });
+    expect(whereOf(prisma).gender).toEqual({ in: ['general'], mode: 'insensitive' });
+  });
+
+  it('searches the title and narrows to one academy, and never gates on position', async () => {
+    const { service, prisma } = build();
+    await service.listUpcoming({ query: '  Toshkent ', academyId: 'academy-9' });
+    const where = whereOf(prisma);
+    expect(where.title).toEqual({ contains: 'Toshkent', mode: 'insensitive' });
+    expect(where.academyId).toBe('academy-9');
+    expect(where).not.toHaveProperty('positions');
   });
 });

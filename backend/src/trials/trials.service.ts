@@ -42,7 +42,7 @@ interface AcademySummaryRow {
   logoKey: string | null;
 }
 import { ageReferenceDate, patchedDate, validateWindow } from './trial-window.util';
-import { assertGenderEligible, genderFilterFor } from './trial-eligibility.util';
+import { assertGenderEligible, genderFilterFor, genderOptionsFor } from './trial-eligibility.util';
 import {
   compareNewest,
   compareRecommended,
@@ -685,6 +685,15 @@ export class TrialsService {
         // open to the person doing the filtering.
         ...(query.position
           ? { OR: [{ positions: { has: query.position } }, { positions: { isEmpty: true } }] }
+          : {}),
+        ...(query.query
+          ? { title: { contains: query.query.trim(), mode: 'insensitive' as const } }
+          : {}),
+        ...(query.academyId ? { academyId: query.academyId } : {}),
+        // A general trial is open to both, so it shows for either; asking for
+        // "general" shows only those.
+        ...(query.gender
+          ? { gender: { in: genderOptionsFor(query.gender), mode: 'insensitive' as const } }
           : {}),
       },
       include: { academy: { select: TrialsService.ACADEMY_SUMMARY } },
