@@ -12,6 +12,7 @@ import {
   countsTowardsRating,
   currentClaim,
   deriveAttributes,
+  displayStars,
   sortClipsNewestFilmed,
 } from './player-card';
 
@@ -145,8 +146,11 @@ test('every tab lists clips by the day filmed, newest first', () => {
 test('stars: a verified rating counts in full, a relative one for half, from the clips the board shows', () => {
   const verified = cardEvidence(player, [], [rated('PACE', 100, 'VERIFIED', at('01-01'))]).stars;
   const relative = cardEvidence(player, [], [rated('PACE', 100, 'RELATIVE', at('01-01'))]).stars;
-  assert.equal(verified, Math.round((100 / 600) * 5));
-  assert.equal(relative, Math.round((50 / 600) * 5));
+  // Precise, not rounded: the API's own value, halves only when drawn.
+  assert.ok(Math.abs(verified - 100 / 120) < 1e-9);
+  assert.ok(Math.abs(relative - 50 / 120) < 1e-9);
+  assert.equal(displayStars(verified), 1);
+  assert.equal(displayStars(relative), 0.5);
 
   // Dribbling: the verified 30 counts, not half of the newer relative 40.
   const board = cardEvidence(player, [], BOARD);
@@ -163,8 +167,10 @@ test('stars: a verified rating counts in full, a relative one for half, from the
 });
 
 test('a formal assessment stands in for a relative number, not for a verified one', () => {
-  const assessed = [{ id: 'a1', playerId: 'player-1', speed: 10, createdAt: at('05-01') }] as never;
+  const assessed = [{ id: 'a1', playerId: 'player-1', speed: 90, createdAt: at('05-01') }] as never;
   const relative = cardEvidence(player, assessed, [rated('PACE', 40, 'RELATIVE', at('01-01'))]);
   const verified = cardEvidence(player, assessed, [rated('PACE', 40, 'VERIFIED', at('01-01'))]);
-  assert.ok(relative.stars >= verified.stars);
+  // 40/2 + 90 over the verified clip's own 40: the assessment counted once, for the relative card only.
+  assert.ok(Math.abs(relative.stars - 110 / 120) < 1e-9);
+  assert.ok(Math.abs(verified.stars - 40 / 120) < 1e-9);
 });

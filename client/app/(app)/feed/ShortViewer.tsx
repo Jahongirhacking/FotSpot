@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { cn, initials } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { patchFeedClip } from './feed-cache';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 /**
  * How long a slide must actually play before it counts as watched.
@@ -86,14 +87,10 @@ export function ShortViewer({
   }, [startIndex]);
 
   // The page behind must not scroll while a full-screen overlay is open —
-  // otherwise closing it returns the reader somewhere they never went.
-  React.useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, []);
+  // otherwise closing it returns the reader somewhere they never went — and
+  // its scrollbar must not be drawn beside this one: the slides are the only
+  // thing that scrolls.
+  useScrollLock();
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -143,7 +140,7 @@ export function ShortViewer({
       <div
         ref={scrollerRef}
         onScroll={onScroll}
-        className="h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
+        className="no-scrollbar h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
         {clips?.map((clip, position) => (
           <Slide

@@ -1,6 +1,6 @@
 import { PlayerPortrait } from '@/components/player/PlayerPortrait';
 import type { PlayerProfile } from '@/lib/api/types';
-import { CARD_THEME, positionGroup, starTier } from '@/lib/player-card';
+import { CARD_THEME, displayStars, positionGroup, starTier } from '@/lib/player-card';
 import { bandOf, cn, humanizeEnum } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -50,7 +50,8 @@ export function PlayerCard({
 }) {
   const group = positionGroup(player?.primaryPosition);
   const theme = CARD_THEME[group];
-  const stars = player?.stars ?? 0;
+  // The API sends the precise value; the row draws halves.
+  const stars = displayStars(player?.stars ?? 0);
   const bandLabel = (bandOf(player) ?? '').replace('U-', 'U');
   const small = size === 'sm';
 
@@ -191,10 +192,10 @@ const EMPTY_STAR = 'rgba(255,255,255,.22)';
 /**
  * Five stars, filled by the rating evidence behind the card — in halves.
  *
- * The API answers a multiple of 0.5 (`card-stars.util.ts`), so the row has to
- * draw "three and a half": the half star is the empty glyph with the filled
- * one clipped to its left half over it, which reads the same at ten pixels
- * as at fourteen.
+ * `filled` is already rounded to a half (`displayStars`), so the row draws
+ * "three and a half": the half star is the empty glyph with the filled one
+ * clipped to its left half over it, which reads the same at ten pixels as at
+ * fourteen.
  */
 function EvidenceStars({
   filled,

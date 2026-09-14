@@ -415,6 +415,17 @@ function latestCoachRating(
 }
 
 /** Colour band for a star count. Presentation, so it stays on the client. */
+/**
+ * What the star row draws: the API's precise 0–5 value to the nearest half.
+ *
+ * Only for display. Anything that compares, sorts or thresholds stars reads the
+ * precise value the API sent — the same rule the backend follows
+ * (`card-stars.util.ts`).
+ */
+export function displayStars(stars: number): number {
+  return Math.round(Math.max(0, Math.min(5, stars)) * 2) / 2;
+}
+
 export function starTier(stars: number): EvidenceTier {
   return stars === 0 ? 'unrated' : stars >= 5 ? 'gold' : stars >= 3 ? 'silver' : 'bronze';
 }
@@ -465,10 +476,10 @@ export function cardEvidence(
   // goalkeeping evidence counts without being required. Neither should show
   // more than five stars.
   const score = relativeSum / 2 + coachSum;
-  const stars = Math.max(0, Math.min(5, Math.round((score / EVIDENCE_MAX) * 5)));
-
-  const tier: EvidenceTier =
-    stars === 0 ? 'unrated' : stars >= 5 ? 'gold' : stars >= 3 ? 'silver' : 'bronze';
+  // Precise, like the API's own value; the tier is read off what the row would
+  // draw, so a card rounding up to five is gold on screen and in name.
+  const stars = Math.max(0, Math.min(5, (score / EVIDENCE_MAX) * 5));
+  const tier = starTier(displayStars(stars));
 
   return { tier, stars, verifiedCount, total };
 }
