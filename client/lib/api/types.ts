@@ -12,6 +12,7 @@ export type PlayingStyle =
   | 'DEEP_LYING_FORWARD'
   | 'PROLIFIC_WINGER'
   | 'CLASSIC_10'
+  | 'CREATIVE_PLAYMAKER'
   | 'BOX_TO_BOX'
   | 'PLAYMAKER'
   | 'ANCHOR_MAN'

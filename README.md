@@ -1428,12 +1428,15 @@ The single highest-excitement, lowest-risk addition — and genuinely useful rec
 since academies recruit _for a role_, not for a position. Add `playing_style` to the player
 profile (§1.6), selected by the player and confirmable by a coach:
 
-| Position group | Styles                                                                            |
-| -------------- | --------------------------------------------------------------------------------- |
-| **Forward**    | Goal Poacher · Fox in the Box · Deep-Lying Forward · Prolific Winger · Classic 10 |
-| **Midfield**   | Box-to-Box · Playmaker · Anchor Man · Orchestrator                                |
-| **Defence**    | Build-Up · Destroyer · Offensive Wingback · Defensive Fullback                    |
-| **Goalkeeper** | Offensive Keeper · Defensive Keeper                                               |
+| Position group | Styles                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| **Forward**    | Goal Poacher · Fox in the Box · Deep-Lying Forward · Prolific Winger · Classic 10 · Creative Playmaker |
+| **Midfield**   | Box-to-Box · Playmaker · Creative Playmaker · Anchor Man · Orchestrator                                |
+| **Defence**    | Build-Up · Destroyer · Offensive Wingback · Defensive Fullback                                         |
+| **Goalkeeper** | Offensive Keeper · Defensive Keeper                                                                    |
+
+The Creative Playmaker is listed under both Forward and Midfield on purpose: it is one stored
+value, offered to players of either group.
 
 Academies get `playing_style` as a search filter — "we need a Destroyer, U16, Fergana" is a real
 recruitment query that positions alone can't express.

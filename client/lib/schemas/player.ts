@@ -11,6 +11,7 @@ export enum PlayingStyles {
   DEEP_LYING_FORWARD = 'DEEP_LYING_FORWARD',
   PROLIFIC_WINGER = 'PROLIFIC_WINGER',
   CLASSIC_10 = 'CLASSIC_10',
+  CREATIVE_PLAYMAKER = 'CREATIVE_PLAYMAKER',
   BOX_TO_BOX = 'BOX_TO_BOX',
   PLAYMAKER = 'PLAYMAKER',
   ANCHOR_MAN = 'ANCHOR_MAN',
@@ -23,6 +24,11 @@ export enum PlayingStyles {
   DEFENSIVE_KEEPER = 'DEFENSIVE_KEEPER',
 }
 
+/**
+ * Styles by the position group they are offered under. A style may sit in two
+ * groups (the Creative Playmaker is a forward's role and a midfielder's), so
+ * anything that needs each style once reads `ALL_PLAYING_STYLES`, not `.flat()`.
+ */
 export const PLAYING_STYLES = {
   Forward: [
     PlayingStyles.GOAL_POACHER,
@@ -30,10 +36,12 @@ export const PLAYING_STYLES = {
     PlayingStyles.DEEP_LYING_FORWARD,
     PlayingStyles.PROLIFIC_WINGER,
     PlayingStyles.CLASSIC_10,
+    PlayingStyles.CREATIVE_PLAYMAKER,
   ],
   Midfield: [
     PlayingStyles.BOX_TO_BOX,
     PlayingStyles.PLAYMAKER,
+    PlayingStyles.CREATIVE_PLAYMAKER,
     PlayingStyles.ANCHOR_MAN,
     PlayingStyles.ORCHESTRATOR,
   ],
@@ -46,7 +54,7 @@ export const PLAYING_STYLES = {
   Goalkeeper: [PlayingStyles.DEFENSIVE_KEEPER, PlayingStyles.OFFENSIVE_KEEPER],
 } as const;
 
-export const ALL_PLAYING_STYLES = Object.values(PLAYING_STYLES).flat();
+export const ALL_PLAYING_STYLES = [...new Set(Object.values(PLAYING_STYLES).flat())];
 
 /**
  * Re-exported so existing importers keep working, but the list itself now lives
