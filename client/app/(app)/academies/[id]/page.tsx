@@ -21,9 +21,13 @@ import type {
 import type { Dictionary } from '@/lib/i18n';
 import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
-import { seoKeywords } from '@/lib/seo';
+import { INDEXABLE_ROBOTS, NOINDEX_ROBOTS, seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
-import { breadcrumbLd } from '@/lib/structured-data';
+import {
+  academyId as academyEntityId,
+  academyOrganizationLd,
+  profileGraphLd,
+} from '@/lib/structured-data';
 import { TrialThumb } from '@/components/trials/TrialThumb';
 import { getSession } from '@/lib/session';
 
@@ -130,8 +134,11 @@ export async function generateMetadata({
     [academy?.name, where].filter(Boolean).join(' · ') ||
     academy?.name;
 
+  const { t } = await getServerT();
+  const title = `${academy?.name} — ${isLocalTeam ? t.seo.localTeamRole : t.seo.academyRole}`;
+
   return {
-    title: academy?.name,
+    title,
     description: summary,
     /*
      * The operator's terms, plus the two facts every academy has.
@@ -145,24 +152,23 @@ export async function generateMetadata({
     openGraph: {
       type: 'profile',
       url,
-      title: academy?.name,
+      title,
       description: summary,
-      // The logo is the only image these records have; without it the card is
-      // a grey rectangle with the site's default.
-      ...(academy?.logoUrl
-        ? { images: [{ url: academy.logoUrl, alt: academy?.name }] }
-        : { images: [{ url: '/fotspot.png', alt: academy?.name }] }),
+      // The academy's own logo, or none. The site's logo used to stand in
+      // here, and a result then showed FotSpot's wolf beside the academy's
+      // name — the wrong organisation's image on the academy's page.
+      ...(academy?.logoUrl ? { images: [{ url: academy.logoUrl, alt: academy?.name }] } : {}),
     },
     twitter: {
       card: 'summary',
-      title: academy?.name,
+      title,
       description: summary,
-      ...(academy?.logoUrl ? { images: [academy.logoUrl] } : { images: ['/fotspot.png'] }),
+      ...(academy?.logoUrl ? { images: [academy.logoUrl] } : {}),
     },
     // A local team is deliberately absent from the public directory (§13), so
     // it should not be in an index either — being unlisted and being
     //search-indexable are the same decision made twice.
-    robots: isLocalTeam ? { index: false, follow: true } : { index: true, follow: true },
+    robots: isLocalTeam ? NOINDEX_ROBOTS : INDEXABLE_ROBOTS,
   };
 }
 
@@ -350,60 +356,42 @@ export default async function AcademyDetailPage({
   const canFollowForTrials = !isLocalTeam && (!session || session?.activeRole === 'player');
 
   /*
-   * The same facts, in the form a crawler reads as data rather than prose.
-   *
-   * `SportsOrganization` is the closest schema.org type — it is what lets a
-   * result show the address and the phone under the name instead of a bare blue
-   * link. Only fields the academy has actually filled in are emitted: a
-   * `telephone` of null is worse than no telephone, being a claim that fails
-   * validation rather than a detail left out.
+   * The same facts, in the form a crawler reads as data rather than prose:
+   * this page is the academy's profile, the academy is a sports organisation
+   * with its own logo (or none — never the site's), and the trail runs
+   * FotSpot → Academies → here. One graph, one script, nothing declared twice.
    */
-  const structuredData = {
-    '@type': 'SportsOrganization',
-    name: academy?.name,
-    url: absoluteUrl(canonicalPath),
-    sport: 'Football',
-    ...(academy?.description ? { description: academy.description } : {}),
-    ...(academy?.logoUrl ? { logo: academy.logoUrl } : {}),
-    ...(academy?.primaryPhone ? { telephone: academy.primaryPhone } : {}),
-    ...(academy?.region
-      ? {
-          address: {
-            '@type': 'PostalAddress',
-            addressCountry: 'UZ',
-            addressRegion: academy.region,
-            ...(academy?.district ? { addressLocality: academy.district } : {}),
-          },
-        }
-      : {}),
-    ...(located
-      ? {
-          geo: {
-            '@type': 'GeoCoordinates',
-            latitude: academy?.latitude,
-            longitude: academy?.longitude,
-          },
-        }
-      : {}),
-    ...(socialLinks.length > 0 ? { sameAs: socialLinks } : {}),
-  };
+  const profileGraph = profileGraphLd(
+    {
+      path: canonicalPath,
+      name: academy?.name,
+      description: academy?.description,
+      image: academy?.logoUrl,
+      mainEntityId: academyEntityId(canonicalPath),
+    },
+    academyOrganizationLd({
+      name: academy?.name,
+      path: canonicalPath,
+      logoUrl: academy?.logoUrl,
+      description: academy?.description,
+      region: academy?.region,
+      district: academy?.district,
+      latitude: academy?.latitude,
+      longitude: academy?.longitude,
+      telephone: academy?.primaryPhone,
+      sameAs: socialLinks,
+    }),
+    [
+      { name: t.nav.academies, path: '/academies' },
+      { name: academy?.name, path: canonicalPath },
+    ],
+  );
 
   return (
     <div className="space-y-6">
       {/* Not rendered to the reader — the machine-readable copy of what the page
           already says, so the two cannot disagree. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(structuredData)} />
-      {/* The trail a result shows instead of the raw URL — the canonical path,
-          so it agrees with the SportsOrganization `url` above. */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLd(
-          breadcrumbLd([
-            { name: t.nav.academies, path: '/academies' },
-            { name: academy?.name, path: canonicalPath },
-          ]),
-        )}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(profileGraph)} />
 
       {/* ---------- Identity ---------- */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

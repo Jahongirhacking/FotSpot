@@ -1,29 +1,29 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, UserPlus, Users } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { AcademyGroup, AcademyMember, AcademyMemberRole } from '@/lib/api/types';
-import { useI18n } from '@/components/layout/I18nProvider';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Alert, EmptyState } from '@/components/ui/Feedback';
-import { Field, Input, Select, Textarea } from '@/components/ui/Field';
-import { MemberRow } from '@/components/academy/MemberRows';
 import { CandidatePicker } from '@/components/academy/CandidatePicker';
-import { PlanQuotaNote } from '@/components/shared/PlanQuotaNote';
 import {
   EMPTY_FILTERS,
   filterMembers,
   MemberFilters,
   type MemberFilterState,
 } from '@/components/academy/MemberFilters';
-import { cn } from '@/lib/utils';
+import { MemberRow } from '@/components/academy/MemberRows';
+import { useI18n } from '@/components/layout/I18nProvider';
+import { PlanQuotaNote } from '@/components/shared/PlanQuotaNote';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert, EmptyState } from '@/components/ui/Feedback';
+import { Field, Input, Textarea } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { browserFetch } from '@/lib/api/browser';
+import type { AcademyGroup, AcademyMember, AcademyMemberRole } from '@/lib/api/types';
+import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, UserPlus, Users } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import * as React from 'react';
 
 const TABS: AcademyMemberRole[] = ['PLAYER', 'COACH', 'SCOUT'];
 
@@ -139,13 +139,9 @@ export function SquadManager({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       {/* ---------- Squad ---------- */}
       <Card className="min-w-0">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t.academy.squad}</CardTitle>
-        </CardHeader>
-
         <CardContent className="space-y-3 p-2">
           <div role="tablist" className="bg-surface-2 grid grid-cols-3 gap-1 rounded-lg p-1">
-            {tabs.map((role) => (
+            {tabs?.map((role) => (
               <button
                 key={role}
                 type="button"
@@ -294,7 +290,6 @@ export function SquadManager({
               className="border-border hover:bg-surface-2 flex items-center gap-2 rounded-lg border p-2 transition-colors"
             >
               {group?.imageUrl ? (
-                 
                 <LoadingImage
                   src={group?.imageUrl}
                   alt=""

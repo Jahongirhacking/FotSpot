@@ -95,9 +95,12 @@ export interface Crumb {
  * The last crumb is the page itself; Google reads its position as the leaf.
  */
 export function breadcrumbLd(trail: Crumb[]) {
+  // The site first, as the reader's own path begins: FotSpot → the section →
+  // the page. A trail of one is not a trail, so the home crumb is always here.
+  const crumbs = trail[0]?.path === '/' ? trail : [{ name: 'FotSpot', path: '/' }, ...trail];
   return {
     '@type': 'BreadcrumbList',
-    itemListElement: trail.map((crumb, index) => ({
+    itemListElement: crumbs.map((crumb, index) => ({
       '@type': 'ListItem',
       position: index + 1,
       name: crumb.name,
@@ -107,15 +110,26 @@ export function breadcrumbLd(trail: Crumb[]) {
 }
 
 /** Stable identifiers, so the site's entities can point at one another. */
-const ORGANIZATION_ID = () => `${absoluteUrl('/')}#organization`;
-const WEBSITE_ID = () => `${absoluteUrl('/')}#website`;
+export const ORGANIZATION_ID = () => `${absoluteUrl('/')}#organization`;
+export const WEBSITE_ID = () => `${absoluteUrl('/')}#website`;
+
+/**
+ * An image as schema.org wants it named — a URL is accepted too, but the
+ * object form lets a crawler read the caption and never mistakes the string
+ * for a page.
+ */
+function imageObject(url: string, caption?: string | null) {
+  return { '@type': 'ImageObject', url, ...(caption ? { caption } : {}) };
+}
 
 /**
  * FotSpot itself, for the knowledge panel.
  *
- * Emitted once, from the root layout, so every page carries it — a knowledge
- * panel is about the site rather than the page, and a crawler that only meets
- * this on the landing page has to reach the landing page first.
+ * Emitted once, from the **homepage only**. It used to ride on every page,
+ * which put FotSpot's logo on every player's and academy's page beside their
+ * own markup — and a crawler choosing an image for a result had two
+ * organisations to pick from. Now the site's logo belongs to this node and no
+ * other; the profile pages reach it by `@id`.
  *
  * ## Only facts the codebase already states
  *
@@ -126,12 +140,14 @@ const WEBSITE_ID = () => `${absoluteUrl('/')}#website`;
  * place to start guessing.
  */
 export function organizationLd(description: string) {
+  const logo = absoluteUrl('/fotspot.png');
   return {
     '@type': 'Organization',
     '@id': ORGANIZATION_ID(),
     name: 'FotSpot',
     url: absoluteUrl('/'),
-    logo: absoluteUrl('/fotspot.png'),
+    logo: imageObject(logo, 'FotSpot'),
+    image: logo,
     description,
     ...(SOCIAL_ACCOUNTS.length > 0 ? { sameAs: SOCIAL_ACCOUNTS.map((a) => a.href) } : {}),
     email: CONTACT_EMAIL,
@@ -163,9 +179,180 @@ export function websiteLd(description: string) {
   };
 }
 
-/** Both site-level entities, as one `@graph` in one script tag. */
+/** Both site-level entities, as one `@graph` in one script tag — the homepage's. */
 export function siteGraphLd(description: string) {
   return { '@graph': [organizationLd(description), websiteLd(description)] };
+}
+
+/**
+ * The page that *is* somebody's profile, wrapping the entity it is about.
+ *
+ * `ProfilePage` tells a crawler that this URL is the canonical page for the
+ * person or organisation in `mainEntity`, rather than a page that happens to
+ * mention them. The picture, when there is one, is named as the page's own so
+ * a result thumbnail comes from the entity and not from whatever the layout
+ * happens to carry.
+ */
+export function profilePageLd(page: {
+  /** The page's canonical path. */
+  path: string;
+  name: string;
+  description?: string | null;
+  image?: string | null;
+  /** The `@id` of the Person or Organization the page is about. */
+  mainEntityId: string;
+}) {
+  const url = absoluteUrl(page.path);
+  return {
+    '@type': 'ProfilePage',
+    '@id': `${url}#profilepage`,
+    url,
+    name: page.name,
+    ...(page.description ? { description: page.description } : {}),
+    ...(page.image ? { primaryImageOfPage: imageObject(page.image, page.name) } : {}),
+    isPartOf: { '@id': WEBSITE_ID() },
+    mainEntity: { '@id': page.mainEntityId },
+  };
+}
+
+/** What a profile may declare about the person whose page it is. */
+export interface MarkupPerson {
+  name: string;
+  /** The page's own canonical path. */
+  path: string;
+  /** The person's own photograph — never a site image standing in for one. */
+  image?: string | null;
+  description?: string | null;
+  /** "Striker", "Scout" — what they do, not who they are. */
+  jobTitle?: string | null;
+  /** The academy they belong to, when the profile shows one publicly. */
+  affiliation?: { name: string; path: string } | null;
+  /** Real external profiles only — the ones the page itself links to. */
+  sameAs?: (string | null | undefined)[] | null;
+}
+
+/** The `@id` a person's page and their Person node share. */
+export function personId(path: string) {
+  return `${absoluteUrl(path)}#person`;
+}
+
+/**
+ * A player or a scout, as the person their page is about.
+ *
+ * ## What it carries, and what it still does not
+ *
+ * The name, the page, the position, the academy when the page shows one, and
+ * the profile photograph — the one already on the page and in its social
+ * card, named here so a result can use *their* picture and never the site's.
+ * With no photograph the property is simply absent; nothing stands in for it.
+ *
+ * Still deliberately absent: `birthDate`, though the profile has one and
+ * schema.org would take it, and any `address` beyond the academy. Most of
+ * these profiles belong to children, and the markup names the entity for the
+ * crawler and stops there.
+ */
+export function personLd(person: MarkupPerson) {
+  const sameAs = (person?.sameAs ?? []).filter((link): link is string => Boolean(link));
+  return {
+    '@type': 'Person',
+    '@id': personId(person?.path),
+    name: person?.name,
+    url: absoluteUrl(person?.path),
+    ...(person?.image ? { image: imageObject(person.image, person.name) } : {}),
+    ...(person?.description ? { description: person.description } : {}),
+    ...(person?.jobTitle ? { jobTitle: person.jobTitle } : {}),
+    ...(person?.affiliation
+      ? {
+          affiliation: {
+            '@type': 'SportsOrganization',
+            name: person.affiliation.name,
+            url: absoluteUrl(person.affiliation.path),
+          },
+        }
+      : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+  };
+}
+
+/** What an academy's page may declare about the academy. */
+export interface MarkupAcademy {
+  name: string;
+  /** The page's own canonical path. */
+  path: string;
+  /** The academy's own logo — never the site's. */
+  logoUrl?: string | null;
+  description?: string | null;
+  region?: string | null;
+  district?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  telephone?: string | null;
+  sameAs?: (string | null | undefined)[] | null;
+}
+
+/** The `@id` an academy's page and its Organization node share. */
+export function academyId(path: string) {
+  return `${absoluteUrl(path)}#organization`;
+}
+
+/**
+ * An academy as the organisation its page is about.
+ *
+ * Both types, so a crawler that reads only `Organization` still understands
+ * it and one that knows `SportsOrganization` gets the more exact word. The
+ * logo is the academy's own or absent — FotSpot's logo belongs to FotSpot's
+ * node and is never a stand-in here, which is what let a result show the
+ * platform's wolf beside an academy's name. Address and coordinates only when
+ * the academy has published them; half a coordinate pair locates nothing.
+ */
+export function academyOrganizationLd(academy: MarkupAcademy) {
+  const located = typeof academy?.latitude === 'number' && typeof academy?.longitude === 'number';
+  const sameAs = (academy?.sameAs ?? []).filter((link): link is string => Boolean(link));
+  return {
+    '@type': ['Organization', 'SportsOrganization'],
+    '@id': academyId(academy?.path),
+    name: academy?.name,
+    url: absoluteUrl(academy?.path),
+    sport: 'Football',
+    ...(academy?.logoUrl
+      ? { logo: imageObject(academy.logoUrl, academy.name), image: academy.logoUrl }
+      : {}),
+    ...(academy?.description ? { description: academy.description } : {}),
+    ...(academy?.telephone ? { telephone: academy.telephone } : {}),
+    ...(academy?.region
+      ? {
+          address: {
+            '@type': 'PostalAddress',
+            addressCountry: 'UZ',
+            addressRegion: academy.region,
+            ...(academy?.district ? { addressLocality: academy.district } : {}),
+          },
+        }
+      : {}),
+    ...(located
+      ? {
+          geo: {
+            '@type': 'GeoCoordinates',
+            latitude: academy.latitude,
+            longitude: academy.longitude,
+          },
+        }
+      : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+  };
+}
+
+/**
+ * Everything a profile page declares, in one script: the page, the entity it
+ * is about, and the trail to it. One graph rather than three tags, so the
+ * three cannot drift and nothing is declared twice.
+ */
+export function profileGraphLd(
+  page: Parameters<typeof profilePageLd>[0],
+  entity: Record<string, unknown>,
+  trail: Crumb[],
+) {
+  return { '@graph': [profilePageLd(page), entity, breadcrumbLd(trail)] };
 }
 
 /** The subset of a trial this markup is allowed to look at. */
@@ -281,53 +468,108 @@ export function trialEventLd(trial: MarkupTrial) {
   };
 }
 
-/** What a profile may declare about the person whose page it is. */
-export interface MarkupPerson {
-  name: string;
-  /** The page's own canonical path. */
+/** The subset of a post the article markup reads. */
+export interface MarkupPost {
+  /** The post's canonical path. */
   path: string;
-  /** "Striker", "Scout" — what they do, not who they are. */
-  jobTitle?: string | null;
-  /** The academy they belong to, when the profile shows one publicly. */
-  affiliation?: { name: string; path: string } | null;
+  title: string;
+  description: string;
+  /** The cover — the one image the page shows, absolute. */
+  image?: string | null;
+  imageAlt?: string | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+  author:
+    { kind: 'academy'; name: string; path: string; logoUrl?: string | null } | { kind: 'mascot' };
+  section?: string | null;
+  keywords?: readonly string[] | null;
+  /** The rendered body, for a word count; never emitted itself. */
+  contentHtml?: string | null;
+  inLanguage?: string;
+}
+
+/** Google shows at most this many characters of a headline; the title is cut cleanly before it. */
+const HEADLINE_MAX = 110;
+
+function headlineOf(title: string): string {
+  const text = title.replace(/\s+/g, ' ').trim();
+  if (text.length <= HEADLINE_MAX) return text;
+  const cut = text.slice(0, HEADLINE_MAX - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).trimEnd()}…`;
+}
+
+/** Words in the rendered body, tags stripped — a fact a crawler can weigh. */
+function wordCountOf(html: string | null | undefined): number | null {
+  if (!html) return null;
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z#0-9]+;/gi, ' ')
+    .trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  return words > 0 ? words : null;
 }
 
 /**
- * A player or a scout, named and no more.
+ * A blog post as a `BlogPosting` — the Article type Google's article result
+ * reads, in the form it asks for.
  *
- * ## Why this is deliberately thin
+ * ## What earns the picture
  *
- * Most profiles on this platform belong to **children**. The pages are already
- * public and already in the sitemap, so this changes nothing about whether they
- * are indexed — but it does change how much of a child a search result can show,
- * and that is worth being ungenerous about.
- *
- * So: no `birthDate`, though the profile has one and schema.org would take it.
- * No `image`, so a child's photograph is not handed to a result card. No
- * `address` beyond the academy they play for. The markup names the entity for
- * the crawler and stops there.
- *
- * `ProfilePage` is not used as the wrapper either. It exists for creator
- * profiles in the Discussions and Forums feature — comment counts, posts
- * written, follower numbers — and a twelve-year-old's football card is not that.
- * Claiming the type would be reaching for a rich result this content should not
- * have.
+ * The cover is named as an `ImageObject` on the article and again as the
+ * thumbnail, absolute and public, with the same alt text the page shows. The
+ * page's robots directive lifts the image-preview cap (`INDEXABLE_ROBOTS`);
+ * the two together are what let a result carry the cover rather than a
+ * favicon. The headline is kept under Google's display limit, the dates are
+ * the post's own, and the author is the academy that wrote it — with its
+ * page — or the platform itself, by the same `@id` the homepage declares.
+ * The publisher is always FotSpot, with the logo the guidance asks for on
+ * the publisher itself. Nothing is claimed that the post does not carry.
  */
-export function personLd(person: MarkupPerson) {
-  return {
-    '@type': 'Person',
-    name: person?.name,
-    url: absoluteUrl(person?.path),
-    ...(person?.jobTitle ? { jobTitle: person.jobTitle } : {}),
-    ...(person?.affiliation
+export function blogPostingLd(post: MarkupPost) {
+  const url = absoluteUrl(post.path);
+  const words = wordCountOf(post.contentHtml);
+  const author =
+    post.author.kind === 'academy'
       ? {
-          affiliation: {
-            '@type': 'SportsOrganization',
-            name: person.affiliation.name,
-            url: absoluteUrl(person.affiliation.path),
-          },
+          '@type': 'Organization',
+          name: post.author.name,
+          url: absoluteUrl(post.author.path),
+          ...(post.author.logoUrl
+            ? { logo: imageObject(post.author.logoUrl, post.author.name) }
+            : {}),
         }
+      : {
+          '@type': 'Organization',
+          '@id': ORGANIZATION_ID(),
+          name: 'FotSpot',
+          url: absoluteUrl('/'),
+        };
+  return {
+    '@type': 'BlogPosting',
+    '@id': `${url}#article`,
+    headline: headlineOf(post.title),
+    ...(post.title.length > HEADLINE_MAX ? { name: post.title } : {}),
+    description: post.description,
+    url,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    isPartOf: { '@id': WEBSITE_ID() },
+    ...(post.image
+      ? { image: [imageObject(post.image, post.imageAlt ?? post.title)], thumbnailUrl: post.image }
       : {}),
+    ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    dateModified: post.updatedAt,
+    author,
+    publisher: {
+      '@type': 'Organization',
+      '@id': ORGANIZATION_ID(),
+      name: 'FotSpot',
+      url: absoluteUrl('/'),
+      logo: imageObject(absoluteUrl('/fotspot.png'), 'FotSpot'),
+    },
+    ...(post.section ? { articleSection: post.section } : {}),
+    ...(post.keywords?.length ? { keywords: post.keywords.join(', ') } : {}),
+    ...(words ? { wordCount: words } : {}),
+    inLanguage: post.inLanguage ?? 'uz',
   };
 }
 

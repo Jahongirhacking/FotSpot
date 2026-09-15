@@ -25,15 +25,19 @@ type Json = Record<string, any>;
 
 import { CONTACT_EMAIL, PHONES, SOCIAL_ACCOUNTS } from './contact';
 import {
+  academyOrganizationLd,
+  blogPostingLd,
   breadcrumbLd,
   itemListLd,
   organizationLd,
-  siteGraphLd,
-  websiteLd,
+  personId,
   personLd,
+  profileGraphLd,
+  siteGraphLd,
   trialDateTime,
   trialEventLd,
   type MarkupTrial,
+  websiteLd,
 } from './structured-data';
 
 const ACADEMY = {
@@ -171,7 +175,7 @@ test('does not repeat the start date as an end date on a single-day trial', () =
 /* People, and what a child's page may not say                                */
 /* -------------------------------------------------------------------------- */
 
-test('names a person and nothing more', () => {
+test('names a person, with a stable id the page can point at', () => {
   const person = personLd({ name: 'Aziz Karimov', path: '/players/@aziz' }) as Record<
     string,
     unknown
@@ -180,13 +184,33 @@ test('names a person and nothing more', () => {
   assert.equal(person['@type'], 'Person');
   assert.equal(person.name, 'Aziz Karimov');
   assert.match(person.url as string, /\/players\/@aziz$/);
+  assert.match(person['@id'] as string, /\/players\/@aziz#person$/);
 });
 
-test('never carries a birth date or a photograph', () => {
+test('carries the player’s own photograph when there is one, and nothing in its place when there is not', () => {
+  const withPhoto = personLd({
+    name: 'Aziz Karimov',
+    path: '/players/@aziz',
+    image: 'https://cdn.example/public/avatars/aziz.jpg',
+    jobTitle: 'Striker',
+  }) as unknown as Json;
+  assert.equal(withPhoto.image['@type'], 'ImageObject');
+  assert.equal(withPhoto.image.url, 'https://cdn.example/public/avatars/aziz.jpg');
+  assert.equal(withPhoto.jobTitle, 'Striker');
+
+  // No photograph means no `image` at all — never the site's logo standing in.
+  const without = personLd({ name: 'Aziz Karimov', path: '/players/@aziz' }) as Record<
+    string,
+    unknown
+  >;
+  assert.equal(without.image, undefined);
+  assert.equal(JSON.stringify(without).includes('fotspot.png'), false);
+});
+
+test('never carries a birth date or an address', () => {
   /*
    * These profiles are children's. The pages are public either way — this is
-   * about how much of a child a *result card* can show, and the answer is a
-   * name and a position.
+   * about how much of a child a *result card* can show.
    */
   const person = personLd({
     name: 'Aziz Karimov',
@@ -195,9 +219,63 @@ test('never carries a birth date or a photograph', () => {
   }) as Record<string, unknown>;
 
   assert.equal(person.birthDate, undefined);
-  assert.equal(person.image, undefined);
   assert.equal(person.address, undefined);
-  assert.equal(person.jobTitle, 'Striker');
+});
+
+test('an academy is an organisation with its own logo, or with none — never the site’s', () => {
+  const withLogo = academyOrganizationLd({
+    name: 'Shurtan FC',
+    path: '/academies/@shurtan',
+    logoUrl: 'https://cdn.example/public/academies/shurtan.png',
+    region: 'Qashqadaryo viloyati',
+    district: 'G‘uzor',
+    latitude: 38.62,
+    longitude: 66.25,
+  }) as unknown as Json;
+  assert.deepEqual(withLogo['@type'], ['Organization', 'SportsOrganization']);
+  assert.match(withLogo['@id'], /\/academies\/@shurtan#organization$/);
+  assert.equal(withLogo.logo.url, 'https://cdn.example/public/academies/shurtan.png');
+  assert.equal(withLogo.image, 'https://cdn.example/public/academies/shurtan.png');
+  assert.equal(withLogo.address.addressRegion, 'Qashqadaryo viloyati');
+  assert.equal(withLogo.geo.latitude, 38.62);
+
+  const withoutLogo = academyOrganizationLd({
+    name: 'Nasaf Kids',
+    path: '/academies/a-2',
+  }) as Record<string, unknown>;
+  assert.equal(withoutLogo.logo, undefined);
+  assert.equal(withoutLogo.image, undefined);
+  assert.equal(withoutLogo.address, undefined);
+  assert.equal(withoutLogo.geo, undefined);
+  assert.equal(JSON.stringify(withoutLogo).includes('fotspot.png'), false);
+});
+
+test('a profile page wraps its entity and names its picture as the page’s own', () => {
+  const graph = profileGraphLd(
+    {
+      path: '/players/@aziz',
+      name: 'Aziz Karimov',
+      image: 'https://cdn.example/a.jpg',
+      mainEntityId: personId('/players/@aziz'),
+    },
+    personLd({ name: 'Aziz Karimov', path: '/players/@aziz', image: 'https://cdn.example/a.jpg' }),
+    [
+      { name: 'Players', path: '/players' },
+      { name: 'Aziz Karimov', path: '/players/@aziz' },
+    ],
+  ) as unknown as Json;
+  const [page, person, trail] = graph['@graph'];
+  assert.equal(page['@type'], 'ProfilePage');
+  assert.match(page['@id'], /\/players\/@aziz#profilepage$/);
+  assert.equal(page.mainEntity['@id'], person['@id']);
+  assert.equal(page.primaryImageOfPage.url, 'https://cdn.example/a.jpg');
+  assert.match(page.isPartOf['@id'], /#website$/);
+  assert.equal(trail['@type'], 'BreadcrumbList');
+  // Exactly one of each: nothing is declared twice.
+  assert.equal(
+    graph['@graph'].filter((node: Json) => node['@type'] === 'BreadcrumbList').length,
+    1,
+  );
 });
 
 test('links a player to their academy when there is one to show', () => {
@@ -215,16 +293,25 @@ test('links a player to their academy when there is one to show', () => {
 /* Trails and lists                                                           */
 /* -------------------------------------------------------------------------- */
 
-test('numbers a breadcrumb trail from one, in reading order', () => {
+test('a breadcrumb trail starts at the site, then the section, then the page', () => {
   const trail = breadcrumbLd([
     { name: 'Trials', path: '/trials' },
     { name: 'U16 open day', path: '/trials/trial-1' },
   ]) as unknown as Json;
 
+  assert.equal(trail.itemListElement.length, 3);
   assert.equal(trail.itemListElement[0].position, 1);
-  assert.equal(trail.itemListElement[0].name, 'Trials');
-  assert.equal(trail.itemListElement[1].position, 2);
-  assert.match(trail.itemListElement[1].item, /^https?:\/\/.+\/trials\/trial-1$/);
+  assert.equal(trail.itemListElement[0].name, 'FotSpot');
+  assert.match(trail.itemListElement[0].item, /^https?:\/\/[^/]+\/$/);
+  assert.equal(trail.itemListElement[1].name, 'Trials');
+  assert.equal(trail.itemListElement[2].position, 3);
+  assert.match(trail.itemListElement[2].item, /^https?:\/\/.+\/trials\/trial-1$/);
+  // A trail that already names the site first is not given it twice.
+  const explicit = breadcrumbLd([
+    { name: 'FotSpot', path: '/' },
+    { name: 'Trials', path: '/trials' },
+  ]) as unknown as Json;
+  assert.equal(explicit.itemListElement.length, 2);
 });
 
 test('makes every breadcrumb and list URL absolute', () => {
@@ -240,7 +327,10 @@ test('describes the site itself for the knowledge panel', () => {
 
   assert.equal(org['@type'], 'Organization');
   assert.equal(org.name, 'FotSpot');
-  assert.match(org.logo as string, /^https?:\/\/.+\/fotspot\.png$/);
+  assert.match(org['@id'] as string, /#organization$/);
+  // The site's logo lives here and nowhere else in the markup.
+  assert.match((org.logo as { url: string }).url, /^https?:\/\/.+\/fotspot\.png$/);
+  assert.match(org.image as string, /\/fotspot\.png$/);
 });
 
 /*
@@ -281,4 +371,78 @@ test('emits both site entities as one graph', () => {
     graph['@graph'].map((n) => n['@type']),
     ['Organization', 'WebSite'],
   );
+});
+
+/* -------------------------------------------------------------------------- */
+/* Articles                                                                   */
+/* -------------------------------------------------------------------------- */
+
+test('a post is a BlogPosting with its cover named as image and thumbnail, its dates, and the site as publisher', () => {
+  const article = blogPostingLd({
+    path: '/blog/first-trial',
+    title: 'Our first trial',
+    description: 'What happened on the day.',
+    image: 'https://media.example/public/blog/p1/cover.jpg',
+    imageAlt: 'Players on the pitch',
+    publishedAt: '2026-09-10T15:33:10.580Z',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: {
+      kind: 'academy',
+      name: 'Shurtan FC',
+      path: '/academies/@shurtan',
+      logoUrl: 'https://media.example/l.png',
+    },
+    section: 'News',
+    keywords: ['trial', 'academy'],
+    contentHtml: '<p>One two <b>three</b> four.</p><p>Five six.</p>',
+  }) as unknown as Json;
+
+  assert.equal(article['@type'], 'BlogPosting');
+  assert.match(article['@id'], /\/blog\/first-trial#article$/);
+  assert.equal(article.headline, 'Our first trial');
+  assert.equal(article.image[0]['@type'], 'ImageObject');
+  assert.equal(article.image[0].url, 'https://media.example/public/blog/p1/cover.jpg');
+  assert.equal(article.image[0].caption, 'Players on the pitch');
+  assert.equal(article.thumbnailUrl, 'https://media.example/public/blog/p1/cover.jpg');
+  assert.equal(article.datePublished, '2026-09-10T15:33:10.580Z');
+  assert.equal(article.dateModified, '2026-09-14T19:09:19.405Z');
+  assert.equal(article.author.name, 'Shurtan FC');
+  assert.match(article.author.url, /\/academies\/@shurtan$/);
+  assert.equal(article.author.logo.url, 'https://media.example/l.png');
+  assert.match(article.publisher['@id'], /#organization$/);
+  assert.match(article.publisher.logo.url, /fotspot\.png$/);
+  assert.equal(article.mainEntityOfPage['@id'], article.url);
+  assert.match(article.isPartOf['@id'], /#website$/);
+  assert.equal(article.articleSection, 'News');
+  assert.equal(article.keywords, 'trial, academy');
+  assert.equal(article.wordCount, 6);
+});
+
+test('a mascot post is written by the site itself, by the same id the homepage declares', () => {
+  const article = blogPostingLd({
+    path: '/blog/hello',
+    title: 'Hello',
+    description: 'd',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: { kind: 'mascot' },
+  }) as unknown as Json;
+  assert.match(article.author['@id'], /#organization$/);
+  assert.equal(article.author.name, 'FotSpot');
+  assert.equal(article.image, undefined);
+  assert.equal(article.thumbnailUrl, undefined);
+  assert.equal(article.datePublished, undefined);
+});
+
+test('a long title becomes a headline under Google’s limit, with the full title kept as the name', () => {
+  const long = 'A '.repeat(80).trim();
+  const article = blogPostingLd({
+    path: '/blog/long',
+    title: long,
+    description: 'd',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: { kind: 'mascot' },
+  }) as unknown as Json;
+  assert.ok(article.headline.length <= 110);
+  assert.ok(article.headline.endsWith('…'));
+  assert.equal(article.name, long);
 });

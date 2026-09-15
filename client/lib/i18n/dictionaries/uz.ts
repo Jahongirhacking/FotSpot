@@ -60,6 +60,11 @@ export const uz = {
    */
   seo: {
     title: 'FotSpot — Mahalladan futbol akademiyasigacha',
+    playerRole: 'Futbolchi',
+    academyRole: 'Futbol akademiyasi',
+    localTeamRole: 'Mahalliy futbol jamoasi',
+    playerDescription:
+      '{name} — {facts}. FotSpotdagi futbolchi profili: video lavhalar, murabbiy baholari va sinovlarga arizalar.',
     description:
       'Futbolchi profilingizni yarating, iste’dodingizni video orqali ko‘rsating, skautlar va akademiyalar e’tiboriga tushing. Sinovlarga ariza bering.',
     keywords: [

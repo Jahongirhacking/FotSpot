@@ -47,6 +47,11 @@ export const en: Dictionary = {
 
   seo: {
     title: 'FotSpot — From Local Football to Academy',
+    playerRole: 'Football player',
+    academyRole: 'Football academy',
+    localTeamRole: 'Local football team',
+    playerDescription:
+      '{name} — {facts}. Football player profile on FotSpot: video clips, coach ratings and trial applications.',
     description:
       'Create your football profile, prove your talent with video, get discovered by Scouts and Academies, and apply to Trials.',
     keywords: [

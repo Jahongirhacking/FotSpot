@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { academies as academiesApi, blog, players, trials } from '@/lib/api/resources';
 import { absoluteUrl } from '@/lib/seo';
+import { playerPath } from '@/lib/player-url';
 
 /** Recomputed hourly rather than per request — a crawler is not worth a database sweep each visit. */
 export const revalidate = 3600;
@@ -41,8 +42,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/contact-us'), changeFrequency: 'yearly', priority: 0.4 },
   ];
 
-  const [playerPage, academyList, trialList, posts] = await Promise.all([
-    players.search({ pageSize: 200 }, { revalidate }).catch(() => ({ items: [] })),
+  const [playerList, academyList, trialList, posts] = await Promise.all([
+    allPublicPlayers(),
     academiesApi.listPublic({}, { revalidate }).catch(() => []),
     trials.listUpcoming({}, { revalidate }).catch(() => []),
     // Published posts only — the endpoint never lists a draft.
@@ -51,10 +52,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticRoutes,
-    ...playerPage.items.map((player) => ({
+    ...playerList.map((player) => ({
       // The handle, where there is one: it is the address a person would type
       // and the one worth having in an index.
-      url: absoluteUrl(player.username ? `/players/@${player.username}` : `/players/${player.id}`),
+      url: absoluteUrl(playerPath(player)),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
     })),
@@ -82,4 +83,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     })),
   ];
+}
+
+/** The API answers at most this many per page. */
+const SEARCH_PAGE_SIZE = 100;
+/** Enough pages for every player the platform is likely to hold before this needs a sitemap index. */
+const MAX_SEARCH_PAGES = 50;
+
+/**
+ * Every public player, a page at a time.
+ *
+ * This used to ask for two hundred in one page. The API caps a page at a
+ * hundred and answers 400 above it, and the sitemap's fallback swallowed the
+ * refusal — so no player URL was ever in the sitemap at all. Paged at the cap,
+ * and stopped at the first short page; a failure part-way keeps what was read.
+ */
+async function allPublicPlayers() {
+  const items: { id: string; username?: string | null }[] = [];
+  for (let page = 1; page <= MAX_SEARCH_PAGES; page++) {
+    try {
+      const result = await players.search({ page, pageSize: SEARCH_PAGE_SIZE }, { revalidate });
+      items.push(...result.items);
+      if (result.items.length < SEARCH_PAGE_SIZE || items.length >= result.total) break;
+    } catch {
+      break;
+    }
+  }
+  return items;
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
+import { hasUiOnlyQuery } from '@/lib/player-url';
 import { Sparkles } from 'lucide-react';
 import { PLAYING_STYLE_INFO } from '@/lib/playing-styles';
 import { PlayingStyleCard } from '@/components/player/PlayingStyleCard';
@@ -16,12 +17,19 @@ import { getServerT } from '@/lib/i18n/server';
  * routes of their own, and their canonical resolves here rather than, as
  * before, to the homepage the layout used to impose.
  */
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
   const { t } = await getServerT();
   return pageMetadata({
     path: '/playing-styles',
     title: t.playingStyleModal?.title,
     description: t.playingStyleModal?.subtitle,
+    // A `?showPlayingStyle=` view is this page with a modal open, not a page
+    // of its own: the canonical above is the page, and the view is noindex.
+    index: !hasUiOnlyQuery(await searchParams),
   });
 }
 

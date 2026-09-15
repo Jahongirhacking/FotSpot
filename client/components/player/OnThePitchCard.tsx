@@ -4,7 +4,7 @@ import type { PlayerProfile } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
-import Link from 'next/link';
+import { PlayingStyleTrigger } from '@/components/player/PlayingStyleTrigger';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
@@ -68,7 +68,7 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
   const description = info?.key ? t.playingStyles?.[info?.key] : undefined;
 
   return (
-    <Link href={`?showPlayingStyle=${encodeURIComponent(style)}`} className="w-min">
+    <PlayingStyleTrigger style={style} className="w-min cursor-pointer text-left">
       <div className="border-border bg-surface-2 flex max-w-[min(180px,100%)] flex-col items-center gap-3 rounded-lg border p-2.5">
         <StyleCrest name={info?.exemplar ?? ''} imageUrl={info?.imageUrl} />
 
@@ -86,7 +86,7 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
           )}
         </div>
       </div>
-    </Link>
+    </PlayingStyleTrigger>
   );
 }
 
@@ -94,7 +94,6 @@ function PlayingStyleStrip({ style, t }: { style: string; t: Dictionary }) {
 function StyleCrest({ name, imageUrl }: { name: string; imageUrl?: string }) {
   if (imageUrl) {
     return (
-       
       <LoadingImage
         src={imageUrl}
         alt={name}
