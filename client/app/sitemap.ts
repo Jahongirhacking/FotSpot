@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { academies as academiesApi, blog, players, trials } from '@/lib/api/resources';
 import { absoluteUrl } from '@/lib/seo';
+import { playerPath } from '@/lib/player-url';
 
 /** Recomputed hourly rather than per request — a crawler is not worth a database sweep each visit. */
 export const revalidate = 3600;
@@ -54,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...playerList.map((player) => ({
       // The handle, where there is one: it is the address a person would type
       // and the one worth having in an index.
-      url: absoluteUrl(player.username ? `/players/@${player.username}` : `/players/${player.id}`),
+      url: absoluteUrl(playerPath(player)),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
     })),

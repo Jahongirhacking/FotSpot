@@ -3,7 +3,7 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { PLAYING_STYLE_INFO, exemplarInitials } from '@/lib/playing-styles';
 import { cn, humanizeEnum } from '@/lib/utils';
-import Link from 'next/link';
+import { PlayingStyleTrigger } from '@/components/player/PlayingStyleTrigger';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 
 /**
@@ -71,16 +71,16 @@ export function PlayingStyleCard({
   }
 
   return (
-    <Link
-      href={`?showPlayingStyle=${encodeURIComponent(style)}`}
-      scroll={false}
+    <PlayingStyleTrigger
+      style={style}
       className={cn(
+        'block w-full cursor-pointer text-left',
         'hover:border-primary/50 hover:bg-surface-2 transition-colors',
         'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
       )}
     >
       {body}
-    </Link>
+    </PlayingStyleTrigger>
   );
 }
 
@@ -119,7 +119,6 @@ function ExemplarCrest({
 }) {
   if (imageUrl) {
     return (
-       
       <LoadingImage
         src={imageUrl}
         alt={name}

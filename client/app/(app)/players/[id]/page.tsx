@@ -13,6 +13,7 @@ import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
 import { absoluteUrl, INDEXABLE_ROBOTS, jsonLd, NOINDEX_ROBOTS } from '@/lib/seo';
 import { personId, personLd, profileGraphLd } from '@/lib/structured-data';
+import { hasUiOnlyQuery, playerPath } from '@/lib/player-url';
 import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
 import { bandOf, formatDate } from '@/lib/utils';
@@ -54,11 +55,20 @@ function safeDecode(value: string) {
 /** NOTE (Next 16): both `params` and `searchParams` are Promises. */
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { id } = await params;
   const { t, f } = await getServerT();
+  /*
+   * `?showPlayingStyle=…` opens a modal over this page; it is the same page.
+   * The canonical below never carries it, and the view itself says noindex so
+   * a crawler that arrives on one of those addresses is told it is not a
+   * document of its own. The clean address stays indexable.
+   */
+  const viewOnly = hasUiOnlyQuery(await searchParams);
   try {
     const player = await fetchPlayer(id, { revalidate: 300 });
     const name = [player?.firstName, player?.lastName].filter(Boolean).join(' ');
@@ -69,9 +79,7 @@ export async function generateMetadata({
 
     // The handle is the canonical address when there is one: two URLs for one
     // player split whatever ranking they earn between them.
-    const canonical = absoluteUrl(
-      player?.username ? `/players/@${player?.username}` : `/players/${player?.id}`,
-    );
+    const canonical = absoluteUrl(playerPath(player));
     const title = `${name} — ${t.seo.playerRole}`;
 
     return {
@@ -93,7 +101,7 @@ export async function generateMetadata({
         description,
         ...(player?.avatarUrl ? { images: [player.avatarUrl] } : {}),
       },
-      robots: INDEXABLE_ROBOTS,
+      robots: viewOnly ? NOINDEX_ROBOTS : INDEXABLE_ROBOTS,
     };
   } catch {
     return { title: t.roles.player, robots: NOINDEX_ROBOTS };
@@ -175,7 +183,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
    * date and no photograph. The canonical path, so the markup points at the same
    * address `generateMetadata` declares rather than a second one.
    */
-  const canonicalPath = player?.username ? `/players/@${player.username}` : `/players/${playerId}`;
+  const canonicalPath = playerPath(player);
   const fullName = [player?.firstName, player?.lastName].filter(Boolean).join(' ');
   const facts = [player?.primaryPosition, bandOf(player)].filter(Boolean).join(', ');
   const squad = player?.memberships?.academy ?? null;

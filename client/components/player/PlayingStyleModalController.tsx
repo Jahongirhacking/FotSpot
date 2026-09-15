@@ -19,7 +19,9 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 /** The one query parameter this whole feature is driven by. */
-export const PLAYING_STYLE_PARAM = 'showPlayingStyle';
+import { PLAYING_STYLE_PARAM } from '@/lib/player-url';
+
+export { PLAYING_STYLE_PARAM };
 
 /**
  * Opens the playing-style modal for whatever `?showPlayingStyle=` names.
