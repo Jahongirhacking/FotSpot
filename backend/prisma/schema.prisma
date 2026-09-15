@@ -378,6 +378,8 @@ enum PlayingStyle {
   DEEP_LYING_FORWARD
   PROLIFIC_WINGER
   CLASSIC_10
+  // Forward or Midfield — offered under both groups in the picker
+  CREATIVE_PLAYMAKER
   // Midfield
   BOX_TO_BOX
   PLAYMAKER

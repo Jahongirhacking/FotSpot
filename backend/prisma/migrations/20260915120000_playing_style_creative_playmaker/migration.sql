@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PlayingStyle" ADD VALUE 'CREATIVE_PLAYMAKER';
