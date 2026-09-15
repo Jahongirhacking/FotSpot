@@ -11,8 +11,8 @@ import { ApiError } from '@/lib/api/client';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
-import { jsonLd } from '@/lib/seo';
-import { breadcrumbLd, personLd } from '@/lib/structured-data';
+import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { personId, personLd, profileGraphLd } from '@/lib/structured-data';
 import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
 import { bandOf, formatDate } from '@/lib/utils';
@@ -58,36 +58,45 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const { t, f } = await getServerT();
   try {
     const player = await fetchPlayer(id, { revalidate: 300 });
-    const name = `${player?.firstName} ${player?.lastName}`;
+    const name = [player?.firstName, player?.lastName].filter(Boolean).join(' ');
     // The band and nothing more precise: the public profile carries no date of
     // birth and no address, whoever is asking (README §11).
-    const description = [player?.primaryPosition, bandOf(player), 'on FotSpot']
-      .filter(Boolean)
-      .join(' · ');
+    const facts = [player?.primaryPosition, bandOf(player)].filter(Boolean).join(', ');
+    const description = f(t.seo.playerDescription, { name, facts: facts || t.seo.playerRole });
 
     // The handle is the canonical address when there is one: two URLs for one
     // player split whatever ranking they earn between them.
-    const canonical = player?.username ? `/players/@${player?.username}` : `/players/${player?.id}`;
+    const canonical = absoluteUrl(
+      player?.username ? `/players/@${player?.username}` : `/players/${player?.id}`,
+    );
+    const title = `${name} — ${t.seo.playerRole}`;
 
     return {
-      title: name,
+      title,
       description,
       alternates: { canonical },
       openGraph: {
         type: 'profile',
-        title: name,
+        title,
         description,
         url: canonical,
-        ...(player?.avatarUrl
-          ? { images: [{ url: player?.avatarUrl }] }
-          : { images: [{ url: '/fotspot.png' }] }),
+        // The player's own picture, or none: the site's logo standing in for a
+        // person is how a result ends up showing the wrong entity's image.
+        ...(player?.avatarUrl ? { images: [{ url: player.avatarUrl, alt: name }] } : {}),
       },
-      twitter: { card: 'summary', title: name, description },
+      twitter: {
+        card: 'summary',
+        title,
+        description,
+        ...(player?.avatarUrl ? { images: [player.avatarUrl] } : {}),
+      },
+      robots: { index: true, follow: true },
     };
   } catch {
-    return { title: 'Player', robots: { index: false, follow: true } };
+    return { title: t.roles.player, robots: { index: false, follow: true } };
   }
 }
 
@@ -106,7 +115,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     throw error;
   }
 
-  const { t } = await getServerT();
+  const { t, f } = await getServerT();
 
   /*
    * From here on, `player.id` — never the route param. `/players/@handle` puts a
@@ -168,28 +177,44 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
    */
   const canonicalPath = player?.username ? `/players/@${player.username}` : `/players/${playerId}`;
   const fullName = [player?.firstName, player?.lastName].filter(Boolean).join(' ');
+  const facts = [player?.primaryPosition, bandOf(player)].filter(Boolean).join(', ');
+  const squad = player?.memberships?.academy ?? null;
+
+  /*
+   * The page, the person it is about, and the trail — one graph. The Person
+   * carries the same photograph the card shows and no other image; with no
+   * photograph it carries none. The academy is named only when the page
+   * shows one, and the position is the only "job" a player has.
+   */
+  const profileGraph = profileGraphLd(
+    {
+      path: canonicalPath,
+      name: fullName,
+      description: f(t.seo.playerDescription, { name: fullName, facts: facts || t.seo.playerRole }),
+      image: player?.avatarUrl,
+      mainEntityId: personId(canonicalPath),
+    },
+    personLd({
+      name: fullName,
+      path: canonicalPath,
+      image: player?.avatarUrl,
+      description: facts || null,
+      jobTitle: player?.primaryPosition,
+      affiliation:
+        squad && squad.kind === 'ACADEMY'
+          ? { name: squad.academyName, path: `/academies/${squad.academyId}` }
+          : null,
+    }),
+    [
+      { name: t.nav.players, path: '/players' },
+      { name: fullName, path: canonicalPath },
+    ],
+  );
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLd(
-          personLd({
-            name: fullName,
-            path: canonicalPath,
-            jobTitle: player?.primaryPosition,
-          }),
-        )}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLd(
-          breadcrumbLd([
-            { name: t.nav.players, path: '/players' },
-            { name: fullName, path: canonicalPath },
-          ]),
-        )}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(profileGraph)} />
+
       <div className="min-w-0 space-y-6">
         {/*
           Card | pitch on one row, the attribute board spanning both beneath —

@@ -12,7 +12,7 @@ import { authorDisplay, categoryPath, metaDescriptionFor, postPath } from '@/lib
 import { getServerT } from '@/lib/i18n/server';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import { getSession } from '@/lib/session';
-import { breadcrumbLd } from '@/lib/structured-data';
+import { breadcrumbLd, ORGANIZATION_ID } from '@/lib/structured-data';
 import { formatDate, initials } from '@/lib/utils';
 import { ArrowLeft, Building2, CalendarDays, Clock, Search, Users } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -123,8 +123,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             url: absoluteUrl(`/academies/${post.author.id}`),
           }
         : { '@type': 'Organization', name: 'FotSpot', url: absoluteUrl('/') },
+    // The same node the homepage declares, by its `@id`, with the name and
+    // logo Google's Article guidance wants on the publisher itself.
     publisher: {
       '@type': 'Organization',
+      '@id': ORGANIZATION_ID(),
       name: 'FotSpot',
       url: absoluteUrl('/'),
       logo: { '@type': 'ImageObject', url: absoluteUrl('/fotspot.png') },

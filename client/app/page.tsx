@@ -19,7 +19,8 @@ import type { BlogPostCard, PlayerProfile } from '@/lib/api/types';
 import { PostCard } from '@/components/blog/PostCard';
 import { SUPPORT_BOT } from '@/lib/contact';
 import { getServerT } from '@/lib/i18n/server';
-import { pageMetadata } from '@/lib/seo';
+import { jsonLd, pageMetadata } from '@/lib/seo';
+import { siteGraphLd } from '@/lib/structured-data';
 import { getSession } from '@/lib/session';
 import { ageBand, cn, humanizeEnum, initials } from '@/lib/utils';
 import {
@@ -85,6 +86,13 @@ export default async function LandingPage() {
 
   return (
     <>
+      {/* Who FotSpot is — the Organization and the WebSite, declared once, here,
+          where a knowledge panel is built from. Every other page reaches these
+          two nodes by `@id` and declares only its own entity. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(siteGraphLd(t.seo.description))}
+      />
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
         <div className="flex items-center gap-2">
           <FotSpotMark className="size-11" />

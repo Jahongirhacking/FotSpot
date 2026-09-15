@@ -1,7 +1,24 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {/* config options here */};
+const nextConfig: NextConfig = {
+  /*
+   * One address for the site. The canonical every page declares is built from
+   * NEXT_PUBLIC_SITE_URL (https://fotspot.uz); a request that arrives on the
+   * www host is sent there permanently, so a crawler never sees two copies of
+   * one page and never has to choose between them.
+   */
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.fotspot.uz' }],
+        destination: 'https://fotspot.uz/:path*',
+        permanent: true,
+      },
+    ];
+  },
+};
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
