@@ -1,22 +1,45 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
+/**
+ * One address for the site, and the same one everywhere.
+ *
+ * `NEXT_PUBLIC_SITE_URL` is what every canonical, JSON-LD id, OpenGraph url
+ * and sitemap entry is built from (lib/seo.ts). The redirect below is derived
+ * from it, so the code can never send a request to the host the metadata
+ * does not name: an apex site URL sends www to the apex, a www site URL sends
+ * the apex to www, and a local one redirects nothing.
+ *
+ * The host in front of the app (Vercel's primary domain, Cloudflare) has its
+ * own redirect between the two, and it runs first. It must point the same
+ * way as this one — otherwise the two layers bounce a request back and forth
+ * for ever. Change the primary domain and this variable together.
+ */
+function hostRedirect() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!configured) return [];
+  let host: string;
+  try {
+    host = new URL(configured).host;
+  } catch {
+    return [];
+  }
+  const apex = host.replace(/^www\./, '');
+  if (!apex.includes('.') || apex.startsWith('localhost')) return [];
+  const from = host.startsWith('www.') ? apex : `www.${apex}`;
+  return [
+    {
+      source: '/:path*',
+      has: [{ type: 'host' as const, value: from }],
+      destination: `https://${host}/:path*`,
+      permanent: true,
+    },
+  ];
+}
+
 const nextConfig: NextConfig = {
-  /*
-   * One address for the site. The canonical every page declares is built from
-   * NEXT_PUBLIC_SITE_URL (https://fotspot.uz); a request that arrives on the
-   * www host is sent there permanently, so a crawler never sees two copies of
-   * one page and never has to choose between them.
-   */
   async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'www.fotspot.uz' }],
-        destination: 'https://fotspot.uz/:path*',
-        permanent: true,
-      },
-    ];
+    return hostRedirect();
   },
 };
 
@@ -24,9 +47,9 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: "rttrm-is",
+  org: 'rttrm-is',
 
-  project: "fotspot-web",
+  project: 'fotspot-web',
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
@@ -55,5 +78,5 @@ export default withSentryConfig(nextConfig, {
       // Automatically tree-shake Sentry logger statements to reduce bundle size
       removeDebugLogging: true,
     },
-  }
+  },
 });
