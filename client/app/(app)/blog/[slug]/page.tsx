@@ -10,9 +10,9 @@ import { blog } from '@/lib/api/resources';
 import type { BlogPost } from '@/lib/api/types';
 import { authorDisplay, categoryPath, metaDescriptionFor, postPath } from '@/lib/blog';
 import { getServerT } from '@/lib/i18n/server';
-import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { absoluteUrl, INDEXABLE_ROBOTS, jsonLd } from '@/lib/seo';
 import { getSession } from '@/lib/session';
-import { breadcrumbLd, ORGANIZATION_ID } from '@/lib/structured-data';
+import { blogPostingLd, breadcrumbLd } from '@/lib/structured-data';
 import { formatDate, initials } from '@/lib/utils';
 import { ArrowLeft, Building2, CalendarDays, Clock, Search, Users } from 'lucide-react';
 import type { Metadata } from 'next';
@@ -73,7 +73,7 @@ export async function generateMetadata({
       description: post.ogDescription?.trim() || description,
       images: [image],
     },
-    robots: { index: true, follow: true },
+    robots: INDEXABLE_ROBOTS,
   };
 }
 
@@ -105,38 +105,27 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const description = metaDescriptionFor(post);
   const image = post.ogImageUrl ?? post.coverUrl;
 
-  const article = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
+  const article = blogPostingLd({
+    path: postPath(post),
+    title: post.title,
     description,
-    ...(image ? { image: [image] } : {}),
-    datePublished: post.publishedAt ?? undefined,
-    dateModified: post.updatedAt,
-    // An academy is an organisation with a page of its own; a mascot post is
-    // the platform speaking, so the publisher is the author.
+    image,
+    imageAlt: post.coverAlt,
+    publishedAt: post.publishedAt,
+    updatedAt: post.updatedAt,
     author:
       post.author.kind === 'academy'
         ? {
-            '@type': 'Organization',
+            kind: 'academy',
             name: post.author.name,
-            url: absoluteUrl(`/academies/${post.author.id}`),
+            path: `/academies/${post.author.id}`,
+            logoUrl: post.author.avatarUrl,
           }
-        : { '@type': 'Organization', name: 'FotSpot', url: absoluteUrl('/') },
-    // The same node the homepage declares, by its `@id`, with the name and
-    // logo Google's Article guidance wants on the publisher itself.
-    publisher: {
-      '@type': 'Organization',
-      '@id': ORGANIZATION_ID(),
-      name: 'FotSpot',
-      url: absoluteUrl('/'),
-      logo: { '@type': 'ImageObject', url: absoluteUrl('/fotspot.png') },
-    },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': absoluteUrl(postPath(post)) },
-    ...(post.category ? { articleSection: post.category.name } : {}),
-    ...(post.seoKeywords.length ? { keywords: post.seoKeywords.join(', ') } : {}),
-    inLanguage: 'uz',
-  };
+        : { kind: 'mascot' },
+    section: post.category?.name,
+    keywords: post.seoKeywords,
+    contentHtml: post.contentHtml,
+  });
 
   return (
     <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-10">

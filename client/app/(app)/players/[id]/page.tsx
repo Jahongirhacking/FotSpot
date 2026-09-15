@@ -11,7 +11,7 @@ import { ApiError } from '@/lib/api/client';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
-import { absoluteUrl, jsonLd } from '@/lib/seo';
+import { absoluteUrl, INDEXABLE_ROBOTS, jsonLd, NOINDEX_ROBOTS } from '@/lib/seo';
 import { personId, personLd, profileGraphLd } from '@/lib/structured-data';
 import { mayViewScoutProfile } from '@/lib/roles';
 import { getSession } from '@/lib/session';
@@ -93,10 +93,10 @@ export async function generateMetadata({
         description,
         ...(player?.avatarUrl ? { images: [player.avatarUrl] } : {}),
       },
-      robots: { index: true, follow: true },
+      robots: INDEXABLE_ROBOTS,
     };
   } catch {
-    return { title: t.roles.player, robots: { index: false, follow: true } };
+    return { title: t.roles.player, robots: NOINDEX_ROBOTS };
   }
 }
 

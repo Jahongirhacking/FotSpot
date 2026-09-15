@@ -2,7 +2,7 @@ import { Providers } from '@/components/layout/Providers';
 import { PlayingStyleModalController } from '@/components/player/PlayingStyleModalController';
 import type { Locale } from '@/lib/i18n/config';
 import { getLocale, getServerT } from '@/lib/i18n/server';
-import { siteUrl } from '@/lib/seo';
+import { INDEXABLE_ROBOTS, siteUrl } from '@/lib/seo';
 import { getSession } from '@/lib/session';
 import { THEME_SCRIPT } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
@@ -89,7 +89,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: t.seo.description,
       images: ['/fotspot.png'],
     },
-    robots: { index: true, follow: true },
+    robots: INDEXABLE_ROBOTS,
   };
 }
 

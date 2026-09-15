@@ -21,7 +21,7 @@ import type {
 import type { Dictionary } from '@/lib/i18n';
 import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
-import { seoKeywords } from '@/lib/seo';
+import { INDEXABLE_ROBOTS, NOINDEX_ROBOTS, seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import {
   academyId as academyEntityId,
@@ -168,7 +168,7 @@ export async function generateMetadata({
     // A local team is deliberately absent from the public directory (§13), so
     // it should not be in an index either — being unlisted and being
     //search-indexable are the same decision made twice.
-    robots: isLocalTeam ? { index: false, follow: true } : { index: true, follow: true },
+    robots: isLocalTeam ? NOINDEX_ROBOTS : INDEXABLE_ROBOTS,
   };
 }
 

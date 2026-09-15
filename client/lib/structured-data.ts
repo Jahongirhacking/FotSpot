@@ -468,6 +468,111 @@ export function trialEventLd(trial: MarkupTrial) {
   };
 }
 
+/** The subset of a post the article markup reads. */
+export interface MarkupPost {
+  /** The post's canonical path. */
+  path: string;
+  title: string;
+  description: string;
+  /** The cover — the one image the page shows, absolute. */
+  image?: string | null;
+  imageAlt?: string | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+  author:
+    { kind: 'academy'; name: string; path: string; logoUrl?: string | null } | { kind: 'mascot' };
+  section?: string | null;
+  keywords?: readonly string[] | null;
+  /** The rendered body, for a word count; never emitted itself. */
+  contentHtml?: string | null;
+  inLanguage?: string;
+}
+
+/** Google shows at most this many characters of a headline; the title is cut cleanly before it. */
+const HEADLINE_MAX = 110;
+
+function headlineOf(title: string): string {
+  const text = title.replace(/\s+/g, ' ').trim();
+  if (text.length <= HEADLINE_MAX) return text;
+  const cut = text.slice(0, HEADLINE_MAX - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).trimEnd()}…`;
+}
+
+/** Words in the rendered body, tags stripped — a fact a crawler can weigh. */
+function wordCountOf(html: string | null | undefined): number | null {
+  if (!html) return null;
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z#0-9]+;/gi, ' ')
+    .trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  return words > 0 ? words : null;
+}
+
+/**
+ * A blog post as a `BlogPosting` — the Article type Google's article result
+ * reads, in the form it asks for.
+ *
+ * ## What earns the picture
+ *
+ * The cover is named as an `ImageObject` on the article and again as the
+ * thumbnail, absolute and public, with the same alt text the page shows. The
+ * page's robots directive lifts the image-preview cap (`INDEXABLE_ROBOTS`);
+ * the two together are what let a result carry the cover rather than a
+ * favicon. The headline is kept under Google's display limit, the dates are
+ * the post's own, and the author is the academy that wrote it — with its
+ * page — or the platform itself, by the same `@id` the homepage declares.
+ * The publisher is always FotSpot, with the logo the guidance asks for on
+ * the publisher itself. Nothing is claimed that the post does not carry.
+ */
+export function blogPostingLd(post: MarkupPost) {
+  const url = absoluteUrl(post.path);
+  const words = wordCountOf(post.contentHtml);
+  const author =
+    post.author.kind === 'academy'
+      ? {
+          '@type': 'Organization',
+          name: post.author.name,
+          url: absoluteUrl(post.author.path),
+          ...(post.author.logoUrl
+            ? { logo: imageObject(post.author.logoUrl, post.author.name) }
+            : {}),
+        }
+      : {
+          '@type': 'Organization',
+          '@id': ORGANIZATION_ID(),
+          name: 'FotSpot',
+          url: absoluteUrl('/'),
+        };
+  return {
+    '@type': 'BlogPosting',
+    '@id': `${url}#article`,
+    headline: headlineOf(post.title),
+    ...(post.title.length > HEADLINE_MAX ? { name: post.title } : {}),
+    description: post.description,
+    url,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    isPartOf: { '@id': WEBSITE_ID() },
+    ...(post.image
+      ? { image: [imageObject(post.image, post.imageAlt ?? post.title)], thumbnailUrl: post.image }
+      : {}),
+    ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    dateModified: post.updatedAt,
+    author,
+    publisher: {
+      '@type': 'Organization',
+      '@id': ORGANIZATION_ID(),
+      name: 'FotSpot',
+      url: absoluteUrl('/'),
+      logo: imageObject(absoluteUrl('/fotspot.png'), 'FotSpot'),
+    },
+    ...(post.section ? { articleSection: post.section } : {}),
+    ...(post.keywords?.length ? { keywords: post.keywords.join(', ') } : {}),
+    ...(words ? { wordCount: words } : {}),
+    inLanguage: post.inLanguage ?? 'uz',
+  };
+}
+
 /**
  * A listing page's items, in the order the page shows them.
  *

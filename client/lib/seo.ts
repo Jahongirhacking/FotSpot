@@ -16,6 +16,30 @@ export function absoluteUrl(path: string): string {
 }
 
 /**
+ * What an indexable page tells crawlers.
+ *
+ * `max-image-preview: large` is the part that matters: without it Google shows
+ * a page's image as a thumbnail at most, and a blog cover or a player's photo
+ * never appears at full width in a result or in Discover. The snippet and
+ * video limits are lifted for the same reason — the page decides what it
+ * shows, not a default cap.
+ */
+export const INDEXABLE_ROBOTS = {
+  index: true,
+  follow: true,
+  googleBot: {
+    index: true,
+    follow: true,
+    'max-image-preview': 'large',
+    'max-snippet': -1,
+    'max-video-preview': -1,
+  },
+} as const;
+
+/** A page that exists but must stay out of results. Links on it are still followed. */
+export const NOINDEX_ROBOTS = { index: false, follow: true } as const;
+
+/**
  * The metadata every indexable page shares, from one place.
  *
  * ## Why a helper and not the layout
@@ -70,7 +94,7 @@ export function pageMetadata({
       ...(description ? { description } : {}),
       images: [image],
     },
-    robots: { index, follow: true },
+    robots: index ? INDEXABLE_ROBOTS : NOINDEX_ROBOTS,
   };
 }
 

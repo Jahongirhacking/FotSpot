@@ -26,6 +26,7 @@ type Json = Record<string, any>;
 import { CONTACT_EMAIL, PHONES, SOCIAL_ACCOUNTS } from './contact';
 import {
   academyOrganizationLd,
+  blogPostingLd,
   breadcrumbLd,
   itemListLd,
   organizationLd,
@@ -370,4 +371,78 @@ test('emits both site entities as one graph', () => {
     graph['@graph'].map((n) => n['@type']),
     ['Organization', 'WebSite'],
   );
+});
+
+/* -------------------------------------------------------------------------- */
+/* Articles                                                                   */
+/* -------------------------------------------------------------------------- */
+
+test('a post is a BlogPosting with its cover named as image and thumbnail, its dates, and the site as publisher', () => {
+  const article = blogPostingLd({
+    path: '/blog/first-trial',
+    title: 'Our first trial',
+    description: 'What happened on the day.',
+    image: 'https://media.example/public/blog/p1/cover.jpg',
+    imageAlt: 'Players on the pitch',
+    publishedAt: '2026-09-10T15:33:10.580Z',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: {
+      kind: 'academy',
+      name: 'Shurtan FC',
+      path: '/academies/@shurtan',
+      logoUrl: 'https://media.example/l.png',
+    },
+    section: 'News',
+    keywords: ['trial', 'academy'],
+    contentHtml: '<p>One two <b>three</b> four.</p><p>Five six.</p>',
+  }) as unknown as Json;
+
+  assert.equal(article['@type'], 'BlogPosting');
+  assert.match(article['@id'], /\/blog\/first-trial#article$/);
+  assert.equal(article.headline, 'Our first trial');
+  assert.equal(article.image[0]['@type'], 'ImageObject');
+  assert.equal(article.image[0].url, 'https://media.example/public/blog/p1/cover.jpg');
+  assert.equal(article.image[0].caption, 'Players on the pitch');
+  assert.equal(article.thumbnailUrl, 'https://media.example/public/blog/p1/cover.jpg');
+  assert.equal(article.datePublished, '2026-09-10T15:33:10.580Z');
+  assert.equal(article.dateModified, '2026-09-14T19:09:19.405Z');
+  assert.equal(article.author.name, 'Shurtan FC');
+  assert.match(article.author.url, /\/academies\/@shurtan$/);
+  assert.equal(article.author.logo.url, 'https://media.example/l.png');
+  assert.match(article.publisher['@id'], /#organization$/);
+  assert.match(article.publisher.logo.url, /fotspot\.png$/);
+  assert.equal(article.mainEntityOfPage['@id'], article.url);
+  assert.match(article.isPartOf['@id'], /#website$/);
+  assert.equal(article.articleSection, 'News');
+  assert.equal(article.keywords, 'trial, academy');
+  assert.equal(article.wordCount, 6);
+});
+
+test('a mascot post is written by the site itself, by the same id the homepage declares', () => {
+  const article = blogPostingLd({
+    path: '/blog/hello',
+    title: 'Hello',
+    description: 'd',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: { kind: 'mascot' },
+  }) as unknown as Json;
+  assert.match(article.author['@id'], /#organization$/);
+  assert.equal(article.author.name, 'FotSpot');
+  assert.equal(article.image, undefined);
+  assert.equal(article.thumbnailUrl, undefined);
+  assert.equal(article.datePublished, undefined);
+});
+
+test('a long title becomes a headline under Google’s limit, with the full title kept as the name', () => {
+  const long = 'A '.repeat(80).trim();
+  const article = blogPostingLd({
+    path: '/blog/long',
+    title: long,
+    description: 'd',
+    updatedAt: '2026-09-14T19:09:19.405Z',
+    author: { kind: 'mascot' },
+  }) as unknown as Json;
+  assert.ok(article.headline.length <= 110);
+  assert.ok(article.headline.endsWith('…'));
+  assert.equal(article.name, long);
 });
