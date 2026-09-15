@@ -81,7 +81,7 @@ export const PLAYING_STYLE_INFO: Record<string, PlayingStyleInfo> = {
     imageUrl: mediaAsset(`${playingStyleMediaPath}/playmaker.jpg`) ?? undefined,
   },
   [PlayingStyles.ANCHOR_MAN]: {
-    key: PlayingStyles.DESTROYER,
+    key: PlayingStyles.ANCHOR_MAN,
     exemplar: 'Rodri',
     imageUrl: mediaAsset(`${playingStyleMediaPath}/anchor_man.jpg`) ?? undefined,
   },
