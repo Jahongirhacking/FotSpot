@@ -1413,6 +1413,8 @@ export const en: Dictionary = {
     [PlayingStyles.PROLIFIC_WINGER]: 'Cuts inside from the wing with pace and takes shots on goal.',
     [PlayingStyles.CLASSIC_10]:
       'Roams freely behind the attack, builds play and creates scoring chances for teammates.',
+    [PlayingStyles.CREATIVE_PLAYMAKER]:
+      'Uses creativity, unexpected moves, and unconventional passes to create and develop attacking opportunities.',
     [PlayingStyles.BOX_TO_BOX]:
       'Covers the pitch actively, contributing in both defense and attack.',
     [PlayingStyles.PLAYMAKER]:

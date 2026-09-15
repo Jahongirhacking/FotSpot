@@ -1464,6 +1464,8 @@ export const uz = {
       'Qanotdan tezlik bilan kiradi va markazga burilib zarba beradi.',
     [PlayingStyles.CLASSIC_10]:
       'Hujum ortida erkin harakatlanib, o‘yinni quradi va jamoadoshlariga golga vaziyat yaratadi.',
+    [PlayingStyles.CREATIVE_PLAYMAKER]:
+      'Kreativ fikrlab, kutilmagan harakatlar va noan’anaviy paslar orqali hujumlarni rivojlantiradi.',
     [PlayingStyles.BOX_TO_BOX]:
       'Maydon bo‘ylab faol harakatlanib, ham himoyada, ham hujumda jamoaga yordam beradi.',
     [PlayingStyles.PLAYMAKER]:
