@@ -5,15 +5,8 @@ import * as React from 'react';
 
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Input } from '@/components/ui/Field';
+import { MAX_KEYWORD_LENGTH, MAX_KEYWORDS, mergeKeywords } from '@/lib/seo-keywords';
 import { cn } from '@/lib/utils';
-
-/**
- * Long enough for "youth football academy in tashkent", short enough that
- * nobody pastes a paragraph. Mirrors `seo-keywords.util.ts` on the server, which
- * is the authority — this only stops the typing before it becomes a rejection.
- */
-const MAX_KEYWORD_LENGTH = 60;
-const MAX_KEYWORDS = 20;
 
 /**
  * The tag input for SEO keywords, shared by the academy and trial forms.
@@ -24,6 +17,15 @@ const MAX_KEYWORDS = 20;
  * different in two places, and "subtly different" here means one form quietly
  * storing `Tashkent Academy` twice. There is one implementation and both forms
  * take it.
+ *
+ * ## Commas split
+ *
+ * Keyword lists arrive as "shurtan, klub, futbol akademiyasi" far more often
+ * than one word at a time — copied from a brief, a spreadsheet, another site.
+ * A comma therefore ends a keyword as Enter does: typed, the part before it
+ * becomes a chip and the rest stays in the box; pasted, every part becomes a
+ * chip at once. Splitting and de-duplication live in `mergeKeywords`, so the
+ * rules are the same whichever way the text came in.
  *
  * ## Not a form field in the `FormData` sense
  *
@@ -46,24 +48,53 @@ export function SeoKeywordInput({
   const [draft, setDraft] = React.useState('');
   const full = value.length >= MAX_KEYWORDS;
 
-  function add() {
-    // Inner runs collapse too, so "youth   football" and "youth football" are
-    // the same term typed carelessly once — the server does the same.
-    const keyword = draft.replace(/\s+/g, ' ').trim();
-
-    // Nothing typed: pressing Enter on an empty box does nothing at all, rather
-    // than adding a blank chip or clearing what is there.
-    if (!keyword || full) return;
-    if (keyword.length > MAX_KEYWORD_LENGTH) return;
-
-    // Case-insensitive, so "Tashkent Academy" cannot join "tashkent academy".
-    // The first spelling stays: the operator chose those capitals.
-    const exists = value.some((existing) => existing.toLowerCase() === keyword.toLowerCase());
-    if (!exists) onChange([...value, keyword]);
-
-    // Cleared either way — a duplicate is not an error to correct, it is a
-    // keyword that is already there, so the box is ready for the next one.
+  /**
+   * Turns `text` into chips. Nothing new — a blank box, a duplicate, an
+   * over-long part — leaves the list as it is; the box is cleared either way,
+   * because a duplicate is not an error to correct, it is a keyword that is
+   * already there.
+   */
+  function commit(text: string) {
+    const next = mergeKeywords(value, text);
+    if (next.length !== value.length) onChange(next);
     setDraft('');
+  }
+
+  function add() {
+    commit(draft);
+  }
+
+  /*
+   * A comma typed ends the keyword before it. The part after the last comma
+   * stays in the box, so "shurtan, kl" is one chip and a half-typed second.
+   */
+  function onDraftChange(text: string) {
+    if (!text.includes(',')) {
+      setDraft(text);
+      return;
+    }
+    const lastComma = text.lastIndexOf(',');
+    const next = mergeKeywords(value, text.slice(0, lastComma));
+    if (next.length !== value.length) onChange(next);
+    setDraft(text.slice(lastComma + 1).trimStart());
+  }
+
+  /*
+   * A paste is committed whole, including its last part — someone pasting
+   * "shurtan, klub" expects two chips, not one chip and a box still holding
+   * "klub". Handled here rather than in `onDraftChange` because the input's
+   * `maxLength` would cut a long paste to one keyword's length first.
+   */
+  function onPaste(event: React.ClipboardEvent<HTMLInputElement>) {
+    const text = event.clipboardData.getData('text');
+    if (!text.includes(',')) return;
+    event.preventDefault();
+    // Spliced in where the caret is, as the browser would have: "kl" plus a
+    // paste of "ub, futbol" is "klub, futbol", not three keywords.
+    const { selectionStart, selectionEnd, value: current } = event.currentTarget;
+    const start = selectionStart ?? current.length;
+    const end = selectionEnd ?? start;
+    commit(`${current.slice(0, start)}${text}${current.slice(end)}`);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -128,8 +159,9 @@ export function SeoKeywordInput({
         value={draft}
         disabled={disabled || full}
         maxLength={MAX_KEYWORD_LENGTH}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={onKeyDown}
+        onPaste={onPaste}
         /*
          * Committed on blur as well as on Enter.
          *

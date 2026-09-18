@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert } from '@/components/ui/Feedback';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { SeoKeywordInput } from '@/components/ui/SeoKeywordInput';
 import { browserFetch } from '@/lib/api/browser';
 import type { SaveBlogPostBody } from '@/lib/api/resources';
 import type { AcademyProfile, AdminBlogPost, BlogCategory, BlogPostImage } from '@/lib/api/types';
@@ -57,7 +58,7 @@ interface Draft {
   featured: boolean;
   seoTitle: string;
   metaDescription: string;
-  seoKeywords: string;
+  seoKeywords: string[];
   canonicalUrl: string;
   ogTitle: string;
   ogDescription: string;
@@ -80,7 +81,7 @@ function draftOf(post: AdminBlogPost | null): Draft {
     featured: post?.featured ?? false,
     seoTitle: post?.seoTitle ?? '',
     metaDescription: post?.metaDescription ?? '',
-    seoKeywords: post?.seoKeywords.join(', ') ?? '',
+    seoKeywords: post?.seoKeywords ?? [],
     canonicalUrl: post?.canonicalUrl ?? '',
     ogTitle: post?.ogTitle ?? '',
     ogDescription: post?.ogDescription ?? '',
@@ -163,7 +164,7 @@ export function PostEditor({
         excerpt: draft.excerpt,
         content: draft.content,
         category: categories.find((c) => c.id === draft.categoryId)?.name ?? null,
-      }).join(', '),
+      }),
     [draft.title, draft.excerpt, draft.content, draft.categoryId, categories],
   );
   const keywordsValue = keywordsTouched ? draft.seoKeywords : suggestedKeywords;
@@ -181,10 +182,7 @@ export function PostEditor({
     featured: draft.featured,
     seoTitle: draft.seoTitle,
     metaDescription: draft.metaDescription,
-    seoKeywords: keywordsValue
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean),
+    seoKeywords: keywordsValue,
     canonicalUrl: draft.canonicalUrl,
     ogTitle: draft.ogTitle,
     ogDescription: draft.ogDescription,
@@ -670,19 +668,19 @@ export function PostEditor({
                 htmlFor="post-keywords"
                 hint={t.blog.fieldSeoKeywordsHint}
               >
-                <div className="flex gap-2">
-                  <Input
+                <div className="space-y-2">
+                  <SeoKeywordInput
                     id="post-keywords"
                     value={keywordsValue}
-                    onChange={(event) => {
+                    onChange={(next) => {
                       setKeywordsTouched(true);
-                      set('seoKeywords', event.target.value);
+                      set('seoKeywords', next);
                     }}
                   />
                   <Button
                     type="button"
                     variant="outline"
-                    className="shrink-0"
+                    size="sm"
                     title={t.blog.suggestKeywords}
                     onClick={() => {
                       set('seoKeywords', suggestedKeywords);

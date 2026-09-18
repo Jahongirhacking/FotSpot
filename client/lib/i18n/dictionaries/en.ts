@@ -948,7 +948,7 @@ export const en: Dictionary = {
   /** The SEO keyword tag input — shared by the academy and trial forms. */
   seoKeywords: {
     label: 'SEO keywords',
-    placeholder: 'Type a keyword and press Enter',
+    placeholder: 'Type a keyword, then Enter or a comma',
     hint: 'Search terms for this page. Not shown to visitors.',
     full: 'Keyword limit reached',
   },

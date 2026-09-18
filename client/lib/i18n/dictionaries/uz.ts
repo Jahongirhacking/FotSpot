@@ -982,7 +982,7 @@ export const uz = {
   /** SEO kalit so‘zlar maydoni — akademiya va trial shakllari uchun umumiy. */
   seoKeywords: {
     label: 'SEO kalit so‘zlar',
-    placeholder: 'Kalit so‘z yozing va Enter bosing',
+    placeholder: 'Kalit so‘z yozing, Enter yoki vergul bilan ajrating',
     hint: 'Shu sahifa uchun qidiruv so‘zlari. Tashrifchilarga ko‘rinmaydi.',
     full: 'Kalit so‘zlar chegarasiga yetdingiz',
   },
