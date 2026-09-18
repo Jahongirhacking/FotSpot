@@ -23,6 +23,7 @@ import type {
 import type { Dictionary } from '@/lib/i18n';
 import { getServerT } from '@/lib/i18n/server';
 import { locationText, yandexMapsUrl } from '@/lib/maps';
+import { hasUiOnlyQuery } from '@/lib/player-url';
 import { INDEXABLE_ROBOTS, NOINDEX_ROBOTS, seoKeywords } from '@/lib/seo';
 import { absoluteUrl, jsonLd } from '@/lib/seo';
 import {
@@ -97,10 +98,14 @@ function safeDecode(value: string) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { id } = await params;
+  // A photo or a professional open over the page is the same page, viewed.
+  const viewOnly = hasUiOnlyQuery(await searchParams);
 
   let academy: AcademyProfile;
   try {
@@ -171,7 +176,7 @@ export async function generateMetadata({
     // A local team is deliberately absent from the public directory (§13), so
     // it should not be in an index either — being unlisted and being
     //search-indexable are the same decision made twice.
-    robots: isLocalTeam ? NOINDEX_ROBOTS : INDEXABLE_ROBOTS,
+    robots: isLocalTeam || viewOnly ? NOINDEX_ROBOTS : INDEXABLE_ROBOTS,
   };
 }
 

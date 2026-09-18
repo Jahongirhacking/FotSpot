@@ -3,12 +3,15 @@
 import { useI18n } from '@/components/layout/I18nProvider';
 import { ProfessionalPlayerDialog } from '@/components/professional/ProfessionalPlayerDialog';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { useModalParam } from '@/hooks/useModalParam';
+import { browserFetch } from '@/lib/api/browser';
 import type { ProfessionalPlayer } from '@/lib/api/types';
+import { PRO_PLAYER_PARAM } from '@/lib/player-url';
 import { CARD_THEME, positionGroup } from '@/lib/player-card';
 import { footLabel, fullName } from '@/lib/professional-players';
 import { cn, initials } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
-import * as React from 'react';
 
 /**
  * Professionals as a grid of portrait cards; pressing one opens their dialog.
@@ -24,6 +27,11 @@ import * as React from 'react';
  *
  * Shared by the directory, an academy's public page and the admin list, so
  * the three never drift apart. `compact` is the academy page's density.
+ *
+ * The open card is `?player=<id>` in the URL — Back closes it, a refresh keeps
+ * it, the address can be shared. A shared link may name a player this grid
+ * does not hold (a later page of the directory), so the card is fetched on
+ * its own in that case rather than silently not opening.
  */
 export function ProfessionalPlayerGrid({
   players,
@@ -34,8 +42,15 @@ export function ProfessionalPlayerGrid({
   compact?: boolean;
   className?: string;
 }) {
-  const [openId, setOpenId] = React.useState<string | null>(null);
-  const open = players.find((player) => player.id === openId) ?? null;
+  const modal = useModalParam(PRO_PLAYER_PARAM);
+  const inList = players.find((player) => player.id === modal.value) ?? null;
+  const fetched = useQuery({
+    queryKey: ['professional-player', modal.value],
+    queryFn: () => browserFetch<ProfessionalPlayer>(`/professional-players/${modal.value}`),
+    enabled: Boolean(modal.value) && !inList,
+    retry: false,
+  });
+  const open = inList ?? fetched.data ?? null;
 
   return (
     <>
@@ -53,7 +68,7 @@ export function ProfessionalPlayerGrid({
             <ProfessionalPlayerCard
               player={player}
               compact={compact}
-              onOpen={() => setOpenId(player.id)}
+              onOpen={() => modal.open(player.id)}
             />
           </li>
         ))}
@@ -63,7 +78,7 @@ export function ProfessionalPlayerGrid({
         player={open}
         open={open !== null}
         onOpenChange={(next) => {
-          if (!next) setOpenId(null);
+          if (!next) modal.close();
         }}
       />
     </>
@@ -89,7 +104,7 @@ export function ProfessionalPlayerCard({
       type="button"
       onClick={onOpen}
       aria-label={fullName(player)}
-      className="group bg-surface border-border focus-visible:ring-primary block w-full overflow-hidden rounded-2xl border text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:outline-none"
+      className="group bg-surface border-border focus-visible:ring-primary block w-full overflow-hidden rounded-2xl border text-left shadow-sm transition duration-200 hover:shadow-lg focus-visible:ring-2 focus-visible:outline-none"
     >
       <span
         className="relative block aspect-[4/5] w-full overflow-hidden"

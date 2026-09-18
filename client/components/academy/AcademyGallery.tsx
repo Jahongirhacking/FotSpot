@@ -7,6 +7,8 @@ import { useI18n } from '@/components/layout/I18nProvider';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { cn } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
+import { useModalParam } from '@/hooks/useModalParam';
+import { PHOTO_PARAM } from '@/lib/player-url';
 
 /**
  * The academy's own photographs — pitch, changing rooms, a squad.
@@ -24,19 +26,28 @@ import { LoadingImage } from '@/components/ui/LoadingImage';
  * decent, whether there are floodlights, whether the changing rooms are somewhere
  * you would leave a child — those are the questions the photographs are here to
  * answer, and none of them survive being 120px wide.
+ *
+ * The open photograph is `?photo=<id>` in the URL: Back closes the lightbox,
+ * a refresh keeps it, the address can be shared. Stepping to the next photo
+ * replaces the parameter rather than pushing, so twelve steps are one entry.
  */
 export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
   const { t } = useI18n();
-  const [openAt, setOpenAt] = React.useState<number | null>(null);
+  const modal = useModalParam(PHOTO_PARAM);
 
   // A row whose upload failed carries a null url. Dropped rather than rendered as
   // a broken frame — one missing photo should not look like a broken page.
   const shown = photos?.filter((photo) => photo?.url) ?? [];
   if (shown.length === 0) return null;
 
+  const found = modal.value ? shown.findIndex((photo) => photo?.id === modal.value) : -1;
+  const openAt = found === -1 ? null : found;
   const current = openAt === null ? null : shown[openAt];
-  const step = (delta: number) =>
-    setOpenAt((at) => (at === null ? null : (at + delta + shown.length) % shown.length));
+  const step = (delta: number) => {
+    if (openAt === null) return;
+    const next = shown[(openAt + delta + shown.length) % shown.length];
+    if (next) modal.open(next.id, { replace: true });
+  };
 
   return (
     <>
@@ -52,11 +63,11 @@ export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
           >
             <button
               type="button"
-              onClick={() => setOpenAt(index)}
+              onClick={() => modal.open(photo.id)}
               className="border-border group relative block aspect-[4/3] w-full overflow-hidden rounded-lg border"
               aria-label={photo?.caption ?? `${t.academy?.galleryTitle} ${index + 1}`}
             >
-              { }
+              {}
               <LoadingImage
                 src={photo?.url ?? ''}
                 alt={photo?.caption ?? ''}
@@ -73,7 +84,7 @@ export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
         ))}
       </ul>
 
-      <Dialog open={openAt !== null} onOpenChange={(open) => !open && setOpenAt(null)}>
+      <Dialog open={openAt !== null} onOpenChange={(open) => !open && modal.close()}>
         <DialogContent className="sm:max-w-3xl">
           {/* Radix requires a title for the accessible name; the caption is the
               honest one, and the section name covers a photo without any. */}
@@ -82,7 +93,7 @@ export function AcademyGallery({ photos }: { photos: AcademyPhoto[] }) {
           </DialogTitle>
 
           <div className="relative bg-black">
-            { }
+            {}
             <LoadingImage
               src={current?.url ?? ''}
               alt={current?.caption ?? ''}

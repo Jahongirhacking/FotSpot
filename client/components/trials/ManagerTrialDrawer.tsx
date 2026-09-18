@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useModalParam } from '@/hooks/useModalParam';
+import { TRIAL_PARAM } from '@/lib/player-url';
 import Link from 'next/link';
 import { CalendarDays, Clock, ExternalLink, MapPin, Users } from 'lucide-react';
 import type { Trial } from '@/lib/api/types';
@@ -38,7 +40,9 @@ export function ManagerTrialDrawer({
   trigger?: React.ReactNode;
 }) {
   const { t, f } = useI18n();
-  const [open, setOpen] = React.useState(false);
+  // Open in the URL (`?trial=<id>`): Back closes the drawer, a refresh keeps it.
+  const modal = useModalParam(TRIAL_PARAM);
+  const open = modal.value === trial?.id;
   const when = formatTrialDates(trial, t.trials.openEnded);
   const times = formatTrialTimes(trial);
   const gender =
@@ -51,7 +55,7 @@ export function ManagerTrialDrawer({
   const upcoming = isTrialUpcoming(trial);
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={(next) => (next ? modal.open(trial?.id) : modal.close())}>
       <DrawerTrigger asChild>
         {trigger ?? (
           <Button size="sm" variant="outline">

@@ -94,11 +94,14 @@ export function ShortViewer({
   startIndex,
   onClose,
   onNeedMore,
+  onIndexChange,
 }: {
   clips: FeedClip[];
   startIndex: number;
   onClose: () => void;
   onNeedMore: () => void;
+  /** The slide now on screen, after a scroll settles on it. */
+  onIndexChange?: (index: number) => void;
 }) {
   const { t } = useI18n();
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
@@ -107,10 +110,19 @@ export function ShortViewer({
   const onAutoplayBlocked = React.useCallback(() => setMuted(true), []);
 
   // Jump to the clip that was pressed, before the first paint the user sees.
+  // Once only: `startIndex` follows the URL as the reader scrolls, and
+  // re-running this would yank a scroll that is still settling.
+  const jumped = React.useRef(false);
   React.useLayoutEffect(() => {
     const scroller = scrollerRef.current;
-    if (scroller) scroller.scrollTop = startIndex * scroller.clientHeight;
+    if (jumped.current || !scroller) return;
+    jumped.current = true;
+    scroller.scrollTop = startIndex * scroller.clientHeight;
   }, [startIndex]);
+
+  React.useEffect(() => {
+    if (index !== startIndex) onIndexChange?.(index);
+  }, [index, startIndex, onIndexChange]);
 
   // The page behind must not scroll while a full-screen overlay is open —
   // otherwise closing it returns the reader somewhere they never went — and

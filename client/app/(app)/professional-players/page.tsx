@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { professionalPlayers } from '@/lib/api/resources';
 import { getServerT } from '@/lib/i18n/server';
 import { isAdminActing } from '@/lib/roles';
+import { hasUiOnlyQuery } from '@/lib/player-url';
 import { pageMetadata } from '@/lib/seo';
 import { getSession } from '@/lib/session';
 import { Settings2, Star } from 'lucide-react';
@@ -9,12 +10,18 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PROFESSIONAL_PAGE_SIZE, ProfessionalPlayerDirectory } from './ProfessionalPlayerDirectory';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
   const { t } = await getServerT();
   return pageMetadata({
     path: '/professional-players',
     title: `${t.professional.title} — FotSpot`,
     description: t.professional.subtitle,
+    // `?player=<id>` is a card open over the directory, not a page of its own.
+    index: !hasUiOnlyQuery(await searchParams),
   });
 }
 
