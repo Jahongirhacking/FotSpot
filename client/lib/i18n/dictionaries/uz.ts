@@ -483,6 +483,49 @@ export const uz = {
     showPlayers: 'Shu stildagi futbolchilar',
   },
 
+  professional: {
+    title: 'Professional o‘yinchilar',
+    subtitle: 'Akademiyalardan chiqqan professional futbolchilar.',
+    subtitleOne: 'Professional futbolchi',
+    search: 'Ism bo‘yicha qidirish',
+    empty: 'Hali professional o‘yinchilar yo‘q.',
+    emptyHint: 'Admin qo‘shgan o‘yinchilar shu yerda ko‘rinadi.',
+    noResults: 'Bunday ism topilmadi.',
+    developedThrough: 'Qaysi akademiyalardan chiqqan',
+    noAcademies: 'Akademiya ko‘rsatilmagan.',
+    alumniTitle: 'Bizdan chiqqan professionallar',
+    alumniHint: 'Bu akademiyada tarbiyalangan professional futbolchilar.',
+    manage: 'Professional o‘yinchilar',
+    manageHint: 'Professional futbolchilar ro‘yxatini yarating va tahrirlang.',
+    add: 'Professional o‘yinchi qo‘shish',
+    edit: 'Tahrirlash',
+    delete: 'O‘chirish',
+    confirmDelete: 'Bu professional o‘yinchi ro‘yxatdan o‘chirilsinmi?',
+    firstName: 'Ism',
+    lastName: 'Familiya',
+    position: 'Pozitsiya',
+    dominantFoot: 'Kuchli oyoq',
+    notSet: 'Ko‘rsatilmagan',
+    photo: 'Surat',
+    changePhoto: 'Suratni tanlash',
+    photoHint: 'JPG yoki PNG, 2 MB gacha.',
+    photoTooLarge: 'Surat 2 MB dan katta.',
+    photoType: 'Faqat rasm fayli.',
+    academies: 'Akademiyalar',
+    academiesHint: 'O‘yinchi qaysi akademiyalardan o‘tgan bo‘lsa, belgilang.',
+    searchAcademies: 'Akademiyani qidirish',
+    save: 'Saqlash',
+    saved: 'Saqlandi.',
+    deleted: 'O‘chirildi.',
+    editorTitle: 'Professional o‘yinchilar',
+    editorHint:
+      'Akademiyangizdan chiqqan professional futbolchilarni belgilang. Ular ommaviy sahifada ko‘rinadi.',
+    searchPlayers: 'Professional o‘yinchini qidirish',
+    noneSelected: 'Hali hech kim belgilanmagan.',
+    alreadyAdded: 'Qo‘shilgan',
+    addToAcademy: 'Qo‘shish',
+    removeFromAcademy: 'Olib tashlash',
+  },
   academy: {
     handleSuggest: 'Nomdan taklif qilish',
     handleTooLong: 'Manzil juda uzun.',
@@ -511,6 +554,15 @@ export const uz = {
     squad: 'Tarkib',
     squadHint: 'Akademiya a’zolari va guruhlar.',
     addToSquad: 'Tarkibga qo‘shish',
+    addPlayer: 'O‘yinchi qo‘shish',
+    addPlayerHint:
+      'Platformada o‘yinchi hisobi bor odamni tanlang. Tarkibda bo‘lganlar ro‘yxatda ko‘rinmaydi.',
+    addScout: 'Skaut qo‘shish',
+    addScoutHint:
+      'Skaut hisobi bor odamni tanlang. Skaut bir vaqtning o‘zida bir nechta akademiya bilan ishlashi mumkin.',
+    addExistingCoach: 'Murabbiy qo‘shish',
+    addExistingCoachHint: 'Tasdiqlangan murabbiy hisobi bor odamni tanlang.',
+    newCoachAccountHint: 'Murabbiyning hali hisobi yo‘qmi?',
     addWarning:
       'Bu odam akademiyaga darhol qo‘shilmaydi — unga taklif yuboriladi va u qabul qilishi kerak.',
     confirmAdd: 'Bu odamga akademiyaga qo‘shilish taklifi yuborilsinmi?',
@@ -907,6 +959,8 @@ export const uz = {
     /* Why a scout sees no "Recommend" button — see PlayerActions. */
     cannotRecommendInAcademy: 'Bu o‘yinchi allaqachon akademiyada, uni tavsiya qilib bo‘lmaydi.',
     cannotRecommendInTrial: 'Bu o‘yinchi sinov jarayonida, u tugamaguncha tavsiya qilib bo‘lmaydi.',
+    cannotRecommendRestricted:
+      'Hisobingiz tavsiya yozishdan cheklangan. Savollar bo‘lsa, qo‘llab-quvvatlash bilan bog‘laning.',
     /* The academy's own player, on their profile — no trial to invite them to. */
     fromYourAcademy: 'Bu o‘yinchi sizning akademiyangizdan.',
     alreadyInSquad: 'Bu o‘yinchi allaqachon tarkibingizda.',
@@ -982,7 +1036,7 @@ export const uz = {
   /** SEO kalit so‘zlar maydoni — akademiya va trial shakllari uchun umumiy. */
   seoKeywords: {
     label: 'SEO kalit so‘zlar',
-    placeholder: 'Kalit so‘z yozing va Enter bosing',
+    placeholder: 'Kalit so‘z yozing, Enter yoki vergul bilan ajrating',
     hint: 'Shu sahifa uchun qidiruv so‘zlari. Tashrifchilarga ko‘rinmaydi.',
     full: 'Kalit so‘zlar chegarasiga yetdingiz',
   },
@@ -1226,6 +1280,8 @@ export const uz = {
     positionsPickHint:
       'Maydonda kerakli pozitsiyalarni belgilang. Mos futbolchilarga xabar boradi.',
     positionsNoneChosen: 'Hech qanday pozitsiya tanlanmagan',
+    positionsSelectAll: 'Barcha pozitsiyalar',
+    positionsClear: 'Tozalash',
     newBadge: 'yangi',
     positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
     requirements: 'Talablar',
@@ -1326,6 +1382,14 @@ export const uz = {
     globalType: 'Umumiy',
     specificType: 'Aniq akademiyaga',
     noRecommendationsYet: 'Hali hech kim tavsiya qilmagan.',
+    moreActions: 'Boshqa amallar',
+    report: 'Shikoyat qilish',
+    reportTitle: 'Tavsiya matni haqida shikoyat',
+    reportHint:
+      'Shikoyat moderatorlarga yuboriladi. Tavsiya ular qaror qilgunga qadar o‘zgarmaydi.',
+    reportReason: 'Sabab',
+    reportPlaceholder: 'Nima uchun bu matn nomaqbul deb hisoblaysiz?',
+    reportSent: 'Shikoyat yuborildi. Rahmat.',
     academiesFollowingYou: 'Sizni kuzatayotgan akademiyalar',
     noFollowerAcademies: 'Hali yo‘q. Akademiyalar ishonadigan skautlarini kuzata boshlaydi.',
     awaitingDecision: '{count} ta akademiya qaroriga kutilmoqda',
@@ -1705,6 +1769,20 @@ export const uz = {
     resolve: 'Hal qilindi',
     dismiss: 'Rad etish',
     removeMedia: 'Mediani o‘chirish',
+    recommendationReport: 'Tavsiya matni',
+    reportedBy: 'Shikoyat qilgan',
+    reportedText: 'Shikoyat qilingan matn',
+    noReportedText: 'Matn yo‘q',
+    skipReport: 'O‘tkazib yuborish',
+    restrictScout: 'Skautni cheklash',
+    confirmRestrictScout:
+      'Skaut boshqa tavsiya yoza olmaydi va uning eski tavsiyalari foydalanuvchilarga ko‘rinmaydi. Davom etasizmi?',
+    scoutRestricted: 'Cheklangan',
+    restrictAccount: 'Tavsiya yozishni cheklash',
+    liftRestriction: 'Cheklovni olib tashlash',
+    restrictHint:
+      'Cheklangan hisob yangi tavsiya yoza olmaydi, eski tavsiyalari esa faqat moderatorlarga ko‘rinadi.',
+    restrictionReason: 'Sabab',
 
     // ---- Video moderatsiyasi. Har bir yangi klip shu navbatdan o‘tadi. ----
     videoReview: 'Videolarni tekshirish',

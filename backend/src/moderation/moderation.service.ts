@@ -70,8 +70,16 @@ export class ModerationService {
 
   async fileReport(reporterId: string, dto: CreateReportDto) {
     const hasTarget =
-      dto.targetUserId || dto.targetMediaId || dto.targetAcademyId || dto.targetCoachId;
+      dto.targetUserId ||
+      dto.targetMediaId ||
+      dto.targetAcademyId ||
+      dto.targetCoachId ||
+      dto.targetRecommendationId;
     if (!hasTarget) throw new BadRequestException('A report must reference a target');
+
+    if (dto.targetRecommendationId) {
+      await this.assertRecommendationReportable(reporterId, dto.targetRecommendationId);
+    }
 
     return this.prisma.report.create({
       data: {
@@ -82,8 +90,36 @@ export class ModerationService {
         targetMediaId: dto.targetMediaId,
         targetAcademyId: dto.targetAcademyId,
         targetCoachId: dto.targetCoachId,
+        targetRecommendationId: dto.targetRecommendationId,
       },
     });
+  }
+
+  /**
+   * A recommendation may be reported once per reporter while a report is open.
+   *
+   * The queue is only as useful as it is short: the same reader pressing
+   * Report five times must not put five cards in front of a moderator, and a
+   * scout reporting their own text is asking for their own restriction. A
+   * report that was already decided does not block a new one — the text may
+   * have been read differently by a different moderator, and that is what the
+   * trail is for.
+   */
+  private async assertRecommendationReportable(reporterId: string, recommendationId: string) {
+    const recommendation = await this.prisma.recommendation.findUnique({
+      where: { id: recommendationId },
+      select: { scoutId: true },
+    });
+    if (!recommendation) throw new NotFoundException('Recommendation not found');
+    if (recommendation.scoutId === reporterId) {
+      throw new BadRequestException('You cannot report your own recommendation');
+    }
+
+    const open = await this.prisma.report.findFirst({
+      where: { reporterId, targetRecommendationId: recommendationId, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (open) throw new ConflictException('You have already reported this recommendation');
   }
 
   /**
@@ -102,11 +138,44 @@ export class ModerationService {
         orderBy: { createdAt: 'asc' },
         skip,
         take,
+        include: {
+          reporter: { select: { id: true, firstName: true, lastName: true } },
+          // The card a moderator decides on: who wrote the text, the text
+          // itself, and whether an earlier decision already restricted them.
+          targetRecommendation: {
+            select: {
+              id: true,
+              note: true,
+              createdAt: true,
+              scout: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatarKey: true,
+                  restrictedAt: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.report.count({ where: { status: 'PENDING' } }),
     ]);
 
-    return pageOf(items, total, { page, pageSize });
+    return pageOf(
+      items.map((report) => ({
+        ...report,
+        targetRecommendation: report.targetRecommendation
+          ? {
+              ...report.targetRecommendation,
+              scout: this.storage.withAvatarUrl(report.targetRecommendation.scout),
+            }
+          : null,
+      })),
+      total,
+      { page, pageSize },
+    );
   }
 
   /** Admin-only: resolves a report, optionally taking down reported media. */
@@ -129,16 +198,65 @@ export class ModerationService {
       await this.redis.del(RedisKeys.playerProfile(removed.playerId));
     }
 
+    if (dto.restrictScout) {
+      if (!report.targetRecommendationId) {
+        throw new BadRequestException('Only a recommendation report can restrict a scout');
+      }
+      await this.restrictScoutOf(actorId, report.targetRecommendationId, reportId, dto);
+    }
+
     const resolved = await this.prisma.report.update({
       where: { id: reportId },
-      data: { status: dto.status, resolutionNote: dto.resolutionNote },
+      data: {
+        status: dto.status,
+        resolutionNote: dto.resolutionNote,
+        resolvedByUserId: actorId,
+        resolvedAt: new Date(),
+      },
     });
 
     await this.audit.record(actorId, AuditAction.REPORT_RESOLVED, {
       reportId,
       status: dto.status,
+      ...(dto.restrictScout ? { restrictedScout: true } : {}),
     });
     return resolved;
+  }
+
+  /**
+   * The decision that a recommendation's text was inappropriate.
+   *
+   * Nothing is deleted. The scout's `restrictedAt` is what `RecommendationsService`
+   * checks before a new one is filed and what every public read filters on, so
+   * one timestamp takes the old text out of view and stops new text, while the
+   * rows stay as the record the decision was made on. Idempotent: a second
+   * report on the same scout resolves without a second restriction.
+   */
+  private async restrictScoutOf(
+    actorId: string,
+    recommendationId: string,
+    reportId: string,
+    dto: ResolveReportDto,
+  ) {
+    const recommendation = await this.prisma.recommendation.findUnique({
+      where: { id: recommendationId },
+      select: { scoutId: true, scout: { select: { restrictedAt: true } } },
+    });
+    if (!recommendation) throw new NotFoundException('Recommendation not found');
+    if (recommendation.scout.restrictedAt) return;
+
+    await this.prisma.user.update({
+      where: { id: recommendation.scoutId },
+      data: {
+        restrictedAt: new Date(),
+        restrictionReason: dto.resolutionNote ?? 'Inappropriate recommendation text',
+      },
+    });
+    await this.audit.record(actorId, AuditAction.USER_RESTRICTED, {
+      userId: recommendation.scoutId,
+      reportId,
+      recommendationId,
+    });
   }
 
   /**

@@ -56,12 +56,23 @@ const ALLOWED_SCOUT_VIEWERS = ['player', 'academy_manager', 'admin', 'super_admi
  * academy's books (a local team does not count); `IN_TRIAL` — an academy is
  * already looking at them on a pitch, or has just offered them a place.
  */
-export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL';
+export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL' | 'SCOUT_RESTRICTED';
 
 const RECOMMEND_BLOCKER_MESSAGE: Record<RecommendBlocker, string> = {
   IN_ACADEMY: 'This player is already at an academy and cannot be recommended',
   IN_TRIAL: 'This player is in a trial process and cannot be recommended until it ends',
+  SCOUT_RESTRICTED: 'Your account has been restricted from writing recommendations',
 };
+
+/**
+ * Only scouts whom moderation has not restricted are heard in public.
+ *
+ * Spread into every read a player, an academy or a guest sees. The rows of a
+ * restricted scout stay — they are the record the restriction was decided on —
+ * and the scout still sees their own list; they simply stop being evidence for
+ * anybody else. Spelled once so no list forgets it.
+ */
+const FROM_UNRESTRICTED_SCOUT = { scout: { restrictedAt: null } } as const;
 
 const PENDING_PLAYER_CARD = {
   id: true,
@@ -119,6 +130,9 @@ export class RecommendationsService {
     if (player.userId === scoutId) {
       throw new ForbiddenException('You cannot recommend your own player profile');
     }
+
+    // The boundary for a restricted scout is here, not the hidden button.
+    await this.assertNotRestricted(scoutId);
 
     // Nobody to say it to, or nothing to add — see `recommendEligibility`.
     const blocker = await this.recommendBlocker(player.id, player.userId);
@@ -347,14 +361,36 @@ export class RecommendationsService {
    * squad decision, or offered a place — cannot be recommended, and the
    * profile says why instead of drawing a button that would fail.
    */
-  async recommendEligibility(playerId: string) {
+  async recommendEligibility(playerId: string, scoutUserId?: string) {
     const player = await this.prisma.playerProfile.findUnique({
       where: { id: playerId },
       select: { userId: true },
     });
     if (!player) throw new NotFoundException('Player not found');
+
+    // The scout's own standing first: a restricted scout is told about
+    // themselves, not about the player, whoever the player is.
+    if (scoutUserId && (await this.isRestricted(scoutUserId))) {
+      return { canRecommend: false, reason: 'SCOUT_RESTRICTED' as const };
+    }
+
     const reason = await this.recommendBlocker(playerId, player.userId);
     return { canRecommend: reason === null, reason };
+  }
+
+  private async isRestricted(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { restrictedAt: true },
+    });
+    return Boolean(user?.restrictedAt);
+  }
+
+  /** README 1.13: a scout moderation restricted writes no more recommendations. */
+  private async assertNotRestricted(scoutId: string) {
+    if (await this.isRestricted(scoutId)) {
+      throw new ForbiddenException(RECOMMEND_BLOCKER_MESSAGE.SCOUT_RESTRICTED);
+    }
   }
 
   private async recommendBlocker(
@@ -931,7 +967,7 @@ export class RecommendationsService {
    */
   async listForAcademy(academyId: string) {
     const rows = await this.prisma.recommendation.findMany({
-      where: { academyId },
+      where: { academyId, ...FROM_UNRESTRICTED_SCOUT },
       orderBy: { createdAt: 'desc' },
       include: {
         player: {
@@ -960,7 +996,7 @@ export class RecommendationsService {
     await this.assertAcademyManager(userId, academyId);
 
     const targets = await this.prisma.recommendationTarget.findMany({
-      where: { academyId, status: 'PENDING' },
+      where: { academyId, status: 'PENDING', recommendation: FROM_UNRESTRICTED_SCOUT },
       include: { recommendation: true },
     });
     if (targets.length === 0) return { items: [], total: 0 };
@@ -1227,20 +1263,32 @@ export class RecommendationsService {
    * computed here: a scheduled job decays it so that newly recommended young
    * players can reach the top, and a derived sum has nowhere to put that decay.
    */
-  async playerRecommendationSummary(playerId: string) {
-    const [weight, recommendations] = await Promise.all([
+  async playerRecommendationSummary(playerId: string, paging: PaginationDto = {}) {
+    const { skip, take, page, pageSize } = toSkipTake(paging);
+    // This *is* `Player.recommendations`, so a trial PASS empties it
+    // (TRIAL.md Rule 13). The rows survive as the scouts' record — see
+    // `clearPlayerRecommendations` — but they are no longer backing anybody.
+    const where = { playerId, clearedAt: null, ...FROM_UNRESTRICTED_SCOUT };
+
+    const [weight, recommendations, total] = await Promise.all([
       this.prisma.playerRecommendationWeight.findUnique({ where: { playerId } }),
       this.prisma.recommendation.findMany({
-        // This *is* `Player.recommendations`, so a trial PASS empties it
-        // (TRIAL.md Rule 13). The rows survive as the scouts' record — see
-        // `clearPlayerRecommendations` — but they are no longer backing anybody.
-        where: { playerId, clearedAt: null },
+        where,
         include: {
           scout: { select: { id: true, firstName: true, lastName: true, avatarKey: true } },
           targets: { select: { academyId: true, status: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        /*
+         * The most credible voice first. `scoutWeight` is the scout's §1.5
+         * weight — the number their level maps to — frozen when they filed, so
+         * the order is by rank and does not shuffle as later verdicts move a
+         * scout's live level. Ties by recency, so the page is stable.
+         */
+        orderBy: [{ scoutWeight: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take,
       }),
+      this.prisma.recommendation.count({ where }),
     ]);
 
     return {
@@ -1248,6 +1296,9 @@ export class RecommendationsService {
       globalWeight: weight?.globalWeight ?? 0,
       recommendationCount: weight?.recommendationCount ?? 0,
       lastRecommendedAt: weight?.lastRecommendedAt ?? null,
+      total,
+      page,
+      pageSize,
       scouts: recommendations.map((recommendation) => ({
         id: recommendation.scout.id,
         name: [recommendation.scout.firstName, recommendation.scout.lastName]

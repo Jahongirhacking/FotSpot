@@ -12,6 +12,7 @@ import {
   SearchUsersDto,
   SendAdminMessageDto,
   SetUserActiveDto,
+  SetUserRestrictedDto,
   SetUserRoleDto,
   VerifyDto,
 } from './dto/admin.dto';
@@ -56,6 +57,19 @@ export class AdminController {
   @Get('users/:id')
   userDetail(@Param('id') id: string) {
     return this.adminService.getUserDetail(id);
+  }
+
+  /**
+   * The same decision the moderation queue makes on a report, reachable from
+   * the user's own page — and the only way back: a restriction is lifted here.
+   */
+  @Patch('users/:id/restriction')
+  setUserRestricted(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SetUserRestrictedDto,
+  ) {
+    return this.adminService.setUserRestricted(user.userId, id, dto);
   }
 
   @Roles('super_admin')

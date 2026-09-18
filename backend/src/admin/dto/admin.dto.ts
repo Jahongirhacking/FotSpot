@@ -65,6 +65,12 @@ export class SetUserActiveDto {
   @IsBoolean() isActive: boolean;
 }
 
+/** Restrict an account from writing recommendations, or lift that restriction. */
+export class SetUserRestrictedDto {
+  @IsBoolean() restricted: boolean;
+  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+}
+
 /** Super-admin only: grant or remove any role. */
 export class SetUserRoleDto {
   @IsIn(['scout', 'player', 'coach', 'academy_manager', 'admin'])

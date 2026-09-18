@@ -9,6 +9,7 @@ import {
   KeyRound,
   Newspaper,
   ScrollText,
+  Star,
   Users,
   Video,
   ZapIcon,
@@ -83,6 +84,14 @@ export function AdminHome({ isSuperAdmin, t }: { isSuperAdmin: boolean; t: Dicti
           description={t.admin.videoReviewHint}
           href="/admin/moderation/videos"
           cta={t.common.open}
+        />
+        {/* The platform's own list, written by admins only (§21). */}
+        <AdminTile
+          icon={Star}
+          title={t.professional.manage}
+          description={t.professional.manageHint}
+          href="/admin/professional-players"
+          cta={t.professional.add}
         />
         <AdminTile
           icon={ScrollText}

@@ -1,6 +1,6 @@
 'use client';
 
-import { CandidatePicker } from '@/components/academy/CandidatePicker';
+import { AddMemberDialog, type InviteRole } from '@/components/academy/AddMemberDialog';
 import {
   EMPTY_FILTERS,
   filterMembers,
@@ -15,12 +15,13 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, EmptyState } from '@/components/ui/Feedback';
 import { Field, Input, Textarea } from '@/components/ui/Field';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu';
 import { LoadingImage } from '@/components/ui/LoadingImage';
 import { browserFetch } from '@/lib/api/browser';
 import type { AcademyGroup, AcademyMember, AcademyMemberRole } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, UserPlus, Users } from 'lucide-react';
+import { Binoculars, ChevronDown, ClipboardList, Plus, UserPlus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import * as React from 'react';
@@ -56,6 +57,12 @@ const LOCAL_TEAM_TABS: AcademyMemberRole[] = ['PLAYER', 'SCOUT'];
  * A scout has no group. They work for several academies at once (§1.5.3), so a
  * squad number would be a fiction; their tab shows the standing that does mean
  * something here — level and success rate.
+ *
+ * ## Adding is a choice of kind first
+ *
+ * "Add to squad" opens a menu — player, scout, coach — and each choice opens
+ * its own dialog (`AddMemberDialog`). One dialog for all three would have to
+ * explain three different acts at once; three small ones each explain one.
  */
 export function SquadManager({
   academyId,
@@ -83,7 +90,7 @@ export function SquadManager({
     tabs.includes(requested as AcademyMemberRole) ? (requested as AcademyMemberRole) : 'PLAYER',
   );
   const [filters, setFilters] = React.useState<MemberFilterState>(EMPTY_FILTERS);
-  const [adding, setAdding] = React.useState(false);
+  const [adding, setAdding] = React.useState<InviteRole | null>(null);
   const [invited, setInvited] = React.useState(false);
   const [creatingGroup, setCreatingGroup] = React.useState(false);
 
@@ -106,21 +113,6 @@ export function SquadManager({
     void queryClient.invalidateQueries({ queryKey: ['roster', academyId] });
     void queryClient.invalidateQueries({ queryKey: ['groups', academyId] });
   };
-
-  // Not an add — a question. The membership appears only when they answer yes,
-  // which is why the list does not change here and a note says so instead.
-  const invite = useMutation({
-    mutationFn: (userId: string) =>
-      browserFetch(`/academies/${academyId}/invitations`, {
-        method: 'POST',
-        body: { userId, role: tab },
-      }),
-    onSuccess: () => {
-      setAdding(false);
-      setInvited(true);
-      void queryClient.invalidateQueries({ queryKey: ['join-candidates', academyId] });
-    },
-  });
 
   const createGroup = useMutation({
     mutationFn: (body: { name: string; description?: string }) =>
@@ -149,7 +141,6 @@ export function SquadManager({
                 aria-selected={role === tab}
                 onClick={() => {
                   setTab(role);
-                  setAdding(false);
                   setInvited(false);
                   setFilters(EMPTY_FILTERS);
                 }}
@@ -177,26 +168,48 @@ export function SquadManager({
                 </Link>
               </Button>
             )}
-            <Button
-              size="sm"
-              variant={adding ? 'ghost' : 'primary'}
-              onClick={() => {
-                setAdding((was) => !was);
-                setInvited(false);
-              }}
-            >
-              <UserPlus aria-hidden /> {adding ? t.common.cancel : t.academy.addToSquad}
-            </Button>
+            <Menu>
+              <MenuTrigger asChild>
+                <Button size="sm">
+                  <UserPlus aria-hidden /> {t.academy.addToSquad}{' '}
+                  <ChevronDown className="opacity-70" aria-hidden />
+                </Button>
+              </MenuTrigger>
+              <MenuContent>
+                <MenuItem onSelect={() => setAdding('PLAYER')}>
+                  <UserPlus aria-hidden /> {t.academy.addPlayer}
+                </MenuItem>
+                <MenuItem onSelect={() => setAdding('SCOUT')}>
+                  <Binoculars aria-hidden /> {t.academy.addScout}
+                </MenuItem>
+                {!isLocalTeam && (
+                  <MenuItem onSelect={() => setAdding('COACH')}>
+                    <ClipboardList aria-hidden /> {t.academy.addExistingCoach}
+                  </MenuItem>
+                )}
+              </MenuContent>
+            </Menu>
           </div>
 
           {invited && <Alert tone="success">{t.invitations.sent}</Alert>}
 
+          {/* Three dialogs, one mounted at a time: the role chosen in the menu. */}
           {adding && (
-            <AddMember
+            <AddMemberDialog
               academyId={academyId}
-              role={tab}
-              pending={invite.isPending}
-              onInvite={(userId) => invite.mutate(userId)}
+              role={adding}
+              isLocalTeam={isLocalTeam}
+              open
+              onOpenChange={(open) => {
+                if (!open) setAdding(null);
+              }}
+              onInvited={(role) => {
+                // Land on the tab the invitation concerns, so the manager sees
+                // where the name will appear once it is accepted.
+                setTab(role);
+                setFilters(EMPTY_FILTERS);
+                setInvited(true);
+              }}
             />
           )}
 
@@ -307,53 +320,6 @@ export function SquadManager({
           ))}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-/**
- * Adding somebody who is already on the platform.
- *
- * The list only holds accounts that already carry the role and are not on the
- * books — an academy cannot make somebody a player by listing them as one, and
- * offering a duplicate the server would refuse is a button that lies.
- *
- * The warning sits above the picker rather than after it: a membership is a claim
- * on another person's record, and the moment to say so is before the choosing,
- * not in a dialog that appears once the decision feels made.
- */
-function AddMember({
-  academyId,
-  role,
-  pending,
-  onInvite,
-}: {
-  academyId: string;
-  role: AcademyMemberRole;
-  pending: boolean;
-  onInvite: (userId: string) => void;
-}) {
-  const { t } = useI18n();
-  const [userId, setUserId] = React.useState('');
-
-  return (
-    <div className="border-border space-y-3 rounded-lg border p-3">
-      <Alert tone="warning">{t.academy.addWarning}</Alert>
-
-      <CandidatePicker academyId={academyId} role={role} value={userId} onChange={setUserId} />
-
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          disabled={!userId}
-          loading={pending}
-          onClick={() => {
-            if (window.confirm(t.academy.confirmAdd)) onInvite(userId);
-          }}
-        >
-          <UserPlus aria-hidden /> {t.academy.addToSquad}
-        </Button>
-      </div>
     </div>
   );
 }

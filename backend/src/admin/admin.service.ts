@@ -355,6 +355,8 @@ export class AdminService {
         username: true,
         avatarKey: true,
         isActive: true,
+        restrictedAt: true,
+        restrictionReason: true,
         createdAt: true,
         planTier: true,
         roles: { select: { role: { select: { name: true } } } },
@@ -487,6 +489,46 @@ export class AdminService {
 
     await this.prisma.user.delete({ where: { id: userId } });
     return { deleted: true, objectsRemoved: keys.length };
+  }
+
+  /**
+   * Restricts an account from writing recommendations, or lifts it.
+   *
+   * The narrower switch beside `isActive`: the account keeps signing in and
+   * keeps its roles; what changes is whether its recommendations are written
+   * and shown (README 1.13). Lifting brings the old ones back into view, since
+   * they were only ever hidden.
+   */
+  async setUserRestricted(
+    actorId: string,
+    userId: string,
+    dto: { restricted: boolean; reason?: string },
+  ) {
+    if (actorId === userId) throw new BadRequestException('You cannot restrict your own account');
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { restrictedAt: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: dto.restricted
+        ? {
+            restrictedAt: target.restrictedAt ?? new Date(),
+            restrictionReason: dto.reason ?? 'Restricted by an administrator',
+          }
+        : { restrictedAt: null, restrictionReason: null },
+      select: { id: true, restrictedAt: true, restrictionReason: true },
+    });
+
+    await this.audit.record(
+      actorId,
+      dto.restricted ? AuditAction.USER_RESTRICTED : AuditAction.USER_UNRESTRICTED,
+      { userId, reason: dto.reason },
+    );
+    return user;
   }
 
   async setUserActive(actorId: string, userId: string, isActive: boolean) {

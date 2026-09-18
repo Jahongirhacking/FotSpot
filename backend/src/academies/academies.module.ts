@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ProfessionalPlayersModule } from '../professional-players/professional-players.module';
 import { BullModule } from '@nestjs/bullmq';
 import { AcademiesService } from './academies.service';
 import { EndorsementsService } from './endorsements.service';
@@ -23,6 +24,8 @@ import { TariffsModule } from '../tariffs/tariffs.module';
     TelegramModule,
     // The delayed settlement of an accepted invitation — see invitations.constants.ts.
     BullModule.registerQueue({ name: INVITATIONS_QUEUE }),
+    // The academy's claim on its professional alumni lives on academy routes.
+    ProfessionalPlayersModule,
   ],
   controllers: [AcademiesController],
   providers: [

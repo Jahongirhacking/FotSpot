@@ -224,7 +224,9 @@ export function PlayerActions({
               <p className="text-muted text-sm">
                 {eligibility.reason === 'IN_ACADEMY'
                   ? t.player.cannotRecommendInAcademy
-                  : t.player.cannotRecommendInTrial}
+                  : eligibility.reason === 'SCOUT_RESTRICTED'
+                    ? t.player.cannotRecommendRestricted
+                    : t.player.cannotRecommendInTrial}
               </p>
             ) : (
               <RecommendDialog playerId={playerId} playerName={playerName} />

@@ -75,8 +75,8 @@ export class RecommendationsController {
    * before the button is drawn, so the profile says the reason instead.
    */
   @Get('player/:playerId/eligibility')
-  recommendEligibility(@Param('playerId') playerId: string) {
-    return this.recommendationsService.recommendEligibility(playerId);
+  recommendEligibility(@CurrentUser() user: AuthUser, @Param('playerId') playerId: string) {
+    return this.recommendationsService.recommendEligibility(playerId, user.userId);
   }
 
   /** This scout's own recommendation for a player — one per player (§1.5). */
@@ -135,8 +135,8 @@ export class RecommendationsController {
    */
   @Public()
   @Get('player/:playerId')
-  playerSummary(@Param('playerId') playerId: string) {
-    return this.recommendationsService.playerRecommendationSummary(playerId);
+  playerSummary(@Param('playerId') playerId: string, @Query() paging: PaginationDto) {
+    return this.recommendationsService.playerRecommendationSummary(playerId, paging);
   }
 
   /**

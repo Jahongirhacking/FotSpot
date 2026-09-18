@@ -25,6 +25,8 @@ import {
   type AttributeKey,
   sortClipsNewestFilmed,
 } from '@/lib/player-card';
+import { useModalParam } from '@/hooks/useModalParam';
+import { CLIP_PARAM } from '@/lib/player-url';
 import { cn } from '@/lib/utils';
 import { GraduationCap, Plus, Trophy, Video } from 'lucide-react';
 import * as React from 'react';
@@ -62,7 +64,9 @@ export function AttributeBoard({
   const [uploading, setUploading] = React.useState(false);
   /** True while the full-screen camera is up — see the dialog below. */
   const [recorderOpen, setRecorderOpen] = React.useState(false);
-  const [openId, setOpenId] = React.useState<string | null>(null);
+  // The open clip lives in the URL (`?clip=<id>`): Back closes it, a refresh
+  // keeps it, the address can be shared. See `useModalParam`.
+  const clipModal = useModalParam(CLIP_PARAM);
 
   // The server is the source of truth: after a router.refresh() the fresh list
   // replaces the optimistic one, without losing the tab the user is on.
@@ -85,7 +89,7 @@ export function AttributeBoard({
   const countFor = (category: MediaCategory) =>
     items?.filter((clip) => clip?.category === category).length;
 
-  const openClip = items?.find((clip) => clip?.id === openId) ?? null;
+  const openClip = items?.find((clip) => clip?.id === clipModal.value) ?? null;
 
   const select = (key: AttributeKey) => {
     const category = ATTRIBUTE_CATEGORY[key];
@@ -174,7 +178,7 @@ export function AttributeBoard({
             <ul className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:grid-cols-4">
               {visible?.map((clip) => (
                 <li key={clip?.id}>
-                  <ClipTile clip={clip} onOpen={() => setOpenId(clip?.id)} />
+                  <ClipTile clip={clip} onOpen={() => clipModal.open(clip?.id)} />
                 </li>
               ))}
             </ul>
@@ -257,8 +261,11 @@ export function AttributeBoard({
           clip={openClip}
           canEdit={canUpload}
           open
-          onOpenChange={(next) => !next && setOpenId(null)}
-          onDeleted={(id) => setItems((rest) => rest.filter((entry) => entry?.id !== id))}
+          onOpenChange={(next) => !next && clipModal.close()}
+          onDeleted={(id) => {
+            clipModal.close();
+            setItems((rest) => rest.filter((entry) => entry?.id !== id));
+          }}
           onUpdated={(updated) =>
             setItems((rest) =>
               rest.map((entry) =>

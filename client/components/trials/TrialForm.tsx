@@ -1,6 +1,8 @@
 'use client';
 
 import { PitchPositionPicker, type Position } from '@/components/player/PitchPositionPicker';
+import { POSITIONS } from '@/lib/schemas/player';
+import { CheckCheck } from 'lucide-react';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { NoteEditor } from '@/components/trials/NoteEditor';
 import { TrialCoverPicker } from '@/components/trials/TrialCoverPicker';
@@ -482,16 +484,42 @@ export function TrialForm({
                     value={positions}
                     onChange={setPositions}
                   />
-                  <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
-                    {positions.length === 0 ? (
-                      <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
-                    ) : (
-                      positions.map((position) => (
-                        <Badge key={position} variant="primary">
-                          {position}
-                        </Badge>
-                      ))
-                    )}
+                  <div className="space-y-2">
+                    {/* Every position at once, then deselect the few that are
+                        not wanted — quicker than eleven presses when a trial
+                        is open to almost everybody. */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={positions.length === POSITIONS.length}
+                        onClick={() => setPositions([...POSITIONS])}
+                      >
+                        <CheckCheck aria-hidden /> {t.trials.positionsSelectAll}
+                      </Button>
+                      {positions.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPositions([])}
+                        >
+                          {t.trials.positionsClear}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap content-start gap-1.5" id="trial-positions">
+                      {positions.length === 0 ? (
+                        <p className="text-muted text-sm">{t.trials.positionsNoneChosen}</p>
+                      ) : (
+                        positions.map((position) => (
+                          <Badge key={position} variant="primary">
+                            {position}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </Field>

@@ -193,6 +193,16 @@ model User {
   mustChangePassword Boolean   @default(false)
 
   /**
+   * Set when moderation restricts this account from writing recommendations
+   * (README 1.13). Narrower than `isActive`: the account still signs in, still
+   * browses, still holds its roles — it may no longer put a player forward, and
+   * what it wrote before is kept but shown to moderators only. The rows stay
+   * because the trail is the evidence; the reason is what the scout is told.
+   */
+  restrictedAt      DateTime?
+  restrictionReason String?
+
+  /**
    * When this account last opened the trials list.
    * The badge on the Trials menu counts what has appeared since. A timestamp
    * rather than a join table of seen trial ids: the question is "anything new?",
@@ -233,6 +243,7 @@ model User {
   passwordResetCodes     PasswordResetCode[]
   auditLogs              AuditLog[]
   reportsFiled           Report[]             @relation("ReportsFiled")
+  reportsResolved        Report[]             @relation("ReportResolvers")
   follows                Follow[]             @relation("UserFollows")
   followedByAcademies    AcademyScoutFollow[] @relation("AcademyScoutFollows")
   academyEndorsements    AcademyEndorsement[] @relation("AcademyEndorsements")
@@ -604,6 +615,7 @@ model AcademyProfile {
   recommendationTargets RecommendationTarget[]
   playerWeights         PlayerAcademyRecommendationWeight[]
   blogPosts             BlogPost[]                          @relation("BlogAcademyAuthors")
+  professionalPlayers   ProfessionalPlayerAcademy[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1440,6 +1452,8 @@ model Recommendation {
    */
   clearedAt DateTime?
 
+  reports Report[] @relation("ReportedRecommendations")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1892,6 +1906,7 @@ enum ReportType {
   MEDIA
   ACADEMY
   COACH
+  RECOMMENDATION
 }
 
 enum ReportStatus {
@@ -1914,11 +1929,78 @@ model Report {
   targetCoachId   String?
   targetMedia     Media?  @relation("ReportedMedia", fields: [targetMediaId], references: [id])
 
+  /**
+   * A recommendation whose text was reported. The recommendation itself is
+   * never changed by a report: what a moderator may do is dismiss it or
+   * restrict the scout, and the text is then hidden by the scout's
+   * `restrictedAt`, not deleted.
+   */
+  targetRecommendationId String?
+  targetRecommendation   Recommendation? @relation("ReportedRecommendations", fields: [targetRecommendationId], references: [id])
+
   status         ReportStatus @default(PENDING)
   resolutionNote String?
 
+  resolvedByUserId String?
+  resolvedBy       User?     @relation("ReportResolvers", fields: [resolvedByUserId], references: [id])
+  resolvedAt       DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// The queue reads pending reports oldest first.
+  @@index([status, createdAt])
+  /// "Has this reporter already reported this recommendation" — asked before a second is filed.
+  @@index([targetRecommendationId, reporterId])
+}
+
+// ---------- PROFESSIONAL PLAYERS ----------
+
+/**
+ * A footballer who made it, listed by the platform — not a FotSpot account.
+ *
+ * Its own table rather than a flag on `PlayerProfile`: a professional is a
+ * public figure shown as an academy's alumnus, while a `PlayerProfile` is a
+ * minor's private record with search, media and trials attached. Keeping them
+ * apart is what keeps a professional out of every player query for free.
+ * Written by admins only; academies choose which of them to claim.
+ */
+model ProfessionalPlayer {
+  id        String  @id @default(uuid())
+  firstName String
+  lastName  String
+  /// R2 object key under `public/professional-players/…`, never a URL.
+  avatarKey String?
+
+  /// Same free-text code family as `PlayerProfile.primaryPosition` (GK, CB, …).
+  position     String?
+  dominantFoot DominantFoot?
+
+  academies ProfessionalPlayerAcademy[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The directory lists by name.
+  @@index([lastName, firstName])
+}
+
+/**
+ * "Came through this academy" — many-to-many, because a career passes through
+ * several academies and an academy produces many careers.
+ */
+model ProfessionalPlayerAcademy {
+  professionalPlayerId String
+  academyId            String
+
+  professionalPlayer ProfessionalPlayer @relation(fields: [professionalPlayerId], references: [id], onDelete: Cascade)
+  academy            AcademyProfile     @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([professionalPlayerId, academyId])
+  /// "Who came through this academy" — the academy page's question.
+  @@index([academyId])
 }
 
 // ---------- AUDIT (1.21) ----------

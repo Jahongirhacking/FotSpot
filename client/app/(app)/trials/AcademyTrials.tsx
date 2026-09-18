@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { ManagerTrialDrawer } from '@/components/trials/ManagerTrialDrawer';
+import { useModalParam } from '@/hooks/useModalParam';
 import { PrivateTrials } from './PrivateTrials';
 import { TrialHistory } from './TrialHistory';
 
@@ -70,11 +71,16 @@ export function AcademyTrials({
   const showForm = open || editing;
   const [trials, setTrials] = React.useState(initial);
 
-  /** Leaves edit mode by clearing the query, so Back does what it looks like. */
+  /*
+   * Leaves edit mode by clearing `?edit=` — and only that: the filters beside
+   * it stay, and it replaces rather than pushes so Back does not reopen the
+   * form. See `useModalParam`.
+   */
+  const { close: closeEdit } = useModalParam('edit');
   const closeForm = React.useCallback(() => {
     setOpen(false);
-    if (editing) router.replace('/trials');
-  }, [editing, router]);
+    closeEdit();
+  }, [closeEdit]);
 
   /*
    * The academy is fetched for one thing: its house note, which the form offers

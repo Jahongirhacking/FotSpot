@@ -4,71 +4,72 @@
  */
 import { apiFetch, toQuery, type Page, type RequestOptions } from './client';
 import type {
-  TrialListFilters,
-  AcademyInvitation,
-  MyInvitation,
-  AcademyProfile,
-  AcademyPhoto,
   AcademyFeatured,
-  AcademyScoutFollow,
-  AcademyScoutFollowState,
-  AppNotification,
-  CoachAssessment,
-  CoachProfile,
-  DeviceSession,
-  Follow,
-  FollowerEntry,
-  FollowTargetType,
   AcademyGroup,
+  AcademyHistoryRow,
+  AcademyInvitation,
   AcademyMember,
   AcademyMemberRole,
   AcademyMemberStatus,
-  FeedPage,
-  GroupDetail,
-  MemberTransfer,
-  Media,
-  MediaCategory,
-  MediaType,
-  PendingClip,
-  MediaStatusFilter,
-  PlayerProfile,
-  PlayingStyle,
-  RankedRecommendation,
-  MyRecommendation,
-  Recommendation,
-  RecommendationStatus,
-  ScoutStats,
-  Trial,
-  TrialApplication,
-  TrialApplicationStatus,
-  TrialStatus,
-  TrialType,
-  TrialVerdict,
-  ProfileSummary,
-  RatingRevision,
-  AcademyHistoryRow,
-  CoachQueuePage,
-  TrialApplicationsPage,
-  CoachTrial,
-  SuggestedPlayer,
-  TransferListing,
-  PendingAction,
-  RecommendEligibility,
-  PrivateTrialsPage,
-  ApplicationStage,
+  AcademyPhoto,
+  AcademyProfile,
+  AcademyScoutFollow,
+  AcademyScoutFollowState,
   AdminBlogPost,
+  AdminChat,
+  AdminMessage,
+  AdminMessageUser,
+  AppNotification,
+  AppealedClip,
+  ApplicationStage,
   BlogCategory,
   BlogHome,
   BlogPost,
   BlogPostCard,
+  BlogPostImage,
   BlogPostStatus,
   BlogSitemapEntry,
-  BlogPostImage,
   BlogSpotlight,
-  AdminChat,
-  AppealedClip,
-  AdminMessage,
-  AdminMessageUser,
+  CoachAssessment,
+  CoachProfile,
+  CoachQueuePage,
+  CoachTrial,
+  DeviceSession,
+  FeedPage,
+  Follow,
+  FollowTargetType,
+  FollowerEntry,
+  GroupDetail,
+  Media,
+  MediaCategory,
+  MediaStatusFilter,
+  MediaType,
+  MemberTransfer,
+  MyInvitation,
+  MyRecommendation,
+  PendingAction,
+  PendingClip,
+  PlayerProfile,
+  PlayingStyle,
+  PrivateTrialsPage,
+  ProfessionalPlayer,
+  ProfileSummary,
+  RankedRecommendation,
+  RatingRevision,
+  RecommendEligibility,
+  Recommendation,
+  RecommendationStatus,
+  ScoutStats,
+  SuggestedPlayer,
+  TransferListing,
+  Trial,
+  TrialApplication,
+  TrialApplicationStatus,
+  TrialApplicationsPage,
+  TrialListFilters,
+  TrialStatus,
+  TrialType,
+  TrialVerdict,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -829,6 +830,9 @@ export const admin = {
 
 export interface UserDetail extends AdminUser {
   isActive: boolean;
+  /** Set while moderation has stopped this account writing recommendations. */
+  restrictedAt?: string | null;
+  restrictionReason?: string | null;
   playerProfile: {
     id: string;
     birthDate: string;
@@ -881,13 +885,28 @@ export interface RoleWithPermissions {
 
 export interface Report {
   id: string;
-  type: 'USER' | 'MEDIA' | 'ACADEMY' | 'COACH';
+  type: 'USER' | 'MEDIA' | 'ACADEMY' | 'COACH' | 'RECOMMENDATION';
   reason: string;
   reporterId: string;
+  reporter?: { id: string; firstName: string | null; lastName: string | null } | null;
   targetUserId?: string | null;
   targetMediaId?: string | null;
   targetAcademyId?: string | null;
   targetCoachId?: string | null;
+  targetRecommendationId?: string | null;
+  /** The reported text and who wrote it, for RECOMMENDATION reports. */
+  targetRecommendation?: {
+    id: string;
+    note: string | null;
+    createdAt: string;
+    scout: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+      restrictedAt: string | null;
+    };
+  } | null;
   status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
   resolutionNote?: string | null;
   createdAt: string;
@@ -919,26 +938,51 @@ export interface ManagerCredentials {
   password: string;
 }
 
-/** Public recommendation record for a player — README §1.5.3. */
+/** One scout's recommendation on a player's public record. */
+export interface PlayerRecommendationEntry {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  recommendation: {
+    id: string;
+    weight: number;
+    type: 'GLOBAL' | 'SPECIFIC';
+    recommendedAcademies: string[];
+    note: string | null;
+    date: string;
+  };
+}
+
+/**
+ * Public recommendation record for a player — README §1.5.3. `scouts` is one
+ * page, most credible scout first; `total` is how many there are in all.
+ */
 export interface PlayerRecommendationSummary {
   playerId: string;
   globalWeight: number;
   recommendationCount: number;
   lastRecommendedAt: string | null;
-  scouts: {
-    id: string;
-    name: string;
-    avatarUrl: string | null;
-    recommendation: {
-      id: string;
-      weight: number;
-      type: 'GLOBAL' | 'SPECIFIC';
-      recommendedAcademies: string[];
-      note: string | null;
-      date: string;
-    };
-  }[];
+  total: number;
+  page: number;
+  pageSize: number;
+  scouts: PlayerRecommendationEntry[];
 }
+
+// ---------- Professional players ----------
+
+export const professionalPlayers = {
+  list: (
+    params: { query?: string; academyId?: string; page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<ProfessionalPlayer>>(`/professional-players${toQuery({ ...params })}`, opts),
+
+  get: (id: string, opts: Opts = {}) =>
+    apiFetch<ProfessionalPlayer>(`/professional-players/${id}`, opts),
+
+  /** The professionals an academy claims came through it. */
+  forAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<ProfessionalPlayer[]>(`/academies/${academyId}/professional-players`, opts),
+};
 
 // ---------- Coaches ----------
 
@@ -1091,8 +1135,11 @@ export const recommendations = {
   inboxCount: (opts: Opts = {}) =>
     apiFetch<{ count: number; academyId: string | null }>('/recommendations/inbox/count', opts),
 
-  getPlayerSummary: (playerId: string, opts: Opts = {}) =>
-    apiFetch<PlayerRecommendationSummary>(`/recommendations/player/${playerId}`, opts),
+  getPlayerSummary: (playerId: string, params: PageParams = {}, opts: Opts = {}) =>
+    apiFetch<PlayerRecommendationSummary>(
+      `/recommendations/player/${playerId}${toQuery({ ...params })}`,
+      opts,
+    ),
 
   myScoutStats: (opts: Opts = {}) =>
     apiFetch<ScoutStats & { pending: Quota }>('/recommendations/scout-stats/me', opts),

@@ -3372,6 +3372,72 @@
         ]
       }
     },
+    "/api/v1/academies/{id}/professional-players": {
+      "get": {
+        "operationId": "academies_listProfessionalPlayers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The professionals this academy claims came through it — README §21.",
+        "tags": [
+          "academies"
+        ]
+      },
+      "put": {
+        "operationId": "academies_setProfessionalPlayers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAcademyProfessionalPlayersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replaces the academy's claim outright, like `featured`: the manager sees a\nlist and saves the list. Manager of this academy, or an admin (§1.10).",
+        "tags": [
+          "academies"
+        ]
+      }
+    },
     "/api/v1/academies/{id}/endorsements": {
       "get": {
         "operationId": "academies_listEndorsements",
@@ -3489,6 +3555,220 @@
         ],
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/professional-players": {
+      "get": {
+        "operationId": "professionalplayers_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 80,
+              "type": "string"
+            }
+          },
+          {
+            "name": "academyId",
+            "required": false,
+            "in": "query",
+            "description": "Only players who came through this academy.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
+        ]
+      },
+      "post": {
+        "operationId": "professionalplayers_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveProfessionalPlayerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
+        ]
+      }
+    },
+    "/api/v1/professional-players/{id}": {
+      "get": {
+        "operationId": "professionalplayers_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
+        ]
+      },
+      "patch": {
+        "operationId": "professionalplayers_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveProfessionalPlayerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
+        ]
+      },
+      "delete": {
+        "operationId": "professionalplayers_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
+        ]
+      }
+    },
+    "/api/v1/professional-players/{id}/avatar/upload-url": {
+      "post": {
+        "operationId": "professionalplayers_avatarUploadUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfessionalPlayerImageUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "professional-players"
         ]
       }
     },
@@ -4732,6 +5012,27 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
             }
           }
         ],
@@ -6736,6 +7037,45 @@
           }
         ],
         "summary": "Erases an account — **super admin only**, and irreversible.\n\nThe end of a `DELETE_ACCOUNT` request: contact the person, confirm what they\nactually want, then this. The card, the clips and the stored objects go with\nit, which is what makes the privacy policy's promise true.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}/restriction": {
+      "patch": {
+        "operationId": "admin_setUserRestricted",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserRestrictedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The same decision the moderation queue makes on a report, reachable from\nthe user's own page — and the only way back: a restriction is lifted here.",
         "tags": [
           "admin"
         ]
@@ -9004,6 +9344,21 @@
           "ids"
         ]
       },
+      "SetAcademyProfessionalPlayersDto": {
+        "type": "object",
+        "properties": {
+          "professionalPlayerIds": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "professionalPlayerIds"
+        ]
+      },
       "AcademyMemberRole": {
         "type": "string",
         "enum": [
@@ -9041,6 +9396,70 @@
         "enum": [
           "SCOUT",
           "COACH"
+        ]
+      },
+      "DominantFoot": {
+        "type": "string",
+        "enum": [
+          "LEFT",
+          "RIGHT",
+          "BOTH"
+        ]
+      },
+      "SaveProfessionalPlayerDto": {
+        "type": "object",
+        "properties": {
+          "dominantFoot": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DominantFoot"
+              }
+            ]
+          },
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "avatarKey": {
+            "type": "string",
+            "description": "Key from the upload ticket; re-checked against the player's own prefix. `''` clears.",
+            "maxLength": 512
+          },
+          "position": {
+            "type": "string",
+            "description": "Free-text position code, as on a player profile (GK, CB, …). `''` clears.",
+            "maxLength": 20
+          },
+          "academyIds": {
+            "description": "The academies this player came through — replaces the whole set when present.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ProfessionalPlayerImageUploadDto": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "contentType": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "filename"
         ]
       },
       "PlayingStyle": {
@@ -9730,7 +10149,8 @@
               "USER",
               "MEDIA",
               "ACADEMY",
-              "COACH"
+              "COACH",
+              "RECOMMENDATION"
             ]
           },
           "reason": {
@@ -9747,6 +10167,10 @@
           },
           "targetCoachId": {
             "type": "string"
+          },
+          "targetRecommendationId": {
+            "type": "string",
+            "description": "The recommendation whose text is being reported (type RECOMMENDATION)."
           }
         },
         "required": [
@@ -9770,6 +10194,10 @@
           "removeMedia": {
             "type": "boolean",
             "description": "If resolving a MEDIA report and the content should come down."
+          },
+          "restrictScout": {
+            "type": "boolean",
+            "description": "If resolving a RECOMMENDATION report and the text was inappropriate: the\nscout may write no more, and what they wrote leaves public view. The\nrecommendation rows themselves are not touched."
           }
         },
         "required": [
@@ -9824,6 +10252,21 @@
         },
         "required": [
           "approve"
+        ]
+      },
+      "SetUserRestrictedDto": {
+        "type": "object",
+        "properties": {
+          "restricted": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "restricted"
         ]
       },
       "SetUserActiveDto": {

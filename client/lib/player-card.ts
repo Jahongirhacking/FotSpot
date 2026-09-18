@@ -318,7 +318,7 @@ export function positionGroup(position?: string | null) {
   if (!position) return 'Unknown' as const;
   if (position === 'GK') return 'Goalkeeper' as const;
   if (['CB', 'LB', 'RB'].includes(position)) return 'Defence' as const;
-  if (['DM', 'CM', 'AM'].includes(position)) return 'Midfield' as const;
+  if (['DM', 'LMF', 'CM', 'RMF', 'AM'].includes(position)) return 'Midfield' as const;
   return 'Forward' as const;
 }
 
@@ -336,7 +336,11 @@ export const POSITION_COORDS: Record<string, { x: number; y: number }> = {
   LB: { x: 17, y: 28 },
   RB: { x: 83, y: 28 },
   DM: { x: 50, y: 40 },
+  // The wide midfielders sit in CM's band, out where the full-backs and
+  // wingers are — the same clearance from the touchline as LW/RW.
+  LMF: { x: 16, y: 54 },
   CM: { x: 50, y: 54 },
+  RMF: { x: 84, y: 54 },
   AM: { x: 50, y: 67 },
   LW: { x: 16, y: 76 },
   RW: { x: 84, y: 76 },

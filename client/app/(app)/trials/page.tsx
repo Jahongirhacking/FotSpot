@@ -11,6 +11,7 @@ import { getSession } from '@/lib/session';
 import { TrialCard } from '@/components/trials/TrialCard';
 import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
+import { hasUiOnlyQuery } from '@/lib/player-url';
 import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { AcademyTrials } from './AcademyTrials';
@@ -20,13 +21,20 @@ import { MyTrialInvitations } from './MyTrialInvitations';
 import { TrialFilters } from './TrialFilters';
 
 /** The tab title is translated like the page under it — see app/layout.tsx. */
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
   const { t } = await getServerT();
+  const params = await searchParams;
   // The board's own subtitle: what a visitor can do here, in the page's words.
   return pageMetadata({
     path: '/trials',
     title: t.nav.trials,
     description: t.trials.openTrialsHint,
+    // A drawer or the edit form open over the board is the board, viewed.
+    index: !hasUiOnlyQuery(params) && params.edit === undefined,
   });
 }
 

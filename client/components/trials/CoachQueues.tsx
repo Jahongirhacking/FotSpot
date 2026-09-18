@@ -24,6 +24,8 @@ import { formatTrialDates, formatTrialTimes, isTrialUpcoming } from '@/lib/trial
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, Clock, Hourglass, Lock, MapPin, Users } from 'lucide-react';
 import * as React from 'react';
+import { useModalParam } from '@/hooks/useModalParam';
+import { TRIAL_PARAM } from '@/lib/player-url';
 
 /**
  * The coach's two lists, and why they are shaped differently.
@@ -322,7 +324,9 @@ function GlobalTrialRow({ trial }: { trial: CoachTrial }) {
  */
 function ParticipantsDrawer({ trial }: { trial: CoachTrial }) {
   const { t, f } = useI18n();
-  const [open, setOpen] = React.useState(false);
+  // Open in the URL (`?trial=<id>`): Back closes the drawer, a refresh keeps it.
+  const modal = useModalParam(TRIAL_PARAM);
+  const open = modal.value === trial?.id;
   const when = formatTrialDates(trial, t.trials.openEnded);
   const times = formatTrialTimes(trial);
   const gender =
@@ -333,7 +337,7 @@ function ParticipantsDrawer({ trial }: { trial: CoachTrial }) {
         : t.trials.genderMale;
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={(next) => (next ? modal.open(trial?.id) : modal.close())}>
       <DrawerTrigger asChild>
         <Button size="sm" variant={trial?.awaitingVerdict > 0 ? 'primary' : 'outline'}>
           <Users aria-hidden /> {t.trials.participants}

@@ -13,6 +13,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Alert, EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { ShortViewer } from './ShortViewer';
+import { useModalParam } from '@/hooks/useModalParam';
+import { CLIP_PARAM } from '@/lib/player-url';
 import {
   FEED_QUERY_KEY,
   FEED_RANKING_TTL_MS,
@@ -51,7 +53,14 @@ const ROW_ESTIMATE = 560;
  */
 export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
   const { t } = useI18n();
-  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+  /*
+   * The open clip is `?clip=<id>` in the URL, so Android's Back closes the
+   * viewer instead of leaving the feed, a refresh reopens the same clip, and
+   * the address can be shared. Addressed by id, never by position: the
+   * position is a slot in a session-seeded, paged list that means nothing to
+   * anybody else. A shared id the loaded pages do not hold stays closed.
+   */
+  const clipModal = useModalParam(CLIP_PARAM);
   const [muted, setMuted] = React.useState(true);
 
   const query = useInfiniteQuery({
@@ -94,6 +103,10 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
   // Each clip once, whatever the pages say — a repeat would be two rows with
   // one key, and a reader shown the same clip twice.
   const clips = React.useMemo(() => uniqueClips(query.data?.pages), [query.data]);
+  const openIndex = React.useMemo(() => {
+    const at = clipModal.value ? clips.findIndex((clip) => clip?.id === clipModal.value) : -1;
+    return at === -1 ? null : at;
+  }, [clips, clipModal.value]);
 
   const { containerRef, start, end, offsets, totalSize, measureRef, centerIndex } = useWindowedList(
     { count: clips?.length, estimate: ROW_ESTIMATE },
@@ -137,7 +150,7 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
           mounted={Math.abs(index - centerIndex) <= 1}
           muted={muted}
           onToggleMute={() => setMuted((was) => !was)}
-          onOpen={() => setOpenIndex(index)}
+          onOpen={() => clipModal.open(clip?.id)}
         />
       </div>,
     );
@@ -157,7 +170,13 @@ export function FeedStream({ initialPage }: { initialPage: FeedPage }) {
         <ShortViewer
           clips={clips}
           startIndex={openIndex}
-          onClose={() => setOpenIndex(null)}
+          onClose={clipModal.close}
+          // Scrolling to the next clip rewrites the parameter in place: the
+          // URL names what is on screen, and Back still means "close".
+          onIndexChange={(at) => {
+            const clip = clips[at];
+            if (clip) clipModal.open(clip.id, { replace: true });
+          }}
           onNeedMore={() => {
             if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
           }}

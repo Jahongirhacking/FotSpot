@@ -16,9 +16,10 @@ import { PLAYING_STYLE_INFO } from '@/lib/playing-styles';
 import { humanizeEnum } from '@/lib/utils';
 import { Users } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 /** The one query parameter this whole feature is driven by. */
+import { useModalParam } from '@/hooks/useModalParam';
 import { PLAYING_STYLE_PARAM } from '@/lib/player-url';
 
 export { PLAYING_STYLE_PARAM };
@@ -46,27 +47,11 @@ export { PLAYING_STYLE_PARAM };
 export function PlayingStyleModalController() {
   const { t } = useI18n();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const style = searchParams.get(PLAYING_STYLE_PARAM);
+  // Open pushes, close replaces, every other parameter is kept — the filters
+  // somebody built are not this modal's to discard. See `useModalParam`.
+  const { value: style, close } = useModalParam(PLAYING_STYLE_PARAM);
   const info = style ? PLAYING_STYLE_INFO?.[style] : undefined;
   const open = Boolean(info);
-
-  /**
-   * Removes only this parameter.
-   *
-   * `/players?page=2&showPlayingStyle=X&search=messi` closes back to
-   * `/players?page=2&search=messi` — the filters somebody built are not this
-   * modal's to discard. `replace` rather than `push` so closing does not add a
-   * history entry that back would immediately reopen.
-   */
-  const close = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete(PLAYING_STYLE_PARAM);
-    const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  };
 
   if (!open || !style) return null;
 
