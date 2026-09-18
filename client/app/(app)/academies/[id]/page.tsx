@@ -1,6 +1,7 @@
 import { AcademyFeaturedList } from '@/components/academy/AcademyFeaturedList';
 import { AcademyFollowButton } from '@/components/academy/AcademyFollowButton';
 import { AcademyGallery } from '@/components/academy/AcademyGallery';
+import { ProfessionalPlayerGrid } from '@/components/professional/ProfessionalPlayerGrid';
 import { AcademyMap } from '@/components/academy/AcademyMap';
 import { AcademySocialLinks } from '@/components/academy/AcademySocialLinks';
 import { RelationBadge } from '@/components/shared/RelationBadge';
@@ -9,13 +10,14 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { ApiError } from '@/lib/api/client';
-import { academies, academyRoster, trials } from '@/lib/api/resources';
+import { academies, academyRoster, professionalPlayers, trials } from '@/lib/api/resources';
 import type {
   AcademyFeatured,
   AcademyMember,
   AcademyMemberRef,
   AcademyPhoto,
   AcademyProfile,
+  ProfessionalPlayer,
   Trial,
 } from '@/lib/api/types';
 import type { Dictionary } from '@/lib/i18n';
@@ -40,6 +42,7 @@ import {
   Pencil,
   Phone,
   Search,
+  Star,
   Trophy,
   UserCog,
   Users,
@@ -275,10 +278,11 @@ export default async function AcademyDetailPage({
     ? { token: session?.accessToken, cache: 'no-store' as const }
     : { revalidate: 300 };
 
-  const [academyTrials, photos, featured] = await Promise.all([
+  const [academyTrials, photos, featured, alumni] = await Promise.all([
     trials.listForAcademy(academyId, fresh).catch(() => [] as Trial[]),
     academies.photos(academyId, fresh).catch(() => [] as AcademyPhoto[]),
     academies.featured(academyId, fresh).catch(() => [] as AcademyFeatured[]),
+    professionalPlayers.forAcademy(academyId, fresh).catch(() => [] as ProfessionalPlayer[]),
   ]);
 
   /*
@@ -596,6 +600,24 @@ export default async function AcademyDetailPage({
                 scouts, a handful each, live in the team card beside it, so no
                 column is mostly white space. */}
             <FeaturedCard title={t.academy?.featuredPlayersTitle} people={players} />
+
+            {/* The professionals who came through here — the academy's proudest
+                claim, and only when it has one to make. */}
+            {alumni.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Star className="text-primary size-4" aria-hidden />{' '}
+                    {t.professional.alumniTitle}
+                    <span className="text-muted text-xs font-normal">{alumni.length}</span>
+                  </CardTitle>
+                  <p className="text-muted text-xs">{t.professional.alumniHint}</p>
+                </CardHeader>
+                <CardContent>
+                  <ProfessionalPlayerGrid players={alumni} compact />
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <aside className="min-w-0 space-y-4">

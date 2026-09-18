@@ -20,6 +20,7 @@ import { InsightsModule } from './insights/insights.module';
 import { BlogModule } from './blog/blog.module';
 import { MediaModule } from './media/media.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { ProfessionalPlayersModule } from './professional-players/professional-players.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PlayersModule } from './players/players.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -106,6 +107,7 @@ import { AppController } from './app.controller';
     TrialsModule,
     NotificationsModule,
     ModerationModule,
+    ProfessionalPlayersModule,
     AdminModule,
     InsightsModule,
     BlogModule,

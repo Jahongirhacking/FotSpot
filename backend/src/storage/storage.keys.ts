@@ -53,7 +53,10 @@ export const PRIVATE_PREFIX = 'private/';
  */
 export function safeExtension(filename: string): string {
   const ext = filename.includes('.')
-    ? filename.split('.').pop()!.replace(/[^a-z0-9]/gi, '')
+    ? filename
+        .split('.')
+        .pop()!
+        .replace(/[^a-z0-9]/gi, '')
     : '';
   return ext.slice(0, 10).toLowerCase() || 'bin';
 }
@@ -134,6 +137,19 @@ export function blogMediaPrefix(postId: string): string {
 
 export function blogMediaKey(postId: string, filename: string): string {
   return `${blogMediaPrefix(postId)}${objectName(filename)}`;
+}
+
+/**
+ * Directory a professional player's portrait lives in. Public, like an
+ * academy's imagery: a professional is a public figure the platform lists,
+ * not a child with a private record.
+ */
+export function professionalPlayerMediaPrefix(playerId: string): string {
+  return `${PUBLIC_PREFIX}professional-players/${playerId}/`;
+}
+
+export function professionalPlayerMediaKey(playerId: string, filename: string): string {
+  return `${professionalPlayerMediaPrefix(playerId)}${objectName(filename)}`;
 }
 
 export function isPublicKey(key: string): boolean {

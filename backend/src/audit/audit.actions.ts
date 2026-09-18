@@ -88,6 +88,13 @@ export const AuditAction = {
   BLOG_POST_PUBLISHED: 'blog.post_published',
   BLOG_POST_UNPUBLISHED: 'blog.post_unpublished',
   BLOG_POST_DELETED: 'blog.post_deleted',
+
+  // ---- Professional players ----
+  PRO_PLAYER_CREATED: 'professional_player.created',
+  PRO_PLAYER_UPDATED: 'professional_player.updated',
+  PRO_PLAYER_DELETED: 'professional_player.deleted',
+  /** An academy (or an admin for it) changed which professionals it claims. */
+  ACADEMY_PRO_PLAYERS_SET: 'academy.professional_players_set',
 } as const;
 
 export type AuditActionKey = (typeof AuditAction)[keyof typeof AuditAction];

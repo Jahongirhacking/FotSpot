@@ -615,6 +615,7 @@ model AcademyProfile {
   recommendationTargets RecommendationTarget[]
   playerWeights         PlayerAcademyRecommendationWeight[]
   blogPosts             BlogPost[]                          @relation("BlogAcademyAuthors")
+  professionalPlayers   ProfessionalPlayerAcademy[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1451,9 +1452,9 @@ model Recommendation {
    */
   clearedAt DateTime?
 
-  createdAt DateTime @default(now())
   reports Report[] @relation("ReportedRecommendations")
 
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([playerId])
@@ -1905,8 +1906,8 @@ enum ReportType {
   MEDIA
   ACADEMY
   COACH
-}
   RECOMMENDATION
+}
 
 enum ReportStatus {
   PENDING
@@ -1928,7 +1929,6 @@ model Report {
   targetCoachId   String?
   targetMedia     Media?  @relation("ReportedMedia", fields: [targetMediaId], references: [id])
 
-  status         ReportStatus @default(PENDING)
   /**
    * A recommendation whose text was reported. The recommendation itself is
    * never changed by a report: what a moderator may do is dismiss it or
@@ -1938,15 +1938,15 @@ model Report {
   targetRecommendationId String?
   targetRecommendation   Recommendation? @relation("ReportedRecommendations", fields: [targetRecommendationId], references: [id])
 
+  status         ReportStatus @default(PENDING)
   resolutionNote String?
 
-  createdAt DateTime @default(now())
   resolvedByUserId String?
   resolvedBy       User?     @relation("ReportResolvers", fields: [resolvedByUserId], references: [id])
   resolvedAt       DateTime?
 
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
   /// The queue reads pending reports oldest first.
   @@index([status, createdAt])
@@ -2001,6 +2001,7 @@ model ProfessionalPlayerAcademy {
   @@id([professionalPlayerId, academyId])
   /// "Who came through this academy" — the academy page's question.
   @@index([academyId])
+}
 
 // ---------- AUDIT (1.21) ----------
 

@@ -1,6 +1,7 @@
 'use client';
 
 import type { LatLng } from '@/components/academy/LocationPicker';
+import { ProfessionalPlayersCard } from '@/components/academy/ProfessionalPlayersCard';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -132,6 +133,7 @@ export function AcademyProfileEditor({
       <LocationCard academy={academy} onSaved={toPreview} />
       <SocialCard academy={academy} onSaved={toPreview} />
       <PhotosCard academyId={academy?.id} />
+      <ProfessionalPlayersCard academyId={academy?.id} />
 
       <Card>
         <CardHeader className="pb-2">

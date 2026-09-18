@@ -51,22 +51,25 @@ import type {
   PendingClip,
   PlayerProfile,
   PlayingStyle,
+  PrivateTrialsPage,
+  ProfessionalPlayer,
+  ProfileSummary,
   RankedRecommendation,
   RatingRevision,
   RecommendEligibility,
   Recommendation,
   RecommendationStatus,
   ScoutStats,
+  SuggestedPlayer,
+  TransferListing,
   Trial,
   TrialApplication,
   TrialApplicationStatus,
-  SuggestedPlayer,
-  TransferListing,
+  TrialApplicationsPage,
+  TrialListFilters,
   TrialStatus,
   TrialType,
   TrialVerdict,
-  TrialApplicationsPage,
-  TrialListFilters,
 } from './types';
 
 type Opts = Pick<RequestOptions, 'token' | 'activeRole' | 'revalidate' | 'tags' | 'cache'>;
@@ -827,12 +830,12 @@ export const admin = {
 
 export interface UserDetail extends AdminUser {
   isActive: boolean;
-  playerProfile: {
-    id: string;
-    birthDate: string;
   /** Set while moderation has stopped this account writing recommendations. */
   restrictedAt?: string | null;
   restrictionReason?: string | null;
+  playerProfile: {
+    id: string;
+    birthDate: string;
     primaryPosition: string | null;
     playingStyle: string | null;
     region: string | null;
@@ -885,14 +888,11 @@ export interface Report {
   type: 'USER' | 'MEDIA' | 'ACADEMY' | 'COACH' | 'RECOMMENDATION';
   reason: string;
   reporterId: string;
+  reporter?: { id: string; firstName: string | null; lastName: string | null } | null;
   targetUserId?: string | null;
   targetMediaId?: string | null;
   targetAcademyId?: string | null;
-  reporter?: { id: string; firstName: string | null; lastName: string | null } | null;
   targetCoachId?: string | null;
-  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
-  resolutionNote?: string | null;
-  createdAt: string;
   targetRecommendationId?: string | null;
   /** The reported text and who wrote it, for RECOMMENDATION reports. */
   targetRecommendation?: {
@@ -907,6 +907,9 @@ export interface Report {
       restrictedAt: string | null;
     };
   } | null;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  resolutionNote?: string | null;
+  createdAt: string;
 }
 
 export interface AcademyInput {
@@ -964,6 +967,22 @@ export interface PlayerRecommendationSummary {
   pageSize: number;
   scouts: PlayerRecommendationEntry[];
 }
+
+// ---------- Professional players ----------
+
+export const professionalPlayers = {
+  list: (
+    params: { query?: string; academyId?: string; page?: number; pageSize?: number } = {},
+    opts: Opts = {},
+  ) => apiFetch<Page<ProfessionalPlayer>>(`/professional-players${toQuery({ ...params })}`, opts),
+
+  get: (id: string, opts: Opts = {}) =>
+    apiFetch<ProfessionalPlayer>(`/professional-players/${id}`, opts),
+
+  /** The professionals an academy claims came through it. */
+  forAcademy: (academyId: string, opts: Opts = {}) =>
+    apiFetch<ProfessionalPlayer[]>(`/academies/${academyId}/professional-players`, opts),
+};
 
 // ---------- Coaches ----------
 

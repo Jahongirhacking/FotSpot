@@ -5,6 +5,8 @@ import { EndorsementsService } from './endorsements.service';
 import { GroupsService } from './groups.service';
 import { ListEndorsementsDto } from './dto/endorsement.dto';
 import { InvitationsService } from './invitations.service';
+import { ProfessionalPlayersService } from '../professional-players/professional-players.service';
+import { SetAcademyProfessionalPlayersDto } from '../professional-players/dto/professional-player.dto';
 import { InviteMemberDto, RejectInvitationDto } from './dto/invitation.dto';
 import {
   CreateGroupDto,
@@ -41,6 +43,7 @@ export class AcademiesController {
     private endorsements: EndorsementsService,
     private groups: GroupsService,
     private invitations: InvitationsService,
+    private professionalPlayers: ProfessionalPlayersService,
   ) {}
 
   /**
@@ -428,6 +431,32 @@ export class AcademiesController {
   @Get(':id/featured')
   listFeatured(@Param('id') id: string) {
     return this.academiesService.listFeatured(id);
+  }
+
+  /** The professionals this academy claims came through it — README §21. */
+  @Public()
+  @Get(':id/professional-players')
+  listProfessionalPlayers(@Param('id') id: string) {
+    return this.professionalPlayers.listForAcademy(id);
+  }
+
+  /**
+   * Replaces the academy's claim outright, like `featured`: the manager sees a
+   * list and saves the list. Manager of this academy, or an admin (§1.10).
+   */
+  @Put(':id/professional-players')
+  setProfessionalPlayers(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SetAcademyProfessionalPlayersDto,
+  ) {
+    const isAdmin = user.roles.includes('admin') || user.roles.includes('super_admin');
+    return this.professionalPlayers.setForAcademy(
+      user.userId,
+      id,
+      dto.professionalPlayerIds,
+      isAdmin,
+    );
   }
 
   /** Replaces one role's list outright — see `setFeatured` for why wholesale. */

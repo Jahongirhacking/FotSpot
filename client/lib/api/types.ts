@@ -25,6 +25,31 @@ export type PlayingStyle =
   | 'DEFENSIVE_KEEPER';
 
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+/**
+ * A footballer who made it — the platform's own list, never a FotSpot account
+ * (README §21). `academies` are the ones that claim the player came through them.
+ */
+export interface ProfessionalPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  position: string | null;
+  dominantFoot: DominantFoot | null;
+  academies: { id: string; name: string; username: string | null; logoUrl: string | null }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveProfessionalPlayerBody {
+  firstName?: string;
+  lastName?: string;
+  avatarKey?: string;
+  position?: string;
+  dominantFoot?: DominantFoot | null;
+  academyIds?: string[];
+}
 export type RecommendationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 /** In the order it moves — see the Prisma enum for what each one means. */
 export type TrialApplicationStatus =
