@@ -1,10 +1,20 @@
-import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaCategory, MediaStatus, RatingAppealStatus } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
-const REPORT_TYPES = ['USER', 'MEDIA', 'ACADEMY', 'COACH'] as const;
+const REPORT_TYPES = ['USER', 'MEDIA', 'ACADEMY', 'COACH', 'RECOMMENDATION'] as const;
 
 export class CreateReportDto {
   @IsIn(REPORT_TYPES) type: (typeof REPORT_TYPES)[number];
@@ -14,6 +24,8 @@ export class CreateReportDto {
   @IsOptional() @IsUUID() targetMediaId?: string;
   @IsOptional() @IsUUID() targetAcademyId?: string;
   @IsOptional() @IsUUID() targetCoachId?: string;
+  /** The recommendation whose text is being reported (type RECOMMENDATION). */
+  @IsOptional() @IsUUID() targetRecommendationId?: string;
 }
 
 export class ResolveReportDto {
@@ -25,6 +37,13 @@ export class ResolveReportDto {
   /** If resolving a MEDIA report and the content should come down. */
   @IsOptional()
   removeMedia?: boolean;
+
+  /**
+   * If resolving a RECOMMENDATION report and the text was inappropriate: the
+   * scout may write no more, and what they wrote leaves public view. The
+   * recommendation rows themselves are not touched.
+   */
+  @IsOptional() @IsBoolean() restrictScout?: boolean;
 }
 
 /** `ALL`, or one processing status — the filter on the admin's clip list. */

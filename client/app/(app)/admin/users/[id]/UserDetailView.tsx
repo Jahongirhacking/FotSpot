@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { Ban, CheckCircle2, Lock } from 'lucide-react';
+import { Ban, CheckCircle2, Lock, UserX } from 'lucide-react';
 import { browserFetch } from '@/lib/api/browser';
 import { PLAN_TIERS, type PlanTier, type UserDetail } from '@/lib/api/resources';
 import { planLabel } from '@/lib/plans';
@@ -26,6 +26,19 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
   const [error, setError] = React.useState<string | null>(null);
 
   const isSuper = user?.roles.includes('super_admin');
+
+  const setRestricted = useMutation({
+    mutationFn: (restricted: boolean) =>
+      browserFetch(`/admin/users/${user?.id}/restriction`, {
+        method: 'PATCH',
+        body: { restricted },
+      }),
+    onSuccess: () => {
+      setError(null);
+      router.refresh();
+    },
+    onError: (err: Error) => setError(err.message),
+  });
 
   const setActive = useMutation({
     mutationFn: (isActive: boolean) =>
@@ -62,7 +75,9 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
         />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{name}</h1>
-          <p className="text-muted truncate text-sm">{user?.email ?? user?.phone ?? user?.username ?? ''}</p>
+          <p className="text-muted truncate text-sm">
+            {user?.email ?? user?.phone ?? user?.username ?? ''}
+          </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Badge variant={user?.isActive ? 'success' : 'danger'}>
               {user?.isActive ? t.admin.active : t.admin.disabled}
@@ -165,8 +180,8 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
           <CardHeader>
             <CardTitle>{t.profile.playerStats}</CardTitle>
             <CardDescription>
-              {ageBand(user?.playerProfile.birthDate)} · {user?.playerProfile.primaryPosition ?? '—'}{' '}
-              · {user?.playerProfile.region ?? '—'}
+              {ageBand(user?.playerProfile.birthDate)} ·{' '}
+              {user?.playerProfile.primaryPosition ?? '—'} · {user?.playerProfile.region ?? '—'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -240,6 +255,38 @@ export function UserDetailView({ user, canEdit }: { user: UserDetail; canEdit: b
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Narrower than disabling: the account stays, its recommendations stop.
+          Any admin, because it is the moderation queue's own decision. */}
+      {!isSuper && user?.roles.includes('scout') && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {user?.restrictedAt ? t.admin.liftRestriction : t.admin.restrictAccount}
+              {user?.restrictedAt && <Badge variant="danger">{t.admin.scoutRestricted}</Badge>}
+            </CardTitle>
+            <CardDescription>
+              {user?.restrictedAt && user?.restrictionReason
+                ? `${t.admin.restrictionReason}: ${user.restrictionReason}`
+                : t.admin.restrictHint}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant={user?.restrictedAt ? 'primary' : 'danger'}
+              loading={setRestricted.isPending}
+              onClick={() => {
+                if (user?.restrictedAt || window.confirm(t.admin.confirmRestrictScout)) {
+                  setRestricted.mutate(!user?.restrictedAt);
+                }
+              }}
+            >
+              {user?.restrictedAt ? <CheckCircle2 aria-hidden /> : <UserX aria-hidden />}
+              {user?.restrictedAt ? t.admin.liftRestriction : t.admin.restrictAccount}
+            </Button>
           </CardContent>
         </Card>
       )}

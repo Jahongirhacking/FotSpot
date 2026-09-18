@@ -45,6 +45,9 @@ export const AuditAction = {
   ENDORSEMENT_REVOKED: 'endorsement.revoked',
   USER_ENABLED: 'user.enabled',
   USER_DISABLED: 'user.disabled',
+  /** Moderation stopped an account writing recommendations; its old ones went out of public view. */
+  USER_RESTRICTED: 'user.restricted',
+  USER_UNRESTRICTED: 'user.unrestricted',
   USER_PLAN_CHANGED: 'user.plan_changed',
   TARIFF_PLAN_UPDATED: 'tariff_plan.updated',
   REPORT_RESOLVED: 'report.resolved',

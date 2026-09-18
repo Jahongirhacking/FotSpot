@@ -5013,6 +5013,27 @@
               "type": "string"
             }
           },
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
           {
             "name": "academyId",
             "required": false,
@@ -7021,6 +7042,45 @@
         },
         "security": [
           {
+    "/api/v1/admin/users/{id}/restriction": {
+      "patch": {
+        "operationId": "admin_setUserRestricted",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserRestrictedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The same decision the moderation queue makes on a report, reachable from\nthe user's own page — and the only way back: a restriction is lifted here.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
             "bearer": []
           }
         ],
@@ -9730,7 +9790,8 @@
               "USER",
               "MEDIA",
               "ACADEMY",
-              "COACH"
+              "COACH",
+              "RECOMMENDATION"
             ]
           },
           "reason": {
@@ -10102,3 +10163,26 @@
     "url": "https://github.com/Jahongirhacking/FotSpot"
   }
 }
+          },
+          "targetRecommendationId": {
+            "type": "string",
+            "description": "The recommendation whose text is being reported (type RECOMMENDATION)."
+          },
+          "restrictScout": {
+            "type": "boolean",
+            "description": "If resolving a RECOMMENDATION report and the text was inappropriate: the\nscout may write no more, and what they wrote leaves public view. The\nrecommendation rows themselves are not touched."
+      "SetUserRestrictedDto": {
+        "type": "object",
+        "properties": {
+          "restricted": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "restricted"
+        ]
+      },

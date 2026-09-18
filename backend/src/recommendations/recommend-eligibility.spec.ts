@@ -31,6 +31,8 @@ function build(overrides: { member?: boolean; application?: boolean } = {}) {
       ),
     },
     recommendation: { findFirst: jest.fn(async (): Promise<unknown> => null) },
+    // The scout at the door is in good standing; the restricted case has its own spec.
+    user: { findUnique: jest.fn(async (): Promise<unknown> => ({ restrictedAt: null })) },
   };
 
   const service = Object.create(RecommendationsService.prototype) as RecommendationsService;

@@ -1,11 +1,22 @@
-import Link from 'next/link';
-import { Megaphone, TrendingUp } from 'lucide-react';
-import type { PlayerRecommendationSummary } from '@/lib/api/resources';
-import type { Dictionary } from '@/lib/i18n';
+'use client';
+
+import { useI18n } from '@/components/layout/I18nProvider';
+import { ReportRecommendationDialog } from '@/components/player/ReportRecommendationDialog';
+import { LoadMore } from '@/components/trials/StageTabs';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Feedback';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/Menu';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { browserFetch } from '@/lib/api/browser';
+import type { PlayerRecommendationEntry, PlayerRecommendationSummary } from '@/lib/api/resources';
+import { RECOMMENDATION_PAGE_SIZE } from '@/lib/player-recommendations';
 import { initials, relativeTime } from '@/lib/utils';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { Flag, Megaphone, MoreHorizontal, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import * as React from 'react';
 
 /**
  * Who vouched for this player, and the public global weight — README §1.5.3.
@@ -22,16 +33,66 @@ import { initials, relativeTime } from '@/lib/utils';
  * §1.5 exists precisely so that a name carries a track record. `linkScouts` is
  * false for coaches, who must judge the player and not the messenger; see
  * `mayViewScoutProfile`.
+ *
+ * ## Three at a time
+ *
+ * The server sends the most credible scouts first, a page at a time, and the
+ * first page arrives with the profile. A "load more" button, not a scroll
+ * trigger: a well-recommended player can have dozens of these, and a card that
+ * grows on its own pushes the coach assessments below it out from under the
+ * reader. Pages are keyed by the player, so a report or a like elsewhere on
+ * the profile never refetches this list.
+ *
+ * ## Report, on the item
+ *
+ * Every item carries a small menu with one action, Report. Reporting files a
+ * moderation report and changes nothing here: the text stays until a
+ * moderator decides, and the decision that hides it is made about the scout,
+ * server-side, not by anything this card does.
  */
 export function RecommendationSummary({
-  summary,
+  playerId,
+  initial,
   linkScouts = false,
-  t,
 }: {
-  summary: PlayerRecommendationSummary;
+  playerId: string;
+  initial: PlayerRecommendationSummary;
   linkScouts?: boolean;
-  t: Dictionary;
 }) {
+  const { t } = useI18n();
+
+  const pages = useInfiniteQuery({
+    queryKey: ['player-recommendations', playerId],
+    queryFn: ({ pageParam }) =>
+      browserFetch<PlayerRecommendationSummary>(
+        `/recommendations/player/${playerId}?page=${pageParam}&pageSize=${RECOMMENDATION_PAGE_SIZE}`,
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page * last.pageSize < last.total ? last.page + 1 : undefined,
+    initialData: { pages: [initial], pageParams: [1] },
+    // The order came with the page; the list stays as the reader was dealt it.
+    staleTime: Infinity,
+  });
+
+  const entries = React.useMemo(() => {
+    // The same recommendation cannot be on two pages unless one was filed while
+    // the reader was paging; keyed by id so it is still drawn once.
+    const seen = new Set<string>();
+    const rows: PlayerRecommendationEntry[] = [];
+    for (const page of pages.data?.pages ?? []) {
+      for (const entry of page.scouts ?? []) {
+        if (seen.has(entry.recommendation.id)) continue;
+        seen.add(entry.recommendation.id);
+        rows.push(entry);
+      }
+    }
+    return rows;
+  }, [pages.data]);
+
+  const first = pages.data?.pages[0] ?? initial;
+  const total = pages.data?.pages.at(-1)?.total ?? initial.total;
+
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3">
@@ -46,55 +107,110 @@ export function RecommendationSummary({
             <TrendingUp className="size-3" aria-hidden /> {t.recommendations.globalWeight}
           </p>
           <p className="text-primary text-2xl leading-tight font-bold">
-            {Math.round(summary?.globalWeight * 10) / 10}
+            {Math.round((first?.globalWeight ?? 0) * 10) / 10}
           </p>
         </div>
       </CardHeader>
 
-      <CardContent>
-        {summary?.scouts.length === 0 ? (
+      <CardContent className="space-y-2">
+        {entries.length === 0 ? (
           <p className="text-muted text-sm">{t.recommendations.noRecommendationsYet}</p>
         ) : (
           <ul className="divide-border divide-y">
-            {summary?.scouts.map(({ id, name, avatarUrl, recommendation }) => (
-              <li key={recommendation?.id} className="flex items-start gap-3 py-3">
-                <ScoutIdentity
-                  id={id}
-                  name={name}
-                  avatarUrl={avatarUrl}
-                  linked={linkScouts}
-                  label={t.scouts.viewProfile}
-                />
-
-                <div className="min-w-0 flex-1">
-                  <ScoutName id={id} name={name} linked={linkScouts} />
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <Badge variant={recommendation?.type === 'SPECIFIC' ? 'primary' : 'neutral'}>
-                      {recommendation?.type === 'SPECIFIC'
-                        ? t.recommendations.specificType
-                        : t.recommendations.globalType}
-                    </Badge>
-                    <span className="text-muted text-xs">{relativeTime(recommendation?.date)}</span>
-                  </div>
-                  {recommendation?.note && (
-                    <p className="text-muted mt-1.5 text-xs italic">“{recommendation?.note}”</p>
-                  )}
-                </div>
-
-                {/* The scout's §1.5 weight as it stood when they filed — not a live
-                    lookup, so this number never silently changes. */}
-                <span
-                  className="text-muted shrink-0 font-mono text-sm"
-                  title={t.recommendations.globalWeight}
-                >
-                  +{recommendation?.weight}
-                </span>
-              </li>
+            {entries.map((entry) => (
+              <RecommendationItem key={entry.recommendation.id} entry={entry} linked={linkScouts} />
             ))}
           </ul>
         )}
+
+        {pages.isError && <Alert tone="danger">{t.common.couldNotLoad}</Alert>}
+
+        <LoadMore
+          shown={entries.length}
+          total={total}
+          loading={pages.isFetchingNextPage}
+          onLoadMore={() => {
+            if (pages.hasNextPage && !pages.isFetchingNextPage) void pages.fetchNextPage();
+          }}
+        />
       </CardContent>
     </Card>
+  );
+}
+
+function RecommendationItem({
+  entry: { id, name, avatarUrl, recommendation },
+  linked,
+}: {
+  entry: PlayerRecommendationEntry;
+  linked: boolean;
+}) {
+  const { t } = useI18n();
+  const requireAuth = useRequireAuth();
+  const [reporting, setReporting] = React.useState(false);
+
+  return (
+    <li className="flex items-start gap-3 py-3">
+      <ScoutIdentity
+        id={id}
+        name={name}
+        avatarUrl={avatarUrl}
+        linked={linked}
+        label={t.scouts.viewProfile}
+      />
+
+      <div className="min-w-0 flex-1">
+        <ScoutName id={id} name={name} linked={linked} />
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <Badge variant={recommendation?.type === 'SPECIFIC' ? 'primary' : 'neutral'}>
+            {recommendation?.type === 'SPECIFIC'
+              ? t.recommendations.specificType
+              : t.recommendations.globalType}
+          </Badge>
+          <span className="text-muted text-xs">{relativeTime(recommendation?.date)}</span>
+        </div>
+        {recommendation?.note && (
+          <p className="text-muted mt-1.5 text-xs italic">“{recommendation?.note}”</p>
+        )}
+      </div>
+
+      {/* The scout's §1.5 weight as it stood when they filed — not a live
+          lookup, so this number never silently changes. */}
+      <span
+        className="text-muted shrink-0 pt-0.5 font-mono text-sm"
+        title={t.recommendations.globalWeight}
+      >
+        +{recommendation?.weight}
+      </span>
+
+      {/* Guests may read the list; the action asks them to sign in first. */}
+      <Menu>
+        <MenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t.recommendations.moreActions}
+            className="text-muted hover:bg-surface-2 hover:text-foreground focus-visible:ring-primary -mr-2 grid size-9 shrink-0 place-items-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <MoreHorizontal className="size-4" aria-hidden />
+          </button>
+        </MenuTrigger>
+        <MenuContent className="min-w-40">
+          <MenuItem
+            onSelect={() => {
+              if (requireAuth()) setReporting(true);
+            }}
+          >
+            <Flag aria-hidden /> {t.recommendations.report}
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+
+      <ReportRecommendationDialog
+        recommendationId={recommendation.id}
+        open={reporting}
+        onOpenChange={setReporting}
+      />
+    </li>
   );
 }
 

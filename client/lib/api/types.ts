@@ -1050,7 +1050,7 @@ export interface PendingAction {
  * Why a scout may not put this player forward right now: they are on an
  * academy's books, or an academy is already looking at them on a pitch.
  */
-export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL';
+export type RecommendBlocker = 'IN_ACADEMY' | 'IN_TRIAL' | 'SCOUT_RESTRICTED';
 
 export interface RecommendEligibility {
   canRecommend: boolean;

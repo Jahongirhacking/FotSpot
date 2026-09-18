@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Feedback';
 import { ApiError } from '@/lib/api/client';
+import { RECOMMENDATION_PAGE_SIZE } from '@/lib/player-recommendations';
 import { coaches, media, players, recommendations, users } from '@/lib/api/resources';
 import type { CoachAssessment, Media, PlayerProfile } from '@/lib/api/types';
 import { getServerT } from '@/lib/i18n/server';
@@ -144,6 +145,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   const summary = await recommendations
     .getPlayerSummary(
       playerId,
+      { pageSize: RECOMMENDATION_PAGE_SIZE },
       session ? { token: session?.accessToken, cache: 'no-store' } : { revalidate: 120 },
     )
     .catch(() => null);
@@ -260,11 +262,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
         {summary && (
           <RecommendationSummary
-            summary={summary}
+            playerId={playerId}
+            initial={summary}
             // A coach reads this list to know a player was vouched for, never to
             // weigh who did the vouching — see mayViewScoutProfile.
             linkScouts={mayViewScoutProfile(session?.activeRole ?? null)}
-            t={t}
           />
         )}
 
