@@ -118,6 +118,13 @@ export function ProfessionalPlayerDialog({
               </ul>
             )}
           </div>
+          <Link
+            href={'/professional-players'}
+            className="text-muted mt-1 !mb-2 block text-center text-xs leading-snug underline"
+            replace
+          >
+            {t.professional.subtitleOne}?
+          </Link>
         </DialogBody>
       </DialogContent>
     </Dialog>

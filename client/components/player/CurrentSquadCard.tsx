@@ -163,7 +163,7 @@ function SquadRow({
         {isLocalTeam ? <Users className="size-4" /> : <Building2 className="size-4" />}
       </span>
 
-      <div className="min-w-0 flex-1">
+      <div className="flex-1">
         <p className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{membership?.academyName}</span>
           {isLocalTeam ? (

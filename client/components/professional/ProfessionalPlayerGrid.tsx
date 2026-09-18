@@ -6,8 +6,8 @@ import { LoadingImage } from '@/components/ui/LoadingImage';
 import { useModalParam } from '@/hooks/useModalParam';
 import { browserFetch } from '@/lib/api/browser';
 import type { ProfessionalPlayer } from '@/lib/api/types';
-import { PRO_PLAYER_PARAM } from '@/lib/player-url';
 import { CARD_THEME, positionGroup } from '@/lib/player-card';
+import { PRO_PLAYER_PARAM } from '@/lib/player-url';
 import { footLabel, fullName } from '@/lib/professional-players';
 import { cn, initials } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -169,35 +169,37 @@ export function ProfessionalPlayerCard({
         </span>
       </span>
 
-      <span className="flex min-h-10 items-center gap-2 px-3 py-2">
-        {logos.length > 0 ? (
-          <span className="flex -space-x-2" aria-hidden>
-            {logos.map((academy) => (
-              <LoadingImage
-                key={academy.id}
-                src={academy.logoUrl}
-                alt=""
-                spinner={false}
-                className="ring-surface size-6 rounded-full object-cover ring-2"
-                // A logo that fails to load must not leave a broken-image glyph
-                // on the card; the crest below stands in for it.
-                fallback={
-                  <span className="bg-surface-3 ring-surface grid size-6 place-items-center rounded-full ring-2">
-                    <Building2 className="text-muted size-3" aria-hidden />
-                  </span>
-                }
-              />
-            ))}
+      {!compact && (
+        <span className="flex min-h-10 items-center gap-2 px-3 py-2">
+          {logos.length > 0 ? (
+            <span className="flex -space-x-2" aria-hidden>
+              {logos?.map((academy) => (
+                <LoadingImage
+                  key={academy.id}
+                  src={academy.logoUrl}
+                  alt=""
+                  spinner={false}
+                  className="ring-surface size-6 rounded-full object-cover ring-2"
+                  // A logo that fails to load must not leave a broken-image glyph
+                  // on the card; the crest below stands in for it.
+                  fallback={
+                    <span className="bg-surface-3 ring-surface grid size-6 place-items-center rounded-full ring-2">
+                      <Building2 className="text-muted size-3" aria-hidden />
+                    </span>
+                  }
+                />
+              ))}
+            </span>
+          ) : (
+            <Building2 className="text-muted size-4 shrink-0" aria-hidden />
+          )}
+          <span className="text-muted min-w-0 flex-1 truncate text-xs">
+            {player?.academies?.length > 0
+              ? player.academies.map((academy) => academy.name).join(' · ')
+              : t.professional.noAcademies}
           </span>
-        ) : (
-          <Building2 className="text-muted size-4 shrink-0" aria-hidden />
-        )}
-        <span className="text-muted min-w-0 flex-1 truncate text-xs">
-          {player.academies.length > 0
-            ? player.academies.map((academy) => academy.name).join(' · ')
-            : t.professional.noAcademies}
         </span>
-      </span>
+      )}
     </button>
   );
 }
