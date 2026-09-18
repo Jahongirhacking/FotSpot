@@ -15,6 +15,7 @@
 # the processor), so one image serves both. When transcoding volume justifies a
 # separate worker container, it is this image with a different command — the
 # split is a deployment change, not a code change.
+
 FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
@@ -45,10 +46,11 @@ RUN apt-get update \
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/package.json ./package.json
+# Copy runtime files with ownership for the non-root `node` user.
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/prisma ./prisma
+COPY --from=build --chown=node:node /app/package.json ./package.json
 
 # Not root. The transcoder writes temporary files and runs a subprocess over
 # bytes a stranger uploaded, which is the combination worth containing.
