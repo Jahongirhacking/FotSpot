@@ -1240,6 +1240,8 @@ export const ru: Dictionary = {
     ageRangeHint: 'Считается по возрасту на день просмотра.',
     positionsPickHint: 'Отметьте нужные позиции на поле. Подходящие игроки получат уведомление.',
     positionsNoneChosen: 'Позиции не выбраны',
+    positionsSelectAll: 'Все позиции',
+    positionsClear: 'Очистить',
     newBadge: 'новые',
     positionsHint: 'Через запятую, например: GK, CB, LW',
     requirements: 'Требования',

@@ -14,7 +14,10 @@ import {
   deriveAttributes,
   displayStars,
   sortClipsNewestFilmed,
+  POSITION_COORDS,
+  positionGroup,
 } from './player-card';
+import { POSITIONS } from './schemas/player';
 
 const clip = (overrides: Partial<Media>): Media =>
   ({
@@ -173,4 +176,27 @@ test('a formal assessment stands in for a relative number, not for a verified on
   // 40/2 + 90 over the verified clip's own 40: the assessment counted once, for the relative card only.
   assert.ok(Math.abs(relative.stars - 110 / 120) < 1e-9);
   assert.ok(Math.abs(verified.stars - 40 / 120) < 1e-9);
+});
+
+/*
+ * Every position code has a spot on the pitch and a group. The picker reads
+ * `POSITION_COORDS[code].x` unguarded, so a code without coordinates crashes
+ * the onboarding wizard; a code outside the group map would fall through to
+ * Forward and dress a midfielder's card in red.
+ */
+test('every position has pitch coordinates and the wide midfielders group as Midfield', () => {
+  for (const code of POSITIONS) {
+    const spot = POSITION_COORDS[code];
+    assert.ok(spot, `${code} has no pitch coordinates`);
+    assert.ok(spot.x >= 0 && spot.x <= 100 && spot.y >= 0 && spot.y <= 100, code);
+  }
+  assert.equal(positionGroup('LMF'), 'Midfield');
+  assert.equal(positionGroup('RMF'), 'Midfield');
+  assert.equal(positionGroup('CM'), 'Midfield');
+  assert.equal(positionGroup('LW'), 'Forward');
+  // Left and right of CM, in its band.
+  assert.equal(POSITION_COORDS.LMF.y, POSITION_COORDS.CM.y);
+  assert.ok(
+    POSITION_COORDS.LMF.x < POSITION_COORDS.CM.x && POSITION_COORDS.RMF.x > POSITION_COORDS.CM.x,
+  );
 });

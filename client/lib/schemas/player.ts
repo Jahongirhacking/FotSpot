@@ -3,7 +3,26 @@ import { z } from 'zod';
 
 /** Mirrors `backend/src/players/dto/player.dto.ts`. */
 
-export const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST'] as const;
+/**
+ * Position codes, in team-sheet order: back to front, left before right in a
+ * line. The order is what the pitch picker draws and what a trial's chosen
+ * positions are sorted into, so LMF and RMF sit in the midfield line beside
+ * CM rather than at the end.
+ */
+export const POSITIONS = [
+  'GK',
+  'CB',
+  'LB',
+  'RB',
+  'DM',
+  'LMF',
+  'CM',
+  'RMF',
+  'AM',
+  'LW',
+  'RW',
+  'ST',
+] as const;
 
 export enum PlayingStyles {
   GOAL_POACHER = 'GOAL_POACHER',

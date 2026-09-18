@@ -1237,6 +1237,8 @@ export const en: Dictionary = {
     ageRangeHint: 'Counted from age on the day of the trial.',
     positionsPickHint: 'Mark the positions you want on the pitch. Matching players are notified.',
     positionsNoneChosen: 'No positions chosen',
+    positionsSelectAll: 'All positions',
+    positionsClear: 'Clear',
     newBadge: 'new',
     positionsHint: 'Comma separated, e.g. GK, CB, LW',
     requirements: 'Requirements',

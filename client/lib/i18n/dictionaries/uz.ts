@@ -1280,6 +1280,8 @@ export const uz = {
     positionsPickHint:
       'Maydonda kerakli pozitsiyalarni belgilang. Mos futbolchilarga xabar boradi.',
     positionsNoneChosen: 'Hech qanday pozitsiya tanlanmagan',
+    positionsSelectAll: 'Barcha pozitsiyalar',
+    positionsClear: 'Tozalash',
     newBadge: 'yangi',
     positionsHint: 'Vergul bilan ajrating, masalan: GK, CB, LW',
     requirements: 'Talablar',
