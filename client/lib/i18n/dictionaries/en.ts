@@ -528,6 +528,15 @@ export const en: Dictionary = {
     memberInactive: 'Inactive',
     makeInactive: 'Make inactive',
     makeActive: 'Make active',
+    addPlayer: 'Add player',
+    addPlayerHint:
+      'Choose someone who already has a player account. People already in the squad are not listed.',
+    addScout: 'Add scout',
+    addScoutHint:
+      'Choose someone with a scout account. A scout may work with several academies at once.',
+    addExistingCoach: 'Add coach',
+    addExistingCoachHint: 'Choose someone with a verified coach account.',
+    newCoachAccountHint: 'Coach has no account yet?',
     noMembers: 'Nobody here yet',
     rating: 'Rating',
     notAssessed: 'Not assessed',

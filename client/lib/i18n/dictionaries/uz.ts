@@ -554,6 +554,15 @@ export const uz = {
     memberActive: 'Faol',
     memberInactive: 'Nofaol',
     makeInactive: 'Nofaol qilish',
+    addPlayer: 'O‘yinchi qo‘shish',
+    addPlayerHint:
+      'Platformada o‘yinchi hisobi bor odamni tanlang. Tarkibda bo‘lganlar ro‘yxatda ko‘rinmaydi.',
+    addScout: 'Skaut qo‘shish',
+    addScoutHint:
+      'Skaut hisobi bor odamni tanlang. Skaut bir vaqtning o‘zida bir nechta akademiya bilan ishlashi mumkin.',
+    addExistingCoach: 'Murabbiy qo‘shish',
+    addExistingCoachHint: 'Tasdiqlangan murabbiy hisobi bor odamni tanlang.',
+    newCoachAccountHint: 'Murabbiyning hali hisobi yo‘qmi?',
     makeActive: 'Faollashtirish',
     noMembers: 'Bu bo‘limda hech kim yo‘q',
     rating: 'Reyting',

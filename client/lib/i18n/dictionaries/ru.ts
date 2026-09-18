@@ -525,6 +525,15 @@ export const ru: Dictionary = {
     memberInactive: 'Неактивен',
     makeInactive: 'Сделать неактивным',
     makeActive: 'Активировать',
+    addPlayer: 'Добавить игрока',
+    addPlayerHint:
+      'Выберите человека с аккаунтом игрока. Те, кто уже в составе, в списке не показываются.',
+    addScout: 'Добавить скаута',
+    addScoutHint:
+      'Выберите человека с аккаунтом скаута. Скаут может работать с несколькими академиями сразу.',
+    addExistingCoach: 'Добавить тренера',
+    addExistingCoachHint: 'Выберите человека с подтверждённым аккаунтом тренера.',
+    newCoachAccountHint: 'У тренера ещё нет аккаунта?',
     noMembers: 'Здесь пока никого нет',
     rating: 'Рейтинг',
     notAssessed: 'Без оценки',

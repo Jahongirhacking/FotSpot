@@ -135,7 +135,9 @@ export function CandidatePicker({
         className="overflow-y-auto"
         style={{ height: VIEWPORT_HEIGHT }}
       >
-        {rows?.length === 0 ? (
+        {list.isError ? (
+          <p className="text-danger p-4 text-center text-sm">{t.common.couldNotLoad}</p>
+        ) : rows?.length === 0 ? (
           <p className="text-muted p-4 text-center text-sm">
             {list.isLoading ? t.common.loading : t.academy.noCandidates}
           </p>
