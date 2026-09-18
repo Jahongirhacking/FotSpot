@@ -348,11 +348,7 @@ function ContactCard({ academy, onSaved }: { academy: AcademyProfile; onSaved: (
             />
           </Field>
 
-          <Field
-            label={`${t.academy?.backupPhone} · ${t.common?.optional}`}
-            htmlFor="backupPhone"
-            hint={t.academy?.backupPhoneHint}
-          >
+          <Field label={`${t.academy?.backupPhone} · ${t.common?.optional}`} htmlFor="backupPhone">
             <Input
               id="backupPhone"
               type="tel"
