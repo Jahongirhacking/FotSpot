@@ -1,17 +1,17 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Eye, Heart, Pause, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
-import { browserFetch } from '@/lib/api/browser';
-import type { FeedClip } from '@/lib/api/types';
 import { useI18n } from '@/components/layout/I18nProvider';
 import { Avatar } from '@/components/ui/Avatar';
-import { cn, initials } from '@/lib/utils';
 import { LoadingImage } from '@/components/ui/LoadingImage';
-import { patchFeedClip } from './feed-cache';
 import { useScrollLock } from '@/hooks/useScrollLock';
+import { browserFetch } from '@/lib/api/browser';
+import type { FeedClip } from '@/lib/api/types';
+import { cn, initials } from '@/lib/utils';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Eye, Heart, Pause, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import Link from 'next/link';
+import * as React from 'react';
+import { patchFeedClip } from './feed-cache';
 
 /**
  * How long a slide must actually play before it counts as watched.
@@ -39,6 +39,16 @@ const VIEW_AFTER_SECONDS = 2;
 const reportedThisSession = new Set<string>();
 
 /**
+ * Two taps closer together than this are one gesture — a double tap — and the
+ * first of them must not have paused the clip in the meantime. Longer than a
+ * quick second tap, shorter than the pause feeling laggy.
+ */
+const DOUBLE_TAP_MS = 280;
+
+/** How long the big heart stays over the frame after a double tap. */
+const HEART_BURST_MS = 700;
+
+/**
  * The clip, full screen, in the short-video idiom the audience already knows.
  *
  * ## Scroll-snap, not a carousel
@@ -56,6 +66,21 @@ const reportedThisSession = new Set<string>();
  * poster frame. A hundred-clip feed opened at slide one must not mount a hundred
  * decoders — this is the same rule as the stream behind it, and for the same
  * phone.
+ *
+ * ## Sound
+ *
+ * The grid behind this opened muted, as a grid must. Opening a clip full screen
+ * is the deliberate press the feed's comment asks for, so the viewer starts with
+ * sound on. Browsers that still refuse unmuted playback reject `play()` with
+ * `NotAllowedError`; the viewer then falls back to muted, the speaker icon says
+ * so, and the next press on it is a user gesture the browser accepts.
+ *
+ * ## Double tap
+ *
+ * A double tap on the frame likes the clip, as the format has taught everyone.
+ * A single tap still pauses, but only once the double-tap window has passed, so
+ * the two gestures never fight. A double tap on a clip already liked shows the
+ * heart and changes nothing — unliking stays on the heart button.
  *
  * The like is optimistic, and it is written into the feed cache in place — never
  * by invalidating it. Invalidating refetched every page, and the server's ranking
@@ -78,7 +103,8 @@ export function ShortViewer({
   const { t } = useI18n();
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = React.useState(startIndex);
-  const [muted, setMuted] = React.useState(true);
+  const [muted, setMuted] = React.useState(false);
+  const onAutoplayBlocked = React.useCallback(() => setMuted(true), []);
 
   // Jump to the clip that was pressed, before the first paint the user sees.
   React.useLayoutEffect(() => {
@@ -149,6 +175,7 @@ export function ShortViewer({
             active={position === index}
             mounted={Math.abs(position - index) <= 1}
             muted={muted}
+            onAutoplayBlocked={onAutoplayBlocked}
           />
         ))}
       </div>
@@ -161,11 +188,13 @@ function Slide({
   active,
   mounted,
   muted,
+  onAutoplayBlocked,
 }: {
   clip: FeedClip;
   active: boolean;
   mounted: boolean;
   muted: boolean;
+  onAutoplayBlocked: () => void;
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
@@ -174,6 +203,8 @@ function Slide({
   const [liked, setLiked] = React.useState(clip?.likedByMe);
   const [likes, setLikes] = React.useState(clip?.likes);
   const [views, setViews] = React.useState(clip?.views ?? 0);
+  const [heartBurst, setHeartBurst] = React.useState(false);
+  const tapTimer = React.useRef<number | null>(null);
 
   /*
    * Whether this slide has already been counted.
@@ -229,9 +260,25 @@ function Slide({
   React.useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (active && !paused) void video.play().catch(() => undefined);
-    else video.pause();
-  }, [active, paused, mounted]);
+    if (!active || paused) {
+      video.pause();
+      return;
+    }
+    void video.play().catch((error: unknown) => {
+      // Only a refusal to play with sound is acted on. The other rejection —
+      // AbortError, when a scroll pauses the clip before play settled — is
+      // routine and must not mute the viewer.
+      const blocked = error instanceof DOMException && error.name === 'NotAllowedError';
+      if (blocked && !muted) onAutoplayBlocked();
+    });
+  }, [active, paused, mounted, muted, onAutoplayBlocked]);
+
+  React.useEffect(
+    () => () => {
+      if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+    },
+    [],
+  );
 
   /*
    * Like: this slide's heart, this clip's cached row, and a request in the
@@ -269,11 +316,41 @@ function Slide({
     toggleLike.mutate(next);
   }
 
+  /**
+   * The double-tap like. Shows the heart every time; sends a like only when the
+   * clip is not already liked and no like is in flight, so a burst of taps is
+   * one request, never a like-unlike pair.
+   */
+  function likeByDoubleTap() {
+    setHeartBurst(true);
+    window.setTimeout(() => setHeartBurst(false), HEART_BURST_MS);
+    if (liked || toggleLike.isPending) return;
+    like();
+  }
+
+  /*
+   * Taps on the frame. `click` fires for a mouse and for a touch alike, so this
+   * one handler covers both: a second tap inside the window cancels the pending
+   * pause and likes; a lone tap pauses once the window has passed.
+   */
+  function onFrameTap() {
+    if (tapTimer.current !== null) {
+      window.clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+      likeByDoubleTap();
+      return;
+    }
+    tapTimer.current = window.setTimeout(() => {
+      tapTimer.current = null;
+      setPaused((was) => !was);
+    }, DOUBLE_TAP_MS);
+  }
+
   return (
     <section className="relative h-dvh w-full snap-start snap-always">
       <button
         type="button"
-        onClick={() => setPaused((was) => !was)}
+        onClick={onFrameTap}
         aria-label={paused ? t.clips.play : t.clips.pause}
         className="absolute inset-0 z-0"
       >
@@ -306,6 +383,15 @@ function Slide({
         </span>
       )}
 
+      {heartBurst && (
+        <span className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+          <Heart
+            className="fill-danger text-danger animate-heart-pop size-24 drop-shadow"
+            aria-hidden
+          />
+        </span>
+      )}
+
       {/* Legibility floor for the caption, independent of the frame behind it. */}
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/5"
@@ -329,8 +415,10 @@ function Slide({
             </span>
           </Link>
 
-          {clip?.title && <p className="text-sm font-medium">{clip?.title}</p>}
-          {clip?.description && <p className="text-sm text-white/80">{clip?.description}</p>}
+          {clip?.title && <p className="line-clamp-2 text-sm font-medium">{clip?.title}</p>}
+          {clip?.description && (
+            <p className="line-clamp-2 text-sm text-white/80">{clip?.description}</p>
+          )}
         </div>
 
         <button
